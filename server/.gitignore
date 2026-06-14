@@ -1,0 +1,18 @@
+# local env files
+.env
+.env.local
+
+# dependencies
+node_modules/
+
+# production/build outputs
+dist/
+
+# logs
+logs/
+*.log
+
+# scratch/temporary files
+scratch/
+temp/
+tmp/

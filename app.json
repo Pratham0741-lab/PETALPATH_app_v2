@@ -16,8 +16,26 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.anonymous.petalpath_app_v2"
     },
+    "plugins": [
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.244358134848-cblimclem7n3knhsu6ahu29kd7l0pqve"
+        }
+      ],
+      "expo-video",
+      "expo-audio",
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Allow PetalPath to use the microphone for speech activities.",
+          "speechRecognitionPermission": "Allow PetalPath to use speech recognition for learning activities."
+        }
+      ]
+    ],
     "web": {
       "favicon": "./assets/favicon.png"
     }

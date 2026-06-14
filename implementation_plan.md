@@ -1,130 +1,78 @@
-# Implementation Plan - PetalPath Foundation
+# Implementation Plan - Phase 1 Frontend & Curriculum Integration
 
-Build a scalable, clean frontend foundation for PetalPath using React Native, React Native Web, Expo, TypeScript, React Navigation, and Zustand.
+Implement frontend integration for Phase 1 (Backend Foundation & Database Curriculum) in the React Native/Expo application. This connects the Home (roadmap) and Journey (activities path) screens to fetch real database data from the Express backend instead of rendering static mock arrays.
 
-## Proposed Architecture & Design Decisions
+## User Review Required
 
-1. **Responsive System & Layouts**:
-   - Create a hook `useDeviceType()` that reads window width from `useWindowDimensions()` and maps it to `mobile`, `tablet`, or `desktop` based on:
-     - width < 600px: `mobile`
-     - 600px <= width < 1024px: `tablet`
-     - width >= 1024px: `desktop`
-   - Use a master `ScreenContainer` that takes layouts or dynamically mounts `HomeMobile`/`HomeTablet`/`HomeDesktop`, etc.
-   - Implement side-nav/sidebar-nav for tablet/desktop, and custom bottom-nav for mobile.
-   - Prevent UI stretching on larger screens (e.g., center-align content with max-widths where appropriate, sidebars on desktop).
-
-2. **Styling & Theme**:
-   - Establish a dark theme tailored for children in `src/theme/`.
-   - Primary colors: Navy background, Purple accent, Blue accent, Green accent, Yellow stars, Soft white text.
-   - Rounded components (`radius.ts`), playful layout (`spacing.ts`), and premium visual shadows (`shadows.ts`).
-   - Use pure React Native `StyleSheet` styling referencing these token files. No hardcoded padding, colors, font sizes, or border radii.
-   - No emojis. Use basic vector icons (`@expo/vector-icons`) styled to look modern.
-
-3. **Navigation & State Management**:
-   - React Navigation for screen stack handling.
-   - Zustand store to track current screen navigation, active user/mentor preferences, active task progress, and star count.
-   - Maintain active tab highlighted correctly in bottom-nav, side-nav, or sidebar.
-
-4. **Mentors**:
-   - Add static definitions for child-friendly non-human mentors (e.g., Dax the Dinosaur, Finn the Fox, Penny the Penguin, Benny the Bear, Ellie the Elephant) inside `src/constants/mentors.ts`.
+> [!WARNING]
+> **Database Startup Blocker**
+> The PostgreSQL server is currently unreachable on port `5432`. Our checks indicate that `postgres.exe` fails to start because the `lib/` directory inside `C:\Program Files\PostgreSQL\18\` is missing.
+> We found the installer executable `postgresql-18.4-2-windows-x64.exe` in your `Downloads` directory.
+> 
+> Please let us know:
+> 1. Do you want us to help you run the installer to repair the installation, or do you want to start the database server yourself?
+> 2. Once the database is reachable, we will run the migrations and seeds (`npm run db:seed`) to populate the categories, lessons, and activities.
 
 ## Proposed Changes
 
-### Configuration Files
+### Backend: Curriculum Controllers & Repositories
 
-#### [MODIFY] [package.json](file:///d:/petalpath/AND_APP/petalpath_app_v2/package.json)
-- Add required dependencies: `zustand`, `@react-navigation/native`, `@react-navigation/native-stack`, `@react-navigation/bottom-tabs`, `react-native-safe-area-context`, `react-native-screens`. (Web support is usually preconfigured, but verify dependencies).
+We will implement the read logic for categories, lessons, activities, and videos so they serve the seeded data.
 
-### Theme System (`src/theme/`)
+#### [MODIFY] [categories.controller.ts](file:///d:/petalpath/AND_APP/petalpath_app_v2/server/src/modules/categories/categories.controller.ts)
+- Replace stubs with logic calling `categoriesService.getAllCategories()` and `categoriesService.getCategoryById(id)`.
 
-#### [NEW] [colors.ts](file:///d:/petalpath/AND_APP/petalpath_app_v2/src/theme/colors.ts)
-- Children-focused dark mode colors:
-  - Background: Deep navy (`#0B0E26`, `#12163A`)
-  - Purple Accent: `#8A5CF6` (playful medium-bright purple)
-  - Blue Accent: `#3B82F6` (vibrant sky blue)
-  - Green Accent: `#10B981` (bright mint green)
-  - Star Yellow: `#FBBF24` (warm amber yellow)
-  - Text: `#F3F4F6` (soft white)
-  - Secondary/Muted: `#9CA3AF`
+#### [MODIFY] [lessons.service.ts](file:///d:/petalpath/AND_APP/petalpath_app_v2/server/src/modules/lessons/lessons.service.ts)
+- Add optional `categoryId` filtering support to `getAllLessons`.
 
-#### [NEW] [typography.ts](file:///d:/petalpath/AND_APP/petalpath_app_v2/src/theme/typography.ts)
-- Scale of sizes and weights appropriate for child readability.
+#### [MODIFY] [lessons.controller.ts](file:///d:/petalpath/AND_APP/petalpath_app_v2/server/src/modules/lessons/lessons.controller.ts)
+- Replace stubs to return lessons filtered by `categoryId` when provided as a query parameter.
 
-#### [NEW] [spacing.ts](file:///d:/petalpath/AND_APP/petalpath_app_v2/src/theme/spacing.ts)
-- Base grids (e.g., 4, 8, 12, 16, 24, 32, 48).
+#### [MODIFY] [activities.repository.ts](file:///d:/petalpath/AND_APP/petalpath_app_v2/server/src/modules/activities/activities.repository.ts)
+- Update `findByLessonId` to run `.findMany({ include: { video: true } })` so that video activity metadata is fetched concurrently.
 
-#### [NEW] [radius.ts](file:///d:/petalpath/AND_APP/petalpath_app_v2/src/theme/radius.ts)
-- Playful rounded styles (e.g., small=8, medium=16, large=24, full=9999).
+#### [MODIFY] [activities.service.ts](file:///d:/petalpath/AND_APP/petalpath_app_v2/server/src/modules/activities/activities.service.ts)
+- Add optional `lessonId` filtering support to `getAllActivities`.
 
-#### [NEW] [shadows.ts](file:///d:/petalpath/AND_APP/petalpath_app_v2/src/theme/shadows.ts)
-- Soft shadows for cards to look premium.
+#### [MODIFY] [activities.controller.ts](file:///d:/petalpath/AND_APP/petalpath_app_v2/server/src/modules/activities/activities.controller.ts)
+- Update stubs to return activities (and their joined videos) filtered by `lessonId`.
 
-#### [NEW] [animations.ts](file:///d:/petalpath/AND_APP/petalpath_app_v2/src/theme/animations.ts)
-- Basic duration and easing constants for transitions.
+#### [MODIFY] [videos.service.ts](file:///d:/petalpath/AND_APP/petalpath_app_v2/server/src/modules/videos/videos.service.ts)
+- Add optional `activityId` filtering support to `getAllVideos`.
 
-#### [NEW] [breakpoints.ts](file:///d:/petalpath/AND_APP/petalpath_app_v2/src/theme/breakpoints.ts)
-- Breakpoint constants (600, 1024).
+#### [MODIFY] [videos.controller.ts](file:///d:/petalpath/AND_APP/petalpath_app_v2/server/src/modules/videos/videos.controller.ts)
+- Implement `getAll` and `getById` logic.
 
-### State Management (`src/store/`)
+---
 
-#### [NEW] [navigationStore.ts](file:///d:/petalpath/AND_APP/petalpath_app_v2/src/store/navigationStore.ts)
-- Keep track of current screen, active mentor, and current progress context.
+### Frontend: Home & Journey Screens Integration
 
-### Responsive Hooks (`src/hooks/`)
+We will connect the frontend views to the Express API via the `api` client utility.
 
-#### [NEW] [useDeviceType.ts](file:///d:/petalpath/AND_APP/petalpath_app_v2/src/hooks/useDeviceType.ts)
-- Hook returning `'mobile' | 'tablet' | 'desktop'`.
+#### [MODIFY] [HomeMobile.tsx](file:///d:/petalpath/AND_APP/petalpath_app_v2/src/screens/home/HomeMobile.tsx), [HomeTablet.tsx](file:///d:/petalpath/AND_APP/petalpath_app_v2/src/screens/home/HomeTablet.tsx), [HomeDesktop.tsx](file:///d:/petalpath/AND_APP/petalpath_app_v2/src/screens/home/HomeDesktop.tsx)
+- Use a `useEffect` hook to fetch categories from `/categories`.
+- Render categories dynamically in the roadmap path list.
+- Navigate to `'Journey'` passing `categoryId: category.id`.
 
-### Layout System (`src/layouts/`)
+#### [MODIFY] [JourneyMobile.tsx](file:///d:/petalpath/AND_APP/petalpath_app_v2/src/screens/journey/JourneyMobile.tsx), [JourneyTablet.tsx](file:///d:/petalpath/AND_APP/petalpath_app_v2/src/screens/journey/JourneyTablet.tsx), [JourneyDesktop.tsx](file:///d:/petalpath/AND_APP/petalpath_app_v2/src/screens/journey/JourneyDesktop.tsx)
+- Extract the `categoryId` parameter from route parameters. If undefined, default to the first available category.
+- Fetch lessons under the selected category from `/lessons?categoryId=${categoryId}`.
+- Render a horizontal/pill selector to toggle between lessons.
+- Fetch activities under the active lesson from `/activities?lessonId=${lessonId}` and render cards.
+- On card press, navigate to the specific activity type screen (e.g. `'Video'`), passing parameters like `activityTitle` and `videoUrl`.
 
-#### [NEW] [mobile/](file:///d:/petalpath/AND_APP/petalpath_app_v2/src/layouts/mobile)
-- Standard layout with a header `TopBar` and a `BottomNavigation`.
+#### [MODIFY] [index.tsx (Video)](file:///d:/petalpath/AND_APP/petalpath_app_v2/src/screens/video/index.tsx)
+- Extract route parameters to display the target lesson video.
+- Show video information dynamically.
 
-#### [NEW] [tablet/](file:///d:/petalpath/AND_APP/petalpath_app_v2/src/layouts/tablet)
-- Side navigation layout with content centered with bounds.
-
-#### [NEW] [desktop/](file:///d:/petalpath/AND_APP/petalpath_app_v2/src/layouts/desktop)
-- Sidebar navigation layout with full desktop spacing.
-
-### Navigation Coordinator
-
-#### [NEW] [RootNavigator.tsx](file:///d:/petalpath/AND_APP/petalpath_app_v2/src/navigation/RootNavigator.tsx)
-- Unified router that mounts the active layout and screens dynamically based on device type.
-
-### Placeholder Screens (`src/screens/`)
-Create index and responsive files for:
-- Home (Roadmap)
-- Journey
-- Mentor
-- Rewards
-- Profile
-- Video
-- Listen
-- Speak
-- Write
-- Progress
-- Stories
-
-Each screen directory will contain:
-- `index.tsx`: Coordinates between Mobile/Tablet/Desktop files.
-- `[ScreenName]Mobile.tsx`: Mobile view.
-- `[ScreenName]Tablet.tsx`: Tablet view.
-- `[ScreenName]Desktop.tsx`: Desktop view.
-
-### Reusable Components (`src/components/`)
-- **Buttons**: `AppButton`, `PrimaryButton`, `SecondaryButton` in `src/components/buttons/`
-- **Cards**: `AppCard`, `AnimatedCard`, `AvatarCard`, `RewardCard`, `ActivityCard`, `LessonCard` in `src/components/cards/`
-- **Progress**: `ProgressBar`, `StarCounter` in `src/components/progress/`
-- **Navigation**: `BottomNavigation`, `SidebarNavigation`, `TopBar` in `src/components/navigation/`
-- **Common**: `SectionHeader`, `ScreenContainer` in `src/components/common/`
+---
 
 ## Verification Plan
 
 ### Automated Tests
-- Run TS compilation checks (`npx tsc`).
-- Start Expo dev server (`npm run web` / `npm run android`) to confirm startup without runtime crashes.
+- Run backend typechecks: `npm run build` or `npx tsc --noEmit` in `server/`.
+- Run frontend typechecks: `npx tsc --noEmit` in root directory.
 
 ### Manual Verification
-- Resize the web browser window to verify seamless transitions between Mobile, Tablet, and Desktop layouts (at 600px and 1024px).
-- Verify the active navigation state aligns with bottom-bar, side-nav, and sidebar indicators.
-- Inspect responsiveness (no UI stretching) on simulated tablet/desktop dimensions.
+- Start the server on port `5000`.
+- Verify mobile, tablet, and desktop layouts load correctly with real backend-seeded data.

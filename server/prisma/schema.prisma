@@ -1,0 +1,399 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id                   String    @id @default(uuid())
+  email                String    @unique
+  name                 String
+  provider             String    @default("email") // google, email
+  googleId             String?   @map("google_id")
+  profilePicture       String?   @map("profile_picture")
+  passwordHash         String?   @map("password_hash")
+  resetPasswordToken   String?   @map("reset_password_token")
+  resetPasswordExpires DateTime? @map("reset_password_expires")
+  role                 String    @default("PARENT") // PARENT, ADMIN, MENTOR
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+  deletedAt            DateTime? @map("deleted_at")
+
+  children      Child[]
+  refreshTokens RefreshToken[]
+
+  @@map("users")
+}
+
+model Child {
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  age       Int
+  ageGroup  String    @map("age_group")
+  avatar    String
+  mentorId  String?   @map("mentor_id")
+  mentor    Mentor?   @relation(fields: [mentorId], references: [id], onDelete: SetNull)
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  lessonProgress   LessonProgress[]
+  rewards          Reward[]
+  stories          Story[]
+  questionnaires   Questionnaire[]
+  videoProgress    VideoProgress[]
+  listenProgress   ListenProgress[]
+  speakProgress    SpeakProgress[]
+  writeProgress    WriteProgress[]
+  stars            Stars?
+  childStickers    ChildSticker[]
+  childBadges      ChildBadge[]
+  moduleProgress   ModuleProgress[]
+  categoryProgress CategoryProgress[]
+
+  @@map("children")
+}
+
+model Mentor {
+  id            String    @id @default(uuid())
+  name          String
+  characterType String    @map("character_type")
+  personality   String
+  voiceStyle    String    @map("voice_style")
+  description   String
+  imagePath     String    @map("image_path")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  deletedAt     DateTime? @map("deleted_at")
+
+  children Child[]
+
+  @@map("mentors")
+}
+
+model Category {
+  id           String    @id @default(uuid())
+  title        String    @unique
+  description  String?
+  displayOrder Int       @default(0) @map("display_order")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  deletedAt    DateTime? @map("deleted_at")
+
+  modules          Module[]
+  categoryProgress CategoryProgress[]
+
+  @@map("categories")
+}
+
+model Module {
+  id           String    @id @default(uuid())
+  categoryId   String    @map("category_id")
+  category     Category  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  title        String
+  description  String?
+  displayOrder Int       @default(0) @map("display_order")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  deletedAt    DateTime? @map("deleted_at")
+
+  lessons        Lesson[]
+  moduleProgress ModuleProgress[]
+
+  @@map("modules")
+}
+
+model Lesson {
+  id           String    @id @default(uuid())
+  moduleId     String    @map("module_id")
+  module       Module    @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  title        String
+  description  String?
+  displayOrder Int       @default(0) @map("display_order")
+  difficulty   String    @default("EASY")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  deletedAt    DateTime? @map("deleted_at")
+
+  activities     Activity[]
+  lessonProgress LessonProgress[]
+
+  @@map("lessons")
+}
+
+model Activity {
+  id           String    @id @default(uuid())
+  lessonId     String    @map("lesson_id")
+  lesson       Lesson    @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  title        String
+  activityType String    @map("activity_type")
+  contentUrl   String?
+  displayOrder Int       @default(0) @map("display_order")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  deletedAt    DateTime? @map("deleted_at")
+
+  video          Video?
+  audio          Audio?
+  listenProgress ListenProgress[]
+  speakProgress  SpeakProgress[]
+  writeProgress  WriteProgress[]
+
+  @@map("activities")
+}
+
+model Video {
+  id           String          @id @default(uuid())
+  activityId   String          @unique @map("activity_id")
+  activity     Activity        @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  title        String
+  filename     String
+  thumbnail    String?
+  duration     Int             @default(0)
+  createdAt    DateTime        @default(now()) @map("created_at")
+  updatedAt    DateTime        @updatedAt @map("updated_at")
+  progressions VideoProgress[]
+
+  @@map("videos")
+}
+
+model VideoProgress {
+  id            String   @id @default(uuid())
+  childId       String   @map("child_id")
+  child         Child    @relation(fields: [childId], references: [id], onDelete: Cascade)
+  videoId       String   @map("video_id")
+  video         Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  watchPosition Int      @default(0) @map("watch_position")
+  isCompleted   Boolean  @default(false) @map("is_completed")
+  lastWatchedAt DateTime @default(now()) @map("last_watched_at")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@unique([childId, videoId])
+  @@map("video_progress")
+}
+
+model LessonProgress {
+  id              String    @id @default(uuid())
+  childId         String
+  child           Child     @relation(fields: [childId], references: [id], onDelete: Cascade)
+  lessonId        String
+  lesson          Lesson    @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  status          String    @default("NOT_STARTED") // NOT_STARTED, IN_PROGRESS, COMPLETED
+  videoCompleted  Boolean   @default(false) @map("video_completed")
+  listenCompleted Boolean   @default(false) @map("listen_completed")
+  speakCompleted  Boolean   @default(false) @map("speak_completed")
+  writeCompleted  Boolean   @default(false) @map("write_completed")
+  videoStars      Int       @default(0) @map("video_stars")
+  listenStars     Int       @default(0) @map("listen_stars")
+  speakStars      Int       @default(0) @map("speak_stars")
+  writeStars      Int       @default(0) @map("write_stars")
+  totalStars      Int       @default(0) @map("total_stars")
+  completedAt     DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime?
+
+  @@unique([childId, lessonId])
+}
+
+model Reward {
+  id          String    @id @default(uuid())
+  childId     String
+  child       Child     @relation(fields: [childId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  points      Int       @default(0)
+  earnedAt    DateTime  @default(now())
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+}
+
+model Story {
+  id        String    @id @default(uuid())
+  childId   String
+  child     Child     @relation(fields: [childId], references: [id], onDelete: Cascade)
+  title     String
+  content   String
+  audioUrl  String?
+  imageUrl  String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+}
+
+model Questionnaire {
+  id        String    @id @default(uuid())
+  childId   String
+  child     Child     @relation(fields: [childId], references: [id], onDelete: Cascade)
+  responses Json
+  score     Int?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("refresh_tokens")
+}
+
+model Audio {
+  id         String   @id @default(uuid())
+  activityId String   @unique @map("activity_id")
+  activity   Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  title      String
+  filename   String
+  duration   Int      @default(0)
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@map("audios")
+}
+
+model ListenProgress {
+  id           String   @id @default(uuid())
+  childId      String   @map("child_id")
+  child        Child    @relation(fields: [childId], references: [id], onDelete: Cascade)
+  activityId   String   @map("activity_id")
+  activity     Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  isCompleted  Boolean  @default(false) @map("is_completed")
+  attemptCount Int      @default(0) @map("attempt_count")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@unique([childId, activityId])
+  @@map("listen_progress")
+}
+
+model SpeakProgress {
+  id           String   @id @default(uuid())
+  childId      String   @map("child_id")
+  child        Child    @relation(fields: [childId], references: [id], onDelete: Cascade)
+  activityId   String   @map("activity_id")
+  activity     Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  isCompleted  Boolean  @default(false) @map("is_completed")
+  attemptCount Int      @default(0) @map("attempt_count")
+  bestScore    Float    @default(0.0) @map("best_score")
+  averageScore Float    @default(0.0) @map("average_score")
+  bestStars    Int      @default(0) @map("best_stars")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@unique([childId, activityId])
+  @@map("speak_progress")
+}
+
+model WriteProgress {
+  id           String   @id @default(uuid())
+  childId      String   @map("child_id")
+  child        Child    @relation(fields: [childId], references: [id], onDelete: Cascade)
+  activityId   String   @map("activity_id")
+  activity     Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  isCompleted  Boolean  @default(false) @map("is_completed")
+  attemptCount Int      @default(0) @map("attempt_count")
+  bestScore    Float    @default(0.0) @map("best_score")
+  averageScore Float    @default(0.0) @map("average_score")
+  bestStars    Int      @default(0) @map("best_stars")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@unique([childId, activityId])
+  @@map("write_progress")
+}
+
+model Stars {
+  id         String   @id @default(uuid())
+  childId    String   @unique @map("child_id")
+  child      Child    @relation(fields: [childId], references: [id], onDelete: Cascade)
+  totalStars Int      @default(0) @map("total_stars")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@map("stars")
+}
+
+model Sticker {
+  id            String         @id @default(uuid())
+  name          String
+  description   String?
+  imagePath     String         @map("image_path")
+  requiredStars Int            @map("required_stars")
+  childStickers ChildSticker[]
+
+  @@map("stickers")
+}
+
+model ChildSticker {
+  id         String   @id @default(uuid())
+  childId    String   @map("child_id")
+  child      Child    @relation(fields: [childId], references: [id], onDelete: Cascade)
+  stickerId  String   @map("sticker_id")
+  sticker    Sticker  @relation(fields: [stickerId], references: [id], onDelete: Cascade)
+  unlockedAt DateTime @default(now()) @map("unlocked_at")
+
+  @@unique([childId, stickerId])
+  @@map("child_stickers")
+}
+
+model Badge {
+  id          String       @id @default(uuid())
+  name        String
+  description String?
+  imagePath   String       @map("image_path")
+  childBadges ChildBadge[]
+
+  @@map("badges")
+}
+
+model ChildBadge {
+  id       String   @id @default(uuid())
+  childId  String   @map("child_id")
+  child    Child    @relation(fields: [childId], references: [id], onDelete: Cascade)
+  badgeId  String   @map("badge_id")
+  badge    Badge    @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+  earnedAt DateTime @default(now()) @map("earned_at")
+
+  @@unique([childId, badgeId])
+  @@map("child_badges")
+}
+
+model ModuleProgress {
+  id               String    @id @default(uuid())
+  childId          String    @map("child_id")
+  child            Child     @relation(fields: [childId], references: [id], onDelete: Cascade)
+  moduleId         String    @map("module_id")
+  module           Module    @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  completedLessons Int       @default(0) @map("completed_lessons")
+  isCompleted      Boolean   @default(false) @map("is_completed")
+  completedAt      DateTime? @map("completed_at")
+
+  @@unique([childId, moduleId])
+  @@map("module_progress")
+}
+
+model CategoryProgress {
+  id               String    @id @default(uuid())
+  childId          String    @map("child_id")
+  child            Child     @relation(fields: [childId], references: [id], onDelete: Cascade)
+  categoryId       String    @map("category_id")
+  category         Category  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  completedModules Int       @default(0) @map("completed_modules")
+  isCompleted      Boolean   @default(false) @map("is_completed")
+  completedAt      DateTime? @map("completed_at")
+
+  @@unique([childId, categoryId])
+  @@map("category_progress")
+}
