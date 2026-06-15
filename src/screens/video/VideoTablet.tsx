@@ -66,7 +66,7 @@ const VideoPlayerTablet: React.FC<{
   useEffect(() => {
     const timer = setTimeout(measureTarget, 200);
     return () => clearTimeout(timer);
-  }, [videoEnded, isCompleted, isPlaying]);
+  }, [videoEnded, isCompleted, isPlaying, currentVideo]);
 
   // Initialize player
   const player = useVideoPlayer(currentVideo?.videoUrl || '', (p) => {
@@ -261,7 +261,7 @@ const VideoPlayerTablet: React.FC<{
 
       {/* Main Content */}
       <View style={styles.playerColumn} onLayout={handleLayout}>
-        <View ref={videoViewRef} onLayout={measureTarget} style={[styles.videoWrapper, playerStyle]}>
+        <View ref={videoViewRef} style={[styles.videoWrapper, playerStyle]}>
           <VideoView
             player={player}
             style={[StyleSheet.absoluteFill, Platform.OS === 'web' && { objectFit: 'contain' } as any]}
@@ -288,7 +288,7 @@ const VideoPlayerTablet: React.FC<{
               <Text style={styles.completedTitle}>Video Completed!</Text>
               <Text style={styles.completedSubtitle}>You're ready to proceed to the next activity.</Text>
             </View>
-            <Pressable ref={nextBtnRef} onLayout={measureTarget} style={styles.nextBtnBelow} onPress={handleNextPress}>
+            <Pressable ref={nextBtnRef} style={styles.nextBtnBelow} onPress={handleNextPress}>
               <Text style={styles.nextBtnBelowText}>Next Activity</Text>
               <Ionicons name="arrow-forward" size={20} color={colors.white} />
             </Pressable>

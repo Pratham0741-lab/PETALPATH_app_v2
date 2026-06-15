@@ -67,7 +67,7 @@ export const SpeakTablet: React.FC = () => {
   useEffect(() => {
     const timer = setTimeout(measureTarget, 200);
     return () => clearTimeout(timer);
-  }, [isCompleted, localRecording]);
+  }, [isCompleted, localRecording, activityId]);
 
   useEffect(() => {
     const rec = new UniversalSpeechRecognizer();
@@ -226,7 +226,6 @@ export const SpeakTablet: React.FC = () => {
             <View style={styles.micArea}>
               <Pressable
                 ref={micRef}
-                onLayout={measureTarget}
                 style={({ pressed }) => [
                   styles.micOuterBtn,
                   localRecording && styles.micOuterBtnRecording,
@@ -252,7 +251,6 @@ export const SpeakTablet: React.FC = () => {
             {isCompleted ? (
               <Pressable
                 ref={actionBtnRef}
-                onLayout={measureTarget}
                 style={({ pressed }) => [
                   styles.actionBtn,
                   styles.nextBtn,

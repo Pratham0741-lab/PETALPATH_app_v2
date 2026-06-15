@@ -310,7 +310,6 @@ export const HomeMobile: React.FC = () => {
                      <View
                        key={row.id}
                        ref={isOngoing ? ongoingNodeRef : undefined}
-                       onLayout={isOngoing ? measureTarget : undefined}
                        style={[styles.nodeWrapper, { top: row.yPos }]}
                      >
                       <ModuleNode

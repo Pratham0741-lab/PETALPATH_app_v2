@@ -73,7 +73,7 @@ export const ListenTablet: React.FC = () => {
   useEffect(() => {
     const timer = setTimeout(measureTarget, 200);
     return () => clearTimeout(timer);
-  }, [answered, selectedAnswer, isPlaying]);
+  }, [answered, selectedAnswer, isPlaying, currentAudio]);
 
   useEffect(() => {
     if (currentAudio) {
@@ -171,7 +171,6 @@ export const ListenTablet: React.FC = () => {
           <View style={styles.playSection}>
             <Pressable
               ref={speakerRef}
-              onLayout={measureTarget}
               style={[
                 styles.speakerBtn,
                 isPlaying && styles.speakerBtnPlaying,
@@ -254,7 +253,6 @@ export const ListenTablet: React.FC = () => {
             {!answered ? (
               <Pressable
                 ref={actionBtnRef}
-                onLayout={measureTarget}
                 style={({ pressed }) => [
                   styles.actionBtn,
                   !selectedAnswer && styles.actionBtnDisabled,
@@ -270,7 +268,6 @@ export const ListenTablet: React.FC = () => {
                 {feedback?.includes('Correct') ? (
                   <Pressable
                     ref={actionBtnRef}
-                    onLayout={measureTarget}
                     style={({ pressed }) => [
                       styles.actionBtn,
                       styles.nextBtn,
@@ -284,7 +281,6 @@ export const ListenTablet: React.FC = () => {
                 ) : (
                   <Pressable
                     ref={actionBtnRef}
-                    onLayout={measureTarget}
                     style={({ pressed }) => [
                       styles.actionBtn,
                       styles.retryBtn,

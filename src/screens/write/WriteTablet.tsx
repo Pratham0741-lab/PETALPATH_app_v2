@@ -40,6 +40,10 @@ export const WriteTablet: React.FC = () => {
   const [handCoords, setHandCoords] = useState<{ x: number; y: number } | undefined>(undefined);
   const [traceCoords, setTraceCoords] = useState<{ startX: number; startY: number; endX: number; endY: number } | undefined>(undefined);
 
+  const handleGuideLayout = React.useCallback((startX: number, startY: number, endX: number, endY: number) => {
+    setTraceCoords({ startX, startY, endX, endY });
+  }, []);
+
   const measureTarget = () => {
     if (answered || isCompleted) {
       if (nextBtnRef.current) {
@@ -134,9 +138,7 @@ export const WriteTablet: React.FC = () => {
               onClear={clear}
               onComplete={handleCompleteTracing}
               isCompleted={isCompleted}
-              onGuideLayout={(startX, startY, endX, endY) => {
-                setTraceCoords({ startX, startY, endX, endY });
-              }}
+              onGuideLayout={handleGuideLayout}
             />
           </View>
 

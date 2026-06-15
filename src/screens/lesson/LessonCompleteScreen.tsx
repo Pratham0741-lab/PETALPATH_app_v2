@@ -28,10 +28,12 @@ export const LessonCompleteScreen: React.FC = () => {
 
   const [loading, setLoading] = useState(true);
   const [completionResult, setCompletionResult] = useState<any>(null);
+  const completionStartedRef = useRef<string | null>(null);
 
   useEffect(() => {
     const performCompletion = async () => {
-      if (selectedLesson) {
+      if (selectedLesson && completionStartedRef.current !== selectedLesson.id) {
+        completionStartedRef.current = selectedLesson.id;
         try {
           const res = await completeLessonBackend(selectedLesson.id);
           setCompletionResult(res);
@@ -43,13 +45,13 @@ export const LessonCompleteScreen: React.FC = () => {
         } finally {
           setLoading(false);
         }
-      } else {
+      } else if (!selectedLesson) {
         setLoading(false);
       }
     };
 
     performCompletion();
-  }, [selectedLesson]);
+  }, [selectedLesson, completeLessonBackend, completeLesson, loadCategories]);
 
   const findLessonContext = (lessonId: string) => {
     for (const category of categories) {
