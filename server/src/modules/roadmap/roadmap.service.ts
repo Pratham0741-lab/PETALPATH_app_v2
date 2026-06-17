@@ -1,4 +1,25 @@
 import { roadmapRepository } from './roadmap.repository.js';
+import { storageService } from '../../shared/services/storage.service.js';
+
+const formatRoadmapActivity = (activity: any) => {
+  const formatted: any = { ...activity };
+  if (formatted.video) {
+    formatted.video = {
+      ...formatted.video,
+      videoUrl: storageService.getVideoUrl(formatted.video.videoKey),
+      thumbnailUrl: storageService.getPublicUrl(formatted.video.thumbnailKey),
+      filename: formatted.video.videoKey,
+    };
+  }
+  if (formatted.audio) {
+    formatted.audio = {
+      ...formatted.audio,
+      audioUrl: storageService.getAudioUrl(formatted.audio.audioKey),
+      filename: formatted.audio.audioKey,
+    };
+  }
+  return formatted;
+};
 
 export class RoadmapService {
   async getRoadmap(childId: string) {
@@ -45,7 +66,7 @@ export class RoadmapService {
             updatedAt: lesson.updatedAt,
             isCompleted,
             isUnlocked,
-            activities: lesson.activities,
+            activities: lesson.activities.map(formatRoadmapActivity),
             progress: progress || null,
           };
         });

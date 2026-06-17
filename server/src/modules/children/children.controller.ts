@@ -4,15 +4,29 @@ import { childrenService } from './children.service.js';
 import { createChildSchema, updateChildSchema } from './children.validator.js';
 import { logger } from '../../utils/logger.js';
 import { ValidationError } from '../../utils/errors.js';
+import { storageService } from '../../shared/services/storage.service.js';
+
+const formatChild = (child: any) => {
+  if (!child) return null;
+  const formatted = { ...child };
+  if (formatted.mentor) {
+    formatted.mentor = {
+      ...formatted.mentor,
+      imagePath: storageService.getPublicUrl(formatted.mentor.iconKey),
+    };
+  }
+  return formatted;
+};
 
 export class ChildrenController {
   async getAll(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const userId = req.user!.userId;
       const children = await childrenService.getAllChildren(userId);
+      const formattedChildren = children.map(formatChild);
       return res.status(200).json({
         success: true,
-        data: children,
+        data: formattedChildren,
       });
     } catch (error) {
       next(error);
@@ -26,7 +40,7 @@ export class ChildrenController {
       const child = await childrenService.getChildById(id, userId);
       return res.status(200).json({
         success: true,
-        data: child,
+        data: formatChild(child),
       });
     } catch (error) {
       next(error);
@@ -46,7 +60,7 @@ export class ChildrenController {
       
       return res.status(201).json({
         success: true,
-        data: child,
+        data: formatChild(child),
       });
     } catch (error) {
       next(error);
@@ -74,7 +88,7 @@ export class ChildrenController {
       
       return res.status(200).json({
         success: true,
-        data: child,
+        data: formatChild(child),
       });
     } catch (error) {
       next(error);
@@ -100,3 +114,4 @@ export class ChildrenController {
 }
 
 export const childrenController = new ChildrenController();
+

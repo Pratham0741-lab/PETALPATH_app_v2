@@ -7,6 +7,15 @@ async function main() {
   console.log('Seeding database...');
 
   // Clean existing progress and curriculum data in correct dependency order
+  await prisma.childSkillCurriculum.deleteMany({});
+  await prisma.reinforcementQueue.deleteMany({});
+  await prisma.regressionLog.deleteMany({});
+  await prisma.skillHistory.deleteMany({});
+  await prisma.skillHealth.deleteMany({});
+  await prisma.skillDependency.deleteMany({});
+  await prisma.skill.deleteMany({});
+  await prisma.subject.deleteMany({});
+
   await prisma.childSticker.deleteMany({});
   await prisma.sticker.deleteMany({});
   await prisma.childBadge.deleteMany({});
@@ -39,7 +48,7 @@ async function main() {
       personality: 'gentle and caring',
       voiceStyle: 'soft and cheerful',
       description: 'Kind and patient, always cheering you on.',
-      imagePath: 'storage/icons/penny_panda.png',
+      iconKey: 'icons/mentors/penny_panda.png',
     },
     {
       name: 'Barnaby Bunny',
@@ -47,7 +56,7 @@ async function main() {
       personality: 'playful and energetic',
       voiceStyle: 'excited',
       description: "Let's hop into a new adventure!",
-      imagePath: 'storage/icons/barnaby_bunny.png',
+      iconKey: 'icons/mentors/barnaby_bunny.png',
     },
     {
       name: 'Cleo Cat',
@@ -55,7 +64,7 @@ async function main() {
       personality: 'smart and curious',
       voiceStyle: 'friendly',
       description: 'Curious minds discover amazing things.',
-      imagePath: 'storage/icons/cleo_cat.png',
+      iconKey: 'icons/mentors/cleo_cat.png',
     },
     {
       name: 'Finn Fox',
@@ -63,7 +72,7 @@ async function main() {
       personality: 'adventurous',
       voiceStyle: 'energetic',
       description: "Ready for today's adventure?",
-      imagePath: 'storage/icons/finn_fox.png',
+      iconKey: 'icons/mentors/finn_fox.png',
     },
     {
       name: 'Toby Tiger',
@@ -71,7 +80,7 @@ async function main() {
       personality: 'bold and confident',
       voiceStyle: 'enthusiastic',
       description: "Let's roar with confidence and learn together!",
-      imagePath: 'storage/icons/toby_tiger.png',
+      iconKey: 'icons/mentors/toby_tiger.png',
     },
   ];
 
@@ -481,6 +490,11 @@ async function main() {
     videoPath: string,
     audioFilename: string
   ) => {
+    // Prepend correct folder path prefix according to conventions
+    const videoKey = videoPath === 'coming_soon' ? 'coming_soon' : `videos/${videoPath}`;
+    const audioKey = audioFilename === 'coming_soon' ? 'coming_soon' : `audio/${audioFilename}`;
+    const thumbnailKey = 'thumbnails/default.png';
+
     // 1. Video
     const aVideo = await prisma.activity.create({
       data: {
@@ -494,9 +508,9 @@ async function main() {
       data: {
         activityId: aVideo.id,
         title: `${titlePrefix} Tutorial`,
-        filename: videoPath,
+        videoKey,
         duration: 10,
-        thumbnail: 'storage/thumbnails/default.png',
+        thumbnailKey,
       },
     });
 
@@ -513,7 +527,7 @@ async function main() {
       data: {
         activityId: aListen.id,
         title: `${titlePrefix} Audio Guide`,
-        filename: audioFilename,
+        audioKey,
         duration: 5,
       },
     });
@@ -588,13 +602,13 @@ async function main() {
 
   console.log('Seeding stickers...');
   const stickersData = [
-    { name: 'Sun', description: 'Glows bright in the sky!', imagePath: 'storage/stickers/sun.png', requiredStars: 20 },
-    { name: 'Rainbow', description: 'Colorful path of colors!', imagePath: 'storage/stickers/rainbow.png', requiredStars: 50 },
-    { name: 'Rocket', description: 'Zoom through space!', imagePath: 'storage/stickers/rocket.png', requiredStars: 100 },
-    { name: 'Planet', description: 'Explore a new world!', imagePath: 'storage/stickers/planet.png', requiredStars: 200 },
-    { name: 'Trophy', description: 'For excellent learners!', imagePath: 'storage/stickers/trophy.png', requiredStars: 300 },
-    { name: 'Tree', description: 'Growing bigger every day!', imagePath: 'storage/stickers/tree.png', requiredStars: 500 },
-    { name: 'Ice Cream', description: 'A sweet cold treat!', imagePath: 'storage/stickers/ice_cream.png', requiredStars: 1000 },
+    { name: 'Sun', description: 'Glows bright in the sky!', iconKey: 'stickers/sun.png', requiredStars: 20 },
+    { name: 'Rainbow', description: 'Colorful path of colors!', iconKey: 'stickers/rainbow.png', requiredStars: 50 },
+    { name: 'Rocket', description: 'Zoom through space!', iconKey: 'stickers/rocket.png', requiredStars: 100 },
+    { name: 'Planet', description: 'Explore a new world!', iconKey: 'stickers/planet.png', requiredStars: 200 },
+    { name: 'Trophy', description: 'For excellent learners!', iconKey: 'stickers/trophy.png', requiredStars: 300 },
+    { name: 'Tree', description: 'Growing bigger every day!', iconKey: 'stickers/tree.png', requiredStars: 500 },
+    { name: 'Ice Cream', description: 'A sweet cold treat!', iconKey: 'stickers/ice_cream.png', requiredStars: 1000 },
   ];
 
   for (const s of stickersData) {
@@ -603,18 +617,89 @@ async function main() {
 
   console.log('Seeding badges...');
   const badgesData = [
-    { name: 'First Lesson', description: 'First lesson completed', imagePath: 'storage/badges/first_lesson.png' },
-    { name: 'Perfect Lesson', description: '8/8 stars', imagePath: 'storage/badges/perfect_lesson.png' },
-    { name: 'Golden Speaker', description: 'Average speech score >=80', imagePath: 'storage/badges/golden_speaker.png' },
-    { name: 'Writing Wizard', description: 'Average writing score >=80', imagePath: 'storage/badges/writing_wizard.png' },
-    { name: 'Shape Master', description: 'Shapes category completed', imagePath: 'storage/badges/shape_master.png' },
-    { name: 'Alphabet Explorer', description: 'Alphabet category completed', imagePath: 'storage/badges/alphabet_explorer.png' },
-    { name: 'Number Hero', description: 'Numbers category completed', imagePath: 'storage/badges/number_hero.png' },
-    { name: 'Reading Champion', description: 'Reading Readiness completed', imagePath: 'storage/badges/reading_champion.png' },
+    { name: 'First Lesson', description: 'First lesson completed', iconKey: 'badges/first_lesson.png' },
+    { name: 'Perfect Lesson', description: '8/8 stars', iconKey: 'badges/perfect_lesson.png' },
+    { name: 'Golden Speaker', description: 'Average speech score >=80', iconKey: 'badges/golden_speaker.png' },
+    { name: 'Writing Wizard', description: 'Average writing score >=80', iconKey: 'badges/writing_wizard.png' },
+    { name: 'Shape Master', description: 'Shapes category completed', iconKey: 'badges/shape_master.png' },
+    { name: 'Alphabet Explorer', description: 'Alphabet category completed', iconKey: 'badges/alphabet_explorer.png' },
+    { name: 'Number Hero', description: 'Numbers category completed', iconKey: 'badges/number_hero.png' },
+    { name: 'Reading Champion', description: 'Reading Readiness completed', iconKey: 'badges/reading_champion.png' },
   ];
 
   for (const b of badgesData) {
     await prisma.badge.create({ data: b });
+  }
+
+  console.log('Seeding subjects...');
+  const subjectsData = [
+    { name: 'Writing', description: 'Prewriting lines, curves, and patterns', icon: 'edit', color: '#FF5733' },
+    { name: 'Math', description: 'Numbers, counting, and mathematical concepts', icon: 'calculator', color: '#33FF57' },
+    { name: 'Language', description: 'Alphabet letters, sounds, and sight words', icon: 'book', color: '#3357FF' },
+    { name: 'Cognitive', description: 'Shapes, colors, and spatial thinking', icon: 'brain', color: '#F33FF5' },
+  ];
+
+  const subjectMap: Record<string, any> = {};
+  for (const s of subjectsData) {
+    const created = await prisma.subject.create({ data: s });
+    subjectMap[s.name] = created;
+  }
+
+  console.log('Seeding skills and dependencies...');
+  const skillsData = [
+    { name: 'Standing Line', description: 'Draw vertical lines', subjectName: 'Writing', difficulty: 1, estimatedAge: 3, isRootSkill: true },
+    { name: 'Sleeping Line', description: 'Draw horizontal lines', subjectName: 'Writing', difficulty: 1, estimatedAge: 3, isRootSkill: true },
+    { name: 'Left Slanting Line', description: 'Draw slanting lines', subjectName: 'Writing', difficulty: 2, estimatedAge: 4, isRootSkill: true },
+    { name: 'Right Slanting Line', description: 'Draw slanting lines', subjectName: 'Writing', difficulty: 2, estimatedAge: 4, isRootSkill: true },
+    { name: 'Curves', description: 'Trace smooth curves', subjectName: 'Writing', difficulty: 3, estimatedAge: 4, isRootSkill: false },
+    { name: 'Circle', description: 'Draw circle shape', subjectName: 'Cognitive', difficulty: 2, estimatedAge: 4, isRootSkill: false },
+    { name: 'Square', description: 'Draw square shape', subjectName: 'Cognitive', difficulty: 2, estimatedAge: 4, isRootSkill: false },
+    { name: 'Triangle', description: 'Draw triangle shape', subjectName: 'Cognitive', difficulty: 3, estimatedAge: 5, isRootSkill: false },
+    { name: 'Letter A', description: 'Recognize and write Letter A', subjectName: 'Language', difficulty: 3, estimatedAge: 5, isRootSkill: false },
+    { name: 'Letter B', description: 'Recognize and write Letter B', subjectName: 'Language', difficulty: 3, estimatedAge: 5, isRootSkill: true },
+    { name: 'Letter C', description: 'Recognize and write Letter C', subjectName: 'Language', difficulty: 3, estimatedAge: 5, isRootSkill: true },
+  ];
+
+  const skillMap: Record<string, any> = {};
+  for (const s of skillsData) {
+    const subject = subjectMap[s.subjectName];
+    const created = await prisma.skill.create({
+      data: {
+        name: s.name,
+        description: s.description,
+        difficulty: s.difficulty,
+        estimatedAge: s.estimatedAge,
+        isRootSkill: s.isRootSkill,
+        subjectId: subject.id,
+      },
+    });
+    skillMap[s.name] = created;
+  }
+
+  const dependencies = [
+    { parent: 'Standing Line', child: 'Curves', weight: 0.5 },
+    { parent: 'Sleeping Line', child: 'Curves', weight: 0.5 },
+    { parent: 'Curves', child: 'Circle', weight: 0.8 },
+    { parent: 'Left Slanting Line', child: 'Triangle', weight: 0.4 },
+    { parent: 'Right Slanting Line', child: 'Triangle', weight: 0.4 },
+    { parent: 'Sleeping Line', child: 'Triangle', weight: 0.2 },
+    { parent: 'Left Slanting Line', child: 'Letter A', weight: 0.4 },
+    { parent: 'Right Slanting Line', child: 'Letter A', weight: 0.4 },
+    { parent: 'Sleeping Line', child: 'Letter A', weight: 0.2 },
+  ];
+
+  for (const dep of dependencies) {
+    const parentSkill = skillMap[dep.parent];
+    const childSkill = skillMap[dep.child];
+    if (parentSkill && childSkill) {
+      await prisma.skillDependency.create({
+        data: {
+          parentSkillId: parentSkill.id,
+          childSkillId: childSkill.id,
+          weight: dep.weight,
+        },
+      });
+    }
   }
 
   console.log('Seeding complete.');

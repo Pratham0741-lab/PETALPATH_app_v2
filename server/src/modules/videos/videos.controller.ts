@@ -2,6 +2,24 @@ import { Request, Response, NextFunction } from 'express';
 import { videosService } from './videos.service.js';
 import { createVideoSchema, updateVideoSchema } from './videos.validator.js';
 import { ValidationError } from '../../utils/errors.js';
+import { storageService } from '../../shared/services/storage.service.js';
+
+const formatVideo = (video: any) => {
+  if (!video) return null;
+  return {
+    id: video.id,
+    activityId: video.activityId,
+    title: video.title,
+    videoKey: video.videoKey,
+    filename: video.videoKey, // For frontend backward compatibility
+    thumbnailKey: video.thumbnailKey,
+    duration: video.duration,
+    createdAt: video.createdAt,
+    updatedAt: video.updatedAt,
+    videoUrl: storageService.getVideoUrl(video.videoKey),
+    thumbnailUrl: storageService.getPublicUrl(video.thumbnailKey),
+  };
+};
 
 export class VideosController {
   async getAll(req: Request, res: Response, next: NextFunction) {
@@ -9,14 +27,7 @@ export class VideosController {
       const { activityId } = req.query;
       const videos = await videosService.getAllVideos(activityId as string);
       
-      const host = `${req.protocol}://${req.get('host')}`;
-      const formattedVideos = videos.map(video => ({
-        ...video,
-        videoUrl: `${host}/storage/videos/${video.filename}`,
-        thumbnailUrl: video.thumbnail
-          ? (video.thumbnail.startsWith('storage/') ? `${host}/${video.thumbnail}` : `${host}/storage/${video.thumbnail}`)
-          : null,
-      }));
+      const formattedVideos = videos.map(formatVideo);
 
       return res.status(200).json({
         success: true,
@@ -39,18 +50,9 @@ export class VideosController {
         });
       }
 
-      const host = `${req.protocol}://${req.get('host')}`;
-      const formattedVideo = {
-        ...video,
-        videoUrl: `${host}/storage/videos/${video.filename}`,
-        thumbnailUrl: video.thumbnail
-          ? (video.thumbnail.startsWith('storage/') ? `${host}/${video.thumbnail}` : `${host}/storage/${video.thumbnail}`)
-          : null,
-      };
-
       return res.status(200).json({
         success: true,
-        data: formattedVideo,
+        data: formatVideo(video),
       });
     } catch (error) {
       next(error);
@@ -66,7 +68,7 @@ export class VideosController {
       const video = await videosService.createVideo(parsed.data);
       return res.status(201).json({
         success: true,
-        data: video,
+        data: formatVideo(video),
       });
     } catch (error) {
       next(error);
@@ -83,7 +85,7 @@ export class VideosController {
       const video = await videosService.updateVideo(id, parsed.data);
       return res.status(200).json({
         success: true,
-        data: video,
+        data: formatVideo(video),
       });
     } catch (error) {
       next(error);
@@ -105,4 +107,5 @@ export class VideosController {
 }
 
 export const videosController = new VideosController();
+
 

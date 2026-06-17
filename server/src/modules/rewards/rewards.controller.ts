@@ -2,6 +2,7 @@ import { Response, NextFunction } from 'express';
 import { prisma } from '../../config/database.js';
 import { AuthenticatedRequest } from '../../middleware/auth.middleware.js';
 import { UnauthorizedError } from '../../utils/errors.js';
+import { storageService } from '../../shared/services/storage.service.js';
 
 export class RewardsController {
   async getAll(req: AuthenticatedRequest, res: Response, next: NextFunction) {
@@ -35,10 +36,12 @@ export class RewardsController {
           totalStars,
           stickers: childStickers.map(cs => ({
             ...cs.sticker,
+            imagePath: storageService.getPublicUrl(cs.sticker.iconKey),
             unlockedAt: cs.unlockedAt,
           })),
           badges: childBadges.map(cb => ({
             ...cb.badge,
+            imagePath: storageService.getPublicUrl(cb.badge.iconKey),
             earnedAt: cb.earnedAt,
           })),
         },
@@ -66,6 +69,7 @@ export class RewardsController {
 
       const data = stickers.map(sticker => ({
         ...sticker,
+        imagePath: storageService.getPublicUrl(sticker.iconKey),
         unlocked: unlockedIds.has(sticker.id),
       }));
 
@@ -94,6 +98,7 @@ export class RewardsController {
 
       const data = badges.map(badge => ({
         ...badge,
+        imagePath: storageService.getPublicUrl(badge.iconKey),
         earned: earnedIds.has(badge.id),
       }));
 

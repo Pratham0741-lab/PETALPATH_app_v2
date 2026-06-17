@@ -78,9 +78,10 @@ const getGuideFilename = (prefix: string, guideKey: GuideKey): string | null => 
 
 import { BACKEND_URL } from '../config/env';
 
-const API_HOST = BACKEND_URL;
-
-const AUDIO_BASE_URL = `${API_HOST}/storage/audio`;
+const CDN_URL = process.env.EXPO_PUBLIC_CDN_BASE_URL;
+const AUDIO_BASE_URL = CDN_URL
+  ? `${CDN_URL.replace(/\/$/, '')}/audio`
+  : `${BACKEND_URL}/storage/audio`;
 
 // ---------- Public API ----------
 

@@ -13,6 +13,7 @@ const envSchema = z.object({
   GOOGLE_CLIENT_ID: z.string().default('placeholder-google-client-id'),
   GOOGLE_CLIENT_SECRET: z.string().default('placeholder-google-client-secret'),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
+  CDN_BASE_URL: z.string().default('https://dy3um9dzarz6y.cloudfront.net'),
 });
 
 const parsed = envSchema.safeParse(process.env);

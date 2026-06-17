@@ -18,6 +18,9 @@ import { audioRoutes } from '../modules/audio/audio.routes.js';
 import { listenProgressRoutes } from '../modules/listen-progress/listen-progress.routes.js';
 import { speakProgressRoutes } from '../modules/speak-progress/speak-progress.routes.js';
 import { writeProgressRoutes } from '../modules/write-progress/write-progress.routes.js';
+import { masteryRoutes } from '../modules/mastery/mastery.routes.js';
+import { curriculumRoutes } from '../modules/curriculum/curriculum.routes.js';
+import { adaptiveRoutes } from '../modules/adaptive/adaptive.routes.js';
 
 const router = Router();
 
@@ -46,6 +49,10 @@ router.use('/audio', audioRoutes);
 router.use('/listen-progress', listenProgressRoutes);
 router.use('/speak-progress', speakProgressRoutes);
 router.use('/write-progress', writeProgressRoutes);
+router.use('/mastery', masteryRoutes);
+router.use('/curriculum', curriculumRoutes);
+router.use('/adaptive', adaptiveRoutes);
 
 export { router as rootRouter };
+
 

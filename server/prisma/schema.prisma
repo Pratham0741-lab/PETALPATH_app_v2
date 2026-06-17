@@ -55,6 +55,15 @@ model Child {
   childBadges      ChildBadge[]
   moduleProgress   ModuleProgress[]
   categoryProgress CategoryProgress[]
+  skillHealths        SkillHealth[]
+  skillHistories      SkillHistory[]
+  regressionLogs      RegressionLog[]
+  reinforcementQueues ReinforcementQueue[]
+  childSkillCurriculums ChildSkillCurriculum[]
+  learningProfile     LearningProfile?
+  modalityPerformances ModalityPerformance[]
+  adaptationEvents    AdaptationEvent[]
+  learningEvents      LearningEvent[]
 
   @@map("children")
 }
@@ -66,7 +75,7 @@ model Mentor {
   personality   String
   voiceStyle    String    @map("voice_style")
   description   String
-  imagePath     String    @map("image_path")
+  iconKey       String    @map("image_path")
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
   deletedAt     DateTime? @map("deleted_at")
@@ -152,8 +161,8 @@ model Video {
   activityId   String          @unique @map("activity_id")
   activity     Activity        @relation(fields: [activityId], references: [id], onDelete: Cascade)
   title        String
-  filename     String
-  thumbnail    String?
+  videoKey     String          @map("filename")
+  thumbnailKey String?         @map("thumbnail")
   duration     Int             @default(0)
   createdAt    DateTime        @default(now()) @map("created_at")
   updatedAt    DateTime        @updatedAt @map("updated_at")
@@ -216,16 +225,16 @@ model Reward {
 }
 
 model Story {
-  id        String    @id @default(uuid())
-  childId   String
-  child     Child     @relation(fields: [childId], references: [id], onDelete: Cascade)
-  title     String
-  content   String
-  audioUrl  String?
-  imageUrl  String?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  deletedAt DateTime?
+  id           String    @id @default(uuid())
+  childId      String
+  child        Child     @relation(fields: [childId], references: [id], onDelete: Cascade)
+  title        String
+  content      String
+  audioKey     String?   @map("audioUrl")
+  thumbnailKey String?   @map("imageUrl")
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime?
 }
 
 model Questionnaire {
@@ -255,7 +264,7 @@ model Audio {
   activityId String   @unique @map("activity_id")
   activity   Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
   title      String
-  filename   String
+  audioKey   String   @map("filename")
   duration   Int      @default(0)
   createdAt  DateTime @default(now()) @map("created_at")
   updatedAt  DateTime @updatedAt @map("updated_at")
@@ -329,7 +338,7 @@ model Sticker {
   id            String         @id @default(uuid())
   name          String
   description   String?
-  imagePath     String         @map("image_path")
+  iconKey       String         @map("image_path")
   requiredStars Int            @map("required_stars")
   childStickers ChildSticker[]
 
@@ -352,7 +361,7 @@ model Badge {
   id          String       @id @default(uuid())
   name        String
   description String?
-  imagePath   String       @map("image_path")
+  iconKey     String       @map("image_path")
   childBadges ChildBadge[]
 
   @@map("badges")
@@ -397,3 +406,248 @@ model CategoryProgress {
   @@unique([childId, categoryId])
   @@map("category_progress")
 }
+
+enum MasteryState {
+  NEW
+  LEARNING
+  WEAK
+  STRONG
+  MASTERED
+}
+
+model Skill {
+  id                  String               @id @default(uuid())
+  subjectId           String               @map("subject_id")
+  subject             Subject              @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  name                String               @unique
+  description         String?
+  difficulty          Int                  @default(1)
+  estimatedAge        Int?                 @map("estimated_age")
+  isRootSkill         Boolean              @default(false) @map("is_root_skill")
+  createdAt           DateTime             @default(now()) @map("created_at")
+  updatedAt           DateTime             @updatedAt @map("updated_at")
+  skillHealths        SkillHealth[]
+  skillHistories      SkillHistory[]
+  parentDependencies  SkillDependency[]    @relation("ParentSkill")
+  childDependencies   SkillDependency[]    @relation("ChildSkill")
+  regressionLogs      RegressionLog[]
+  reinforcementQueues ReinforcementQueue[]
+  childSkillCurriculums ChildSkillCurriculum[]
+
+  @@map("skills")
+}
+
+model SkillDependency {
+  id            String   @id @default(uuid())
+  parentSkillId String   @map("parent_skill_id")
+  childSkillId  String   @map("child_skill_id")
+  weight        Float
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  parentSkill Skill @relation("ParentSkill", fields: [parentSkillId], references: [id], onDelete: Cascade)
+  childSkill  Skill @relation("ChildSkill", fields: [childSkillId], references: [id], onDelete: Cascade)
+
+  @@unique([parentSkillId, childSkillId])
+  @@map("skill_dependencies")
+}
+
+model SkillHealth {
+  id               String       @id @default(uuid())
+  childId          String       @map("child_id")
+  child            Child        @relation(fields: [childId], references: [id], onDelete: Cascade)
+  skillId          String       @map("skill_id")
+  skill            Skill        @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  masteryState     MasteryState @map("mastery_state")
+  knowledgeScore   Float        @map("knowledge_score")
+  confidenceScore  Float        @map("confidence_score")
+  retentionScore   Float        @map("retention_score")
+  engagementScore  Float        @map("engagement_score")
+  consistencyScore Float        @map("consistency_score")
+  masteryScore     Float        @map("mastery_score")
+  lastPracticed    DateTime     @map("last_practiced")
+  nextReviewDate   DateTime     @map("next_review_date")
+  reviewCount      Int          @map("review_count")
+  attemptCount     Int          @map("attempt_count")
+  retryCount       Int          @map("retry_count")
+  decayFactor      Float        @map("decay_factor")
+  frequencyDays    Int          @map("frequency_days")
+  createdAt        DateTime     @default(now()) @map("created_at")
+  updatedAt        DateTime     @updatedAt @map("updated_at")
+
+  @@unique([childId, skillId])
+  @@map("skill_health")
+}
+
+model SkillHistory {
+  id               String       @id @default(uuid())
+  childId          String       @map("child_id")
+  child            Child        @relation(fields: [childId], references: [id], onDelete: Cascade)
+  skillId          String       @map("skill_id")
+  skill            Skill        @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  knowledgeScore   Float        @map("knowledge_score")
+  confidenceScore  Float        @map("confidence_score")
+  retentionScore   Float        @map("retention_score")
+  engagementScore  Float        @map("engagement_score")
+  consistencyScore Float        @map("consistency_score")
+  masteryScore     Float        @map("mastery_score")
+  masteryState     MasteryState @map("mastery_state")
+  timestamp        DateTime     @default(now())
+
+  @@map("skill_history")
+}
+
+model RegressionLog {
+  id            String       @id @default(uuid())
+  childId       String       @map("child_id")
+  child         Child        @relation(fields: [childId], references: [id], onDelete: Cascade)
+  skillId       String       @map("skill_id")
+  skill         Skill        @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  previousScore Float        @map("previous_score")
+  currentScore  Float        @map("current_score")
+  difference    Float        @default(0.0) @map("difference")
+  previousState MasteryState @map("previous_state")
+  currentState  MasteryState @map("current_state")
+  timestamp     DateTime     @default(now())
+
+  @@map("regression_logs")
+}
+
+model ReinforcementQueue {
+  id        String   @id @default(uuid())
+  childId   String   @map("child_id")
+  child     Child    @relation(fields: [childId], references: [id], onDelete: Cascade)
+  skillId   String   @map("skill_id")
+  skill     Skill    @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  priority  Int
+  reason    String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([childId, skillId])
+  @@map("reinforcement_queue")
+}
+
+enum CurriculumState {
+  LOCKED
+  AVAILABLE
+  ACTIVE
+  COMPLETED
+}
+
+model Subject {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  icon        String?
+  color       String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  skills      Skill[]
+
+  @@map("subjects")
+}
+
+model ChildSkillCurriculum {
+  id          String          @id @default(uuid())
+  childId     String          @map("child_id")
+  child       Child           @relation(fields: [childId], references: [id], onDelete: Cascade)
+  skillId     String          @map("skill_id")
+  skill       Skill           @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  state       CurriculumState @map("state")
+  unlockRatio Float           @map("unlock_ratio")
+  priority    Float           @map("priority")
+  activatedAt DateTime?       @map("activated_at")
+  completedAt DateTime?       @map("completed_at")
+  createdAt   DateTime        @default(now()) @map("created_at")
+  updatedAt   DateTime        @updatedAt @map("updated_at")
+
+  @@unique([childId, skillId])
+  @@map("child_skill_curriculum")
+}
+
+enum ActivityType {
+  VIDEO
+  LISTENING
+  SPEAKING
+  GAME
+  WRITING
+  STORY
+  MOTOR
+  CREATIVE
+}
+
+enum AdaptationEventType {
+  MODALITY_CHANGE
+  SESSION_SHORTENED
+  SESSION_EXTENDED
+  WEAKNESS_DETECTED
+  STRENGTH_DETECTED
+  REINFORCEMENT_ADDED
+  REGRESSION_DETECTED
+  CONFIDENCE_DROP
+  CONFIDENCE_IMPROVEMENT
+  ENGAGEMENT_DROP
+  ENGAGEMENT_IMPROVEMENT
+}
+
+model LearningProfile {
+  id                     String       @id @default(uuid())
+  childId                String       @unique @map("child_id")
+  child                  Child        @relation(fields: [childId], references: [id], onDelete: Cascade)
+  averageAccuracy        Float        @map("average_accuracy")
+  averageEngagement      Float        @map("average_engagement")
+  averageConfidence      Float        @map("average_confidence")
+  optimalSessionDuration Int          @map("optimal_session_duration")
+  preferredModality      ActivityType @map("preferred_modality")
+  learningVelocity       Float        @map("learning_velocity")
+  createdAt              DateTime     @default(now()) @map("created_at")
+  updatedAt              DateTime     @updatedAt @map("updated_at")
+
+  @@map("learning_profiles")
+}
+
+model ModalityPerformance {
+  id                String       @id @default(uuid())
+  childId           String       @map("child_id")
+  child             Child        @relation(fields: [childId], references: [id], onDelete: Cascade)
+  activityType      ActivityType @map("activity_type")
+  attempts          Int          @map("attempts")
+  averageAccuracy   Float        @map("average_accuracy")
+  averageEngagement Float        @map("average_engagement")
+  averageConfidence Float        @map("average_confidence")
+  lastUsedAt        DateTime     @map("last_used_at")
+  createdAt         DateTime     @default(now()) @map("created_at")
+  updatedAt         DateTime     @updatedAt @map("updated_at")
+
+  @@unique([childId, activityType])
+  @@index([childId])
+  @@map("modality_performances")
+}
+
+model AdaptationEvent {
+  id        String              @id @default(uuid())
+  childId   String              @map("child_id")
+  child     Child               @relation(fields: [childId], references: [id], onDelete: Cascade)
+  eventType AdaptationEventType @map("event_type")
+  reason    String              @map("reason")
+  metadata  Json?               @map("metadata")
+  createdAt DateTime            @default(now()) @map("created_at")
+
+  @@index([childId])
+  @@index([childId, eventType])
+  @@map("adaptation_events")
+}
+
+model LearningEvent {
+  id        String   @id @default(uuid())
+  childId   String   @map("child_id")
+  child     Child    @relation(fields: [childId], references: [id], onDelete: Cascade)
+  eventType String   @map("event_type")
+  value     Float?   @map("value")
+  metadata  Json?    @map("metadata")
+  timestamp DateTime @default(now()) @map("timestamp")
+
+  @@index([childId])
+  @@index([childId, eventType])
+  @@map("learning_events")
+}
+
