@@ -1,28 +1,21 @@
 import React from 'react';
 import { StyleSheet, View, Text, Pressable } from 'react-native';
-import { colors, typography, spacing, shadows } from '../../theme';
+import { colors, typography, spacing, shadows, radius } from '../../theme';
 import { Ionicons } from '@expo/vector-icons';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 
 export const BottomNavigation: React.FC<BottomTabBarProps> = ({ state, descriptors, navigation }) => {
   const tabs = [
-    { name: 'Home', icon: 'map' },
-    { name: 'Journey', icon: 'compass' },
-    { name: 'Mentor', icon: 'paw' },
-    { name: 'Rewards', icon: 'trophy' },
-    { name: 'Profile', icon: 'person' },
+    { name: 'Home', icon: 'home', label: 'Home' },
+    { name: 'Journey', icon: 'compass', label: 'Explore' },
+    { name: 'Mentor', icon: 'flower', label: 'Garden' },
+    { name: 'Rewards', icon: 'stats-chart', label: 'Progress' },
+    { name: 'Profile', icon: 'person', label: 'Profile' },
   ];
 
   return (
     <View style={styles.container}>
       {state.routes.map((route, index) => {
-        const { options } = descriptors[route.key];
-        const label = options.tabBarLabel !== undefined
-          ? options.tabBarLabel
-          : options.title !== undefined
-          ? options.title
-          : route.name;
-
         const isFocused = state.index === index;
 
         const onPress = () => {
@@ -37,7 +30,9 @@ export const BottomNavigation: React.FC<BottomTabBarProps> = ({ state, descripto
           }
         };
 
-        const tab = tabs.find((t) => t.name === route.name) || { name: route.name, icon: 'help-circle' };
+        const tab = tabs.find((t) => t.name === route.name) || { name: route.name, icon: 'help-circle', label: route.name };
+        const activeColor = colors.purple; // #8B78D8
+        const inactiveColor = '#8F8A82';
 
         return (
           <Pressable
@@ -50,11 +45,17 @@ export const BottomNavigation: React.FC<BottomTabBarProps> = ({ state, descripto
           >
             <Ionicons
               name={tab.icon as any}
-              size={24}
-              color={isFocused ? colors.purple : colors.textMuted}
+              size={26}
+              color={isFocused ? activeColor : inactiveColor}
             />
-            <Text style={[styles.label, { color: isFocused ? colors.purple : colors.textMuted }]}>
-              {label as string}
+            <Text style={[
+              styles.label, 
+              { 
+                color: isFocused ? activeColor : inactiveColor,
+                fontFamily: typography.families.rounded,
+              }
+            ]}>
+              {tab.label}
             </Text>
           </Pressable>
         );
@@ -66,10 +67,14 @@ export const BottomNavigation: React.FC<BottomTabBarProps> = ({ state, descripto
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    height: 76,
-    backgroundColor: colors.backgroundSecondary,
+    height: 85,
+    backgroundColor: colors.surface,
+    borderTopLeftRadius: radius.bottomNav,
+    borderTopRightRadius: radius.bottomNav,
     borderTopWidth: 1.5,
-    borderTopColor: colors.border,
+    borderLeftWidth: 1.5,
+    borderRightWidth: 1.5,
+    borderColor: colors.border,
     justifyContent: 'space-around',
     alignItems: 'center',
     paddingBottom: spacing.sm,
@@ -82,8 +87,9 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xs,
   },
   label: {
-    fontSize: 10,
+    fontSize: typography.sizes.caption,
     fontWeight: typography.weights.bold,
-    marginTop: spacing.xs,
+    marginTop: 4,
   },
 });
+export default BottomNavigation;

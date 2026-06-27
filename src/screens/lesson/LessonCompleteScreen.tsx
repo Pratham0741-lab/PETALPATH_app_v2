@@ -1,16 +1,14 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { StyleSheet, View, Text, ActivityIndicator, Animated } from 'react-native';
+import { StyleSheet, View, Text, ActivityIndicator } from 'react-native';
 import { ScreenContainer } from '../../components/common/ScreenContainer';
-import { AppCard } from '../../components/cards/AppCard';
-import { AppButton } from '../../components/buttons/AppButton';
-import { colors, typography, spacing, radius } from '../../theme';
+import { Card, Button } from '../../components/ui';
+import { colors, typography, spacing, radius, shadows } from '../../theme';
 import { useNavigation } from '@react-navigation/native';
 import { useRoadmapStore } from '../../store/roadmapStore';
 import { useProgressStore } from '../../store/progressStore';
 import { Ionicons } from '@expo/vector-icons';
 import { useChildStore } from '../../store/childStore';
 import { enhanceMentor, MENTORS } from '../../constants/mentors';
-import { NavigationGuide } from '../../components/tutorial/NavigationGuide';
 
 const categoryBadgeMap: Record<string, string> = {
   'Shapes': 'Shape Master',
@@ -37,7 +35,6 @@ export const LessonCompleteScreen: React.FC = () => {
         try {
           const res = await completeLessonBackend(selectedLesson.id);
           setCompletionResult(res);
-          // Sync roadmapStore state
           completeLesson(selectedLesson.id);
           await loadCategories();
         } catch (err) {
@@ -98,7 +95,7 @@ export const LessonCompleteScreen: React.FC = () => {
     return (
       <ScreenContainer style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={colors.purple} />
-        <Text style={styles.loadingText}>Saving your progress...</Text>
+        <Text style={[styles.loadingText, { fontFamily: typography.families.rounded }]}>Saving your progress...</Text>
       </ScreenContainer>
     );
   }
@@ -109,77 +106,74 @@ export const LessonCompleteScreen: React.FC = () => {
   return (
     <ScreenContainer style={styles.container}>
       <View style={styles.content}>
+        
         {/* Celebration Header */}
         <View style={styles.celebrationHeader}>
           <View style={styles.starCircle}>
-            <Ionicons name="star" size={64} color={colors.yellow} />
+            <Ionicons name="star" size={56} color={colors.yellow} />
           </View>
-          <Text style={styles.title}>Lesson Completed!</Text>
-          <Text style={styles.subtitle}>
+          <Text style={[styles.title, { fontFamily: typography.families.rounded }]}>Lesson Completed!</Text>
+          <Text style={[styles.subtitle, { fontFamily: typography.families.rounded }]}>
             Outstanding job, {activeChild?.name}! You finished all the activities in "{selectedLesson?.title || 'this lesson'}"!
           </Text>
         </View>
 
         {/* Stars Earned Card */}
-        <AppCard style={styles.starsCard}>
+        <Card style={styles.starsCard}>
           <View style={styles.starsRow}>
             {Array.from({ length: 8 }).map((_, i) => (
               <Ionicons
                 key={i}
                 name="star"
-                size={28}
+                size={24}
                 color={i < starsEarned ? colors.yellow : colors.border}
                 style={styles.starIcon}
               />
             ))}
           </View>
-          <Text style={styles.starsText}>
+          <Text style={[styles.starsText, { fontFamily: typography.families.rounded }]}>
             You earned <Text style={styles.boldText}>{starsEarned} / 8</Text> stars in this lesson!
           </Text>
           <View style={styles.totalStarsContainer}>
-            <Ionicons name="trophy" size={20} color={colors.purple} />
-            <Text style={styles.totalStarsText}>
+            <Ionicons name="trophy" size={16} color={colors.purple} />
+            <Text style={[styles.totalStarsText, { fontFamily: typography.families.rounded }]}>
               Total Stars: <Text style={styles.boldText}>{totalStars}</Text>
             </Text>
           </View>
-        </AppCard>
+        </Card>
 
         {/* Success Card with Mentor feedback */}
-        <AppCard style={styles.nextCard}>
+        <Card style={styles.nextCard}>
           <View style={styles.mentorRow}>
             <View style={styles.mentorIcon}>
-              <Ionicons name="sparkles" size={24} color={colors.yellow} />
+              <Ionicons name="sparkles" size={20} color={colors.yellow} />
             </View>
             <View style={styles.mentorInfo}>
-              <Text style={styles.mentorTalkTitle}>Message from {activeMentor.name.split(' ')[0]}</Text>
-              <Text style={styles.mentorText}>
+              <Text style={[styles.mentorTalkTitle, { fontFamily: typography.families.rounded }]}>Message from {activeMentor.name.split(' ')[0]}</Text>
+              <Text style={[styles.mentorText, { fontFamily: typography.families.rounded }]}>
                 "You worked so hard today! Watching the tutorial, listening, speaking, and drawing. You are an absolute superstar!"
               </Text>
             </View>
           </View>
-        </AppCard>
+        </Card>
 
         {/* Action Buttons */}
         <View style={styles.buttonContainer}>
-          <AppButton
+          <Button
             label="View Rewards"
+            variant="secondary"
             onPress={() => navigation.navigate('MainTabs', { screen: 'Rewards' })}
             style={styles.rewardsBtn}
-            variant="secondary"
           />
-          <AppButton
+          <Button
             label="Continue"
+            variant="primary"
             onPress={handleFinish}
             style={styles.doneBtn}
           />
         </View>
+
       </View>
-      <NavigationGuide
-        screenKey="lesson_complete"
-        guideKey="lesson_complete"
-        message="You did it! Amazing job!"
-        showBubble={true}
-      />
     </ScreenContainer>
   );
 };
@@ -195,9 +189,9 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   loadingText: {
-    color: colors.textMuted,
-    fontSize: typography.sizes.md,
-    fontWeight: typography.weights.medium,
+    color: colors.textSecondary,
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.bold,
   },
   content: {
     flex: 1,
@@ -205,7 +199,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     gap: spacing.lg,
-    maxWidth: 600,
+    maxWidth: 500,
     width: '100%',
     alignSelf: 'center',
   },
@@ -214,35 +208,32 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   starCircle: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: colors.yellow + '15',
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: 'rgba(247, 201, 75, 0.12)',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: colors.yellow + '30',
+    borderColor: 'rgba(247, 201, 75, 0.3)',
     marginBottom: spacing.xs,
+    ...shadows.sm,
   },
   title: {
-    color: colors.text,
-    fontSize: 32,
+    color: colors.textPrimary,
+    fontSize: typography.sizes.largeTitle,
     fontWeight: typography.weights.black,
     textAlign: 'center',
   },
   subtitle: {
-    color: colors.textMuted,
-    fontSize: typography.sizes.md,
+    color: colors.textSecondary,
+    fontSize: typography.sizes.small,
     textAlign: 'center',
     paddingHorizontal: spacing.md,
-    lineHeight: 22,
+    lineHeight: 18,
   },
   starsCard: {
     width: '100%',
-    backgroundColor: colors.backgroundSecondary,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.lg,
     alignItems: 'center',
     gap: spacing.md,
   },
@@ -253,11 +244,11 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   starIcon: {
-    marginHorizontal: 2,
+    marginHorizontal: 1,
   },
   starsText: {
-    color: colors.text,
-    fontSize: typography.sizes.md,
+    color: colors.textPrimary,
+    fontSize: typography.sizes.small,
   },
   boldText: {
     fontWeight: typography.weights.bold,
@@ -266,22 +257,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
-    backgroundColor: colors.purple + '10',
-    paddingVertical: spacing.xs,
-    paddingHorizontal: spacing.md,
-    borderRadius: radius.md,
+    backgroundColor: 'rgba(139, 120, 216, 0.1)',
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: radius.chip,
+    borderWidth: 1.5,
+    borderColor: 'rgba(139, 120, 216, 0.2)',
   },
   totalStarsText: {
     color: colors.purple,
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.medium,
+    fontSize: 11,
+    fontWeight: 'bold',
   },
   nextCard: {
     width: '100%',
-    backgroundColor: colors.backgroundSecondary,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.lg,
   },
   mentorRow: {
     flexDirection: 'row',
@@ -289,44 +278,42 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   mentorIcon: {
-    width: 48,
-    height: 48,
+    width: 40,
+    height: 40,
     borderRadius: radius.md,
-    backgroundColor: colors.yellow + '10',
+    backgroundColor: 'rgba(247, 201, 75, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 2,
+    borderWidth: 1.5,
+    borderColor: 'rgba(247, 201, 75, 0.25)',
   },
   mentorInfo: {
     flex: 1,
-    gap: 4,
+    gap: 2,
   },
   mentorTalkTitle: {
     color: colors.purple,
-    fontSize: typography.sizes.sm,
+    fontSize: typography.sizes.caption,
     fontWeight: typography.weights.bold,
   },
   mentorText: {
-    color: colors.textMuted,
-    fontSize: typography.sizes.sm,
-    lineHeight: 18,
+    color: colors.textSecondary,
+    fontSize: typography.sizes.small,
+    lineHeight: 16,
     fontStyle: 'italic',
   },
   buttonContainer: {
     width: '100%',
     gap: spacing.sm,
-    marginTop: spacing.md,
+    marginTop: spacing.xs,
   },
   rewardsBtn: {
     width: '100%',
     height: 50,
-    borderRadius: radius.xl,
   },
   doneBtn: {
     width: '100%',
     height: 54,
-    borderRadius: radius.xl,
   },
 });
-
 export default LessonCompleteScreen;

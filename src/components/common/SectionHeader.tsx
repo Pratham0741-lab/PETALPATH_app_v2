@@ -37,11 +37,13 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: typography.sizes.xxl,
     fontWeight: typography.weights.bold,
+    fontFamily: typography.families.rounded,
   },
   subtitle: {
     color: colors.textMuted,
     fontSize: typography.sizes.sm,
     marginTop: spacing.xs,
+    fontFamily: typography.families.rounded,
   },
   rightElement: {
     justifyContent: 'center',

@@ -1,8 +1,8 @@
 import React from 'react';
 import { StyleSheet, View, Text } from 'react-native';
 import { ScreenContainer } from '../../components/common/ScreenContainer';
-import { AppButton } from '../../components/buttons/AppButton';
-import { colors, typography, spacing, radius } from '../../theme';
+import { Card, Button } from '../../components/ui';
+import { colors, typography, spacing, radius, shadows } from '../../theme';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useChildStore } from '../../store/childStore';
@@ -22,25 +22,26 @@ export const ModuleCompleteScreen: React.FC = () => {
     <ScreenContainer style={styles.container}>
       <View style={styles.content}>
         <View style={styles.iconContainer}>
-          <Ionicons name="ribbon" size={80} color={colors.yellow} />
+          <Ionicons name="ribbon" size={64} color={colors.yellow} />
         </View>
 
-        <Text style={styles.title}>Module Completed!</Text>
-        <Text style={styles.subtitle}>
+        <Text style={[styles.title, { fontFamily: typography.families.rounded }]}>Module Completed!</Text>
+        <Text style={[styles.subtitle, { fontFamily: typography.families.rounded }]}>
           Amazing work, {activeChild?.name}! You completed the "{moduleTitle || 'Module'}" module!
         </Text>
 
         {nextModuleTitle ? (
-          <View style={styles.unlockCard}>
-            <Ionicons name="lock-open" size={24} color={colors.purple} />
-            <Text style={styles.unlockText}>
+          <Card style={styles.unlockCard}>
+            <Ionicons name="lock-open" size={20} color={colors.purple} />
+            <Text style={[styles.unlockText, { fontFamily: typography.families.rounded }]}>
               Next Module Unlocked: <Text style={styles.bold}>{nextModuleTitle}</Text>
             </Text>
-          </View>
+          </Card>
         ) : null}
 
-        <AppButton
+        <Button
           label="Continue Journey"
+          variant="primary"
           onPress={handleContinue}
           style={styles.button}
         />
@@ -59,48 +60,49 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     gap: spacing.lg,
-    maxWidth: 600,
+    maxWidth: 500,
     width: '100%',
     alignSelf: 'center',
   },
   iconContainer: {
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    backgroundColor: colors.yellow + '15',
+    width: 110,
+    height: 110,
+    borderRadius: 55,
+    backgroundColor: 'rgba(247, 201, 75, 0.12)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: spacing.md,
+    borderWidth: 2,
+    borderColor: 'rgba(247, 201, 75, 0.3)',
+    marginBottom: spacing.xs,
+    ...shadows.sm,
   },
   title: {
-    color: colors.text,
-    fontSize: 28,
+    color: colors.textPrimary,
+    fontSize: typography.sizes.largeTitle,
     fontWeight: typography.weights.black,
     textAlign: 'center',
   },
   subtitle: {
-    color: colors.textMuted,
-    fontSize: typography.sizes.md,
+    color: colors.textSecondary,
+    fontSize: typography.sizes.small,
     textAlign: 'center',
-    lineHeight: 22,
-    marginBottom: spacing.md,
+    lineHeight: 18,
+    marginBottom: spacing.xs,
   },
   unlockCard: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    backgroundColor: colors.purple + '10',
-    borderWidth: 1,
-    borderColor: colors.purple + '20',
+    borderColor: 'rgba(139, 120, 216, 0.25)',
+    borderWidth: 1.5,
     padding: spacing.md,
-    borderRadius: radius.md,
     width: '100%',
     justifyContent: 'center',
-    marginBottom: spacing.lg,
+    backgroundColor: 'rgba(139, 120, 216, 0.08)',
   },
   unlockText: {
-    color: colors.text,
-    fontSize: typography.sizes.md,
+    color: colors.textPrimary,
+    fontSize: typography.sizes.small,
   },
   bold: {
     fontWeight: typography.weights.bold,
@@ -109,7 +111,6 @@ const styles = StyleSheet.create({
   button: {
     width: '100%',
     height: 54,
-    borderRadius: radius.xl,
   },
 });
 

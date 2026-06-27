@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, Pressable, ActivityIndicator, ScrollView, Platform, DimensionValue } from 'react-native';
+import { StyleSheet, View, Text, Pressable, ActivityIndicator, Platform, DimensionValue } from 'react-native';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { useEventListener } from 'expo';
 import { colors, typography, spacing, radius, shadows } from '../../theme';
@@ -7,8 +7,9 @@ import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { useVideoStore } from '../../store/videoStore';
 import { useRoadmapStore } from '../../store/roadmapStore';
 import { getNextActivity, navigateToActivity } from '../../utils/navigationFlow';
-import { VideoProgressBar } from '../../components/progress/VideoProgressBar';
 import { Ionicons } from '@expo/vector-icons';
+import { ScreenContainer } from '../../components/common/ScreenContainer';
+import { Card, Button } from '../../components/ui';
 
 const VideoPlayerDesktop: React.FC<{
   currentVideo: any;
@@ -51,7 +52,6 @@ const VideoPlayerDesktop: React.FC<{
   // Detect actual video dimensions to adjust aspect ratio
   useEffect(() => {
     const getDimensions = () => {
-      // 1. Try availableVideoTracks (standard for native, fallback for web if populated)
       if (player.availableVideoTracks && player.availableVideoTracks.length > 0) {
         const track = player.availableVideoTracks[0];
         if (track?.size?.width > 0 && track?.size?.height > 0) {
@@ -60,7 +60,6 @@ const VideoPlayerDesktop: React.FC<{
         }
       }
 
-      // 2. On Web, read from the HTML5 video element mounted by expo-video or via DOM query
       if (Platform.OS === 'web') {
         let videoEl = (player as any)._mountedVideos && [...(player as any)._mountedVideos][0];
         if (!videoEl) {
@@ -71,7 +70,6 @@ const VideoPlayerDesktop: React.FC<{
             setAspectRatio(videoEl.videoWidth / videoEl.videoHeight);
             return true;
           }
-          // Attach listeners to detect when metadata is loaded or playback begins
           videoEl.onloadedmetadata = () => {
             if (videoEl && videoEl.videoWidth > 0 && videoEl.videoHeight > 0) {
               setAspectRatio(videoEl.videoWidth / videoEl.videoHeight);
@@ -137,7 +135,7 @@ const VideoPlayerDesktop: React.FC<{
     } catch (e) {}
   }, [player.playing]);
 
-  // Pause video when screen loses focus (navigating away) and resume when returning
+  // Pause video when screen loses focus
   const isFocused = useIsFocused();
   useEffect(() => {
     if (!isFocused) {
@@ -145,7 +143,7 @@ const VideoPlayerDesktop: React.FC<{
     }
   }, [isFocused, player]);
 
-  // Poll for actual duration as soon as metadata is loaded
+  // Poll for actual duration
   useEffect(() => {
     const interval = setInterval(() => {
       try {
@@ -217,10 +215,10 @@ const VideoPlayerDesktop: React.FC<{
       {/* Header Bar */}
       <View style={styles.topBar}>
         <Pressable style={styles.backLink} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={20} color={colors.text} />
-          <Text style={styles.backLinkText}>Return to Lesson</Text>
+          <Ionicons name="arrow-back" size={20} color={colors.textPrimary} />
+          <Text style={[styles.backLinkText, { fontFamily: typography.families.rounded }]}>Return to Lesson</Text>
         </Pressable>
-        <Text style={styles.topBarTitle}>{selectedLesson?.title || 'Video Activity'}</Text>
+        <Text style={[styles.topBarTitle, { fontFamily: typography.families.rounded }]}>{selectedLesson?.title || 'Video Activity'}</Text>
         <View style={{ width: 150 }} />
       </View>
 
@@ -229,15 +227,15 @@ const VideoPlayerDesktop: React.FC<{
         <View style={[styles.videoCard, playerStyle]}>
           <VideoView
             player={player}
-            style={[StyleSheet.absoluteFill, Platform.OS === 'web' && { objectFit: 'contain' } as any]}
+            style={[StyleSheet.absoluteFill, { backgroundColor: 'transparent' }, Platform.OS === 'web' && { objectFit: 'contain' } as any]}
             contentFit="contain"
             nativeControls={!videoEnded}
           />
           {videoEnded && (
             <View style={[StyleSheet.absoluteFill, styles.endedOverlay]}>
               <Pressable style={styles.replayOverlayBtn} onPress={handleReplay}>
-                <Ionicons name="refresh" size={32} color={colors.white} />
-                <Text style={styles.replayOverlayBtnText}>Replay Video</Text>
+                <Ionicons name="refresh" size={24} color="#FFF8ED" />
+                <Text style={[styles.replayOverlayBtnText, { fontFamily: typography.families.rounded }]}>Replay Video</Text>
               </Pressable>
             </View>
           )}
@@ -247,21 +245,20 @@ const VideoPlayerDesktop: React.FC<{
       {/* Bottom Area */}
       <View style={styles.bottomPanel}>
         {(videoEnded || isCompleted) ? (
-          <View style={styles.completedSection}>
-            <Ionicons name="checkmark-circle" size={32} color={colors.green} />
-            <View style={styles.completedTextContainer}>
-              <Text style={styles.completedTitle}>Video Completed!</Text>
-              <Text style={styles.completedSubtitle}>You're ready to proceed to the next activity.</Text>
+          <Card style={styles.completedSection}>
+            <View style={styles.completedRow}>
+              <Ionicons name="checkmark-circle" size={32} color={colors.green} />
+              <View style={styles.completedTextContainer}>
+                <Text style={[styles.completedTitle, { fontFamily: typography.families.rounded }]}>Video Completed! 🎉</Text>
+                <Text style={[styles.completedSubtitle, { fontFamily: typography.families.rounded }]}>You're ready to proceed to the next activity.</Text>
+              </View>
             </View>
-            <Pressable style={styles.nextBtnBelow} onPress={handleNextPress}>
-              <Text style={styles.nextBtnBelowText}>Next Activity</Text>
-              <Ionicons name="arrow-forward" size={20} color={colors.white} />
-            </Pressable>
-          </View>
+            <Button label="Next Activity" variant="success" onPress={handleNextPress} style={styles.nextBtn} />
+          </Card>
         ) : (
           <View style={styles.infoSection}>
-            <Text style={styles.videoTitle}>{currentVideo?.title || 'Video Lesson'}</Text>
-            <Text style={styles.videoInstructions}>
+            <Text style={[styles.videoTitle, { fontFamily: typography.families.rounded }]}>{currentVideo?.title || 'Video Lesson'}</Text>
+            <Text style={[styles.videoInstructions, { fontFamily: typography.families.rounded }]}>
               Watch the video demonstration carefully to prepare for the tracing activities.
             </Text>
           </View>
@@ -302,48 +299,36 @@ const VideoComingSoonDesktop: React.FC<{
       {/* Header Bar */}
       <View style={styles.topBar}>
         <Pressable style={styles.backLink} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={20} color={colors.text} />
-          <Text style={styles.backLinkText}>Return to Lesson</Text>
+          <Ionicons name="arrow-back" size={20} color={colors.textPrimary} />
+          <Text style={[styles.backLinkText, { fontFamily: typography.families.rounded }]}>Return to Lesson</Text>
         </Pressable>
-        <Text style={styles.topBarTitle}>{selectedLesson?.title || 'Video Activity'}</Text>
+        <Text style={[styles.topBarTitle, { fontFamily: typography.families.rounded }]}>{selectedLesson?.title || 'Video Activity'}</Text>
         <View style={{ width: 150 }} />
       </View>
 
       {/* Main Coming Soon Area */}
       <View style={styles.comingSoonPanel}>
-        <View style={styles.comingSoonCard}>
-          <View style={styles.glowBg} />
-          <Ionicons name="film-outline" size={112} color={colors.yellow} style={styles.comingSoonIcon} />
-          <Text style={styles.comingSoonTitle}>Video Coming Soon! 🌟</Text>
-          <Text style={styles.comingSoonSubtitle}>
+        <Card style={styles.comingSoonCard}>
+          <Ionicons name="film-outline" size={72} color={colors.yellow} style={styles.comingSoonIcon} />
+          <Text style={[styles.comingSoonTitle, { fontFamily: typography.families.rounded }]}>Video Coming Soon! 🌟</Text>
+          <Text style={[styles.comingSoonSubtitle, { fontFamily: typography.families.rounded }]}>
             Our team is preparing a magical video demonstration for this lesson.
           </Text>
-          <Text style={styles.comingSoonDetails}>
+          <Text style={[styles.comingSoonDetails, { fontFamily: typography.families.rounded }]}>
             You don't have to wait! Click the button below to proceed to the learning activities.
           </Text>
-        </View>
+        </Card>
       </View>
 
       {/* Bottom Area */}
       <View style={styles.bottomPanel}>
-        <Pressable
-          style={({ pressed }) => [
-            styles.proceedBtn,
-            pressed && styles.proceedBtnPressed,
-            isCompleting && styles.proceedBtnDisabled,
-          ]}
+        <Button
+          label="Proceed to Next Activity"
+          variant="primary"
           onPress={handleProceed}
           disabled={isCompleting}
-        >
-          {isCompleting ? (
-            <ActivityIndicator size="small" color={colors.white} />
-          ) : (
-            <>
-              <Text style={styles.proceedBtnText}>Proceed to Next Activity</Text>
-              <Ionicons name="arrow-forward" size={20} color={colors.white} />
-            </>
-          )}
-        </Pressable>
+          style={styles.proceedBtn}
+        />
       </View>
     </View>
   );
@@ -422,29 +407,31 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
   },
   statusText: {
-    color: colors.textMuted,
+    color: colors.textSecondary,
     marginTop: spacing.md,
+    fontSize: typography.sizes.sm,
   },
   errorText: {
-    color: colors.text,
+    color: colors.textPrimary,
     marginTop: spacing.md,
     fontSize: typography.sizes.md,
+    textAlign: 'center',
     marginBottom: spacing.xl,
   },
   backBtn: {
     backgroundColor: colors.purple,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.xl,
-    borderRadius: radius.lg,
+    borderRadius: radius.button,
   },
   backBtnText: {
-    color: colors.white,
+    color: '#FFF8ED',
     fontWeight: typography.weights.bold,
   },
   topBar: {
     height: 70,
-    backgroundColor: colors.backgroundSecondary,
-    borderBottomWidth: 1,
+    backgroundColor: colors.surface,
+    borderBottomWidth: 1.5,
     borderBottomColor: colors.border,
     flexDirection: 'row',
     alignItems: 'center',
@@ -455,134 +442,96 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
+    backgroundColor: colors.background,
+    paddingVertical: 4,
+    paddingHorizontal: 12,
+    borderRadius: radius.chip,
+    borderWidth: 1.5,
+    borderColor: colors.border,
   },
   backLinkText: {
-    color: colors.text,
-    fontWeight: typography.weights.bold,
-    fontSize: typography.sizes.sm,
+    color: colors.textPrimary,
+    fontWeight: 'bold',
+    fontSize: 12,
   },
   topBarTitle: {
-    color: colors.text,
-    fontSize: typography.sizes.xl,
+    color: colors.textPrimary,
+    fontSize: typography.sizes.largeTitle,
     fontWeight: typography.weights.black,
   },
   playerPanel: {
     flex: 0.6,
-    padding: spacing.md,
-    backgroundColor: '#0a0a0c',
+    padding: 0,
+    backgroundColor: colors.background,
     justifyContent: 'center',
     alignItems: 'center',
   },
   videoCard: {
-    borderRadius: radius.xl,
-    overflow: 'hidden',
-    backgroundColor: '#000',
-    ...shadows.lg,
+    backgroundColor: 'transparent',
   },
   endedOverlay: {
-    backgroundColor: 'rgba(0,0,0,0.7)',
+    backgroundColor: 'rgba(59,52,47,0.7)',
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 10,
   },
   comingSoonPanel: {
     flex: 0.6,
-    backgroundColor: '#050515',
+    backgroundColor: colors.background,
     justifyContent: 'center',
     alignItems: 'center',
     padding: spacing.xl,
   },
   comingSoonCard: {
-    backgroundColor: colors.backgroundSecondary,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.xl,
-    padding: spacing.xxl,
     alignItems: 'center',
     width: '80%',
     maxWidth: 600,
-    ...shadows.lg,
-    overflow: 'hidden',
-    position: 'relative',
-  },
-  glowBg: {
-    position: 'absolute',
-    top: -80,
-    right: -80,
-    width: 250,
-    height: 250,
-    borderRadius: 125,
-    backgroundColor: colors.purple,
-    opacity: 0.15,
   },
   comingSoonIcon: {
     marginBottom: spacing.lg,
-    textShadowColor: 'rgba(251, 191, 36, 0.4)',
-    textShadowOffset: { width: 0, height: 4 },
-    textShadowRadius: 14,
   },
   comingSoonTitle: {
-    fontSize: typography.sizes.xl,
+    fontSize: typography.sizes.largeTitle,
     fontWeight: typography.weights.black,
-    color: colors.text,
+    color: colors.textPrimary,
     textAlign: 'center',
     marginBottom: spacing.sm,
   },
   comingSoonSubtitle: {
-    fontSize: typography.sizes.md,
-    color: colors.textMuted,
+    fontSize: typography.sizes.body,
+    color: colors.textSecondary,
     textAlign: 'center',
     marginBottom: spacing.lg,
     lineHeight: 26,
   },
   comingSoonDetails: {
-    fontSize: typography.sizes.sm,
-    color: colors.textMuted,
+    fontSize: typography.sizes.small,
+    color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: 22,
     opacity: 0.8,
   },
   proceedBtn: {
-    backgroundColor: colors.purple,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.xxl,
-    borderRadius: radius.lg,
     width: '100%',
     maxWidth: 400,
-    ...shadows.md,
-  },
-  proceedBtnPressed: {
-    opacity: 0.9,
-    transform: [{ scale: 0.98 }],
-  },
-  proceedBtnDisabled: {
-    opacity: 0.5,
-  },
-  proceedBtnText: {
-    color: colors.white,
-    fontWeight: typography.weights.bold,
-    fontSize: typography.sizes.md,
+    height: 50,
   },
   replayOverlayBtn: {
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.xl,
-    borderRadius: radius.xl,
+    backgroundColor: 'rgba(59,52,47,0.85)',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.button,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
-    ...shadows.lg,
+    gap: spacing.xs,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.2)',
+    ...shadows.md,
   },
   replayOverlayBtnText: {
-    color: colors.white,
+    color: '#FFF8ED',
     fontWeight: typography.weights.bold,
-    fontSize: typography.sizes.md,
+    fontSize: typography.sizes.small,
   },
   bottomPanel: {
     flex: 0.4,
@@ -596,58 +545,43 @@ const styles = StyleSheet.create({
     maxWidth: 600,
   },
   videoTitle: {
-    fontSize: typography.sizes.lg,
+    fontSize: typography.sizes.largeTitle,
     fontWeight: typography.weights.black,
-    color: colors.text,
+    color: colors.textPrimary,
     marginBottom: spacing.sm,
     textAlign: 'center',
   },
   videoInstructions: {
-    fontSize: typography.sizes.md,
-    color: colors.textMuted,
+    fontSize: typography.sizes.body,
+    color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: 22,
   },
   completedSection: {
-    backgroundColor: colors.backgroundSecondary,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.xl,
-    padding: spacing.xl,
+    width: '100%',
+    maxWidth: 600,
+    gap: spacing.md,
+  },
+  completedRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
-    maxWidth: 600,
-    width: '100%',
-    ...shadows.md,
   },
   completedTextContainer: {
     flex: 1,
   },
   completedTitle: {
-    fontSize: typography.sizes.md,
+    fontSize: typography.sizes.body,
     fontWeight: typography.weights.bold,
-    color: colors.text,
-    marginBottom: 2,
+    color: colors.textPrimary,
   },
   completedSubtitle: {
-    fontSize: typography.sizes.sm,
-    color: colors.textMuted,
+    fontSize: typography.sizes.small,
+    color: colors.textSecondary,
   },
-  nextBtnBelow: {
-    backgroundColor: colors.purple,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.xl,
-    borderRadius: radius.lg,
-    ...shadows.md,
-  },
-  nextBtnBelowText: {
-    color: colors.white,
-    fontWeight: typography.weights.bold,
-    fontSize: typography.sizes.sm,
+  nextBtn: {
+    width: '100%',
+    height: 48,
   },
 });
 

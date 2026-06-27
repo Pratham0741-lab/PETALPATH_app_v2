@@ -1,5 +1,5 @@
 import { prisma } from '../../../config/database.js';
-import { CurriculumState } from '@prisma/client';
+import { CurriculumState } from '../../../shared/enums.js';
 
 export class ChildSkillCurriculumRepository {
   async findByChildAndSkill(childId: string, skillId: string) {

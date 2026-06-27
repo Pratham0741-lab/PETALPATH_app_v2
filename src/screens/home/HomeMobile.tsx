@@ -1,116 +1,375 @@
-import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react';
-import { StyleSheet, ScrollView, View, Text, ActivityIndicator } from 'react-native';
+import React, { useEffect, useMemo, useRef } from 'react';
+import {
+  StyleSheet,
+  ScrollView,
+  View,
+  Text,
+  ActivityIndicator,
+  Pressable,
+  Platform,
+  useWindowDimensions,
+  Animated,
+  FlatList,
+} from 'react-native';
 import { ScreenContainer } from '../../components/common/ScreenContainer';
-import { TopBar } from '../../components/navigation/TopBar';
-import { SectionHeader } from '../../components/common/SectionHeader';
-import { ContinueLearningCard } from '../../components/cards/ContinueLearningCard';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import { useRoadmapStore, Lesson, Module, Category } from '../../store/roadmapStore';
-import { useTutorialStore } from '../../store/tutorialStore';
-import { CategoryHeader } from './components/CategoryHeader';
-import { CurvedPathConnector } from './components/CurvedPathConnector';
-import { ModuleNode } from './components/ModuleNode';
-import { ModuleLessonsModal } from './components/ModuleLessonsModal';
-import { colors, spacing, radius, typography } from '../../theme';
+import { useNavigation } from '@react-navigation/native';
+import { useRoadmapStore, Lesson } from '../../store/roadmapStore';
+import { useChildStore } from '../../store/childStore';
+import { useRewardsStore } from '../../store/rewardsStore';
+import { colors, spacing, radius, typography, shadows } from '../../theme';
 import { navigateToActivity } from '../../utils/navigationFlow';
-import { NavigationGuide } from '../../components/tutorial/NavigationGuide';
+import Svg, { Path, Circle, Rect } from 'react-native-svg';
+import { Ionicons } from '@expo/vector-icons';
 
-interface VisualRow {
-  type: 'header' | 'node';
+// -------------------------------------------------------------
+// DECORATIVE BACKGROUND COMPONENTS
+// -------------------------------------------------------------
+
+const LeftHill = React.memo(({ top, width }: { top: number; width: number }) => (
+  <View style={{ position: 'absolute', top, left: 0, width: width * 0.45, height: 180, zIndex: -2 }}>
+    <Svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none">
+      <Path d="M 0 100 C 40 65, 80 75, 100 100 Z" fill="#E8F4E1" />
+    </Svg>
+  </View>
+));
+
+const RightHill = React.memo(({ top, width }: { top: number; width: number }) => (
+  <View style={{ position: 'absolute', top, right: 0, width: width * 0.45, height: 180, zIndex: -2 }}>
+    <Svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none">
+      <Path d="M 100 100 C 60 60, 20 70, 0 100 Z" fill="#EAF5E3" />
+    </Svg>
+  </View>
+));
+
+const GardenTree = React.memo(({ top, left }: { top: number; left: number }) => (
+  <View style={{ position: 'absolute', top, left, width: 40, height: 50, zIndex: -2 }}>
+    <Svg width="40" height="50" viewBox="0 0 40 50">
+      <Rect x="18" y="30" width="4" height="20" rx="1" fill="#8C6F5A" />
+      <Circle cx="20" cy="18" r="15" fill="#8DBB75" />
+      <Circle cx="14" cy="14" r="8" fill="#9CD184" />
+      <Circle cx="15" cy="12" r="2.5" fill="#F6B5C5" />
+      <Circle cx="25" cy="20" r="2.5" fill="#F6B5C5" />
+    </Svg>
+  </View>
+));
+
+const GardenBush = React.memo(({ top, left }: { top: number; left: number }) => (
+  <View style={{ position: 'absolute', top, left, width: 35, height: 22, zIndex: -2 }}>
+    <Svg width="35" height="22" viewBox="0 0 35 22">
+      <Path d="M 4 22 C 0 8, 12 4, 17 12 C 22 4, 34 8, 30 22 Z" fill="#9CD184" />
+      <Circle cx="10" cy="14" r="1.5" fill="#FFF" />
+      <Circle cx="22" cy="12" r="1.5" fill="#FFF" />
+    </Svg>
+  </View>
+));
+
+const TinyFlower = React.memo(({ top, left, color = '#F6B5C5' }: { top: number; left: number; color?: string }) => (
+  <View style={{ position: 'absolute', top, left, width: 14, height: 18, zIndex: -2 }}>
+    <Svg width="14" height="18" viewBox="0 0 14 18">
+      <Path d="M7 8 L7 18" stroke="#7CA767" strokeWidth="1.5" />
+      <Circle cx="7" cy="6" r="3.5" fill={color} />
+      <Circle cx="3.5" cy="6" r="2.5" fill={color} />
+      <Circle cx="10.5" cy="6" r="2.5" fill={color} />
+      <Circle cx="7" cy="2.5" r="2.5" fill={color} />
+      <Circle cx="7" cy="6" r="1.5" fill="#F7C94B" />
+    </Svg>
+  </View>
+));
+
+const FloatingPetal = React.memo(({ top, left, delay = 0 }: { top: number; left: number; delay?: number }) => {
+  const animValue = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      Animated.loop(
+        Animated.timing(animValue, {
+          toValue: 1,
+          duration: 6000 + Math.random() * 4000,
+          useNativeDriver: true,
+        })
+      ).start();
+    }, delay);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const translateY = animValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: [-20, 80],
+  });
+
+  const translateX = animValue.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: [0, 12, 0],
+  });
+
+  const rotate = animValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
+
+  const opacity = animValue.interpolate({
+    inputRange: [0, 0.1, 0.9, 1],
+    outputRange: [0, 0.7, 0.7, 0],
+  });
+
+  return (
+    <Animated.View
+      style={{
+        position: 'absolute',
+        top,
+        left,
+        width: 12,
+        height: 7,
+        opacity,
+        transform: [{ translateY }, { translateX }, { rotate }],
+        zIndex: -1,
+      }}
+    >
+      <Svg width="12" height="7" viewBox="0 0 12 7">
+        <Path d="M 0 3.5 C 2.5 0, 9.5 0, 12 3.5 C 9.5 7, 2.5 7, 0 3.5 Z" fill="#F6B5C5" opacity={0.8} />
+      </Svg>
+    </Animated.View>
+  );
+});
+
+// -------------------------------------------------------------
+// FLOWER NODE ANIMATION WRAPPERS
+// -------------------------------------------------------------
+
+const CurrentFlowerNode = ({ size, children }: { size: number; children: React.ReactNode }) => {
+  const breatheAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(breatheAnim, {
+          toValue: 1,
+          duration: 1800,
+          useNativeDriver: true,
+        }),
+        Animated.timing(breatheAnim, {
+          toValue: 0,
+          duration: 1800,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  }, []);
+
+  const scale = breatheAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.97, 1.03],
+  });
+
+  const glowOpacity = breatheAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.4, 0.8],
+  });
+
+  return (
+    <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+      {/* Outer Breathing Purple Glow */}
+      <Animated.View
+        style={{
+          position: 'absolute',
+          width: size + 16,
+          height: size + 16,
+          borderRadius: (size + 16) / 2,
+          borderWidth: 2.5,
+          borderColor: '#C0B3F1',
+          backgroundColor: '#EDE8FF',
+          opacity: glowOpacity,
+          transform: [{ scale }],
+        }}
+      />
+      <Animated.View style={{ width: size, height: size, transform: [{ scale }] }}>
+        {children}
+      </Animated.View>
+    </View>
+  );
+};
+
+const CompletedFlowerNode = React.memo(({ size, children, onPress }: { size: number; children: React.ReactNode; onPress: () => void }) => {
+  const wiggleAnim = useRef(new Animated.Value(0)).current;
+  const pressAnim = useRef(new Animated.Value(0)).current;
+
+  const triggerWiggle = () => {
+    Animated.sequence([
+      Animated.timing(pressAnim, { toValue: 1, duration: 90, useNativeDriver: true }),
+      Animated.timing(pressAnim, { toValue: -1, duration: 120, useNativeDriver: true }),
+      Animated.timing(pressAnim, { toValue: 0.5, duration: 90, useNativeDriver: true }),
+      Animated.timing(pressAnim, { toValue: 0, duration: 90, useNativeDriver: true }),
+    ]).start();
+  };
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.timing(wiggleAnim, {
+        toValue: 1,
+        duration: 10000 + Math.random() * 4000,
+        useNativeDriver: true,
+      })
+    ).start();
+  }, []);
+
+  const loopWiggle = wiggleAnim.interpolate({
+    inputRange: [0, 0.90, 0.92, 0.94, 0.96, 0.98, 1.0],
+    outputRange: [0, 0, 1, -1, 0.5, -0.5, 0],
+  });
+
+  const combinedAnim = Animated.add(loopWiggle, pressAnim);
+
+  const rotate = combinedAnim.interpolate({
+    inputRange: [-1.5, 1.5],
+    outputRange: ['-12deg', '12deg'],
+  });
+
+  return (
+    <Pressable
+      onPress={() => {
+        triggerWiggle();
+        onPress();
+      }}
+      style={{ width: size, height: size }}
+    >
+      <Animated.View style={{ width: size, height: size, transform: [{ rotate }] }}>
+        {children}
+      </Animated.View>
+    </Pressable>
+  );
+});
+
+// -------------------------------------------------------------
+// MAIN HOME MOBILE SCREEN
+// -------------------------------------------------------------
+
+interface PathNode {
+  type: 'lesson' | 'milestone' | 'reward';
   id: string;
-  category?: Category;
-  module?: Module;
-  pathColor?: string;
-  yPos: number;
+  title: string;
+  status: 'completed' | 'current' | 'locked';
+  lesson?: Lesson;
+  moduleTitle?: string;
+  categoryTitle?: string;
 }
 
 export const HomeMobile: React.FC = () => {
   const navigation = useNavigation<any>();
+  const activeChild = useChildStore((state) => state.activeChild);
+  const flatListRef = useRef<FlatList>(null);
+  
   const {
     categories,
-    selectedLesson,
     currentLesson,
-    loading,
-    error,
+    loading: roadmapLoading,
     loadRoadmap,
-    selectModule,
     selectLesson,
+    isLessonUnlocked,
   } = useRoadmapStore();
 
-  const { seenTutorials } = useTutorialStore();
-  const seenHome = seenTutorials['home'] === true;
-  const isFirstVisit = !seenHome;
+  const {
+    totalStars,
+    refreshRewards,
+  } = useRewardsStore();
 
-  const ongoingNodeRef = useRef<View>(null);
-  const [handCoords, setHandCoords] = useState<{ x: number; y: number } | undefined>(undefined);
-
-  const measureTarget = useCallback(() => {
-    if (ongoingNodeRef.current) {
-      ongoingNodeRef.current.measureInWindow((x, y, width, height) => {
-        if (width > 0 && height > 0) {
-          // Point precisely to the center of the ongoing circular milestone node (center x, center y of the 76px circle)
-          setHandCoords({ x: x + width / 2, y: y + 38 });
-        }
-      });
-    }
+  useEffect(() => {
+    loadRoadmap();
+    refreshRewards();
   }, []);
 
-  // Handle measurement retry to handle layout changes and keyboard/layout shifts
+  // 1. Flatten modules & lessons, injecting milestones & rewards
+  const pathNodes = useMemo<PathNode[]>(() => {
+    const nodes: PathNode[] = [];
+    if (!categories || categories.length === 0) return nodes;
+
+    categories.forEach((cat) => {
+      cat.modules.forEach((mod) => {
+        // Add lessons of module
+        mod.lessons.forEach((les) => {
+          let status: 'completed' | 'current' | 'locked' = 'locked';
+          if (les.isCompleted) {
+            status = 'completed';
+          } else if (currentLesson && les.id === currentLesson.id) {
+            status = 'current';
+          } else if (les.isUnlocked) {
+            status = les.id === currentLesson?.id ? 'current' : 'locked';
+          }
+          nodes.push({
+            type: 'lesson',
+            id: les.id,
+            title: les.title,
+            status,
+            lesson: les,
+          });
+        });
+
+        // Inject Milestone Node after each module
+        const isModCompleted = mod.lessons.every((l) => l.isCompleted);
+        const isModUnlocked = mod.lessons.some((l) => l.isUnlocked || l.isCompleted);
+        nodes.push({
+          type: 'milestone',
+          id: `milestone-${mod.id}`,
+          title: `${mod.title} Milestone`,
+          status: isModCompleted ? 'completed' : (isModUnlocked && !isModCompleted ? 'current' : 'locked'),
+          moduleTitle: mod.title,
+        });
+      });
+
+      // Inject Reward Node after each category
+      const isCatCompleted = cat.isCompleted;
+      const isCatUnlocked = cat.isUnlocked;
+      nodes.push({
+        type: 'reward',
+        id: `reward-${cat.id}`,
+        title: `${cat.title} Reward`,
+        status: isCatCompleted ? 'completed' : (isCatUnlocked && !isCatCompleted ? 'current' : 'locked'),
+        categoryTitle: cat.title,
+      });
+    });
+
+    return nodes;
+  }, [categories, currentLesson]);
+
+  // Dimensions
+  const { width: windowWidth } = useWindowDimensions();
+  const screenWidth = Math.min(windowWidth, 540); // Max width of 540 for desktop/tablet centering
+  const leftOffset = (windowWidth - screenWidth) / 2;
+
+  // 2. Pre-calculate horizontal offsets and heights of nodes
+  const nodeLayouts = useMemo(() => {
+    return pathNodes.map((item, index) => {
+      const isHero = item.status === 'current' && item.type === 'lesson';
+      const height = isHero ? 190 : 120;
+      const x = Math.sin(index * 1.25) * 25; // sine curve offset
+      return { x, height };
+    });
+  }, [pathNodes]);
+
+  // Center path on 28% of the viewport width to leave plenty of room for cards on the right
+  const pathCenterX = screenWidth * 0.28;
+
+  // 3. Auto-scroll to center current active lesson index
   useEffect(() => {
-    measureTarget();
-    const t1 = setTimeout(measureTarget, 100);
-    const t2 = setTimeout(measureTarget, 400);
-    const t3 = setTimeout(measureTarget, 800);
-    return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
-      clearTimeout(t3);
-    };
-  }, [currentLesson, measureTarget]);
-
-  useFocusEffect(
-    React.useCallback(() => {
-      loadRoadmap();
-      const timer = setTimeout(measureTarget, 400);
-      return () => clearTimeout(timer);
-    }, [loadRoadmap, measureTarget])
-  );
-
-  const handleModuleClick = async (module: Module) => {
-    const targetLesson = module.lessons.find(l => !l.isCompleted) || module.lessons[0];
-    if (targetLesson && targetLesson.isUnlocked) {
-      await selectLesson(targetLesson);
-      navigation.navigate('LessonOverview');
-    }
-  };
-
-  const handleCategoryClick = async (category: Category) => {
-    let targetLesson: Lesson | null = null;
-    for (const mod of category.modules) {
-      const uncompleted = mod.lessons.find(l => !l.isCompleted);
-      if (uncompleted) {
-        targetLesson = uncompleted;
-        break;
+    if (currentLesson && pathNodes.length > 0) {
+      const currentIndex = pathNodes.findIndex((n) => n.type === 'lesson' && n.id === currentLesson.id);
+      if (currentIndex !== -1) {
+        const timer = setTimeout(() => {
+          flatListRef.current?.scrollToIndex({
+            index: currentIndex,
+            animated: true,
+            viewPosition: 0.5,
+          });
+        }, 300);
+        return () => clearTimeout(timer);
       }
     }
-    if (!targetLesson && category.modules.length > 0) {
-      const firstMod = category.modules[0];
-      if (firstMod.lessons.length > 0) {
-        targetLesson = firstMod.lessons[0];
-      }
-    }
+  }, [currentLesson, pathNodes]);
 
-    if (targetLesson && targetLesson.isUnlocked) {
-      await selectLesson(targetLesson);
-      navigation.navigate('LessonOverview');
-    }
-  };
-
+  // Navigate on hero continue click
   const handlePlayContinue = async () => {
     if (!currentLesson) return;
     await selectLesson(currentLesson);
     
-    // Find next uncompleted activity
     const progress = currentLesson.progress;
     let targetAct = null;
     if (progress) {
@@ -136,260 +395,569 @@ export const HomeMobile: React.FC = () => {
     }
   };
 
-  const getActivePercent = () => {
-    if (!currentLesson || !currentLesson.progress) return 0;
-    const progress = currentLesson.progress;
-    let count = 0;
-    if (progress.videoCompleted) count++;
-    if (progress.listenCompleted) count++;
-    if (progress.speakCompleted) count++;
-    if (progress.writeCompleted) count++;
-    return count * 25;
+  // Click on general lesson node
+  const handleLessonClick = async (lesson: Lesson) => {
+    if (isLessonUnlocked(lesson.id)) {
+      await selectLesson(lesson);
+      navigation.navigate('LessonOverview');
+    }
   };
 
-  const getNextActivityTitle = () => {
-    if (!currentLesson) return 'Watch Standing Line Tutorial';
-    const progress = currentLesson.progress;
-    if (!progress) {
-      return currentLesson.activities[0]?.title || 'Watch Tutorial';
+  const getItemLayout = (data: any, index: number) => {
+    let offset = 0;
+    for (let i = 0; i < index; i++) {
+      const item = data[i];
+      const isHero = item.status === 'current' && item.type === 'lesson';
+      offset += isHero ? 190 : 120;
     }
-    if (!progress.videoCompleted) {
-      return currentLesson.activities.find(a => a.activityType === 'video')?.title || 'Watch Tutorial';
-    }
-    if (!progress.listenCompleted) {
-      return currentLesson.activities.find(a => a.activityType === 'listen')?.title || 'Listen & Choose';
-    }
-    if (!progress.speakCompleted) {
-      return currentLesson.activities.find(a => a.activityType === 'speak')?.title || 'Practice Speaking';
-    }
-    if (!progress.writeCompleted) {
-      return currentLesson.activities.find(a => a.activityType === 'write')?.title || 'Trace Shape';
-    }
-    return 'All Completed!';
+    const item = data[index];
+    const isHero = item?.status === 'current' && item?.type === 'lesson';
+    const length = isHero ? 190 : 120;
+    return { length, offset, index };
   };
 
-  const activePercent = getActivePercent();
-  const nextActTitle = getNextActivityTitle();
+  const childName = activeChild?.name || 'Explorer';
 
-  const getCategoryColor = (title: string) => {
-    const lower = title.toLowerCase();
-    if (lower.includes('prewriting')) return '#EC4899';
-    if (lower.includes('shape')) return '#3B82F6';
-    if (lower.includes('alpha') || lower.includes('letter')) return '#10B981';
-    if (lower.includes('num')) return '#F97316';
-    if (lower.includes('word')) return '#8A5CF6';
-    return '#06B6D4';
+  const renderItem = ({ item, index }: { item: PathNode; index: number }) => {
+    const layout = nodeLayouts[index];
+    const nextLayout = nodeLayouts[index + 1];
+    if (!layout) return null;
+
+    const isHero = item.status === 'current' && item.type === 'lesson';
+    const flowerSize = isHero ? 90 : (item.type === 'milestone' ? 80 : (item.type === 'reward' ? 72 : 56));
+    const cardMarginLeft = 12;
+    const flowerLeft = pathCenterX + layout.x - flowerSize / 2;
+    const rowHeight = layout.height;
+
+    // Render path segment connecting this row center to next row center
+    let pathSegment = null;
+    if (index < pathNodes.length - 1 && nextLayout) {
+      const segmentHeight = rowHeight / 2 + nextLayout.height / 2;
+      const startX = pathCenterX + layout.x;
+      const endX = pathCenterX + nextLayout.x;
+      const midY = segmentHeight / 2;
+      const d = `M ${startX} 0 C ${startX} ${midY}, ${endX} ${midY}, ${endX} ${segmentHeight}`;
+
+      pathSegment = (
+        <View
+          style={{
+            position: 'absolute',
+            top: rowHeight / 2,
+            left: 0,
+            width: screenWidth,
+            height: segmentHeight,
+            zIndex: -1,
+          }}
+          pointerEvents="none"
+        >
+          <Svg width={screenWidth} height={segmentHeight}>
+            <Path
+              d={d}
+              stroke="#FFE5D9"
+              strokeWidth={28}
+              fill="none"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              opacity={0.9}
+            />
+            <Path
+              d={d}
+              stroke="#D6BCFA"
+              strokeWidth={3}
+              strokeDasharray="6, 8"
+              fill="none"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </Svg>
+        </View>
+      );
+    }
+
+    // Render intro straight path segment (only for the very first item)
+    let introSegment = null;
+    if (index === 0) {
+      introSegment = (
+        <View
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: screenWidth,
+            height: rowHeight / 2,
+            zIndex: -1,
+          }}
+          pointerEvents="none"
+        >
+          <Svg width={screenWidth} height={rowHeight / 2}>
+            <Path
+              d={`M ${pathCenterX + layout.x} 0 L ${pathCenterX + layout.x} ${rowHeight / 2}`}
+              stroke="#FFE5D9"
+              strokeWidth={28}
+              fill="none"
+              strokeLinecap="round"
+              opacity={0.9}
+            />
+            <Path
+              d={`M ${pathCenterX + layout.x} 0 L ${pathCenterX + layout.x} ${rowHeight / 2}`}
+              stroke="#D6BCFA"
+              strokeWidth={3}
+              strokeDasharray="6, 8"
+              fill="none"
+              strokeLinecap="round"
+            />
+          </Svg>
+        </View>
+      );
+    }
+
+    // Render outro straight path segment (only for the very last item)
+    let outroSegment = null;
+    if (index === pathNodes.length - 1) {
+      outroSegment = (
+        <View
+          style={{
+            position: 'absolute',
+            top: rowHeight / 2,
+            left: 0,
+            width: screenWidth,
+            height: 100,
+            zIndex: -1,
+          }}
+          pointerEvents="none"
+        >
+          <Svg width={screenWidth} height={100}>
+            <Path
+              d={`M ${pathCenterX + layout.x} 0 L ${pathCenterX + layout.x} 100`}
+              stroke="#FFE5D9"
+              strokeWidth={28}
+              fill="none"
+              strokeLinecap="round"
+              opacity={0.9}
+            />
+            <Path
+              d={`M ${pathCenterX + layout.x} 0 L ${pathCenterX + layout.x} 100`}
+              stroke="#D6BCFA"
+              strokeWidth={3}
+              strokeDasharray="6, 8"
+              fill="none"
+              strokeLinecap="round"
+            />
+          </Svg>
+        </View>
+      );
+    }
+
+    // Render background landscapes matching index (decided deterministically)
+    let rowDecoration = null;
+    const hillTop = -20;
+    if (index % 3 === 0) {
+      rowDecoration = (
+        <>
+          <LeftHill top={hillTop} width={screenWidth} />
+          <GardenTree top={hillTop + 40} left={20} />
+          <TinyFlower top={hillTop + 110} left={65} color="#F6B5C5" />
+          <TinyFlower top={hillTop + 130} left={85} color="#B89DE8" />
+          <FloatingPetal top={hillTop + 20} left={pathCenterX + 20} delay={index * 300} />
+        </>
+      );
+    } else if (index % 3 === 1) {
+      rowDecoration = (
+        <>
+          <RightHill top={hillTop} width={screenWidth} />
+          <GardenBush top={hillTop + 50} left={screenWidth - 70} />
+          <TinyFlower top={hillTop + 100} left={screenWidth - 90} color="#F29A8F" />
+          <FloatingPetal top={hillTop + 150} left={pathCenterX - 30} delay={index * 300} />
+        </>
+      );
+    } else {
+      rowDecoration = (
+        <>
+          <FloatingPetal top={hillTop + 50} left={pathCenterX + 40} delay={index * 200} />
+        </>
+      );
+    }
+
+    return (
+      <View style={{ height: rowHeight, position: 'relative', width: screenWidth }}>
+        {/* virtualized background hill elements */}
+        {rowDecoration}
+
+        {/* virtualized connecting SVGs */}
+        {introSegment}
+        {pathSegment}
+        {outroSegment}
+
+        {/* virtualized node element */}
+        <View style={[styles.nodeRow, { position: 'relative', height: rowHeight, width: screenWidth }]}>
+          <View style={{ width: flowerLeft }} />
+
+          <View style={{ width: flowerSize, height: flowerSize, alignItems: 'center', justifyContent: 'center' }}>
+            {item.type === 'lesson' && item.status === 'completed' && (
+              <CompletedFlowerNode size={flowerSize} onPress={() => item.lesson && handleLessonClick(item.lesson)}>
+                <Svg viewBox="0 0 100 100" width="100%" height="100%">
+                  <Path d="M50 70 L50 95" stroke="#7CA767" strokeWidth="6" strokeLinecap="round" />
+                  <Path d="M50 80 Q35 75 40 70" stroke="#7CA767" strokeWidth="5" strokeLinecap="round" fill="none" />
+                  <Path d="M50 85 Q65 80 60 75" stroke="#7CA767" strokeWidth="5" strokeLinecap="round" fill="none" />
+                  <Circle cx="50" cy="30" r="16" fill="#F6B5C5" />
+                  <Circle cx="30" cy="45" r="16" fill="#F6B5C5" />
+                  <Circle cx="70" cy="45" r="16" fill="#F6B5C5" />
+                  <Circle cx="38" cy="65" r="16" fill="#F6B5C5" />
+                  <Circle cx="62" cy="65" r="16" fill="#F6B5C5" />
+                  <Circle cx="50" cy="50" r="18" fill="#FFF" />
+                  <Circle cx="50" cy="50" r="14" fill="#8DBB75" />
+                  <Path d="M43 50 L48 55 L58 45" stroke="#FFF" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+                </Svg>
+              </CompletedFlowerNode>
+            )}
+
+            {item.type === 'lesson' && item.status === 'current' && (
+              <CurrentFlowerNode size={flowerSize}>
+                <Pressable onPress={handlePlayContinue} style={{ width: '100%', height: '100%' }}>
+                  <Svg viewBox="0 0 100 100" width="100%" height="100%">
+                    <Path d="M50 70 L50 95" stroke="#7CA767" strokeWidth="8" strokeLinecap="round" />
+                    <Path d="M50 80 Q30 75 35 68" stroke="#7CA767" strokeWidth="6" strokeLinecap="round" fill="none" />
+                    <Path d="M50 85 Q70 80 65 73" stroke="#7CA767" strokeWidth="6" strokeLinecap="round" fill="none" />
+                    <Circle cx="50" cy="26" r="20" fill="#8B78D8" />
+                    <Circle cx="26" cy="44" r="20" fill="#8B78D8" />
+                    <Circle cx="74" cy="44" r="20" fill="#8B78D8" />
+                    <Circle cx="35" cy="68" r="20" fill="#8B78D8" />
+                    <Circle cx="65" cy="68" r="20" fill="#8B78D8" />
+                    <Circle cx="50" cy="50" r="22" fill="#F7C94B" />
+                    <Circle cx="50" cy="50" r="16" fill="#FAD875" />
+                  </Svg>
+                </Pressable>
+              </CurrentFlowerNode>
+            )}
+
+            {item.type === 'lesson' && item.status === 'locked' && (
+              <View style={{ width: flowerSize, height: flowerSize, opacity: 0.7 }}>
+                <Svg viewBox="0 0 100 100" width="100%" height="100%">
+                  <Path d="M50 70 L50 95" stroke="#C7C7CC" strokeWidth="6" strokeLinecap="round" />
+                  <Circle cx="50" cy="30" r="16" fill="#E5E5EA" />
+                  <Circle cx="34" cy="46" r="16" fill="#E5E5EA" />
+                  <Circle cx="66" cy="46" r="16" fill="#E5E5EA" />
+                  <Circle cx="40" cy="66" r="16" fill="#E5E5EA" />
+                  <Circle cx="60" cy="66" r="16" fill="#E5E5EA" />
+                  <Circle cx="50" cy="50" r="18" fill="#D1D1D6" />
+                  <Rect x="42" y="48" width="16" height="12" rx="2" fill="#8E8E93" />
+                  <Path d="M46 48 V43 A4 4 0 0 1 54 43 V48" stroke="#8E8E93" strokeWidth="2.5" fill="none" />
+                </Svg>
+              </View>
+            )}
+
+            {item.type === 'milestone' && (
+              <Pressable
+                onPress={() => item.status !== 'locked' && navigation.navigate('Rewards')}
+                style={{ width: flowerSize, height: flowerSize, opacity: item.status === 'locked' ? 0.6 : 1 }}
+              >
+                <Svg viewBox="0 0 100 100" width="100%" height="100%">
+                  <Path d="M50 70 L50 95" stroke={item.status === 'locked' ? '#C7C7CC' : '#7CA767'} strokeWidth="7" strokeLinecap="round" />
+                  <Circle cx="50" cy="48" r="30" fill={item.status === 'locked' ? '#E5E5EA' : '#FFF3D6'} stroke={item.status === 'locked' ? '#F7C94B' : '#F7C94B'} strokeWidth="2" />
+                  <Path d="M50 28 L55 39 L67 41 L58 49 L61 61 L50 55 L39 61 L42 49 L33 41 L45 39 Z" fill={item.status === 'locked' ? '#8E8E93' : '#F7C94B'} />
+                </Svg>
+              </Pressable>
+            )}
+
+            {item.type === 'reward' && (
+              <Pressable
+                onPress={() => item.status !== 'locked' && navigation.navigate('Rewards')}
+                style={{ width: flowerSize, height: flowerSize, opacity: item.status === 'locked' ? 0.6 : 1 }}
+              >
+                <Svg viewBox="0 0 100 100" width="100%" height="100%">
+                  <Path d="M50 70 L50 95" stroke={item.status === 'locked' ? '#C7C7CC' : '#7CA767'} strokeWidth="6" strokeLinecap="round" />
+                  <Circle cx="50" cy="48" r="28" fill={item.status === 'locked' ? '#E5E5EA' : '#FFF2F5'} stroke={item.status === 'locked' ? '#D1D1D6' : '#F6B5C5'} strokeWidth="2.5" />
+                  <Rect x="36" y="38" width="28" height="24" rx="2" fill={item.status === 'locked' ? '#8E8E93' : '#F6B5C5'} />
+                  <Rect x="34" y="34" width="32" height="6" rx="1" fill={item.status === 'locked' ? '#AEAEB2' : '#F29A8F'} />
+                  <Rect x="47" y="34" width="6" height="28" fill="#FFF" />
+                </Svg>
+              </Pressable>
+            )}
+          </View>
+
+          <View style={[styles.cardWrapper, { marginLeft: cardMarginLeft }]}>
+            {isHero ? (
+              <Pressable
+                onPress={handlePlayContinue}
+                style={[
+                  styles.currentLessonCard,
+                  { borderColor: colors.purple, borderWidth: 2 },
+                ]}
+              >
+                <View style={styles.currentCardContent}>
+                  <Text style={[styles.cardTitle, styles.boldText]} numberOfLines={1}>
+                    {item.title}
+                  </Text>
+                  <Text style={[styles.currentCardSubtext, { fontFamily: typography.families.rounded }]}>
+                    Current Lesson
+                  </Text>
+                </View>
+                
+                <View style={styles.continueButton}>
+                  <Ionicons name="arrow-forward" size={20} color="#FFF" />
+                </View>
+              </Pressable>
+            ) : (
+              <Pressable
+                onPress={() => item.type === 'lesson' && item.lesson && handleLessonClick(item.lesson)}
+                disabled={item.status === 'locked'}
+                style={[
+                  styles.normalLessonCard,
+                  { opacity: item.status === 'locked' ? 0.75 : 1 },
+                ]}
+              >
+                <View style={styles.normalCardContent}>
+                  <Text style={[styles.cardTitle, { color: item.status === 'locked' ? '#8F8A82' : colors.textPrimary }]} numberOfLines={1}>
+                    {item.title}
+                  </Text>
+                  
+                  {item.status === 'completed' && (
+                    <View style={styles.completedBadgeRow}>
+                      <Text style={[styles.completedBadgeText, { fontFamily: typography.families.rounded }]}>
+                        Completed
+                      </Text>
+                      <Text style={styles.starText}>⭐</Text>
+                    </View>
+                  )}
+
+                  {item.status === 'locked' && (
+                    <Text style={[styles.lockedCardSubtext, { fontFamily: typography.families.rounded }]}>
+                      Locked
+                    </Text>
+                  )}
+
+                  {item.type === 'milestone' && (
+                    <Text style={[styles.milestoneSubtext, { fontFamily: typography.families.rounded, color: item.status === 'locked' ? '#8F8A82' : colors.purple }]}>
+                      {item.status === 'completed' ? 'Milestone Complete!' : 'Milestone'}
+                    </Text>
+                  )}
+
+                  {item.type === 'reward' && (
+                    <Text style={[styles.rewardSubtext, { fontFamily: typography.families.rounded, color: item.status === 'locked' ? '#8F8A82' : colors.coral }]}>
+                      {item.status === 'completed' ? 'Reward Claimed!' : 'Special Reward!'}
+                    </Text>
+                  )}
+                </View>
+              </Pressable>
+            )}
+          </View>
+        </View>
+      </View>
+    );
   };
-
-  // Flatten the curriculum tree and compute absolute layout coordinates
-  const layoutData = useMemo(() => {
-    const list: VisualRow[] = [];
-    let currentY = 10;
-
-    categories.forEach((category) => {
-      // 1. Add Category Header Milestone card
-      list.push({
-        type: 'header',
-        id: `header-${category.id}`,
-        category,
-        yPos: currentY,
-      });
-      currentY += 105; // milestone header height + spacing
-
-      // 2. Add Category Module nodes
-      category.modules.forEach((module) => {
-        list.push({
-          type: 'node',
-          id: `node-${module.id}`,
-          module,
-          pathColor: getCategoryColor(category.title),
-          yPos: currentY,
-        });
-        currentY += 135; // node row height + spacing
-      });
-    });
-
-    return { list, totalHeight: currentY + 30 };
-  }, [categories]);
-
-  // Pre-calculate the exact center of each circular node for the SVG curved line
-  const nodeCenters = useMemo(() => {
-    const centers: { x: number; y: number; color: string }[] = [];
-    let nodeIdx = 0;
-
-    layoutData.list.forEach((row) => {
-      if (row.type === 'node') {
-        const xOffset = nodeIdx % 4 === 1 ? 55 : nodeIdx % 4 === 3 ? -55 : 0;
-        centers.push({
-          x: 150 + xOffset,
-          y: row.yPos + 38, // 38px is the vertical radius offset of the 76px circular node
-          color: row.pathColor || colors.purple,
-        });
-        nodeIdx++;
-      }
-    });
-
-    return centers;
-  }, [layoutData]);
 
   return (
     <ScreenContainer>
-      <TopBar title="My Journey" />
-      <ScrollView
-        contentContainerStyle={styles.scrollContainer}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.headerContainer}>
-          <SectionHeader
-            title="Learning Roadmap"
-            subtitle="Embark on a cozy adventure through the stars!"
-          />
+      <View style={styles.root}>
+        {/* 1. CUSTOM TOP BAR */}
+        <View style={styles.topBar}>
+          <View style={styles.logoContainer}>
+            <Text style={styles.logoText}>
+              <Text style={{ color: '#F6B5C5' }}>🌸 </Text>
+              <Text style={{ color: '#855CF8' }}>PetalPath</Text>
+            </Text>
+          </View>
+
+          <View style={styles.headerRow}>
+            <View style={styles.greetingSection}>
+              <Text style={[styles.greetingText, { fontFamily: typography.families.rounded }]}>
+                Hi {childName} 🌸
+              </Text>
+              <Text style={[styles.greetingSubtext, { fontFamily: typography.families.rounded }]}>
+                Let's keep growing today!
+              </Text>
+            </View>
+            
+            <View style={styles.starPill}>
+              <Text style={[styles.starPillText, { fontFamily: typography.families.rounded }]}>
+                {totalStars} ⭐
+              </Text>
+            </View>
+          </View>
         </View>
 
-        {loading && categories.length === 0 ? (
-          <View style={styles.center}>
+        {roadmapLoading && pathNodes.length === 0 ? (
+          <View style={styles.centerLoader}>
             <ActivityIndicator size="large" color={colors.purple} />
           </View>
-        ) : error ? (
-          <View style={styles.center}>
-            <Text style={styles.errorText}>{error}</Text>
-          </View>
         ) : (
-          <View style={styles.content}>
-             {/* Continue Learning Card */}
-             {currentLesson && (
-               <View style={styles.continueCard}>
-                 <ContinueLearningCard
-                   categoryTitle="Active Lesson"
-                   lessonTitle={currentLesson.title}
-                   nextActivityTitle={nextActTitle}
-                   progressPercent={activePercent}
-                   onPressPlay={handlePlayContinue}
-                 />
-               </View>
-             )}
-
-
-             {/* Scrollable roadmap path container */}
-             <View style={[styles.roadmapFlowContainer, { height: layoutData.totalHeight }]}>
-               {/* Dynamic Bezier curved path connector */}
-               <CurvedPathConnector
-                 nodeCenters={nodeCenters}
-                 totalHeight={layoutData.totalHeight}
-               />
-
-               {/* Absolutely positioned milestones and module nodes */}
-               {layoutData.list.map((row, idx) => {
-                 if (row.type === 'header' && row.category) {
-                   // Find sequence index
-                   const catIdx = categories.findIndex(c => c.id === row.category?.id) + 1;
-                   return (
-                     <View
-                       key={row.id}
-                       style={[styles.headerWrapper, { top: row.yPos }]}
-                     >
-                       <CategoryHeader
-                         category={row.category}
-                         index={catIdx}
-                         onPress={() => handleCategoryClick(row.category!)}
-                       />
-                     </View>
-                   );
-                 } else if (row.type === 'node' && row.module && row.pathColor) {
-                   // Find index in visual list
-                   const nodeIdx = layoutData.list.filter((r, i) => r.type === 'node' && i < idx).length;
-                   const xOffset = nodeIdx % 4 === 1 ? 55 : nodeIdx % 4 === 3 ? -55 : 0;
-                   
-                   // Identify the active unlocked milestone or fallback to first node
-                   const hasOngoingModule = layoutData.list.some(r => r.type === 'node' && r.module && r.module.isUnlocked && !r.module.isCompleted);
-                   const isOngoing = hasOngoingModule 
-                     ? (row.module.isUnlocked && !row.module.isCompleted)
-                     : (row.id === layoutData.list.find(r => r.type === 'node')?.id);
-
-                   return (
-                     <View
-                       key={row.id}
-                       ref={isOngoing ? ongoingNodeRef : undefined}
-                       style={[styles.nodeWrapper, { top: row.yPos }]}
-                     >
-                      <ModuleNode
-                        module={row.module}
-                        color={row.pathColor}
-                        xOffset={xOffset}
-                        index={nodeIdx}
-                        onPress={() => handleModuleClick(row.module!)}
-                      />
-                    </View>
-                  );
-                }
-                return null;
-              })}
+          <View style={{ flex: 1 }}>
+            <View style={[styles.centeredContainer, { width: screenWidth, left: leftOffset }]}>
+              <FlatList
+                ref={flatListRef}
+                data={pathNodes}
+                renderItem={renderItem}
+                keyExtractor={(item) => item.id}
+                getItemLayout={getItemLayout}
+                contentContainerStyle={{ paddingBottom: 100 }}
+                showsVerticalScrollIndicator={false}
+                removeClippedSubviews={Platform.OS === 'android'}
+                maxToRenderPerBatch={6}
+                windowSize={5}
+                initialNumToRender={8}
+              />
             </View>
           </View>
         )}
-      </ScrollView>
-      <NavigationGuide
-        screenKey="home"
-        guideKey="welcome"
-        message="Let's continue our adventure!"
-        showHand={isFirstVisit && !!handCoords}
-        handMode="tap"
-        handX={handCoords?.x}
-        handY={handCoords?.y}
-      />
+      </View>
     </ScreenContainer>
   );
 };
 
 const styles = StyleSheet.create({
-  scrollContainer: {
-    paddingBottom: spacing.xxl,
+  root: {
+    flex: 1,
+    backgroundColor: '#FFF9F3',
   },
-  headerContainer: {
-    paddingHorizontal: spacing.lg,
-    marginTop: spacing.md,
-  },
-  content: {
-    paddingHorizontal: spacing.lg,
-    alignItems: 'center',
-  },
-  continueCard: {
-    marginBottom: spacing.xl,
-    marginTop: spacing.sm,
-    width: '100%',
-    maxWidth: 500,
-  },
-  roadmapFlowContainer: {
-    position: 'relative',
-    width: 300,
-    alignSelf: 'center',
-    marginVertical: spacing.md,
-  },
-  headerWrapper: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    width: 300,
+  topBar: {
+    backgroundColor: '#FFF9F3',
+    paddingHorizontal: 20,
+    paddingTop: Platform.OS === 'ios' ? 12 : 12,
+    paddingBottom: 15,
+    borderBottomWidth: 1.5,
+    borderBottomColor: '#F1E4D3',
     zIndex: 10,
   },
-  nodeWrapper: {
-    position: 'absolute',
-    left: 150 - 60, // Centers the 120px wide wrapper around center x = 150
-    width: 120,
+  logoContainer: {
     alignItems: 'center',
-    zIndex: 15,
+    justifyContent: 'center',
+    marginBottom: 10,
   },
-  center: {
+  logoText: {
+    fontSize: 22,
+    fontWeight: '900',
+    letterSpacing: -0.5,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  greetingSection: {
+    flex: 1.2,
+  },
+  greetingText: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: '#3B342F',
+  },
+  greetingSubtext: {
+    fontSize: 13,
+    color: '#7A726C',
+    marginTop: 2,
+  },
+  starPill: {
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: '#F1E4D3',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...shadows.sm,
+  },
+  starPillText: {
+    fontSize: 15,
+    fontWeight: 'bold',
+    color: '#8B78D8',
+  },
+  centerLoader: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: spacing.xl,
-    marginTop: spacing.xl,
   },
-  errorText: {
-    color: '#FF4A4A',
+  centeredContainer: {
+    flex: 1,
+    alignSelf: 'center',
+    position: 'relative',
+  },
+  nodeRow: {
+    position: 'absolute',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingRight: 16,
+  },
+  cardWrapper: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  currentLessonCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 24,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    ...shadows.md,
+  },
+  currentCardContent: {
+    flex: 1,
+    marginRight: 8,
+    gap: 3,
+  },
+  cardTitle: {
     fontSize: 16,
-    textAlign: 'center',
+    fontWeight: '800',
+    color: '#3B342F',
   },
-
+  boldText: {
+    fontSize: 17,
+    fontWeight: '900',
+  },
+  currentCardSubtext: {
+    fontSize: 13,
+    color: '#8B78D8',
+    fontWeight: '700',
+  },
+  continueButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#8B78D8',
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...shadows.sm,
+  },
+  normalLessonCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderWidth: 1.5,
+    borderColor: '#F1E4D3',
+    ...shadows.sm,
+  },
+  normalCardContent: {
+    gap: 2,
+  },
+  completedBadgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  completedBadgeText: {
+    fontSize: 12,
+    color: '#8DBB75',
+    fontWeight: '700',
+  },
+  starText: {
+    fontSize: 12,
+  },
+  lockedCardSubtext: {
+    fontSize: 12,
+    color: '#8F8A82',
+    fontWeight: '600',
+  },
+  milestoneSubtext: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  rewardSubtext: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
 });
+
+export default HomeMobile;

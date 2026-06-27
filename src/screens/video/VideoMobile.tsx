@@ -8,7 +8,7 @@ import { useVideoStore } from '../../store/videoStore';
 import { getNextActivity, navigateToActivity } from '../../utils/navigationFlow';
 import { Ionicons } from '@expo/vector-icons';
 import { ScreenContainer } from '../../components/common/ScreenContainer';
-import { NavigationGuide } from '../../components/tutorial/NavigationGuide';
+import { Card, Button } from '../../components/ui';
 
 const VideoPlayerMobile: React.FC<{
   currentVideo: any;
@@ -32,36 +32,7 @@ const VideoPlayerMobile: React.FC<{
   const [containerDimensions, setContainerDimensions] = useState({ width: 0, height: 0 });
   const [aspectRatio, setAspectRatio] = useState<number>(16 / 9);
 
-  const nextBtnRef = useRef<View>(null);
   const videoViewRef = useRef<View>(null);
-  const [handCoords, setHandCoords] = useState<{ x: number; y: number } | undefined>(undefined);
-
-  const measureTarget = () => {
-    if (videoEnded || isCompleted) {
-      if (nextBtnRef.current) {
-        nextBtnRef.current.measureInWindow((x, y, width, height) => {
-          if (width > 0 && height > 0) {
-            setHandCoords({ x: x + width / 2, y: y + height / 2 });
-          }
-        });
-      }
-    } else if (!isPlaying) {
-      if (videoViewRef.current) {
-        videoViewRef.current.measureInWindow((x, y, width, height) => {
-          if (width > 0 && height > 0) {
-            setHandCoords({ x: x + width / 2, y: y + height / 2 });
-          }
-        });
-      }
-    } else {
-      setHandCoords(undefined);
-    }
-  };
-
-  useEffect(() => {
-    const timer = setTimeout(measureTarget, 200);
-    return () => clearTimeout(timer);
-  }, [videoEnded, isCompleted, isPlaying, currentVideo]);
 
   // Initialize expo-video player
   const player = useVideoPlayer(currentVideo?.videoUrl || '', (p) => {
@@ -79,7 +50,6 @@ const VideoPlayerMobile: React.FC<{
   // Detect actual video dimensions to adjust aspect ratio
   useEffect(() => {
     const getDimensions = () => {
-      // 1. Try availableVideoTracks (standard for native, fallback for web if populated)
       if (player.availableVideoTracks && player.availableVideoTracks.length > 0) {
         const track = player.availableVideoTracks[0];
         if (track?.size?.width > 0 && track?.size?.height > 0) {
@@ -88,7 +58,6 @@ const VideoPlayerMobile: React.FC<{
         }
       }
 
-      // 2. On Web, read from the HTML5 video element mounted by expo-video or via DOM query
       if (Platform.OS === 'web') {
         let videoEl = (player as any)._mountedVideos && [...(player as any)._mountedVideos][0];
         if (!videoEl) {
@@ -99,7 +68,6 @@ const VideoPlayerMobile: React.FC<{
             setAspectRatio(videoEl.videoWidth / videoEl.videoHeight);
             return true;
           }
-          // Attach listeners to detect when metadata is loaded or playback begins
           videoEl.onloadedmetadata = () => {
             if (videoEl && videoEl.videoWidth > 0 && videoEl.videoHeight > 0) {
               setAspectRatio(videoEl.videoWidth / videoEl.videoHeight);
@@ -166,7 +134,7 @@ const VideoPlayerMobile: React.FC<{
     } catch (e) {}
   }, [player.playing]);
 
-  // Pause video when screen loses focus (navigating away) and resume when returning
+  // Pause video when screen loses focus
   const isFocused = useIsFocused();
   useEffect(() => {
     if (!isFocused) {
@@ -174,7 +142,7 @@ const VideoPlayerMobile: React.FC<{
     }
   }, [isFocused, player]);
 
-  // Poll for actual duration as soon as metadata is loaded
+  // Poll for actual duration
   useEffect(() => {
     const interval = setInterval(() => {
       try {
@@ -201,7 +169,6 @@ const VideoPlayerMobile: React.FC<{
         useVideoStore.setState({ duration: player.duration });
       }
 
-      // Dynamic 95% completion detection
       if (duration > 0 && time >= 0.95 * duration && !videoEnded) {
         handleVideoCompletion();
       }
@@ -248,10 +215,10 @@ const VideoPlayerMobile: React.FC<{
       {/* Header Bar */}
       <View style={styles.topBar}>
         <Pressable style={styles.backLink} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
-          <Text style={styles.backLinkText}>Back</Text>
+          <Ionicons name="arrow-back" size={20} color={colors.textPrimary} />
+          <Text style={[styles.backLinkText, { fontFamily: typography.families.rounded }]}>Back</Text>
         </Pressable>
-        <Text style={styles.topBarTitle} numberOfLines={1}>
+        <Text style={[styles.topBarTitle, { fontFamily: typography.families.rounded }]} numberOfLines={1}>
           {currentVideo.title}
         </Text>
         <View style={{ width: 80 }} />
@@ -262,15 +229,15 @@ const VideoPlayerMobile: React.FC<{
         <View ref={videoViewRef} style={[styles.videoCard, playerStyle]}>
           <VideoView
             player={player}
-            style={[StyleSheet.absoluteFill, Platform.OS === 'web' && { objectFit: 'contain' } as any]}
+            style={[StyleSheet.absoluteFill, { backgroundColor: 'transparent' }, Platform.OS === 'web' && { objectFit: 'contain' } as any]}
             contentFit="contain"
             nativeControls={!videoEnded}
           />
           {videoEnded && (
             <View style={[StyleSheet.absoluteFill, styles.endedOverlay]}>
               <Pressable style={styles.replayOverlayBtn} onPress={handleReplay}>
-                <Ionicons name="refresh" size={32} color={colors.white} />
-                <Text style={styles.replayOverlayBtnText}>Replay Video</Text>
+                <Ionicons name="refresh" size={24} color="#FFF8ED" />
+                <Text style={[styles.replayOverlayBtnText, { fontFamily: typography.families.rounded }]}>Replay Video</Text>
               </Pressable>
             </View>
           )}
@@ -280,35 +247,25 @@ const VideoPlayerMobile: React.FC<{
       {/* Bottom Area */}
       <View style={styles.bottomPanel}>
         {(videoEnded || isCompleted) ? (
-          <View style={styles.completedSection}>
-            <Ionicons name="checkmark-circle" size={32} color={colors.green} />
-            <View style={styles.completedTextContainer}>
-              <Text style={styles.completedTitle}>Video Completed!</Text>
-              <Text style={styles.completedSubtitle}>You're ready to proceed to the next activity.</Text>
+          <Card style={styles.completedSection}>
+            <View style={styles.completedRow}>
+              <Ionicons name="checkmark-circle" size={28} color={colors.green} />
+              <View style={styles.completedTextContainer}>
+                <Text style={[styles.completedTitle, { fontFamily: typography.families.rounded }]}>Video Completed! 🎉</Text>
+                <Text style={[styles.completedSubtitle, { fontFamily: typography.families.rounded }]}>You're ready to proceed to the next activity.</Text>
+              </View>
             </View>
-            <Pressable ref={nextBtnRef} style={styles.nextBtnBelow} onPress={handleNextPress}>
-              <Text style={styles.nextBtnBelowText}>Next Activity</Text>
-              <Ionicons name="arrow-forward" size={20} color={colors.white} />
-            </Pressable>
-          </View>
+            <Button label="Next Activity" variant="success" onPress={handleNextPress} style={styles.nextBtn} />
+          </Card>
         ) : (
           <View style={styles.infoSection}>
-            <Text style={styles.videoTitle}>{currentVideo?.title || 'Video Lesson'}</Text>
-            <Text style={styles.videoInstructions}>
+            <Text style={[styles.videoTitle, { fontFamily: typography.families.rounded }]}>{currentVideo?.title || 'Video Lesson'}</Text>
+            <Text style={[styles.videoInstructions, { fontFamily: typography.families.rounded }]}>
               Watch the video demonstration carefully to prepare for the tracing activities.
             </Text>
           </View>
         )}
       </View>
-      <NavigationGuide
-        screenKey="video"
-        guideKey="video"
-        message="Watch carefully!"
-        showHand={!!handCoords}
-        handMode="tap"
-        handX={handCoords?.x}
-        handY={handCoords?.y}
-      />
     </ScreenContainer>
   );
 };
@@ -343,10 +300,10 @@ const VideoComingSoonMobile: React.FC<{
       {/* Header Bar */}
       <View style={styles.topBar}>
         <Pressable style={styles.backLink} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
-          <Text style={styles.backLinkText}>Back</Text>
+          <Ionicons name="arrow-back" size={20} color={colors.textPrimary} />
+          <Text style={[styles.backLinkText, { fontFamily: typography.families.rounded }]}>Back</Text>
         </Pressable>
-        <Text style={styles.topBarTitle} numberOfLines={1}>
+        <Text style={[styles.topBarTitle, { fontFamily: typography.families.rounded }]} numberOfLines={1}>
           {video.title}
         </Text>
         <View style={{ width: 80 }} />
@@ -354,39 +311,27 @@ const VideoComingSoonMobile: React.FC<{
 
       {/* Main Coming Soon Area */}
       <View style={styles.comingSoonPanel}>
-        <View style={styles.comingSoonCard}>
-          <View style={styles.glowBg} />
-          <Ionicons name="film-outline" size={72} color={colors.yellow} style={styles.comingSoonIcon} />
-          <Text style={styles.comingSoonTitle}>Video Coming Soon! 🌟</Text>
-          <Text style={styles.comingSoonSubtitle}>
+        <Card style={styles.comingSoonCard}>
+          <Ionicons name="film-outline" size={56} color={colors.yellow} style={styles.comingSoonIcon} />
+          <Text style={[styles.comingSoonTitle, { fontFamily: typography.families.rounded }]}>Video Coming Soon! 🌟</Text>
+          <Text style={[styles.comingSoonSubtitle, { fontFamily: typography.families.rounded }]}>
             Our team is preparing a magical video demonstration for this lesson.
           </Text>
-          <Text style={styles.comingSoonDetails}>
+          <Text style={[styles.comingSoonDetails, { fontFamily: typography.families.rounded }]}>
             You don't have to wait! Tap the button below to proceed to the learning activities.
           </Text>
-        </View>
+        </Card>
       </View>
 
       {/* Bottom Area */}
       <View style={styles.bottomPanel}>
-        <Pressable
-          style={({ pressed }) => [
-            styles.proceedBtn,
-            pressed && styles.proceedBtnPressed,
-            isCompleting && styles.proceedBtnDisabled,
-          ]}
+        <Button
+          label="Proceed to Next Activity"
+          variant="primary"
           onPress={handleProceed}
           disabled={isCompleting}
-        >
-          {isCompleting ? (
-            <ActivityIndicator size="small" color={colors.white} />
-          ) : (
-            <>
-              <Text style={styles.proceedBtnText}>Proceed to Next Activity</Text>
-              <Ionicons name="arrow-forward" size={20} color={colors.white} />
-            </>
-          )}
-        </Pressable>
+          style={styles.proceedBtn}
+        />
       </View>
     </ScreenContainer>
   );
@@ -456,12 +401,12 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
   },
   statusText: {
-    color: colors.textMuted,
+    color: colors.textSecondary,
     marginTop: spacing.md,
     fontSize: typography.sizes.sm,
   },
   errorText: {
-    color: colors.text,
+    color: colors.textPrimary,
     marginTop: spacing.md,
     fontSize: typography.sizes.md,
     textAlign: 'center',
@@ -471,68 +416,71 @@ const styles = StyleSheet.create({
     backgroundColor: colors.purple,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.xl,
-    borderRadius: radius.lg,
+    borderRadius: radius.button,
   },
   backButtonText: {
-    color: colors.white,
+    color: '#FFF8ED',
     fontWeight: typography.weights.bold,
   },
   topBar: {
     height: 60,
-    borderBottomWidth: 1,
+    borderBottomWidth: 1.5,
     borderBottomColor: colors.border,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: spacing.md,
-    backgroundColor: colors.backgroundSecondary,
+    backgroundColor: colors.surface,
   },
   backLink: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
+    backgroundColor: colors.background,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: radius.chip,
+    borderWidth: 1.5,
+    borderColor: colors.border,
   },
   backLinkText: {
-    color: colors.text,
-    fontWeight: typography.weights.bold,
-    fontSize: typography.sizes.sm,
+    color: colors.textPrimary,
+    fontWeight: 'bold',
+    fontSize: 12,
   },
   topBarTitle: {
-    color: colors.text,
-    fontSize: typography.sizes.md,
+    color: colors.textPrimary,
+    fontSize: typography.sizes.body,
     fontWeight: typography.weights.black,
     flex: 1,
     textAlign: 'center',
   },
   playerPanel: {
     flex: 0.6,
-    backgroundColor: '#000000',
+    backgroundColor: colors.background,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: spacing.md,
+    padding: 0,
   },
   videoCard: {
-    borderRadius: radius.xl,
-    overflow: 'hidden',
-    backgroundColor: '#050505',
-    ...shadows.lg,
+    backgroundColor: 'transparent',
   },
   replayOverlayBtn: {
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.xl,
-    borderRadius: radius.xl,
+    backgroundColor: 'rgba(59,52,47,0.85)',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.button,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
-    ...shadows.lg,
+    gap: spacing.xs,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.2)',
+    ...shadows.md,
   },
   replayOverlayBtnText: {
-    color: colors.white,
+    color: '#FFF8ED',
     fontWeight: typography.weights.bold,
-    fontSize: typography.sizes.md,
+    fontSize: typography.sizes.small,
   },
   bottomPanel: {
     flex: 0.4,
@@ -546,148 +494,89 @@ const styles = StyleSheet.create({
     maxWidth: '100%',
   },
   videoTitle: {
-    fontSize: typography.sizes.md,
+    fontSize: typography.sizes.body,
     fontWeight: typography.weights.black,
-    color: colors.text,
+    color: colors.textPrimary,
     marginBottom: spacing.xs,
     textAlign: 'center',
   },
   videoInstructions: {
-    fontSize: typography.sizes.sm,
-    color: colors.textMuted,
+    fontSize: typography.sizes.small,
+    color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: 18,
   },
   completedSection: {
-    backgroundColor: colors.backgroundSecondary,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
-    padding: spacing.md,
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: spacing.sm,
     width: '100%',
-    ...shadows.md,
+    gap: spacing.md,
   },
-  completedTextContainer: {
-    alignItems: 'center',
-  },
-  completedTitle: {
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.bold,
-    color: colors.text,
-    marginBottom: 2,
-    textAlign: 'center',
-  },
-  completedSubtitle: {
-    fontSize: typography.sizes.xs,
-    color: colors.textMuted,
-    textAlign: 'center',
-  },
-  nextBtnBelow: {
-    backgroundColor: colors.purple,
+  completedRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.lg,
-    borderRadius: radius.md,
-    ...shadows.md,
-    marginTop: spacing.xs,
+    gap: spacing.sm,
   },
-  nextBtnBelowText: {
-    color: colors.white,
+  completedTextContainer: {
+    flex: 1,
+  },
+  completedTitle: {
+    fontSize: typography.sizes.body,
     fontWeight: typography.weights.bold,
-    fontSize: typography.sizes.sm,
+    color: colors.textPrimary,
+  },
+  completedSubtitle: {
+    fontSize: typography.sizes.small,
+    color: colors.textSecondary,
+  },
+  nextBtn: {
+    width: '100%',
+    height: 48,
   },
   endedOverlay: {
-    backgroundColor: 'rgba(0,0,0,0.7)',
+    backgroundColor: 'rgba(59,52,47,0.7)',
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 10,
   },
   comingSoonPanel: {
     flex: 0.6,
-    backgroundColor: '#050515',
+    backgroundColor: colors.background,
     justifyContent: 'center',
     alignItems: 'center',
     padding: spacing.md,
   },
   comingSoonCard: {
-    backgroundColor: colors.backgroundSecondary,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radius.xl,
-    padding: spacing.xl,
     alignItems: 'center',
     width: '90%',
     maxWidth: 400,
-    ...shadows.lg,
-    overflow: 'hidden',
-    position: 'relative',
-  },
-  glowBg: {
-    position: 'absolute',
-    top: -50,
-    right: -50,
-    width: 150,
-    height: 150,
-    borderRadius: 75,
-    backgroundColor: colors.purple,
-    opacity: 0.15,
   },
   comingSoonIcon: {
     marginBottom: spacing.md,
-    textShadowColor: 'rgba(251, 191, 36, 0.4)',
-    textShadowOffset: { width: 0, height: 4 },
-    textShadowRadius: 10,
   },
   comingSoonTitle: {
-    fontSize: typography.sizes.md,
+    fontSize: typography.sizes.body,
     fontWeight: typography.weights.black,
-    color: colors.text,
+    color: colors.textPrimary,
     textAlign: 'center',
     marginBottom: spacing.xs,
   },
   comingSoonSubtitle: {
-    fontSize: typography.sizes.sm,
-    color: colors.textMuted,
+    fontSize: typography.sizes.small,
+    color: colors.textSecondary,
     textAlign: 'center',
     marginBottom: spacing.md,
     lineHeight: 18,
   },
   comingSoonDetails: {
-    fontSize: typography.sizes.xs,
-    color: colors.textMuted,
+    fontSize: typography.sizes.caption,
+    color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: 16,
     opacity: 0.8,
   },
   proceedBtn: {
-    backgroundColor: colors.purple,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.sm,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.xxl,
-    borderRadius: radius.lg,
     width: '100%',
     maxWidth: 300,
-    ...shadows.md,
-  },
-  proceedBtnPressed: {
-    opacity: 0.9,
-    transform: [{ scale: 0.98 }],
-  },
-  proceedBtnDisabled: {
-    opacity: 0.5,
-  },
-  proceedBtnText: {
-    color: colors.white,
-    fontWeight: typography.weights.bold,
-    fontSize: typography.sizes.md,
+    height: 50,
   },
 });
 

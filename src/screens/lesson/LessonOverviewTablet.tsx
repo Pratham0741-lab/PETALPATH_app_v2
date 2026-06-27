@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, View, ScrollView, Text, ActivityIndicator, Pressable, Alert } from 'react-native';
 import { ScreenContainer } from '../../components/common/ScreenContainer';
-import { SectionHeader } from '../../components/common/SectionHeader';
+import { Card, SectionHeader, Button } from '../../components/ui';
 import { ActivityCard } from '../../components/cards/ActivityCard';
 import { AvatarCard } from '../../components/cards/AvatarCard';
 import { spacing, colors, typography, radius, shadows } from '../../theme';
@@ -9,7 +9,6 @@ import { useChildStore } from '../../store/childStore';
 import { enhanceMentor, MENTORS } from '../../constants/mentors';
 import { useNavigation } from '@react-navigation/native';
 import { useRoadmapStore } from '../../store/roadmapStore';
-import { useVideoStore } from '../../store/videoStore';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '../../utils/api';
 import { navigateToActivity } from '../../utils/navigationFlow';
@@ -61,11 +60,11 @@ export const LessonOverviewTablet: React.FC = () => {
           </View>
         ) : error ? (
           <View style={styles.center}>
-            <Text style={styles.errorText}>{error}</Text>
+            <Text style={[styles.errorText, { fontFamily: typography.families.rounded }]}>{error}</Text>
           </View>
         ) : !selectedLesson ? (
           <View style={styles.center}>
-            <Text style={styles.emptyText}>No lesson selected.</Text>
+            <Text style={[styles.emptyText, { fontFamily: typography.families.rounded }]}>No lesson selected.</Text>
           </View>
         ) : (
           <ScrollView
@@ -79,8 +78,8 @@ export const LessonOverviewTablet: React.FC = () => {
                 onPress={() => navigation.navigate('Journey')}
                 style={styles.backButton}
               >
-                <Ionicons name="arrow-back" size={20} color={colors.text} />
-                <Text style={styles.backText}>Back to Journey</Text>
+                <Ionicons name="arrow-back" size={18} color={colors.textPrimary} />
+                <Text style={[styles.backText, { fontFamily: typography.families.rounded }]}>Back to Journey</Text>
               </Pressable>
               
               <SectionHeader
@@ -90,10 +89,10 @@ export const LessonOverviewTablet: React.FC = () => {
             </View>
 
             <View style={styles.content}>
-              <Text style={styles.sectionTitle}>Activities Sequence</Text>
+              <Text style={[styles.sectionTitle, { fontFamily: typography.families.rounded }]}>Activities Sequence</Text>
               
               {activities.length === 0 ? (
-                <Text style={styles.emptyText}>No activities found in this lesson.</Text>
+                <Text style={[styles.emptyText, { fontFamily: typography.families.rounded }]}>No activities found in this lesson.</Text>
               ) : (
                 <View style={styles.list}>
                   {activities.map((act) => (
@@ -114,40 +113,29 @@ export const LessonOverviewTablet: React.FC = () => {
 
         {/* Right column: Action Panel */}
         <View style={styles.sidebar}>
-          <Text style={styles.sidebarTitle}>Lesson Actions</Text>
+          <Text style={[styles.sidebarTitle, { fontFamily: typography.families.rounded }]}>Lesson Status</Text>
 
-          <View style={styles.statusBox}>
-            <Text style={styles.statusLabel}>STATUS</Text>
+          <Card style={styles.statusBox}>
+            <Text style={[styles.statusLabel, { fontFamily: typography.families.rounded }]}>STATUS</Text>
             {isCompleted ? (
               <View style={styles.statusSuccess}>
                 <Ionicons name="checkmark-circle" size={18} color={colors.green} />
-                <Text style={styles.statusSuccessText}>Completed</Text>
+                <Text style={[styles.statusSuccessText, { fontFamily: typography.families.rounded }]}>Completed</Text>
               </View>
             ) : (
               <View style={styles.statusPending}>
                 <Ionicons name="ellipse-outline" size={18} color={colors.yellow} />
-                <Text style={styles.statusPendingText}>In Progress</Text>
+                <Text style={[styles.statusPendingText, { fontFamily: typography.families.rounded }]}>In Progress</Text>
               </View>
             )}
 
-            <Pressable
-              style={({ pressed }) => [
-                styles.completeButton,
-                isCompleted && styles.completeButtonDone,
-                pressed && styles.completeButtonPressed,
-              ]}
+            <Button
+              label={isCompleted ? 'Re-complete' : 'Complete Lesson'}
+              variant={isCompleted ? 'success' : 'primary'}
               onPress={handleCompleteLesson}
-            >
-              <Ionicons
-                name={isCompleted ? 'checkmark-circle-outline' : 'star'}
-                size={18}
-                color={colors.white}
-              />
-              <Text style={styles.completeButtonText}>
-                {isCompleted ? 'Re-complete' : 'Complete Lesson'}
-              </Text>
-            </Pressable>
-          </View>
+              style={styles.completeBtn}
+            />
+          </Card>
 
           <AvatarCard mentor={activeMentor} style={styles.mentorCard} />
         </View>
@@ -160,9 +148,10 @@ const styles = StyleSheet.create({
   layout: {
     flex: 1,
     flexDirection: 'row',
+    backgroundColor: colors.background,
   },
   mainContent: {
-    flex: 1,
+    flex: 1.2,
     borderRightWidth: 1.5,
     borderRightColor: colors.border,
   },
@@ -178,19 +167,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: spacing.md,
     alignSelf: 'flex-start',
+    backgroundColor: colors.surface,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: radius.chip,
+    borderWidth: 1.5,
+    borderColor: colors.border,
   },
   backText: {
-    color: colors.text,
-    fontSize: 14,
+    color: colors.textPrimary,
+    fontSize: 12,
+    fontWeight: 'bold',
     marginLeft: spacing.xs,
   },
   content: {
     paddingHorizontal: spacing.lg,
   },
   sectionTitle: {
-    color: colors.text,
-    fontSize: 16,
-    fontWeight: '700',
+    color: colors.textPrimary,
+    fontSize: typography.sizes.body,
+    fontWeight: 'bold',
     marginBottom: spacing.md,
   },
   list: {
@@ -206,19 +202,15 @@ const styles = StyleSheet.create({
     gap: spacing.lg,
   },
   sidebarTitle: {
-    color: colors.text,
-    fontSize: typography.sizes.lg,
+    color: colors.textPrimary,
+    fontSize: typography.sizes.sectionTitle,
     fontWeight: typography.weights.bold,
   },
   statusBox: {
-    backgroundColor: colors.backgroundSecondary,
-    padding: spacing.lg,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
+    padding: spacing.md,
   },
   statusLabel: {
-    color: colors.textMuted,
+    color: colors.textSecondary,
     fontSize: 10,
     fontWeight: typography.weights.bold,
     letterSpacing: 1.0,
@@ -228,7 +220,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
   },
   statusSuccessText: {
     color: colors.green,
@@ -239,34 +231,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
   },
   statusPendingText: {
     color: colors.yellow,
     fontWeight: typography.weights.bold,
     fontSize: 16,
   },
-  completeButton: {
-    flexDirection: 'row',
-    backgroundColor: colors.purple,
-    paddingVertical: spacing.md,
-    borderRadius: radius.lg,
-    justifyContent: 'center',
-    alignItems: 'center',
-    ...shadows.sm,
-  },
-  completeButtonDone: {
-    backgroundColor: colors.green,
-  },
-  completeButtonPressed: {
-    transform: [{ scale: 0.98 }],
-    opacity: 0.9,
-  },
-  completeButtonText: {
-    color: colors.white,
-    fontWeight: typography.weights.bold,
-    fontSize: typography.sizes.sm,
-    marginLeft: spacing.sm,
+  completeBtn: {
+    width: '100%',
+    height: 48,
   },
   mentorCard: {
     marginTop: spacing.xs,
@@ -279,13 +253,14 @@ const styles = StyleSheet.create({
     marginTop: spacing.xl,
   },
   errorText: {
-    color: '#FF4A4A',
+    color: colors.coral,
     fontSize: 16,
     textAlign: 'center',
   },
   emptyText: {
-    color: colors.textMuted,
+    color: colors.textSecondary,
     fontSize: 14,
     textAlign: 'center',
   },
 });
+export default LessonOverviewTablet;

@@ -9,7 +9,7 @@ interface AppCardProps {
   outlined?: boolean;
 }
 
-export const AppCard: React.FC<AppCardProps> = ({ children, style, onPress, outlined = false }) => {
+export const AppCard: React.FC<AppCardProps> = ({ children, style, onPress, outlined = true }) => {
   if (onPress) {
     return (
       <Pressable
@@ -17,7 +17,7 @@ export const AppCard: React.FC<AppCardProps> = ({ children, style, onPress, outl
         style={({ pressed }) => [
           styles.card,
           outlined && styles.outlined,
-          { transform: [{ scale: pressed ? 0.98 : 1.0 }] },
+          { transform: [{ scale: pressed ? 0.96 : 1.0 }] },
           style,
         ]}
       >
@@ -35,14 +35,15 @@ export const AppCard: React.FC<AppCardProps> = ({ children, style, onPress, outl
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: colors.backgroundSecondary,
-    borderRadius: radius.xl,
+    backgroundColor: colors.surface,
+    borderRadius: radius.card,
     padding: spacing.lg,
     ...shadows.md,
-    borderWidth: 1,
-    borderColor: 'transparent',
+    borderWidth: 1.5,
+    borderColor: colors.border,
   },
   outlined: {
     borderColor: colors.border,
   },
 });
+export default AppCard;

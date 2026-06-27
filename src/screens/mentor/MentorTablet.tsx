@@ -1,17 +1,20 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { StyleSheet, View, ScrollView, Text, ActivityIndicator } from 'react-native';
 import { ScreenContainer } from '../../components/common/ScreenContainer';
-import { SectionHeader } from '../../components/common/SectionHeader';
+import { SectionHeader, Card, Button } from '../../components/ui';
 import { AvatarCard } from '../../components/cards/AvatarCard';
 import { useChildStore } from '../../store/childStore';
 import { useMentorStore } from '../../store/mentorStore';
 import { enhanceMentor } from '../../constants/mentors';
-import { spacing, colors, typography, radius } from '../../theme';
+import { spacing, colors, typography, radius, shadows } from '../../theme';
 
 export const MentorTablet: React.FC = () => {
   const activeChild = useChildStore((state) => state.activeChild);
   const updateChild = useChildStore((state) => state.updateChild);
   const { mentorList, refreshMentors, loading } = useMentorStore();
+
+  const [petalPoints, setPetalPoints] = useState(12);
+  const [wateringMessage, setWateringMessage] = useState<string | null>(null);
 
   useEffect(() => {
     refreshMentors();
@@ -27,6 +30,14 @@ export const MentorTablet: React.FC = () => {
         console.error('Failed to update companion mentor', err);
       }
     }
+  };
+
+  const handleWaterTree = () => {
+    setPetalPoints(prev => prev + 2);
+    setWateringMessage("You watered the tree! 💧🌸 +2 Petal Points!");
+    setTimeout(() => {
+      setWateringMessage(null);
+    }, 3000);
   };
 
   return (
@@ -53,31 +64,59 @@ export const MentorTablet: React.FC = () => {
             </View>
           </ScrollView>
 
-          {/* Right column: Selected Mentor Detail Box */}
-          <View style={styles.sidebar}>
-            <Text style={styles.sidebarTitle}>Selected Buddy</Text>
-            {activeMentor ? (
-              <View style={[styles.detailBox, { borderColor: activeMentor.color }]}>
-                <View style={[styles.circle, { backgroundColor: activeMentor.color }]}>
-                  <Text style={styles.circleLetter}>{activeMentor.name.charAt(0)}</Text>
+          {/* Right column: Magical Garden Scene & Selected Buddy Details */}
+          <ScrollView style={styles.sidebar} contentContainerStyle={styles.sidebarContent} showsVerticalScrollIndicator={false}>
+            
+            {/* MAGICAL GARDEN INTERACTIVE VIEW */}
+            <Card style={styles.gardenVisualCard}>
+              <View style={styles.gardenVisualHeader}>
+                <Text style={[styles.petalBadgeText, { fontFamily: typography.families.rounded }]}>🌸 {petalPoints} Petals</Text>
+                <Text style={styles.gardenWeather}>☀️ Sunny</Text>
+              </View>
+
+              <View style={styles.treeScene}>
+                <Text style={styles.birdHouse}>🐦</Text>
+                <Text style={styles.butterfly}>🦋</Text>
+                <Text style={styles.treeEmoji}>🌳</Text>
+                <View style={styles.mascotStand}>
+                  <Text style={styles.mascotEmoji}>{activeMentor ? '🐢' : '🦊'}</Text>
                 </View>
-                <Text style={styles.name}>{activeMentor.name}</Text>
-                <Text style={styles.species}>{activeMentor.species}</Text>
+              </View>
+
+              <Button
+                label="Water Tree 💧"
+                variant="success"
+                onPress={handleWaterTree}
+                style={styles.waterBtn}
+              />
+              {wateringMessage && (
+                <Text style={[styles.wateringSuccess, { fontFamily: typography.families.rounded }]}>
+                  {wateringMessage}
+                </Text>
+              )}
+            </Card>
+
+            {/* Selected Buddy Detail Box */}
+            <Text style={[styles.sidebarTitle, { fontFamily: typography.families.rounded }]}>Selected Buddy</Text>
+            {activeMentor ? (
+              <Card style={[styles.detailBox, { borderColor: activeMentor.color }]}>
+                <Text style={[styles.name, { color: activeMentor.color, fontFamily: typography.families.rounded }]}>{activeMentor.name}</Text>
+                <Text style={[styles.species, { fontFamily: typography.families.rounded }]}>{activeMentor.species}</Text>
                 
                 <View style={styles.divider} />
                 
-                <Text style={styles.sectionHeader}>Fun Fact</Text>
-                <Text style={styles.sectionText}>{activeMentor.funFact}</Text>
+                <Text style={[styles.sectionTitle, { color: activeMentor.color, fontFamily: typography.families.rounded }]}>Fun Fact</Text>
+                <Text style={[styles.sectionText, { fontFamily: typography.families.rounded }]}>{activeMentor.funFact}</Text>
                 
-                <Text style={styles.sectionHeader}>Role</Text>
-                <Text style={styles.sectionText}>{activeMentor.description}</Text>
-              </View>
+                <Text style={[styles.sectionTitle, { color: activeMentor.color, fontFamily: typography.families.rounded }]}>Description</Text>
+                <Text style={[styles.sectionText, { fontFamily: typography.families.rounded }]}>{activeMentor.description}</Text>
+              </Card>
             ) : (
-              <View style={styles.emptyDetailBox}>
-                <Text style={styles.emptyText}>No companion selected. Tap a buddy to choose one!</Text>
-              </View>
+              <Card style={styles.emptyDetailBox}>
+                <Text style={[styles.emptyText, { fontFamily: typography.families.rounded }]}>No buddy selected yet!</Text>
+              </Card>
             )}
-          </View>
+          </ScrollView>
         </View>
       )}
     </ScreenContainer>
@@ -88,9 +127,10 @@ const styles = StyleSheet.create({
   layout: {
     flex: 1,
     flexDirection: 'row',
+    backgroundColor: colors.background,
   },
   mainContent: {
-    flex: 1,
+    flex: 1.2,
     borderRightWidth: 1.5,
     borderRightColor: colors.border,
   },
@@ -107,47 +147,93 @@ const styles = StyleSheet.create({
     width: '48%',
   },
   sidebar: {
-    width: 280,
+    flex: 0.8,
     backgroundColor: colors.background,
+  },
+  sidebarContent: {
     padding: spacing.lg,
+    paddingBottom: spacing.xxl,
+    gap: spacing.md,
+  },
+  gardenVisualCard: {
+    backgroundColor: '#E8F5E9',
+    borderColor: '#C8E6C9',
+    borderWidth: 2,
+    alignItems: 'center',
+  },
+  gardenVisualHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  petalBadgeText: {
+    fontSize: typography.sizes.small,
+    fontWeight: 'bold',
+    color: colors.textPrimary,
+  },
+  gardenWeather: {
+    fontSize: typography.sizes.small,
+    color: colors.textSecondary,
+  },
+  treeScene: {
+    width: '100%',
+    height: 140,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+    marginVertical: spacing.sm,
+  },
+  treeEmoji: {
+    fontSize: 90,
+  },
+  birdHouse: {
+    fontSize: 22,
+    position: 'absolute',
+    left: '30%',
+    top: '20%',
+  },
+  butterfly: {
+    fontSize: 18,
+    position: 'absolute',
+    right: '30%',
+    top: '10%',
+  },
+  mascotStand: {
+    position: 'absolute',
+    bottom: 0,
+    left: '42%',
+  },
+  mascotEmoji: {
+    fontSize: 36,
+  },
+  waterBtn: {
+    width: '100%',
+    height: 44,
+  },
+  wateringSuccess: {
+    fontSize: 11,
+    color: colors.textPrimary,
+    textAlign: 'center',
+    marginTop: 4,
   },
   sidebarTitle: {
-    color: colors.text,
-    fontSize: typography.sizes.lg,
+    color: colors.textPrimary,
+    fontSize: typography.sizes.sectionTitle,
     fontWeight: typography.weights.bold,
-    marginBottom: spacing.md,
+    marginTop: spacing.md,
   },
   detailBox: {
-    backgroundColor: colors.backgroundSecondary,
-    padding: spacing.lg,
-    borderRadius: radius.lg,
-    borderWidth: 1.5,
-    alignItems: 'center',
-  },
-  circle: {
-    width: 80,
-    height: 80,
-    borderRadius: radius.full,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: spacing.md,
-  },
-  circleLetter: {
-    color: colors.background,
-    fontSize: typography.sizes.xxl,
-    fontWeight: typography.weights.black,
+    borderWidth: 2,
   },
   name: {
-    color: colors.text,
-    fontSize: typography.sizes.lg,
+    fontSize: typography.sizes.cardTitle,
     fontWeight: typography.weights.bold,
-    textAlign: 'center',
   },
   species: {
-    color: colors.textMuted,
-    fontSize: typography.sizes.xs,
+    color: colors.textSecondary,
+    fontSize: typography.sizes.caption,
     textTransform: 'uppercase',
-    marginTop: spacing.xs,
+    marginTop: 2,
   },
   divider: {
     height: 1.5,
@@ -155,19 +241,16 @@ const styles = StyleSheet.create({
     width: '100%',
     marginVertical: spacing.md,
   },
-  sectionHeader: {
-    color: colors.purple,
-    fontSize: typography.sizes.xs,
+  sectionTitle: {
+    fontSize: typography.sizes.caption,
     fontWeight: typography.weights.bold,
     textTransform: 'uppercase',
-    alignSelf: 'flex-start',
-    marginBottom: spacing.xs,
+    marginBottom: 4,
   },
   sectionText: {
-    color: colors.text,
-    fontSize: typography.sizes.sm,
-    lineHeight: typography.lineHeights.sm,
-    alignSelf: 'flex-start',
+    color: colors.textPrimary,
+    fontSize: typography.sizes.small,
+    lineHeight: 18,
     marginBottom: spacing.md,
   },
   loaderContainer: {
@@ -176,18 +259,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   emptyDetailBox: {
-    backgroundColor: colors.backgroundSecondary,
     padding: spacing.lg,
-    borderRadius: radius.lg,
-    borderWidth: 1.5,
-    borderColor: colors.border,
     alignItems: 'center',
-    justifyContent: 'center',
-    height: 200,
   },
   emptyText: {
-    color: colors.textMuted,
-    fontSize: typography.sizes.sm,
-    textAlign: 'center',
+    color: colors.textSecondary,
+    fontSize: 14,
   },
 });
+export default MentorTablet;

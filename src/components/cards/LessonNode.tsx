@@ -27,7 +27,7 @@ export const LessonNode: React.FC<LessonNodeProps> = ({
       case 'MEDIUM':
         return colors.yellow;
       case 'HARD':
-        return '#EF4444'; // Red
+        return colors.coral;
       default:
         return colors.green;
     }
@@ -71,7 +71,7 @@ export const LessonNode: React.FC<LessonNodeProps> = ({
                 ? colors.textMuted
                 : isCompleted
                 ? colors.green
-                : colors.white
+                : '#FFF8ED'
             }
           />
         </View>
@@ -83,12 +83,13 @@ export const LessonNode: React.FC<LessonNodeProps> = ({
               styles.title,
               isLocked && styles.textLocked,
               isCompleted && styles.textCompleted,
+              { fontFamily: typography.families.rounded }
             ]}
           >
             {lesson.title}
           </Text>
           {lesson.description && !isLocked ? (
-            <Text style={styles.description} numberOfLines={2}>
+            <Text style={[styles.description, { fontFamily: typography.families.rounded }]} numberOfLines={2}>
               {lesson.description}
             </Text>
           ) : null}
@@ -101,12 +102,12 @@ export const LessonNode: React.FC<LessonNodeProps> = ({
                 { backgroundColor: difficultyColor + '20', borderColor: difficultyColor },
               ]}
             >
-              <Text style={[styles.badgeText, { color: difficultyColor }]}>
+              <Text style={[styles.badgeText, { color: difficultyColor, fontFamily: typography.families.rounded }]}>
                 {lesson.difficulty}
               </Text>
             </View>
           ) : (
-            <Text style={styles.lockedText}>Locked</Text>
+            <Text style={[styles.lockedText, { fontFamily: typography.families.rounded }]}>Locked</Text>
           )}
         </View>
 
@@ -126,17 +127,18 @@ const styles = StyleSheet.create({
   card: {
     padding: spacing.md,
     marginBottom: spacing.md,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: colors.border,
+    backgroundColor: colors.surface,
   },
   cardLocked: {
     opacity: 0.5,
-    backgroundColor: '#12163A50',
-    borderColor: '#242B5C50',
+    backgroundColor: '#F8EEDC80',
+    borderColor: colors.border,
   },
   cardCompleted: {
-    borderColor: colors.green + '50',
-    backgroundColor: colors.backgroundSecondary,
+    borderColor: colors.green + '80',
+    backgroundColor: '#EBF6E0', // soft light green background
   },
   container: {
     flexDirection: 'row',
@@ -151,10 +153,10 @@ const styles = StyleSheet.create({
     marginRight: spacing.md,
   },
   iconLocked: {
-    backgroundColor: '#242B5C',
+    backgroundColor: colors.border,
   },
   iconCompleted: {
-    backgroundColor: colors.green + '15',
+    backgroundColor: colors.green + '20',
   },
   iconUnlocked: {
     backgroundColor: colors.blue,
@@ -165,9 +167,9 @@ const styles = StyleSheet.create({
   },
   title: {
     color: colors.text,
-    fontSize: typography.sizes.md,
+    fontSize: typography.sizes.body,
     fontWeight: typography.weights.bold,
-    marginBottom: spacing.xs,
+    marginBottom: 2,
   },
   textLocked: {
     color: colors.textMuted,
@@ -177,12 +179,12 @@ const styles = StyleSheet.create({
   },
   description: {
     color: colors.textMuted,
-    fontSize: typography.sizes.sm,
+    fontSize: typography.sizes.small,
     marginBottom: spacing.xs,
   },
   lockedText: {
     color: colors.textMuted,
-    fontSize: typography.sizes.xs,
+    fontSize: typography.sizes.caption,
     fontStyle: 'italic',
   },
   badge: {
@@ -198,3 +200,4 @@ const styles = StyleSheet.create({
     fontWeight: typography.weights.bold,
   },
 });
+export default LessonNode;

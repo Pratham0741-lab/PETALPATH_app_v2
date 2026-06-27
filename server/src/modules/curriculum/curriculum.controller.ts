@@ -4,9 +4,10 @@ import { prisma } from '../../config/database.js';
 import { curriculumEngineService } from './curriculum-engine.service.js';
 import { subjectRepository } from './repositories/subject.repository.js';
 import { childSkillCurriculumRepository } from './repositories/child-skill-curriculum.repository.js';
+import { skillRepository } from './repositories/skill.repository.js';
 import { skillHealthRepository } from '../mastery/repositories/skill-health.repository.js';
 import { ValidationError, UnauthorizedError, NotFoundError } from '../../utils/errors.js';
-import { CurriculumState } from '@prisma/client';
+import { CurriculumState } from '../../shared/enums.js';
 
 export class CurriculumController {
   async getCurriculum(req: AuthenticatedRequest, res: Response, next: NextFunction) {
@@ -23,10 +24,7 @@ export class CurriculumController {
       const curriculumTree = [];
 
       for (const subj of subjects) {
-        const skills = await prisma.skill.findMany({
-          where: { subjectId: subj.id },
-          orderBy: { difficulty: 'asc' },
-        });
+        const skills = await skillRepository.findBySubject(subj.id);
 
         const skillsWithState = [];
         for (const skill of skills) {
@@ -106,15 +104,12 @@ export class CurriculumController {
         throw new ValidationError('subjectId parameter is required');
       }
 
-      const subject = await prisma.subject.findUnique({ where: { id: subjectId } });
+      const subject = await subjectRepository.findById(subjectId);
       if (!subject) {
         throw new NotFoundError('Subject not found');
       }
 
-      const skills = await prisma.skill.findMany({
-        where: { subjectId },
-        orderBy: { difficulty: 'asc' },
-      });
+      const skills = await skillRepository.findBySubject(subjectId);
 
       const skillsWithState = [];
       for (const skill of skills) {

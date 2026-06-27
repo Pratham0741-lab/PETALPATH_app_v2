@@ -1,9 +1,9 @@
-import { prisma } from '../../config/database.js';
-import { ActivityType, AdaptationEventType } from '@prisma/client';
+import { ActivityType, AdaptationEventType } from '../../shared/enums.js';
 import { learningProfileRepository } from './repositories/learning-profile.repository.js';
 import { modalityPerformanceRepository } from './repositories/modality-performance.repository.js';
 import { adaptationEventRepository } from './repositories/adaptation-event.repository.js';
 import { learningEventRepository } from './repositories/learning-event.repository.js';
+import { regressionLogRepository } from './repositories/regression-log.repository.js';
 import { skillHistoryRepository } from '../mastery/repositories/skill-history.repository.js';
 import { logger } from '../../utils/logger.js';
 
@@ -51,15 +51,11 @@ export class AdaptiveLearningEngineService {
   async detectWeaknesses(childId: string, skillId: string, masteryScore: number) {
     if (masteryScore < 50.0) {
       // Avoid duplicate trigger if logged in last hour
-      const recent = await prisma.adaptationEvent.findFirst({
-        where: {
-          childId,
-          eventType: AdaptationEventType.WEAKNESS_DETECTED,
-          createdAt: {
-            gte: new Date(Date.now() - 60 * 60 * 1000),
-          },
-        },
-      });
+      const recent = await adaptationEventRepository.findRecent(
+        childId,
+        AdaptationEventType.WEAKNESS_DETECTED,
+        new Date(Date.now() - 60 * 60 * 1000)
+      );
 
       if (!recent) {
         await adaptationEventRepository.create({
@@ -77,15 +73,11 @@ export class AdaptiveLearningEngineService {
    */
   async detectStrengths(childId: string, skillId: string, masteryScore: number) {
     if (masteryScore > 85.0) {
-      const recent = await prisma.adaptationEvent.findFirst({
-        where: {
-          childId,
-          eventType: AdaptationEventType.STRENGTH_DETECTED,
-          createdAt: {
-            gte: new Date(Date.now() - 60 * 60 * 1000),
-          },
-        },
-      });
+      const recent = await adaptationEventRepository.findRecent(
+        childId,
+        AdaptationEventType.STRENGTH_DETECTED,
+        new Date(Date.now() - 60 * 60 * 1000)
+      );
 
       if (!recent) {
         await adaptationEventRepository.create({
@@ -109,16 +101,14 @@ export class AdaptiveLearningEngineService {
   ) {
     const difference = previousScore - currentScore;
     if (difference > 20.0) {
-      await prisma.regressionLog.create({
-        data: {
-          childId,
-          skillId,
-          previousScore,
-          currentScore,
-          difference,
-          previousState: 'STRONG', // Temporary mock state required by existing Phase 7 relations
-          currentState: 'WEAK',
-        },
+      await regressionLogRepository.create({
+        childId,
+        skillId,
+        previousScore,
+        currentScore,
+        difference,
+        previousState: 'STRONG', // Temporary mock state required by existing Phase 7 relations
+        currentState: 'WEAK',
       });
 
       await adaptationEventRepository.create({

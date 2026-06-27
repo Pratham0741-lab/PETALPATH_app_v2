@@ -1,14 +1,14 @@
 import { Response, NextFunction } from 'express';
 import { AuthenticatedRequest } from '../../middleware/auth.middleware.js';
-import { prisma } from '../../config/database.js';
 import { adaptiveLearningEngineService } from './adaptive-learning-engine.service.js';
 import { learningProfileRepository } from './repositories/learning-profile.repository.js';
 import { modalityPerformanceRepository } from './repositories/modality-performance.repository.js';
 import { adaptationEventRepository } from './repositories/adaptation-event.repository.js';
 import { skillHealthRepository } from '../mastery/repositories/skill-health.repository.js';
 import { masteryEngineService } from '../mastery/mastery.service.js';
+import { reinforcementEngineService } from '../reinforcement/reinforcement-engine.service.js';
 import { ValidationError, UnauthorizedError } from '../../utils/errors.js';
-import { ActivityType } from '@prisma/client';
+import { ActivityType } from '../../shared/enums.js';
 import { z } from 'zod';
 
 const processPerformanceSchema = z.object({
@@ -61,11 +61,15 @@ export class AdaptiveController {
         previousHealth
       );
 
+      // 4. Sync Reinforcement Engine queue (centralized ownership)
+      const reinforcement = await reinforcementEngineService.detectWeakSkills(childId);
+
       return res.status(200).json({
         success: true,
         data: {
           health: updatedHealth,
           adaptation,
+          reinforcement,
         },
       });
     } catch (error) {

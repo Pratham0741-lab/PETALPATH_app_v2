@@ -1,7 +1,7 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { StyleSheet, View, ScrollView, Text, ActivityIndicator } from 'react-native';
 import { ScreenContainer } from '../../components/common/ScreenContainer';
-import { SectionHeader } from '../../components/common/SectionHeader';
+import { SectionHeader, Card, Button } from '../../components/ui';
 import { AvatarCard } from '../../components/cards/AvatarCard';
 import { useChildStore } from '../../store/childStore';
 import { useMentorStore } from '../../store/mentorStore';
@@ -12,6 +12,9 @@ export const MentorDesktop: React.FC = () => {
   const activeChild = useChildStore((state) => state.activeChild);
   const updateChild = useChildStore((state) => state.updateChild);
   const { mentorList, refreshMentors, loading } = useMentorStore();
+
+  const [petalPoints, setPetalPoints] = useState(12);
+  const [wateringMessage, setWateringMessage] = useState<string | null>(null);
 
   useEffect(() => {
     refreshMentors();
@@ -29,6 +32,14 @@ export const MentorDesktop: React.FC = () => {
     }
   };
 
+  const handleWaterTree = () => {
+    setPetalPoints(prev => prev + 2);
+    setWateringMessage("You watered the tree! 💧🌸 +2 Petal Points!");
+    setTimeout(() => {
+      setWateringMessage(null);
+    }, 3000);
+  };
+
   return (
     <ScreenContainer>
       {loading && mentorList.length === 0 ? (
@@ -37,7 +48,7 @@ export const MentorDesktop: React.FC = () => {
         </View>
       ) : (
         <View style={styles.layout}>
-          {/* Left Side: Mentors Selection List */}
+          {/* Left column: Mentors selection list */}
           <ScrollView style={styles.mainContent} contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
             <SectionHeader title="Your Adventure Companions" subtitle="Select your buddy. Each buddy has their own custom lessons and fun facts!" />
             <View style={styles.grid}>
@@ -53,38 +64,59 @@ export const MentorDesktop: React.FC = () => {
             </View>
           </ScrollView>
 
-          {/* Right Side: Buddy Dashboard */}
-          <View style={styles.sidebar}>
-            <Text style={styles.sidebarTitle}>Companion Details</Text>
-            {activeMentor ? (
-              <View style={[styles.detailBox, { borderColor: activeMentor.color }]}>
-                <View style={[styles.circle, { backgroundColor: activeMentor.color }]}>
-                  <Text style={styles.circleLetter}>{activeMentor.name.charAt(0)}</Text>
-                </View>
-                <Text style={styles.name}>{activeMentor.name}</Text>
-                <Text style={styles.species}>{activeMentor.species}</Text>
-                
-                <View style={styles.divider} />
-                
-                <Text style={styles.sectionHeader}>Fun Fact</Text>
-                <Text style={styles.sectionText}>{activeMentor.funFact}</Text>
-                
-                <Text style={styles.sectionHeader}>Role</Text>
-                <Text style={styles.sectionText}>{activeMentor.description}</Text>
+          {/* Right column: Magical Garden Scene & Selected Buddy Details */}
+          <ScrollView style={styles.sidebar} contentContainerStyle={styles.sidebarContent} showsVerticalScrollIndicator={false}>
+            
+            {/* MAGICAL GARDEN INTERACTIVE VIEW */}
+            <Card style={styles.gardenVisualCard}>
+              <View style={styles.gardenVisualHeader}>
+                <Text style={[styles.petalBadgeText, { fontFamily: typography.families.rounded }]}>🌸 {petalPoints} Petals</Text>
+                <Text style={styles.gardenWeather}>☀️ Sunny Day</Text>
+              </View>
 
+              <View style={styles.treeScene}>
+                <Text style={styles.birdHouse}>🐦</Text>
+                <Text style={styles.butterfly}>🦋</Text>
+                <Text style={styles.treeEmoji}>🌳</Text>
+                <View style={styles.mascotStand}>
+                  <Text style={styles.mascotEmoji}>{activeMentor ? '🐢' : '🦊'}</Text>
+                </View>
+              </View>
+
+              <Button
+                label="Water Tree 💧"
+                variant="success"
+                onPress={handleWaterTree}
+                style={styles.waterBtn}
+              />
+              {wateringMessage && (
+                <Text style={[styles.wateringSuccess, { fontFamily: typography.families.rounded }]}>
+                  {wateringMessage}
+                </Text>
+              )}
+            </Card>
+
+            {/* Selected Buddy Detail Box */}
+            <Text style={[styles.sidebarTitle, { fontFamily: typography.families.rounded }]}>Companion Details</Text>
+            {activeMentor ? (
+              <Card style={[styles.detailBox, { borderColor: activeMentor.color }]}>
+                <Text style={[styles.name, { color: activeMentor.color, fontFamily: typography.families.rounded }]}>{activeMentor.name}</Text>
+                <Text style={[styles.species, { fontFamily: typography.families.rounded }]}>{activeMentor.species}</Text>
+                
                 <View style={styles.divider} />
                 
-                <Text style={styles.sectionHeader}>Assigned Tasks</Text>
-                <Text style={styles.taskText}>✓ Guides roadmap path</Text>
-                <Text style={styles.taskText}>✓ Provides encouraging reminders</Text>
-                <Text style={styles.taskText}>✓ Gives feedback on pronunciation</Text>
-              </View>
+                <Text style={[styles.sectionTitle, { color: activeMentor.color, fontFamily: typography.families.rounded }]}>Fun Fact</Text>
+                <Text style={[styles.sectionText, { fontFamily: typography.families.rounded }]}>{activeMentor.funFact}</Text>
+                
+                <Text style={[styles.sectionTitle, { color: activeMentor.color, fontFamily: typography.families.rounded }]}>Role Description</Text>
+                <Text style={[styles.sectionText, { fontFamily: typography.families.rounded }]}>{activeMentor.description}</Text>
+              </Card>
             ) : (
-              <View style={styles.emptyDetailBox}>
-                <Text style={styles.emptyText}>No companion selected. Tap a buddy to choose one!</Text>
-              </View>
+              <Card style={styles.emptyDetailBox}>
+                <Text style={[styles.emptyText, { fontFamily: typography.families.rounded }]}>No buddy selected yet!</Text>
+              </Card>
             )}
-          </View>
+          </ScrollView>
         </View>
       )}
     </ScreenContainer>
@@ -95,9 +127,10 @@ const styles = StyleSheet.create({
   layout: {
     flex: 1,
     flexDirection: 'row',
+    backgroundColor: colors.background,
   },
   mainContent: {
-    flex: 1,
+    flex: 1.2,
     borderRightWidth: 1.5,
     borderRightColor: colors.border,
   },
@@ -116,46 +149,92 @@ const styles = StyleSheet.create({
   sidebar: {
     width: 320,
     backgroundColor: colors.background,
-    padding: spacing.lg,
   },
-  sidebarTitle: {
-    color: colors.text,
-    fontSize: typography.sizes.lg,
-    fontWeight: typography.weights.bold,
-    marginBottom: spacing.md,
-  },
-  detailBox: {
-    backgroundColor: colors.backgroundSecondary,
+  sidebarContent: {
     padding: spacing.lg,
-    borderRadius: radius.lg,
-    borderWidth: 1.5,
+    paddingBottom: spacing.xxl,
+    gap: spacing.md,
+  },
+  gardenVisualCard: {
+    backgroundColor: '#E8F5E9',
+    borderColor: '#C8E6C9',
+    borderWidth: 2,
     alignItems: 'center',
     ...shadows.sm,
   },
-  circle: {
-    width: 90,
-    height: 90,
-    borderRadius: radius.full,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: spacing.md,
+  gardenVisualHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
   },
-  circleLetter: {
-    color: colors.background,
-    fontSize: typography.sizes.xxxl,
-    fontWeight: typography.weights.black,
+  petalBadgeText: {
+    fontSize: typography.sizes.small,
+    fontWeight: 'bold',
+    color: colors.textPrimary,
+  },
+  gardenWeather: {
+    fontSize: typography.sizes.small,
+    color: colors.textSecondary,
+  },
+  treeScene: {
+    width: '100%',
+    height: 160,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+    marginVertical: spacing.sm,
+  },
+  treeEmoji: {
+    fontSize: 100,
+  },
+  birdHouse: {
+    fontSize: 24,
+    position: 'absolute',
+    left: '30%',
+    top: '20%',
+  },
+  butterfly: {
+    fontSize: 20,
+    position: 'absolute',
+    right: '30%',
+    top: '10%',
+  },
+  mascotStand: {
+    position: 'absolute',
+    bottom: 0,
+    left: '42%',
+  },
+  mascotEmoji: {
+    fontSize: 40,
+  },
+  waterBtn: {
+    width: '100%',
+    height: 44,
+  },
+  wateringSuccess: {
+    fontSize: 11,
+    color: colors.textPrimary,
+    textAlign: 'center',
+    marginTop: 4,
+  },
+  sidebarTitle: {
+    color: colors.textPrimary,
+    fontSize: typography.sizes.sectionTitle,
+    fontWeight: typography.weights.bold,
+    marginTop: spacing.md,
+  },
+  detailBox: {
+    borderWidth: 2,
   },
   name: {
-    color: colors.text,
-    fontSize: typography.sizes.xl,
+    fontSize: typography.sizes.cardTitle,
     fontWeight: typography.weights.bold,
-    textAlign: 'center',
   },
   species: {
-    color: colors.textMuted,
-    fontSize: typography.sizes.xs,
+    color: colors.textSecondary,
+    fontSize: typography.sizes.caption,
     textTransform: 'uppercase',
-    marginTop: spacing.xs,
+    marginTop: 2,
   },
   divider: {
     height: 1.5,
@@ -163,26 +242,17 @@ const styles = StyleSheet.create({
     width: '100%',
     marginVertical: spacing.md,
   },
-  sectionHeader: {
-    color: colors.purple,
-    fontSize: typography.sizes.xs,
+  sectionTitle: {
+    fontSize: typography.sizes.caption,
     fontWeight: typography.weights.bold,
     textTransform: 'uppercase',
-    alignSelf: 'flex-start',
-    marginBottom: spacing.xs,
+    marginBottom: 4,
   },
   sectionText: {
-    color: colors.text,
-    fontSize: typography.sizes.sm,
-    lineHeight: typography.lineHeights.sm,
-    alignSelf: 'flex-start',
+    color: colors.textPrimary,
+    fontSize: typography.sizes.small,
+    lineHeight: 18,
     marginBottom: spacing.md,
-  },
-  taskText: {
-    color: colors.textMuted,
-    fontSize: typography.sizes.sm,
-    alignSelf: 'flex-start',
-    marginBottom: spacing.xs,
   },
   loaderContainer: {
     flex: 1,
@@ -190,19 +260,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   emptyDetailBox: {
-    backgroundColor: colors.backgroundSecondary,
     padding: spacing.lg,
-    borderRadius: radius.lg,
-    borderWidth: 1.5,
-    borderColor: colors.border,
     alignItems: 'center',
-    justifyContent: 'center',
-    height: 200,
-    ...shadows.sm,
   },
   emptyText: {
-    color: colors.textMuted,
-    fontSize: typography.sizes.sm,
-    textAlign: 'center',
+    color: colors.textSecondary,
+    fontSize: 14,
   },
 });
+export default MentorDesktop;

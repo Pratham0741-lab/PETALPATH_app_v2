@@ -1,8 +1,8 @@
-import { MasteryState } from '@prisma/client';
+import { MasteryState } from '../../shared/enums.js';
 import { skillHealthRepository } from './repositories/skill-health.repository.js';
 import { skillHistoryRepository } from './repositories/skill-history.repository.js';
 import { regressionLogRepository } from './repositories/regression-log.repository.js';
-import { reinforcementQueueRepository } from './repositories/reinforcement-queue.repository.js';
+import { reviewScheduleRepository } from './repositories/review-schedule.repository.js';
 import { PerformanceRecordDto } from './mastery.validator.js';
 import { logger } from '../../utils/logger.js';
 
@@ -210,6 +210,9 @@ export class MasteryEngineService {
       frequencyDays,
     });
 
+    // 6.b. Update derived ReviewSchedule
+    await reviewScheduleRepository.upsert(childId, skillId, nextReviewDate, frequencyDays);
+
     // 7. Save historical snapshot
     await skillHistoryRepository.create({
       childId,
@@ -223,20 +226,9 @@ export class MasteryEngineService {
       masteryState,
     });
 
-    // 8. Manage Reinforcement Queue
-    if (masteryScore < 50.0) {
-      // Priority calculated so lower mastery scores get higher priority
-      const priority = Math.round(100 - masteryScore);
-      await reinforcementQueueRepository.upsert(
-        childId,
-        skillId,
-        priority,
-        `Mastery score decayed/fell to ${masteryScore.toFixed(1)}`
-      );
-    } else {
-      // Dequeue if child has reinforced skill
-      await reinforcementQueueRepository.removeFromQueue(childId, skillId);
-    }
+    // 8. Reinforcement queue management is handled downstream
+    //    by ReinforcementEngineService.detectWeakSkills() called
+    //    from the Adaptive Controller's processPerformance flow.
 
     return updatedHealth;
   }

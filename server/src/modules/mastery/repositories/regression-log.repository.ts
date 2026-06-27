@@ -1,5 +1,5 @@
 import { prisma } from '../../../config/database.js';
-import { MasteryState } from '@prisma/client';
+import { MasteryState } from '../../../shared/enums.js';
 
 export interface CreateRegressionLogInput {
   childId: string;

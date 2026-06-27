@@ -17,7 +17,6 @@ export const ListenMobile: React.FC = () => {
     selectedAnswer,
     correctAnswer,
     options,
-    isCompleted,
     loading,
     error,
     selectAnswer,
@@ -112,9 +111,9 @@ export const ListenMobile: React.FC = () => {
     const isCorrect = await submitAnswer();
     setAnswered(true);
     if (isCorrect) {
-      setFeedback('Correct! Breathtaking job!');
+      setFeedback('Correct! Splendid job! 🎉');
     } else {
-      setFeedback('Not quite, try again!');
+      setFeedback('Not quite, try again! 🌸');
     }
   };
 
@@ -148,30 +147,44 @@ export const ListenMobile: React.FC = () => {
       <View style={[styles.container, styles.center]}>
         <Ionicons name="alert-circle" size={48} color="#FF4A4A" />
         <Text style={styles.errorText}>{error || 'Audio guide could not be loaded'}</Text>
-        <Pressable style={styles.backButton} onPress={() => navigation.goBack()}>
-          <Text style={styles.backButtonText}>Go Back</Text>
+        <Pressable style={styles.errorBackBtn} onPress={() => navigation.goBack()}>
+          <Text style={styles.errorBackText}>Go Back</Text>
         </Pressable>
       </View>
     );
   }
 
+  // Answer buttons color variant mapping
+  const btnVariants = [
+    { bg: colors.blue, border: '#4A7CBD', text: '#FFF8ED' },
+    { bg: colors.green, border: '#6C9955', text: '#FFF8ED' },
+    { bg: colors.yellow, border: '#D6A628', text: colors.brown },
+    { bg: colors.coral, border: '#D07E73', text: '#FFF8ED' },
+  ];
+
   return (
     <ScreenContainer style={styles.container}>
       <TopBar title="Listen & Choose" showBack />
       
-      {/* Activity Progress Header Indicator */}
+      {/* Activity Progress Header Indicator with Heart Icon */}
       <View style={styles.progressHeader}>
-        <View style={[styles.stepDot, styles.stepActive]}><Text style={styles.stepNum}>1</Text></View>
-        <View style={styles.stepLineActive} />
-        <View style={[styles.stepDot, styles.stepActive]}><Text style={styles.stepNum}>2</Text></View>
-        <View style={styles.stepLine} />
-        <View style={styles.stepDot}><Text style={styles.stepNum}>3</Text></View>
-        <View style={styles.stepLine} />
-        <View style={styles.stepDot}><Text style={styles.stepNum}>4</Text></View>
+        <View style={styles.indicatorRow}>
+          <View style={[styles.stepDot, styles.stepActive]}><Text style={styles.stepNum}>1</Text></View>
+          <View style={styles.stepLineActive} />
+          <View style={[styles.stepDot, styles.stepActive]}><Text style={styles.stepNum}>2</Text></View>
+          <View style={styles.stepLine} />
+          <View style={styles.stepDot}><Text style={styles.stepNum}>3</Text></View>
+          <View style={styles.stepLine} />
+          <View style={styles.stepDot}><Text style={styles.stepNum}>4</Text></View>
+        </View>
+        <View style={styles.heartIndicator}>
+          <Text style={styles.heartText}>💖 3</Text>
+        </View>
       </View>
 
       <View style={styles.content}>
-        {/* Speaker Card */}
+        
+        {/* Speaker Card with Mascot in top-right corner */}
         <Pressable
           ref={speakerRef}
           style={({ pressed }) => [
@@ -181,69 +194,96 @@ export const ListenMobile: React.FC = () => {
           ]}
           onPress={handlePlayPause}
         >
+          {/* Owl mascot sitting in the corner */}
+          <View style={styles.mascotBadge}>
+            <Text style={styles.mascotEmoji}>🦉</Text>
+          </View>
+
           <View style={styles.speakerOuterRing}>
             <View style={styles.speakerInnerRing}>
               <Ionicons
                 name={isPlaying ? 'volume-high' : 'volume-medium-outline'}
-                size={64}
-                color={isPlaying ? colors.white : colors.purple}
+                size={56}
+                color={isPlaying ? '#FFF8ED' : colors.purple}
               />
             </View>
           </View>
-          <Text style={styles.speakerLabel}>
+          <Text style={[styles.speakerLabel, { fontFamily: typography.families.rounded }]}>
             {isPlaying ? 'Listening...' : 'Tap to Listen'}
           </Text>
           {isComingSoon && (
             <Text style={styles.comingSoonText}>Audio Coming Soon</Text>
           )}
           
-          {/* Progress Bar inside Card */}
           <View style={styles.progressContainer}>
             <View style={[styles.progressBar, { width: `${playProgress * 100}%` }]} />
           </View>
         </Pressable>
 
-        {/* Options List */}
+        {/* Options List with Height 90 & Radius 24 & color variant borders */}
         <View style={styles.optionsContainer}>
-          <Text style={styles.promptText}>What shape or line did you hear?</Text>
-          {options.map((opt) => {
+          <Text style={[styles.promptText, { fontFamily: typography.families.rounded }]}>What shape or line did you hear?</Text>
+          {options.map((opt, idx) => {
             const isSelected = selectedAnswer === opt;
             const isCorrectAnswer = correctAnswer === opt;
             
-            let cardStyle: any = [styles.optionCard];
-            let textStyle: any = [styles.optionText];
+            const variant = btnVariants[idx % btnVariants.length];
             
-            if (isSelected) {
-              cardStyle.push(styles.optionCardSelected);
-              textStyle.push(styles.optionTextSelected);
-            }
-            
+            let cardBg = variant.bg;
+            let cardBorder = variant.border;
+            let cardText = variant.text;
+            let currentBorderWidth = 3;
+
             if (answered) {
               if (isCorrectAnswer) {
-                cardStyle.push(styles.optionCardCorrect);
-                textStyle.push(styles.optionTextCorrect);
+                cardBg = colors.green;
+                cardBorder = '#6C9955';
+                cardText = '#FFF8ED';
               } else if (isSelected) {
-                cardStyle.push(styles.optionCardIncorrect);
-                textStyle.push(styles.optionTextIncorrect);
+                cardBg = colors.coral;
+                cardBorder = '#D07E73';
+                cardText = '#FFF8ED';
+              } else {
+                cardBg = '#F8EEDC';
+                cardBorder = '#E6DAC4';
+                cardText = colors.textMuted;
+                currentBorderWidth = 1.5;
               }
+            } else if (selectedAnswer && !isSelected) {
+              cardBg = '#F8EEDC';
+              cardBorder = '#E6DAC4';
+              cardText = colors.textMuted;
+              currentBorderWidth = 1.5;
             }
 
             return (
               <Pressable
                 key={opt}
                 style={({ pressed }) => [
-                  ...cardStyle,
-                  pressed && !answered && { transform: [{ scale: 0.98 }] },
+                  styles.optionCard,
+                  { 
+                    backgroundColor: cardBg, 
+                    borderColor: cardBorder, 
+                    borderWidth: currentBorderWidth 
+                  },
+                  pressed && !answered && { transform: [{ scale: 0.96 }] },
                 ]}
                 onPress={() => handleOptionPress(opt)}
                 disabled={answered}
               >
-                <Text style={textStyle}>{opt}</Text>
+                <Text style={[
+                  styles.optionText, 
+                  { 
+                    color: cardText,
+                    fontFamily: typography.families.rounded,
+                  }
+                ]}>{opt}</Text>
+                
                 {answered && isCorrectAnswer && (
-                  <Ionicons name="checkmark-circle" size={24} color={colors.green} />
+                  <Ionicons name="checkmark-circle" size={28} color="#FFF8ED" />
                 )}
                 {answered && isSelected && !isCorrectAnswer && (
-                  <Ionicons name="close-circle" size={24} color="#FF4A4A" />
+                  <Ionicons name="close-circle" size={28} color="#FFF8ED" />
                 )}
               </Pressable>
             );
@@ -254,7 +294,7 @@ export const ListenMobile: React.FC = () => {
         <View style={styles.actionPanel}>
           {feedback && (
             <View style={[styles.feedbackContainer, feedback.includes('Correct') ? styles.feedbackCorrect : styles.feedbackIncorrect]}>
-              <Text style={styles.feedbackText}>{feedback}</Text>
+              <Text style={[styles.feedbackText, { fontFamily: typography.families.rounded }]}>{feedback}</Text>
             </View>
           )}
 
@@ -269,7 +309,7 @@ export const ListenMobile: React.FC = () => {
               onPress={handleSubmit}
               disabled={!selectedAnswer}
             >
-              <Text style={styles.actionBtnText}>Check Answer</Text>
+              <Text style={[styles.actionBtnText, { fontFamily: typography.families.rounded }]}>Check Answer</Text>
             </Pressable>
           ) : (
             <View style={styles.nextActionsRow}>
@@ -283,8 +323,8 @@ export const ListenMobile: React.FC = () => {
                   ]}
                   onPress={handleNextActivity}
                 >
-                  <Text style={styles.actionBtnText}>Next Activity</Text>
-                  <Ionicons name="arrow-forward" size={20} color={colors.white} />
+                  <Text style={[styles.actionBtnText, { fontFamily: typography.families.rounded }]}>Next Activity</Text>
+                  <Ionicons name="arrow-forward" size={20} color="#FFF8ED" />
                 </Pressable>
               ) : (
                 <Pressable
@@ -296,23 +336,14 @@ export const ListenMobile: React.FC = () => {
                   ]}
                   onPress={handleRetry}
                 >
-                  <Ionicons name="refresh" size={20} color={colors.white} />
-                  <Text style={styles.actionBtnText}>Try Again</Text>
+                  <Ionicons name="refresh" size={20} color="#FFF8ED" />
+                  <Text style={[styles.actionBtnText, { fontFamily: typography.families.rounded }]}>Try Again</Text>
                 </Pressable>
               )}
             </View>
           )}
         </View>
       </View>
-      <NavigationGuide
-        screenKey="listen"
-        guideKey="listen"
-        message="Listen carefully!"
-        showHand={!!handCoords}
-        handMode="tap"
-        handX={handCoords?.x}
-        handY={handCoords?.y}
-      />
     </ScreenContainer>
   );
 };
@@ -328,35 +359,40 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
   },
   statusText: {
-    color: colors.textMuted,
+    color: colors.textSecondary,
     marginTop: spacing.md,
     fontSize: typography.sizes.sm,
   },
   errorText: {
-    color: colors.text,
+    color: colors.textPrimary,
     marginTop: spacing.md,
     fontSize: typography.sizes.md,
     textAlign: 'center',
     marginBottom: spacing.xl,
   },
-  backButton: {
+  errorBackBtn: {
     backgroundColor: colors.purple,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.xl,
-    borderRadius: radius.lg,
+    borderRadius: radius.button,
   },
-  backButtonText: {
-    color: colors.white,
+  errorBackText: {
+    color: '#FFF8ED',
     fontWeight: typography.weights.bold,
   },
   progressHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
     paddingVertical: spacing.md,
-    backgroundColor: colors.backgroundSecondary,
-    borderBottomWidth: 1,
+    paddingHorizontal: spacing.lg,
+    backgroundColor: colors.surface,
+    borderBottomWidth: 1.5,
     borderBottomColor: colors.border,
+  },
+  indicatorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   stepDot: {
     width: 24,
@@ -370,19 +406,31 @@ const styles = StyleSheet.create({
     backgroundColor: colors.purple,
   },
   stepNum: {
-    color: colors.white,
+    color: '#FFF8ED',
     fontSize: 10,
     fontWeight: typography.weights.bold,
   },
   stepLine: {
-    width: 40,
+    width: 32,
     height: 3,
     backgroundColor: colors.border,
   },
   stepLineActive: {
-    width: 40,
+    width: 32,
     height: 3,
     backgroundColor: colors.purple,
+  },
+  heartIndicator: {
+    backgroundColor: '#FFEBEB',
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: radius.chip,
+    borderWidth: 1.5,
+    borderColor: '#FFC1C1',
+  },
+  heartText: {
+    fontSize: 12,
+    fontWeight: 'bold',
   },
   content: {
     flex: 1,
@@ -390,55 +438,73 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   speakerCard: {
-    backgroundColor: colors.backgroundSecondary,
+    backgroundColor: colors.surface,
     borderWidth: 2,
     borderColor: colors.border,
-    borderRadius: radius.xxl,
-    paddingVertical: spacing.xl,
+    borderRadius: radius.illustrationCard,
+    paddingVertical: spacing.lg,
     alignItems: 'center',
+    position: 'relative',
     ...shadows.md,
   },
   speakerCardPlaying: {
     borderColor: colors.purple,
-    backgroundColor: colors.purple + '10',
+    backgroundColor: '#F8EEFC',
   },
   speakerCardPressed: {
     transform: [{ scale: 0.99 }],
   },
+  mascotBadge: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    width: 44,
+    height: 44,
+    borderRadius: radius.full,
+    backgroundColor: '#FFF8ED',
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...shadows.sm,
+  },
+  mascotEmoji: {
+    fontSize: 26,
+  },
   speakerOuterRing: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: colors.purple + '08',
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: 'rgba(139, 120, 216, 0.08)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   speakerInnerRing: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-    backgroundColor: colors.purple + '15',
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    backgroundColor: 'rgba(139, 120, 216, 0.15)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   speakerLabel: {
     color: colors.purple,
     fontWeight: typography.weights.bold,
-    fontSize: typography.sizes.md,
+    fontSize: typography.sizes.body,
     marginTop: spacing.md,
   },
   comingSoonText: {
-    color: '#F97316', // Sleek orange color
+    color: colors.orange,
     fontSize: 14,
     fontWeight: '700',
     marginTop: spacing.xs,
   },
   progressContainer: {
     width: '80%',
-    height: 4,
+    height: 6,
     backgroundColor: colors.border,
-    borderRadius: 2,
-    marginTop: spacing.lg,
+    borderRadius: radius.xs,
+    marginTop: spacing.md,
     overflow: 'hidden',
   },
   progressBar: {
@@ -447,85 +513,60 @@ const styles = StyleSheet.create({
   },
   optionsContainer: {
     gap: spacing.sm,
-    marginVertical: spacing.lg,
+    marginVertical: spacing.md,
   },
   promptText: {
-    color: colors.text,
-    fontSize: typography.sizes.md,
+    color: colors.textPrimary,
+    fontSize: typography.sizes.body,
     fontWeight: typography.weights.bold,
     textAlign: 'center',
     marginBottom: spacing.xs,
   },
   optionCard: {
-    backgroundColor: colors.backgroundSecondary,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    borderRadius: radius.xl,
-    paddingVertical: spacing.md,
+    height: 90, // SPEC height 90
+    borderRadius: 24, // SPEC radius 24
     paddingHorizontal: spacing.lg,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     ...shadows.sm,
   },
-  optionCardSelected: {
-    borderColor: colors.purple,
-    backgroundColor: colors.purple + '05',
-  },
-  optionCardCorrect: {
-    borderColor: colors.green,
-    backgroundColor: colors.green + '08',
-  },
-  optionCardIncorrect: {
-    borderColor: '#FF4A4A',
-    backgroundColor: '#FF4A4A08',
-  },
   optionText: {
-    color: colors.text,
-    fontSize: typography.sizes.md,
+    fontSize: typography.sizes.cardTitle,
     fontWeight: typography.weights.bold,
   },
-  optionTextSelected: {
-    color: colors.purple,
-  },
-  optionTextCorrect: {
-    color: colors.green,
-  },
-  optionTextIncorrect: {
-    color: '#FF4A4A',
-  },
   actionPanel: {
-    gap: spacing.md,
+    gap: spacing.xs,
     alignItems: 'center',
   },
   feedbackContainer: {
-    paddingVertical: spacing.sm,
+    paddingVertical: spacing.xs,
     paddingHorizontal: spacing.xl,
     borderRadius: radius.md,
     width: '100%',
     alignItems: 'center',
   },
   feedbackCorrect: {
-    backgroundColor: colors.green + '15',
+    backgroundColor: '#E2F0D9',
   },
   feedbackIncorrect: {
-    backgroundColor: '#FF4A4A15',
+    backgroundColor: '#FFEBEB',
   },
   feedbackText: {
     fontWeight: typography.weights.bold,
-    fontSize: typography.sizes.sm,
+    fontSize: typography.sizes.small,
   },
   actionBtn: {
     backgroundColor: colors.purple,
     paddingVertical: spacing.md,
-    borderRadius: radius.xl,
+    borderRadius: radius.button,
     width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
     gap: spacing.sm,
-    height: 54,
-    ...shadows.md,
+    height: 56,
+    ...shadows.sm,
   },
   actionBtnDisabled: {
     backgroundColor: colors.border,
@@ -536,9 +577,9 @@ const styles = StyleSheet.create({
     opacity: 0.9,
   },
   actionBtnText: {
-    color: colors.white,
+    color: '#FFF8ED',
     fontWeight: typography.weights.bold,
-    fontSize: typography.sizes.md,
+    fontSize: typography.sizes.body,
   },
   nextActionsRow: {
     width: '100%',
@@ -550,3 +591,4 @@ const styles = StyleSheet.create({
     backgroundColor: colors.purple,
   },
 });
+export default ListenMobile;

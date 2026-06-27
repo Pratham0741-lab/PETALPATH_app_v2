@@ -1,5 +1,5 @@
 import { prisma } from '../../../config/database.js';
-import { ActivityType } from '@prisma/client';
+import { ActivityType } from '../../../shared/enums.js';
 
 export class LearningProfileRepository {
   async findByChildId(childId: string) {

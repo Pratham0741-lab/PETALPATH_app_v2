@@ -1,13 +1,12 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { StyleSheet, ScrollView, View, Text, ActivityIndicator, Pressable, Alert } from 'react-native';
 import { ScreenContainer } from '../../components/common/ScreenContainer';
 import { TopBar } from '../../components/navigation/TopBar';
-import { SectionHeader } from '../../components/common/SectionHeader';
+import { Card, SectionHeader, Button } from '../../components/ui';
 import { ActivityCard } from '../../components/cards/ActivityCard';
 import { spacing, colors, radius, typography, shadows } from '../../theme';
 import { useNavigation } from '@react-navigation/native';
 import { useRoadmapStore } from '../../store/roadmapStore';
-import { useVideoStore } from '../../store/videoStore';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '../../utils/api';
 import { navigateToActivity } from '../../utils/navigationFlow';
@@ -24,17 +23,12 @@ export const LessonOverviewMobile: React.FC = () => {
   } = useRoadmapStore();
 
   const handleActivityPress = async (act: any) => {
-    // 1. Log activity selection to console
     console.log(`Activity selected: ${act.id}`);
-    
-    // 2. Log activity selection to backend endpoint
     try {
       await api.get(`/activities/${act.id}`);
     } catch (err) {
       console.warn('Failed to log activity selection on backend:', err);
     }
-
-    // 3. Navigate to the activity using navigation flow helper
     await navigateToActivity(navigation, act);
   };
 
@@ -67,32 +61,33 @@ export const LessonOverviewMobile: React.FC = () => {
           </View>
         ) : error ? (
           <View style={styles.center}>
-            <Text style={styles.errorText}>{error}</Text>
+            <Text style={[styles.errorText, { fontFamily: typography.families.rounded }]}>{error}</Text>
           </View>
         ) : !selectedLesson ? (
           <View style={styles.center}>
-            <Text style={styles.emptyText}>No lesson selected.</Text>
+            <Text style={[styles.emptyText, { fontFamily: typography.families.rounded }]}>No lesson selected.</Text>
           </View>
         ) : (
           <View style={styles.content}>
+            
             {/* Lesson Info Card */}
-            <View style={styles.lessonInfoCard}>
+            <Card style={styles.lessonInfoCard}>
               <View style={styles.badgeRow}>
-                <View style={[styles.badge, styles.difficultyBadge]}>
-                  <Text style={styles.difficultyText}>{selectedLesson.difficulty}</Text>
+                <View style={styles.difficultyBadge}>
+                  <Text style={[styles.difficultyText, { fontFamily: typography.families.rounded }]}>Level: {selectedLesson.difficulty}</Text>
                 </View>
                 {isCompleted && (
-                  <View style={[styles.badge, styles.completedBadge]}>
-                    <Ionicons name="checkmark-circle" size={12} color={colors.white} />
-                    <Text style={styles.completedText}>Completed</Text>
+                  <View style={styles.completedBadge}>
+                    <Ionicons name="checkmark-circle" size={12} color="#FFF8ED" />
+                    <Text style={[styles.completedText, { fontFamily: typography.families.rounded }]}>Done</Text>
                   </View>
                 )}
               </View>
-              <Text style={styles.lessonTitle}>{selectedLesson.title}</Text>
-              <Text style={styles.lessonDescription}>
+              <Text style={[styles.lessonTitle, { fontFamily: typography.families.rounded }]}>{selectedLesson.title}</Text>
+              <Text style={[styles.lessonDescription, { fontFamily: typography.families.rounded }]}>
                 {selectedLesson.description || 'Practice your tracing skills in this interactive lesson!'}
               </Text>
-            </View>
+            </Card>
 
             <SectionHeader
               title="Activities Sequence"
@@ -100,7 +95,7 @@ export const LessonOverviewMobile: React.FC = () => {
             />
 
             {activities.length === 0 ? (
-              <Text style={styles.emptyText}>No activities found in this lesson.</Text>
+              <Text style={[styles.emptyText, { fontFamily: typography.families.rounded }]}>No activities found in this lesson.</Text>
             ) : (
               <View style={styles.list}>
                 {activities.map((act) => (
@@ -117,23 +112,12 @@ export const LessonOverviewMobile: React.FC = () => {
             )}
 
             {/* Complete Lesson CTA */}
-            <Pressable
-              style={({ pressed }) => [
-                styles.completeButton,
-                isCompleted && styles.completeButtonDone,
-                pressed && styles.completeButtonPressed,
-              ]}
+            <Button
+              label={isCompleted ? 'Re-complete Lesson' : 'Mark Lesson Complete'}
+              variant={isCompleted ? 'success' : 'primary'}
               onPress={handleCompleteLesson}
-            >
-              <Ionicons
-                name={isCompleted ? 'checkmark-circle-outline' : 'star'}
-                size={22}
-                color={colors.white}
-              />
-              <Text style={styles.completeButtonText}>
-                {isCompleted ? 'Re-complete Lesson' : 'Mark Lesson Complete'}
-              </Text>
-            </Pressable>
+              style={styles.completeBtn}
+            />
           </View>
         )}
       </ScrollView>
@@ -143,91 +127,70 @@ export const LessonOverviewMobile: React.FC = () => {
 
 const styles = StyleSheet.create({
   scrollContainer: {
-    paddingBottom: spacing.xxl,
+    paddingBottom: 100,
   },
   content: {
     paddingHorizontal: spacing.lg,
     marginTop: spacing.md,
   },
   lessonInfoCard: {
-    backgroundColor: colors.backgroundSecondary,
-    borderRadius: radius.xl,
-    padding: spacing.lg,
-    marginBottom: spacing.xl,
-    borderWidth: 1,
-    borderColor: colors.border,
+    marginBottom: spacing.lg,
   },
   badgeRow: {
     flexDirection: 'row',
     gap: spacing.sm,
     marginBottom: spacing.sm,
   },
-  badge: {
+  difficultyBadge: {
+    backgroundColor: '#E8F4FD',
+    borderWidth: 1.5,
+    borderColor: colors.blue,
+    paddingVertical: 2,
+    paddingHorizontal: 8,
+    borderRadius: radius.chip,
+  },
+  completedBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    paddingVertical: 3,
-    paddingHorizontal: spacing.sm,
-    borderRadius: radius.sm,
-  },
-  difficultyBadge: {
-    backgroundColor: '#3B82F625',
-    borderWidth: 1,
-    borderColor: colors.blue,
-  },
-  completedBadge: {
     backgroundColor: colors.green,
+    paddingVertical: 2,
+    paddingHorizontal: 8,
+    borderRadius: radius.chip,
+    borderWidth: 1.5,
+    borderColor: '#6C9955',
   },
   difficultyText: {
     color: colors.blue,
     fontSize: 10,
-    fontWeight: typography.weights.bold,
+    fontWeight: 'bold',
   },
   completedText: {
-    color: colors.white,
+    color: '#FFF8ED',
     fontSize: 10,
-    fontWeight: typography.weights.bold,
+    fontWeight: 'bold',
   },
   lessonTitle: {
-    color: colors.text,
-    fontSize: typography.sizes.xl,
+    color: colors.textPrimary,
+    fontSize: typography.sizes.largeTitle,
     fontWeight: typography.weights.black,
     marginBottom: spacing.xs,
   },
   lessonDescription: {
-    color: colors.textMuted,
-    fontSize: typography.sizes.sm,
-    lineHeight: 20,
+    color: colors.textSecondary,
+    fontSize: typography.sizes.small,
+    lineHeight: 18,
   },
   list: {
     gap: spacing.sm,
-    marginBottom: spacing.xxl,
+    marginBottom: spacing.lg,
   },
   card: {
     marginBottom: spacing.xs,
   },
-  completeButton: {
-    flexDirection: 'row',
-    backgroundColor: colors.purple,
-    paddingVertical: spacing.lg,
-    borderRadius: radius.xl,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: spacing.md,
-    ...shadows.md,
-  },
-  completeButtonDone: {
-    backgroundColor: colors.green,
-  },
-  completeButtonPressed: {
-    transform: [{ scale: 0.98 }],
-    opacity: 0.9,
-  },
-  completeButtonText: {
-    color: colors.white,
-    fontWeight: typography.weights.bold,
-    fontSize: typography.sizes.md,
-    marginLeft: spacing.sm,
+  completeBtn: {
+    width: '100%',
+    height: 56,
   },
   center: {
     flex: 1,
@@ -237,14 +200,15 @@ const styles = StyleSheet.create({
     marginTop: spacing.xl,
   },
   errorText: {
-    color: '#FF4A4A',
+    color: colors.coral,
     fontSize: 16,
     textAlign: 'center',
   },
   emptyText: {
-    color: colors.textMuted,
+    color: colors.textSecondary,
     fontSize: 14,
     textAlign: 'center',
     marginTop: spacing.xl,
   },
 });
+export default LessonOverviewMobile;

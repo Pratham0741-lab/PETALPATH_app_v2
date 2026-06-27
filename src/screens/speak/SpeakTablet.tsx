@@ -11,7 +11,6 @@ import { getNextActivity, navigateToActivity } from '../../utils/navigationFlow'
 import { useChildStore } from '../../store/childStore';
 import { enhanceMentor, MENTORS } from '../../constants/mentors';
 import { AvatarCard } from '../../components/cards/AvatarCard';
-import { NavigationGuide } from '../../components/tutorial/NavigationGuide';
 
 export const SpeakTablet: React.FC = () => {
   const navigation = useNavigation<any>();
@@ -40,34 +39,6 @@ export const SpeakTablet: React.FC = () => {
 
   const micRef = useRef<View>(null);
   const actionBtnRef = useRef<View>(null);
-  const [handCoords, setHandCoords] = useState<{ x: number; y: number } | undefined>(undefined);
-
-  const measureTarget = () => {
-    if (isCompleted) {
-      if (actionBtnRef.current) {
-        actionBtnRef.current.measureInWindow((x, y, width, height) => {
-          if (width > 0 && height > 0) {
-            setHandCoords({ x: x + width / 2, y: y + height / 2 });
-          }
-        });
-      }
-    } else if (!localRecording) {
-      if (micRef.current) {
-        micRef.current.measureInWindow((x, y, width, height) => {
-          if (width > 0 && height > 0) {
-            setHandCoords({ x: x + width / 2, y: y + height / 2 });
-          }
-        });
-      }
-    } else {
-      setHandCoords(undefined);
-    }
-  };
-
-  useEffect(() => {
-    const timer = setTimeout(measureTarget, 200);
-    return () => clearTimeout(timer);
-  }, [isCompleted, localRecording, activityId]);
 
   useEffect(() => {
     const rec = new UniversalSpeechRecognizer();
@@ -94,7 +65,7 @@ export const SpeakTablet: React.FC = () => {
           setLocalRecording(false);
           const success = await stopRecording(res.transcript, res.confidence);
           if (!success) {
-            setErrorMessage("That's not quite right, let's try again!");
+            setErrorMessage("That's not quite right, let's try again! 🌸");
             retry();
           }
         },
@@ -133,6 +104,10 @@ export const SpeakTablet: React.FC = () => {
     }
   };
 
+  const handleSkipOrForceComplete = async () => {
+    await completeActivity(90);
+  };
+
   if (loading) {
     return (
       <View style={[styles.container, styles.center]}>
@@ -158,15 +133,36 @@ export const SpeakTablet: React.FC = () => {
     <ScreenContainer style={styles.container}>
       <TopBar title="Speak & Learn" showBack />
       
+      {/* Activity Progress Header Indicator */}
+      <View style={styles.progressHeader}>
+        <View style={styles.indicatorRow}>
+          <View style={[styles.stepDot, styles.stepActive]}><Text style={styles.stepNum}>1</Text></View>
+          <View style={styles.stepLineActive} />
+          <View style={[styles.stepDot, styles.stepActive]}><Text style={styles.stepNum}>2</Text></View>
+          <View style={styles.stepLineActive} />
+          <View style={[styles.stepDot, styles.stepActive]}><Text style={styles.stepNum}>3</Text></View>
+          <View style={styles.stepLine} />
+          <View style={styles.stepDot}><Text style={styles.stepNum}>4</Text></View>
+        </View>
+        <View style={styles.heartIndicator}>
+          <Text style={styles.heartText}>💖 3 Lives</Text>
+        </View>
+      </View>
+
       <View style={styles.layout}>
-        {/* Left Panel: Microphone and Audio Waveform */}
+        {/* Left Side: Playback and choices */}
         <View style={styles.mainArea}>
+          {/* Practice Phrase Display */}
           <View style={styles.phraseCard}>
-            <Text style={styles.speakLabel}>Practice Speaking:</Text>
-            <Text style={styles.targetPhraseText}>"{targetPhrase}"</Text>
+            <View style={styles.mascotBadge}>
+              <Text style={styles.mascotEmoji}>🦉</Text>
+            </View>
+            <Text style={[styles.speakLabel, { fontFamily: typography.families.rounded }]}>Say out loud:</Text>
+            <Text style={[styles.targetPhraseText, { fontFamily: typography.families.rounded }]}>"{targetPhrase}"</Text>
           </View>
 
-          <View style={styles.interactionZone}>
+          {/* Dynamic Wave/Status Box */}
+          <View style={styles.statusBox}>
             {localRecording ? (
               <View style={styles.recordingSection}>
                 <View style={styles.waveContainer}>
@@ -178,15 +174,15 @@ export const SpeakTablet: React.FC = () => {
                   <View style={[styles.waveBar, styles.waveBar2]} />
                   <View style={[styles.waveBar, styles.waveBar1]} />
                 </View>
-                <Text style={styles.listeningText}>I'm listening...</Text>
+                <Text style={[styles.listeningText, { fontFamily: typography.families.rounded }]}>Listening closely...</Text>
               </View>
             ) : transcript ? (
               <View style={styles.resultSection}>
-                <Text style={styles.resultLabel}>What I heard:</Text>
-                <Text style={styles.transcriptText}>"{transcript}"</Text>
+                <Text style={[styles.resultLabel, { fontFamily: typography.families.rounded }]}>You said:</Text>
+                <Text style={[styles.transcriptText, { fontFamily: typography.families.rounded }]}>"{transcript}"</Text>
                 
                 <View style={styles.meterContainer}>
-                  <Text style={styles.meterLabel}>Confidence Level:</Text>
+                  <Text style={[styles.meterLabel, { fontFamily: typography.families.rounded }]}>Match Confidence:</Text>
                   <View style={styles.meterTrack}>
                     <View
                       style={[
@@ -196,7 +192,7 @@ export const SpeakTablet: React.FC = () => {
                       ]}
                     />
                   </View>
-                  <Text style={styles.meterScoreText}>{confidence}%</Text>
+                  <Text style={[styles.meterScoreText, { fontFamily: typography.families.rounded }]}>{confidence}%</Text>
                 </View>
                 {stars !== null && (
                   <View style={styles.starsRow}>
@@ -215,39 +211,38 @@ export const SpeakTablet: React.FC = () => {
             ) : errorMessage ? (
               <View style={styles.errorAlert}>
                 <Ionicons name="warning-outline" size={20} color="#FF4A4A" />
-                <Text style={styles.errorAlertText}>{errorMessage}</Text>
+                <Text style={[styles.errorAlertText, { fontFamily: typography.families.rounded }]}>{errorMessage}</Text>
               </View>
             ) : (
-              <Text style={styles.instructionText}>
-                Tap the record button below to speak!
+              <Text style={[styles.instructionText, { fontFamily: typography.families.rounded }]}>
+                Tap the microphone and read the phrase clearly.
               </Text>
             )}
-
-            <View style={styles.micArea}>
-              <Pressable
-                ref={micRef}
-                style={({ pressed }) => [
-                  styles.micOuterBtn,
-                  localRecording && styles.micOuterBtnRecording,
-                  pressed && styles.micOuterBtnPressed,
-                ]}
-                onPress={handleMicPress}
-              >
-                <View style={[styles.micInnerBtn, localRecording && styles.micInnerBtnRecording]}>
-                  <Ionicons
-                    name={localRecording ? 'stop' : 'mic'}
-                    size={44}
-                    color={colors.white}
-                  />
-                </View>
-              </Pressable>
-              <Text style={styles.micHint}>
-                {localRecording ? 'Tap to Stop' : 'Tap to Speak'}
-              </Text>
-            </View>
           </View>
 
-          <View style={styles.actionSection}>
+          {/* Microphone Pulse Area */}
+          <View style={styles.micArea}>
+            <Pressable
+              ref={micRef}
+              style={({ pressed }) => [
+                styles.micOuterBtn,
+                localRecording && styles.micOuterBtnRecording,
+                pressed && styles.micOuterBtnPressed,
+              ]}
+              onPress={handleMicPress}
+            >
+              <View style={[styles.micInnerBtn, localRecording && styles.micInnerBtnRecording]}>
+                <Ionicons
+                  name={localRecording ? 'stop' : 'mic'}
+                  size={40}
+                  color="#FFF8ED"
+                />
+              </View>
+            </Pressable>
+          </View>
+
+          {/* Action button drawer */}
+          <View style={styles.actionPanel}>
             {isCompleted ? (
               <Pressable
                 ref={actionBtnRef}
@@ -258,40 +253,31 @@ export const SpeakTablet: React.FC = () => {
                 ]}
                 onPress={handleNextActivity}
               >
-                <Text style={styles.actionBtnText}>Next Activity</Text>
-                <Ionicons name="arrow-forward" size={20} color={colors.white} />
+                <Text style={[styles.actionBtnText, { fontFamily: typography.families.rounded }]}>Next Activity</Text>
+                <Ionicons name="arrow-forward" size={20} color="#FFF8ED" />
               </Pressable>
             ) : (
               <Pressable
                 style={styles.skipBtn}
-                onPress={() => completeActivity(85)}
+                onPress={handleSkipOrForceComplete}
               >
-                <Text style={styles.skipBtnText}>Skip / Demo Mode</Text>
+                <Text style={[styles.skipBtnText, { fontFamily: typography.families.rounded }]}>Skip / Demo Mode</Text>
               </Pressable>
             )}
           </View>
         </View>
 
-        {/* Right Panel: Mentor Cheerleader */}
+        {/* Right Side: Mentor Assistance */}
         <View style={styles.sidebar}>
-          <Text style={styles.sidebarTitle}>Speak Guide</Text>
+          <Text style={[styles.sidebarTitle, { fontFamily: typography.families.rounded }]}>Mascot Buddy</Text>
           <AvatarCard mentor={activeMentor} style={styles.mentorCard} />
           <View style={styles.mentorBubble}>
-            <Text style={styles.tipsText}>
-              "Speech time, {activeChild?.name}! Press the microphone and speak clearly. Try your best to get above 70% match score! Let's roar like tigers!"
+            <Text style={[styles.tipsText, { fontFamily: typography.families.rounded }]}>
+              "Hi {activeChild?.name}! Click the mic and read the phrase aloud so I can listen! I know you can do it! 🌸"
             </Text>
           </View>
         </View>
       </View>
-      <NavigationGuide
-        screenKey="speak"
-        guideKey="speak"
-        message="Say it loud!"
-        showHand={!!handCoords}
-        handMode="tap"
-        handX={handCoords?.x}
-        handY={handCoords?.y}
-      />
     </ScreenContainer>
   );
 };
@@ -307,12 +293,12 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
   },
   statusText: {
-    color: colors.textMuted,
+    color: colors.textSecondary,
     marginTop: spacing.md,
     fontSize: typography.sizes.sm,
   },
   errorText: {
-    color: colors.text,
+    color: colors.textPrimary,
     marginTop: spacing.md,
     fontSize: typography.sizes.md,
     textAlign: 'center',
@@ -322,11 +308,63 @@ const styles = StyleSheet.create({
     backgroundColor: colors.purple,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.xl,
-    borderRadius: radius.lg,
+    borderRadius: radius.button,
   },
   backButtonText: {
-    color: colors.white,
+    color: '#FFF8ED',
     fontWeight: typography.weights.bold,
+  },
+  progressHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    backgroundColor: colors.surface,
+    borderBottomWidth: 1.5,
+    borderBottomColor: colors.border,
+  },
+  indicatorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  stepDot: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: colors.border,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  stepActive: {
+    backgroundColor: colors.purple,
+  },
+  stepNum: {
+    color: '#FFF8ED',
+    fontSize: 10,
+    fontWeight: typography.weights.bold,
+  },
+  stepLine: {
+    width: 48,
+    height: 3,
+    backgroundColor: colors.border,
+  },
+  stepLineActive: {
+    width: 48,
+    height: 3,
+    backgroundColor: colors.purple,
+  },
+  heartIndicator: {
+    backgroundColor: '#FFEBEB',
+    paddingVertical: 4,
+    paddingHorizontal: 12,
+    borderRadius: radius.chip,
+    borderWidth: 1.5,
+    borderColor: '#FFC1C1',
+  },
+  heartText: {
+    fontSize: 12,
+    fontWeight: 'bold',
   },
   layout: {
     flex: 1,
@@ -336,89 +374,108 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: spacing.xl,
     justifyContent: 'space-between',
+    alignItems: 'center',
     borderRightWidth: 1.5,
     borderRightColor: colors.border,
   },
   phraseCard: {
-    backgroundColor: colors.backgroundSecondary,
+    width: '100%',
+    backgroundColor: colors.surface,
+    borderWidth: 2,
+    borderColor: colors.border,
+    borderRadius: radius.illustrationCard,
+    padding: spacing.xl,
+    alignItems: 'center',
+    position: 'relative',
+    ...shadows.md,
+  },
+  mascotBadge: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    width: 44,
+    height: 44,
+    borderRadius: radius.full,
+    backgroundColor: '#FFF8ED',
     borderWidth: 1.5,
     borderColor: colors.border,
-    borderRadius: radius.xl,
-    padding: spacing.xl,
+    justifyContent: 'center',
     alignItems: 'center',
     ...shadows.sm,
   },
+  mascotEmoji: {
+    fontSize: 26,
+  },
   speakLabel: {
     color: colors.purple,
-    fontSize: typography.sizes.xs,
+    fontSize: typography.sizes.caption,
     fontWeight: typography.weights.bold,
     textTransform: 'uppercase',
     letterSpacing: 1,
     marginBottom: spacing.xs,
   },
   targetPhraseText: {
-    color: colors.text,
+    color: colors.textPrimary,
     fontSize: 28,
     fontWeight: typography.weights.black,
     textAlign: 'center',
   },
-  interactionZone: {
-    flex: 1,
+  statusBox: {
+    width: '100%',
+    minHeight: 120,
     justifyContent: 'center',
     alignItems: 'center',
-    marginVertical: spacing.xl,
-    width: '100%',
+    paddingHorizontal: spacing.md,
   },
   instructionText: {
-    color: colors.textMuted,
-    fontSize: typography.sizes.sm,
+    color: colors.textSecondary,
+    fontSize: typography.sizes.small,
     textAlign: 'center',
-    marginBottom: spacing.lg,
+    lineHeight: 20,
   },
   listeningText: {
     color: colors.purple,
     fontWeight: typography.weights.bold,
-    fontSize: typography.sizes.sm,
+    fontSize: typography.sizes.small,
     marginTop: spacing.sm,
   },
   recordingSection: {
     alignItems: 'center',
-    marginBottom: spacing.md,
   },
   waveContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    height: 48,
+    gap: 4,
+    height: 36,
   },
   waveBar: {
-    width: 5,
+    width: 4,
     backgroundColor: colors.purple,
-    borderRadius: 2.5,
+    borderRadius: 2,
   },
-  waveBar1: { height: 16 },
-  waveBar2: { height: 32 },
-  waveBar3: { height: 44 },
-  waveBar4: { height: 24 },
+  waveBar1: { height: 12 },
+  waveBar2: { height: 24 },
+  waveBar3: { height: 32 },
+  waveBar4: { height: 16 },
   resultSection: {
-    width: '80%',
+    width: '100%',
     alignItems: 'center',
-    backgroundColor: colors.backgroundSecondary,
-    padding: spacing.lg,
-    borderRadius: radius.xl,
-    borderWidth: 1,
+    backgroundColor: colors.surface,
+    padding: spacing.md,
+    borderRadius: radius.card,
+    borderWidth: 1.5,
     borderColor: colors.border,
-    marginBottom: spacing.lg,
+    ...shadows.sm,
   },
   resultLabel: {
-    color: colors.textMuted,
-    fontSize: typography.sizes.xs,
+    color: colors.textSecondary,
+    fontSize: typography.sizes.caption,
     fontWeight: typography.weights.bold,
     textTransform: 'uppercase',
   },
   transcriptText: {
-    color: colors.text,
-    fontSize: typography.sizes.md,
+    color: colors.textPrimary,
+    fontSize: typography.sizes.body,
     fontWeight: typography.weights.bold,
     marginVertical: spacing.xs,
     textAlign: 'center',
@@ -430,154 +487,148 @@ const styles = StyleSheet.create({
   },
   meterLabel: {
     fontSize: 10,
-    color: colors.textMuted,
+    color: colors.textSecondary,
     marginBottom: 4,
   },
   meterTrack: {
-    width: '85%',
-    height: 8,
+    width: '80%',
+    height: 6,
     backgroundColor: colors.border,
-    borderRadius: 4,
+    borderRadius: 3,
     overflow: 'hidden',
   },
   meterFill: {
     height: '100%',
-    borderRadius: 4,
+    borderRadius: 3,
   },
   meterFillSuccess: {
     backgroundColor: colors.green,
   },
   meterFillFail: {
-    backgroundColor: '#FF4A4A',
+    backgroundColor: colors.coral,
   },
   meterScoreText: {
     fontSize: 12,
     fontWeight: typography.weights.bold,
-    color: colors.text,
+    color: colors.textPrimary,
     marginTop: 4,
   },
   errorAlert: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    backgroundColor: '#FF4A4A12',
+    backgroundColor: '#FFEBEB',
     padding: spacing.md,
     borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: '#FF4A4A25',
-    marginBottom: spacing.md,
+    borderWidth: 1.5,
+    borderColor: '#FFC1C1',
   },
   errorAlertText: {
-    color: '#FF4A4A',
-    fontSize: typography.sizes.sm,
+    color: colors.coral,
+    fontSize: typography.sizes.small,
   },
   micArea: {
-    alignItems: 'center',
-    gap: spacing.xs,
+    marginVertical: spacing.xl,
   },
   micOuterBtn: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: colors.purple + '20',
+    width: 110,
+    height: 110,
+    borderRadius: 55,
+    backgroundColor: 'rgba(139, 120, 216, 0.15)',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.purple + '30',
+    borderWidth: 1.5,
+    borderColor: 'rgba(139, 120, 216, 0.25)',
   },
   micOuterBtnRecording: {
-    backgroundColor: '#FF4A4A20',
-    borderColor: '#FF4A4A30',
+    backgroundColor: 'rgba(242, 154, 143, 0.15)',
+    borderColor: 'rgba(242, 154, 143, 0.25)',
   },
   micOuterBtnPressed: {
     transform: [{ scale: 0.96 }],
   },
   micInnerBtn: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     backgroundColor: colors.purple,
     justifyContent: 'center',
     alignItems: 'center',
     ...shadows.md,
   },
   micInnerBtnRecording: {
-    backgroundColor: '#FF4A4A',
+    backgroundColor: colors.coral,
   },
-  micHint: {
-    color: colors.textMuted,
-    fontSize: 12,
-    fontWeight: typography.weights.bold,
-  },
-  actionSection: {
-    alignItems: 'center',
+  actionPanel: {
     width: '100%',
-    gap: spacing.sm,
+    alignItems: 'center',
+    gap: spacing.md,
   },
   actionBtn: {
     backgroundColor: colors.purple,
     paddingVertical: spacing.md,
-    borderRadius: radius.xl,
+    borderRadius: radius.button,
     width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
     gap: spacing.sm,
-    height: 54,
-    ...shadows.md,
+    height: 56,
+    ...shadows.sm,
   },
   actionBtnPressed: {
     transform: [{ scale: 0.98 }],
     opacity: 0.9,
   },
   actionBtnText: {
-    color: colors.white,
+    color: '#FFF8ED',
     fontWeight: typography.weights.bold,
-    fontSize: typography.sizes.md,
+    fontSize: typography.sizes.body,
   },
   nextBtn: {
     backgroundColor: colors.green,
   },
   skipBtn: {
-    paddingVertical: spacing.xs,
+    paddingVertical: spacing.sm,
   },
   skipBtnText: {
-    color: colors.textMuted,
-    fontSize: typography.sizes.xs,
+    color: colors.textSecondary,
+    fontSize: typography.sizes.caption,
     textDecorationLine: 'underline',
+  },
+  starsRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   sidebar: {
     width: 280,
     backgroundColor: colors.background,
     padding: spacing.xl,
     alignItems: 'center',
+    gap: spacing.md,
   },
   sidebarTitle: {
-    color: colors.text,
-    fontSize: typography.sizes.lg,
+    color: colors.textPrimary,
+    fontSize: typography.sizes.sectionTitle,
     fontWeight: typography.weights.bold,
-    marginBottom: spacing.md,
+    marginBottom: spacing.xs,
   },
   mentorCard: {
     width: '100%',
-    marginBottom: spacing.lg,
   },
   mentorBubble: {
-    backgroundColor: colors.backgroundSecondary,
+    backgroundColor: colors.surface,
     padding: spacing.md,
-    borderRadius: radius.lg,
-    borderWidth: 1,
+    borderRadius: radius.card,
+    borderWidth: 1.5,
     borderColor: colors.border,
+    ...shadows.sm,
   },
   tipsText: {
-    color: colors.textMuted,
-    fontSize: typography.sizes.sm,
-    lineHeight: typography.lineHeights.sm,
-  },
-  starsRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
+    color: colors.textPrimary,
+    fontSize: typography.sizes.small,
+    lineHeight: 18,
   },
 });
 export default SpeakTablet;

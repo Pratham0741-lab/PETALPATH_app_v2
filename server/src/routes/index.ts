@@ -21,6 +21,9 @@ import { writeProgressRoutes } from '../modules/write-progress/write-progress.ro
 import { masteryRoutes } from '../modules/mastery/mastery.routes.js';
 import { curriculumRoutes } from '../modules/curriculum/curriculum.routes.js';
 import { adaptiveRoutes } from '../modules/adaptive/adaptive.routes.js';
+import { reinforcementRoutes } from '../modules/reinforcement/reinforcement.routes.js';
+import { sessionRoutes } from '../modules/session/session.routes.js';
+import { analyticsRoutes } from '../modules/analytics/analytics.routes.js';
 
 const router = Router();
 
@@ -50,8 +53,17 @@ router.use('/listen-progress', listenProgressRoutes);
 router.use('/speak-progress', speakProgressRoutes);
 router.use('/write-progress', writeProgressRoutes);
 router.use('/mastery', masteryRoutes);
+router.use('/v1/mastery', masteryRoutes);
 router.use('/curriculum', curriculumRoutes);
+router.use('/v1/curriculum', curriculumRoutes);
 router.use('/adaptive', adaptiveRoutes);
+router.use('/v1/adaptive', adaptiveRoutes);
+router.use('/reinforcement', reinforcementRoutes);
+router.use('/v1/reinforcement', reinforcementRoutes);
+router.use('/session', sessionRoutes);
+router.use('/v1/session', sessionRoutes);
+router.use('/analytics', analyticsRoutes);
+router.use('/v1/analytics', analyticsRoutes);
 
 export { router as rootRouter };
 

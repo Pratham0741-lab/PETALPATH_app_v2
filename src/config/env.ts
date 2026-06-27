@@ -7,7 +7,7 @@ import { Platform } from 'react-native';
  * (e.g. 'https://petalpath-api.onrender.com').
  */
 export const BACKEND_URL = Platform.OS === 'android'
-  ? 'http://10.0.1.18:5000'
+  ? 'http://localhost:5000' // Directs to PC's localhost via 'adb reverse tcp:5000 tcp:5000'
   : 'http://localhost:5000';
 
 export const API_URL = `${BACKEND_URL}/api`;

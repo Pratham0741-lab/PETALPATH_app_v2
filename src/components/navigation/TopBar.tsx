@@ -75,11 +75,13 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.xs,
     fontWeight: typography.weights.bold,
     marginLeft: spacing.xs,
+    fontFamily: typography.families.rounded,
   },
   title: {
     color: colors.text,
     fontSize: typography.sizes.xl,
     fontWeight: typography.weights.bold,
+    fontFamily: typography.families.rounded,
   },
   rightSection: {
     flexDirection: 'row',

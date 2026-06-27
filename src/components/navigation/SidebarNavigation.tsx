@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, Text, Pressable } from 'react-native';
-import { colors, typography, spacing, radius } from '../../theme';
+import { colors, typography, spacing, radius, shadows } from '../../theme';
 import { Ionicons } from '@expo/vector-icons';
 import { navigationRef } from '../../navigation/navigationRef';
 import { useChildStore } from '../../store/childStore';
@@ -24,7 +24,6 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ deviceType
     };
 
     navigationRef.addListener('state', listener);
-    // Execute initial check
     listener();
 
     return () => {
@@ -37,9 +36,9 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ deviceType
 
   const tabs = [
     { name: 'Home', label: 'Roadmap', icon: 'map' },
-    { name: 'Journey', label: 'Journey', icon: 'compass' },
-    { name: 'Mentor', label: 'My Mentor', icon: 'paw' },
-    { name: 'Rewards', label: 'Rewards', icon: 'trophy' },
+    { name: 'Journey', label: 'Explore', icon: 'compass' },
+    { name: 'Mentor', label: 'Garden', icon: 'flower' },
+    { name: 'Rewards', label: 'Progress', icon: 'stats-chart' },
     { name: 'Profile', label: 'Profile', icon: 'person' },
   ];
 
@@ -50,8 +49,8 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ deviceType
       <View style={{ flex: 1 }}>
         {/* Top Header/Logo Area */}
         <View style={styles.header}>
-          <Ionicons name="flower-outline" size={32} color={colors.purple} />
-          {isDesktop && <Text style={styles.logoText}>PetalPath</Text>}
+          <Ionicons name="flower-outline" size={32} color="#FFF8ED" />
+          {isDesktop && <Text style={[styles.logoText, { fontFamily: typography.families.rounded }]}>PetalPath</Text>}
         </View>
 
         {/* Navigation Items */}
@@ -78,11 +77,11 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ deviceType
               >
                 <Ionicons
                   name={tab.icon as any}
-                  size={22}
-                  color={isFocused ? colors.white : colors.textMuted}
+                  size={24}
+                  color={isFocused ? '#FFF8ED' : '#E6DAC4'}
                 />
                 {isDesktop && (
-                  <Text style={[styles.label, isFocused && styles.labelFocused]}>
+                  <Text style={[styles.label, isFocused && styles.labelFocused, { fontFamily: typography.families.rounded }]}>
                     {tab.label}
                   </Text>
                 )}
@@ -98,13 +97,13 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ deviceType
           <View
             style={[
               styles.mentorIndicator,
-              { backgroundColor: activeMentor.color + '20' },
+              { backgroundColor: '#FFF8ED20' },
               !isDesktop && styles.mentorIndicatorTablet,
             ]}
           >
-            <Ionicons name="paw" size={16} color={activeMentor.color} />
+            <Ionicons name="paw" size={16} color="#FFF8ED" />
             {isDesktop && (
-              <Text style={[styles.mentorName, { color: activeMentor.color }]}>
+              <Text style={[styles.mentorName, { color: '#FFF8ED', fontFamily: typography.families.rounded }]}>
                 {activeMentor.name.split(' ')[0]}
               </Text>
             )}
@@ -118,11 +117,12 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ deviceType
 const styles = StyleSheet.create({
   container: {
     height: '100%',
-    backgroundColor: colors.backgroundSecondary,
+    backgroundColor: colors.sidebar,
     borderRightWidth: 1.5,
-    borderRightColor: colors.border,
+    borderRightColor: colors.sidebarDark,
     paddingVertical: spacing.xl,
     justifyContent: 'space-between',
+    ...shadows.lg,
   },
   desktopWidth: {
     width: 240,
@@ -140,7 +140,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xxl,
   },
   logoText: {
-    color: colors.text,
+    color: '#FFF8ED',
     fontSize: typography.sizes.xl,
     fontWeight: typography.weights.black,
     marginLeft: spacing.sm,
@@ -157,7 +157,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   tabItemFocused: {
-    backgroundColor: colors.purple,
+    backgroundColor: colors.sidebarDark,
   },
   tabItemTablet: {
     justifyContent: 'center',
@@ -166,13 +166,13 @@ const styles = StyleSheet.create({
     height: 52,
   },
   label: {
-    color: colors.textMuted,
-    fontSize: typography.sizes.md,
+    color: '#E6DAC4',
+    fontSize: typography.sizes.body,
     fontWeight: typography.weights.bold,
     marginLeft: spacing.md,
   },
   labelFocused: {
-    color: colors.white,
+    color: '#FFF8ED',
   },
   footer: {
     paddingHorizontal: spacing.sm,
@@ -201,3 +201,4 @@ const styles = StyleSheet.create({
     marginLeft: spacing.sm,
   },
 });
+export default SidebarNavigation;

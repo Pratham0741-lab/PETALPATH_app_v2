@@ -22,7 +22,6 @@ export const ListenDesktop: React.FC = () => {
     selectedAnswer,
     correctAnswer,
     options,
-    isCompleted,
     loading,
     error,
     selectAnswer,
@@ -80,9 +79,9 @@ export const ListenDesktop: React.FC = () => {
     const isCorrect = await submitAnswer();
     setAnswered(true);
     if (isCorrect) {
-      setFeedback('Sensational! You got it right!');
+      setFeedback('Correct! Incredible work! 🎉');
     } else {
-      setFeedback('That is not quite it. Try again!');
+      setFeedback('Not quite, try again! 🌸');
     }
   };
 
@@ -123,31 +122,57 @@ export const ListenDesktop: React.FC = () => {
     );
   }
 
+  const btnVariants = [
+    { bg: colors.blue, border: '#4A7CBD', text: '#FFF8ED' },
+    { bg: colors.green, border: '#6C9955', text: '#FFF8ED' },
+    { bg: colors.yellow, border: '#D6A628', text: colors.brown },
+    { bg: colors.coral, border: '#D07E73', text: '#FFF8ED' },
+  ];
+
   return (
     <ScreenContainer style={styles.container}>
       <TopBar title="Listen & Choose" showBack />
       
+      {/* Progress & Lives row */}
+      <View style={styles.progressHeader}>
+        <View style={styles.indicatorRow}>
+          <View style={[styles.stepDot, styles.stepActive]}><Text style={styles.stepNum}>1</Text></View>
+          <View style={styles.stepLineActive} />
+          <View style={[styles.stepDot, styles.stepActive]}><Text style={styles.stepNum}>2</Text></View>
+          <View style={styles.stepLine} />
+          <View style={styles.stepDot}><Text style={styles.stepNum}>3</Text></View>
+          <View style={styles.stepLine} />
+          <View style={styles.stepDot}><Text style={styles.stepNum}>4</Text></View>
+        </View>
+        <View style={styles.heartIndicator}>
+          <Text style={styles.heartText}>💖 3 Lives</Text>
+        </View>
+      </View>
+
       <View style={styles.layout}>
-        {/* Middle Panel: Interactive Dashboard */}
+        {/* Left Side: Playback and choices */}
         <View style={styles.mainArea}>
           <View style={styles.cardWrapper}>
-            <Text style={styles.guideTitle}>Sound Lab</Text>
+            <Text style={[styles.guideTitle, { fontFamily: typography.families.rounded }]}>Sound Lab</Text>
             
             <View style={styles.playSection}>
               <Pressable
-                style={({ hovered }: any) => [
+                style={[
                   styles.speakerBtn,
                   isPlaying && styles.speakerBtnPlaying,
-                  hovered && styles.speakerBtnHovered,
                 ]}
                 onPress={handlePlayPause}
               >
                 <Ionicons
                   name={isPlaying ? 'volume-high' : 'volume-medium-outline'}
-                  size={54}
-                  color={isPlaying ? colors.white : colors.purple}
+                  size={48}
+                  color={isPlaying ? '#FFF8ED' : colors.purple}
                 />
-                <Text style={[styles.speakerBtnText, isPlaying && styles.speakerBtnTextPlaying]}>
+                <Text style={[
+                  styles.speakerBtnText, 
+                  isPlaying && styles.speakerBtnTextPlaying,
+                  { fontFamily: typography.families.rounded }
+                ]}>
                   {isPlaying ? 'Audio playing...' : 'Click to hear the pronunciation'}
                 </Text>
               </Pressable>
@@ -161,47 +186,68 @@ export const ListenDesktop: React.FC = () => {
             </View>
 
             <View style={styles.optionsSection}>
-              <Text style={styles.promptText}>Select the matching card:</Text>
+              <Text style={[styles.promptText, { fontFamily: typography.families.rounded }]}>Select the matching card:</Text>
               <View style={styles.optionsRow}>
-                {options.map((opt) => {
+                {options.map((opt, idx) => {
                   const isSelected = selectedAnswer === opt;
                   const isCorrectAnswer = correctAnswer === opt;
                   
-                  let cardStyle: any = [styles.optionCard];
-                  let textStyle: any = [styles.optionText];
+                  const variant = btnVariants[idx % btnVariants.length];
                   
-                  if (isSelected) {
-                    cardStyle.push(styles.optionCardSelected);
-                    textStyle.push(styles.optionTextSelected);
-                  }
-                  
+                  let cardBg = variant.bg;
+                  let cardBorder = variant.border;
+                  let cardText = variant.text;
+                  let currentBorderWidth = 3;
+
                   if (answered) {
                     if (isCorrectAnswer) {
-                      cardStyle.push(styles.optionCardCorrect);
-                      textStyle.push(styles.optionTextCorrect);
+                      cardBg = colors.green;
+                      cardBorder = '#6C9955';
+                      cardText = '#FFF8ED';
                     } else if (isSelected) {
-                      cardStyle.push(styles.optionCardIncorrect);
-                      textStyle.push(styles.optionTextIncorrect);
+                      cardBg = colors.coral;
+                      cardBorder = '#D07E73';
+                      cardText = '#FFF8ED';
+                    } else {
+                      cardBg = '#F8EEDC';
+                      cardBorder = '#E6DAC4';
+                      cardText = colors.textMuted;
+                      currentBorderWidth = 1.5;
                     }
+                  } else if (selectedAnswer && !isSelected) {
+                    cardBg = '#F8EEDC';
+                    cardBorder = '#E6DAC4';
+                    cardText = colors.textMuted;
+                    currentBorderWidth = 1.5;
                   }
 
                   return (
                     <Pressable
                       key={opt}
-                      style={({ pressed, hovered }: any) => [
-                        ...cardStyle,
-                        hovered && !answered && styles.optionCardHovered,
-                        pressed && !answered && { transform: [{ scale: 0.98 }] },
+                      style={({ pressed }) => [
+                        styles.optionCard,
+                        { 
+                          backgroundColor: cardBg, 
+                          borderColor: cardBorder, 
+                          borderWidth: currentBorderWidth 
+                        },
+                        pressed && !answered && { transform: [{ scale: 0.97 }] },
                       ]}
                       onPress={() => handleOptionPress(opt)}
                       disabled={answered}
                     >
-                      <Text style={textStyle}>{opt}</Text>
+                      <Text style={[
+                        styles.optionText, 
+                        { 
+                          color: cardText,
+                          fontFamily: typography.families.rounded,
+                        }
+                      ]}>{opt}</Text>
                       {answered && isCorrectAnswer && (
-                        <Ionicons name="checkmark-circle" size={24} color={colors.green} />
+                        <Ionicons name="checkmark-circle" size={26} color="#FFF8ED" />
                       )}
                       {answered && isSelected && !isCorrectAnswer && (
-                        <Ionicons name="close-circle" size={24} color="#FF4A4A" />
+                        <Ionicons name="close-circle" size={26} color="#FFF8ED" />
                       )}
                     </Pressable>
                   );
@@ -212,50 +258,47 @@ export const ListenDesktop: React.FC = () => {
             <View style={styles.actionSection}>
               {feedback && (
                 <View style={[styles.feedbackContainer, feedback.includes('Correct') ? styles.feedbackCorrect : styles.feedbackIncorrect]}>
-                  <Text style={styles.feedbackText}>{feedback}</Text>
+                  <Text style={[styles.feedbackText, { fontFamily: typography.families.rounded }]}>{feedback}</Text>
                 </View>
               )}
 
               {!answered ? (
                 <Pressable
-                  style={({ pressed, hovered }: any) => [
+                  style={({ pressed }) => [
                     styles.actionBtn,
                     !selectedAnswer && styles.actionBtnDisabled,
-                    hovered && selectedAnswer && styles.actionBtnHovered,
                     pressed && selectedAnswer && styles.actionBtnPressed,
                   ]}
                   onPress={handleSubmit}
                   disabled={!selectedAnswer}
                 >
-                  <Text style={styles.actionBtnText}>Check Answer</Text>
+                  <Text style={[styles.actionBtnText, { fontFamily: typography.families.rounded }]}>Check Answer</Text>
                 </Pressable>
               ) : (
                 <View style={styles.nextActionsRow}>
                   {feedback?.includes('Correct') ? (
                     <Pressable
-                      style={({ pressed, hovered }: any) => [
+                      style={({ pressed }) => [
                         styles.actionBtn,
                         styles.nextBtn,
-                        hovered && styles.actionBtnHovered,
                         pressed && styles.actionBtnPressed,
                       ]}
                       onPress={handleNextActivity}
                     >
-                      <Text style={styles.actionBtnText}>Next Activity</Text>
-                      <Ionicons name="arrow-forward" size={20} color={colors.white} />
+                      <Text style={[styles.actionBtnText, { fontFamily: typography.families.rounded }]}>Next Activity</Text>
+                      <Ionicons name="arrow-forward" size={20} color="#FFF8ED" />
                     </Pressable>
                   ) : (
                     <Pressable
-                      style={({ pressed, hovered }: any) => [
+                      style={({ pressed }) => [
                         styles.actionBtn,
                         styles.retryBtn,
-                        hovered && styles.actionBtnHovered,
                         pressed && styles.actionBtnPressed,
                       ]}
                       onPress={handleRetry}
                     >
-                      <Ionicons name="refresh" size={20} color={colors.white} />
-                      <Text style={styles.actionBtnText}>Try Again</Text>
+                      <Ionicons name="refresh" size={20} color="#FFF8ED" />
+                      <Text style={[styles.actionBtnText, { fontFamily: typography.families.rounded }]}>Try Again</Text>
                     </Pressable>
                   )}
                 </View>
@@ -264,13 +307,13 @@ export const ListenDesktop: React.FC = () => {
           </View>
         </View>
 
-        {/* Right Panel: Mentor Cheerleader */}
+        {/* Right Side: Mentor Cheerleader */}
         <View style={styles.sidebar}>
-          <Text style={styles.sidebarTitle}>Mentor Guide</Text>
+          <Text style={[styles.sidebarTitle, { fontFamily: typography.families.rounded }]}>Mentor Guide</Text>
           <AvatarCard mentor={activeMentor} style={styles.mentorCard} />
           <View style={styles.mentorBubble}>
-            <Text style={styles.tipsText}>
-              "Look at that! Listening is the superpower of learning! Listen to Penny Panda say the word, then select the card below. Let's see if we can get all correct answers today!"
+            <Text style={[styles.tipsText, { fontFamily: typography.families.rounded }]}>
+              "Hi {activeChild?.name}! Click the button to listen, then select the matching button! You are doing great! 🌸"
             </Text>
           </View>
         </View>
@@ -290,12 +333,12 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
   },
   statusText: {
-    color: colors.textMuted,
+    color: colors.textSecondary,
     marginTop: spacing.md,
     fontSize: typography.sizes.sm,
   },
   errorText: {
-    color: colors.text,
+    color: colors.textPrimary,
     marginTop: spacing.md,
     fontSize: typography.sizes.md,
     textAlign: 'center',
@@ -305,11 +348,63 @@ const styles = StyleSheet.create({
     backgroundColor: colors.purple,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.xl,
-    borderRadius: radius.lg,
+    borderRadius: radius.button,
   },
   backButtonText: {
-    color: colors.white,
+    color: '#FFF8ED',
     fontWeight: typography.weights.bold,
+  },
+  progressHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    backgroundColor: colors.surface,
+    borderBottomWidth: 1.5,
+    borderBottomColor: colors.border,
+  },
+  indicatorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  stepDot: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: colors.border,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  stepActive: {
+    backgroundColor: colors.purple,
+  },
+  stepNum: {
+    color: '#FFF8ED',
+    fontSize: 10,
+    fontWeight: typography.weights.bold,
+  },
+  stepLine: {
+    width: 48,
+    height: 3,
+    backgroundColor: colors.border,
+  },
+  stepLineActive: {
+    width: 48,
+    height: 3,
+    backgroundColor: colors.purple,
+  },
+  heartIndicator: {
+    backgroundColor: '#FFEBEB',
+    paddingVertical: 4,
+    paddingHorizontal: 12,
+    borderRadius: radius.chip,
+    borderWidth: 1.5,
+    borderColor: '#FFC1C1',
+  },
+  heartText: {
+    fontSize: 12,
+    fontWeight: 'bold',
   },
   layout: {
     flex: 1,
@@ -326,27 +421,28 @@ const styles = StyleSheet.create({
   cardWrapper: {
     width: '100%',
     maxWidth: 720,
-    backgroundColor: colors.backgroundSecondary,
-    borderWidth: 1,
+    backgroundColor: colors.surface,
+    borderWidth: 1.5,
     borderColor: colors.border,
-    borderRadius: radius.xxl,
+    borderRadius: radius.illustrationCard,
     padding: spacing.xl,
     ...shadows.md,
   },
   guideTitle: {
-    color: colors.text,
-    fontSize: typography.sizes.lg,
+    color: colors.textPrimary,
+    fontSize: typography.sizes.largeTitle,
     fontWeight: typography.weights.black,
     marginBottom: spacing.md,
   },
   playSection: {
     backgroundColor: colors.background,
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: colors.border,
-    borderRadius: radius.xl,
+    borderRadius: radius.card,
     padding: spacing.xl,
     alignItems: 'center',
     marginBottom: spacing.xl,
+    ...shadows.sm,
   },
   speakerBtn: {
     flexDirection: 'row',
@@ -354,33 +450,29 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.xl,
-    borderRadius: radius.lg,
-    backgroundColor: colors.purple + '12',
-    borderWidth: 1,
-    borderColor: colors.purple + '20',
+    borderRadius: radius.button,
+    backgroundColor: colors.purple,
+    ...shadows.sm,
   },
   speakerBtnPlaying: {
-    backgroundColor: colors.purple,
-  },
-  speakerBtnHovered: {
-    backgroundColor: colors.purple + '22',
+    backgroundColor: colors.green,
   },
   speakerBtnText: {
-    color: colors.purple,
-    fontWeight: typography.weights.black,
-    fontSize: typography.sizes.md,
+    color: '#FFF8ED',
+    fontWeight: typography.weights.bold,
+    fontSize: typography.sizes.body,
   },
   speakerBtnTextPlaying: {
-    color: colors.white,
+    color: '#FFF8ED',
   },
   comingSoonText: {
-    color: '#F97316', // Sleek orange color
+    color: colors.orange,
     fontSize: 14,
     fontWeight: '700',
     marginTop: spacing.sm,
   },
   progressContainer: {
-    width: '80%',
+    width: '90%',
     height: 8,
     backgroundColor: colors.border,
     borderRadius: 4,
@@ -395,8 +487,8 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xl,
   },
   promptText: {
-    color: colors.text,
-    fontSize: typography.sizes.md,
+    color: colors.textPrimary,
+    fontSize: typography.sizes.body,
     fontWeight: typography.weights.bold,
     marginBottom: spacing.md,
   },
@@ -406,47 +498,17 @@ const styles = StyleSheet.create({
   },
   optionCard: {
     flex: 1,
-    backgroundColor: colors.background,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    borderRadius: radius.xl,
-    paddingVertical: spacing.xl,
-    paddingHorizontal: spacing.md,
-    flexDirection: 'column',
-    justifyContent: 'center',
+    height: 90, // SPEC height 90
+    borderRadius: 24, // SPEC radius 24
+    paddingHorizontal: spacing.lg,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    gap: spacing.xs,
     ...shadows.sm,
   },
-  optionCardHovered: {
-    borderColor: colors.purple + '50',
-    backgroundColor: colors.purple + '05',
-  },
-  optionCardSelected: {
-    borderColor: colors.purple,
-    backgroundColor: colors.purple + '08',
-  },
-  optionCardCorrect: {
-    borderColor: colors.green,
-    backgroundColor: colors.green + '08',
-  },
-  optionCardIncorrect: {
-    borderColor: '#FF4A4A',
-    backgroundColor: '#FF4A4A08',
-  },
   optionText: {
-    color: colors.text,
-    fontSize: typography.sizes.md,
+    fontSize: typography.sizes.cardTitle,
     fontWeight: typography.weights.bold,
-  },
-  optionTextSelected: {
-    color: colors.purple,
-  },
-  optionTextCorrect: {
-    color: colors.green,
-  },
-  optionTextIncorrect: {
-    color: '#FF4A4A',
   },
   actionSection: {
     gap: spacing.md,
@@ -460,42 +522,39 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   feedbackCorrect: {
-    backgroundColor: colors.green + '15',
+    backgroundColor: '#E2F0D9',
   },
   feedbackIncorrect: {
-    backgroundColor: '#FF4A4A15',
+    backgroundColor: '#FFEBEB',
   },
   feedbackText: {
     fontWeight: typography.weights.bold,
-    fontSize: typography.sizes.sm,
+    fontSize: typography.sizes.small,
   },
   actionBtn: {
     backgroundColor: colors.purple,
     paddingVertical: spacing.md,
-    borderRadius: radius.xl,
+    borderRadius: radius.button,
     width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
     gap: spacing.sm,
-    height: 54,
-    ...shadows.md,
+    height: 56,
+    ...shadows.sm,
   },
   actionBtnDisabled: {
     backgroundColor: colors.border,
     opacity: 0.7,
-  },
-  actionBtnHovered: {
-    opacity: 0.95,
   },
   actionBtnPressed: {
     transform: [{ scale: 0.98 }],
     opacity: 0.9,
   },
   actionBtnText: {
-    color: colors.white,
+    color: '#FFF8ED',
     fontWeight: typography.weights.bold,
-    fontSize: typography.sizes.md,
+    fontSize: typography.sizes.body,
   },
   nextActionsRow: {
     width: '100%',
@@ -507,31 +566,33 @@ const styles = StyleSheet.create({
     backgroundColor: colors.purple,
   },
   sidebar: {
-    width: 300,
+    width: 320,
     backgroundColor: colors.background,
     padding: spacing.xl,
     alignItems: 'center',
+    gap: spacing.md,
   },
   sidebarTitle: {
-    color: colors.text,
-    fontSize: typography.sizes.lg,
+    color: colors.textPrimary,
+    fontSize: typography.sizes.sectionTitle,
     fontWeight: typography.weights.bold,
-    marginBottom: spacing.md,
+    marginBottom: spacing.xs,
   },
   mentorCard: {
     width: '100%',
-    marginBottom: spacing.lg,
   },
   mentorBubble: {
-    backgroundColor: colors.backgroundSecondary,
+    backgroundColor: colors.surface,
     padding: spacing.md,
-    borderRadius: radius.lg,
-    borderWidth: 1,
+    borderRadius: radius.card,
+    borderWidth: 1.5,
     borderColor: colors.border,
+    ...shadows.sm,
   },
   tipsText: {
-    color: colors.textMuted,
-    fontSize: typography.sizes.sm,
-    lineHeight: typography.lineHeights.sm,
+    color: colors.textPrimary,
+    fontSize: typography.sizes.small,
+    lineHeight: 18,
   },
 });
+export default ListenDesktop;

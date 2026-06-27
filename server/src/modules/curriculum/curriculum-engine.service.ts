@@ -1,7 +1,9 @@
 import { prisma } from '../../config/database.js';
-import { CurriculumState, MasteryState } from '@prisma/client';
+import { CurriculumState, MasteryState } from '../../shared/enums.js';
 import { subjectRepository } from './repositories/subject.repository.js';
 import { childSkillCurriculumRepository } from './repositories/child-skill-curriculum.repository.js';
+import { skillRepository } from './repositories/skill.repository.js';
+import { skillDependencyRepository } from './repositories/skill-dependency.repository.js';
 import { skillHealthRepository } from '../mastery/repositories/skill-health.repository.js';
 
 export interface CurriculumRecommendationDto {
@@ -22,20 +24,14 @@ export class CurriculumEngineService {
     if (subjectId) {
       where.subjectId = subjectId;
     }
-    return prisma.skill.findMany({
-      where,
-      include: { subject: true },
-    });
+    return skillRepository.findAll(where);
   }
 
   /**
    * Fetch prerequisite relationships where this skill is the child.
    */
   async getPrerequisites(skillId: string) {
-    return prisma.skillDependency.findMany({
-      where: { childSkillId: skillId },
-      include: { parentSkill: true },
-    });
+    return skillDependencyRepository.findByChildSkill(skillId);
   }
 
   /**
@@ -75,10 +71,7 @@ export class CurriculumEngineService {
       where.subjectId = subjectId;
     }
 
-    const allSkills = await prisma.skill.findMany({
-      where,
-      include: { subject: true },
-    });
+    const allSkills = await skillRepository.findAll(where);
 
     const availableSkills: any[] = [];
 
@@ -113,7 +106,7 @@ export class CurriculumEngineService {
    * Set a child skill curriculum state to ACTIVE.
    */
   async activateSkill(childId: string, skillId: string) {
-    const skill = await prisma.skill.findUnique({ where: { id: skillId } });
+    const skill = await skillRepository.findById(skillId);
     if (!skill) throw new Error('Skill not found');
 
     const unlockRatio = await this.calculateUnlockRatio(childId, skillId);
@@ -131,7 +124,7 @@ export class CurriculumEngineService {
    * Set a child skill curriculum state to COMPLETED.
    */
   async completeSkill(childId: string, skillId: string) {
-    const skill = await prisma.skill.findUnique({ where: { id: skillId } });
+    const skill = await skillRepository.findById(skillId);
     if (!skill) throw new Error('Skill not found');
 
     const unlockRatio = await this.calculateUnlockRatio(childId, skillId);
@@ -251,7 +244,7 @@ export class CurriculumEngineService {
    * Syncs and updates the ChildSkillCurriculum database states for this child.
    */
   async generateCurriculum(childId: string) {
-    const allSkills = await prisma.skill.findMany({ include: { subject: true } });
+    const allSkills = await skillRepository.findAll({});
     const updatedRecords: any[] = [];
 
     for (const skill of allSkills) {

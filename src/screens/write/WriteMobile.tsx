@@ -117,19 +117,27 @@ export const WriteMobile: React.FC = () => {
       
       {/* Activity Progress Header Indicator */}
       <View style={styles.progressHeader}>
-        <View style={[styles.stepDot, styles.stepActive]}><Text style={styles.stepNum}>1</Text></View>
-        <View style={styles.stepLineActive} />
-        <View style={[styles.stepDot, styles.stepActive]}><Text style={styles.stepNum}>2</Text></View>
-        <View style={styles.stepLineActive} />
-        <View style={[styles.stepDot, styles.stepActive]}><Text style={styles.stepNum}>3</Text></View>
-        <View style={styles.stepLineActive} />
-        <View style={[styles.stepDot, styles.stepActive]}><Text style={styles.stepNum}>4</Text></View>
+        <View style={styles.indicatorRow}>
+          <View style={[styles.stepDot, styles.stepActive]}><Text style={styles.stepNum}>1</Text></View>
+          <View style={styles.stepLineActive} />
+          <View style={[styles.stepDot, styles.stepActive]}><Text style={styles.stepNum}>2</Text></View>
+          <View style={styles.stepLineActive} />
+          <View style={[styles.stepDot, styles.stepActive]}><Text style={styles.stepNum}>3</Text></View>
+          <View style={styles.stepLineActive} />
+          <View style={[styles.stepDot, styles.stepActive]}><Text style={styles.stepNum}>4</Text></View>
+        </View>
+        <View style={styles.heartIndicator}>
+          <Text style={styles.heartText}>💖 3 Lives</Text>
+        </View>
       </View>
 
       <View style={styles.content}>
         <View style={styles.headerInfo}>
-          <Text style={styles.activityLabel}>Trace the shape:</Text>
-          <Text style={styles.guideNameText}>{guideName}</Text>
+          <View style={styles.mascotBadge}>
+            <Text style={styles.mascotEmoji}>🦉</Text>
+          </View>
+          <Text style={[styles.activityLabel, { fontFamily: typography.families.rounded }]}>Trace the shape:</Text>
+          <Text style={[styles.guideNameText, { fontFamily: typography.families.rounded }]}>{guideName}</Text>
         </View>
 
         <View style={styles.canvasWrapper}>
@@ -150,7 +158,7 @@ export const WriteMobile: React.FC = () => {
             <View style={styles.completePanel}>
               <View style={styles.congratsRow}>
                 <Ionicons name="checkmark-circle" size={24} color={colors.green} />
-                <Text style={styles.congratsText}>Tracing complete! Beautiful job!</Text>
+                <Text style={[styles.congratsText, { fontFamily: typography.families.rounded }]}>Tracing complete! Beautiful job!</Text>
               </View>
               {accuracyScore !== null && (
                 <View style={styles.starsContainer}>
@@ -165,7 +173,7 @@ export const WriteMobile: React.FC = () => {
                       />
                     ))}
                   </View>
-                  <Text style={styles.scoreText}>Accuracy: {accuracyScore}%</Text>
+                  <Text style={[styles.scoreText, { fontFamily: typography.families.rounded }]}>Accuracy: {accuracyScore}%</Text>
                 </View>
               )}
               <Pressable
@@ -177,12 +185,12 @@ export const WriteMobile: React.FC = () => {
                 ]}
                 onPress={handleNextPress}
               >
-                <Text style={styles.actionBtnText}>Continue</Text>
-                <Ionicons name="arrow-forward" size={20} color={colors.white} />
+                <Text style={[styles.actionBtnText, { fontFamily: typography.families.rounded }]}>Continue</Text>
+                <Ionicons name="arrow-forward" size={20} color="#FFF8ED" />
               </Pressable>
             </View>
           ) : (
-            <Text style={styles.tipText}>
+            <Text style={[styles.tipText, { fontFamily: typography.families.rounded }]}>
               Start from the top and trace slowly along the lines.
             </Text>
           )}
@@ -216,12 +224,12 @@ const styles = StyleSheet.create({
     padding: spacing.xl,
   },
   statusText: {
-    color: colors.textMuted,
+    color: colors.textSecondary,
     marginTop: spacing.md,
     fontSize: typography.sizes.sm,
   },
   errorText: {
-    color: colors.text,
+    color: colors.textPrimary,
     marginTop: spacing.md,
     fontSize: typography.sizes.md,
     textAlign: 'center',
@@ -231,20 +239,25 @@ const styles = StyleSheet.create({
     backgroundColor: colors.purple,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.xl,
-    borderRadius: radius.lg,
+    borderRadius: radius.button,
   },
   backButtonText: {
-    color: colors.white,
+    color: '#FFF8ED',
     fontWeight: typography.weights.bold,
   },
   progressHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
     paddingVertical: spacing.md,
-    backgroundColor: colors.backgroundSecondary,
-    borderBottomWidth: 1,
+    paddingHorizontal: spacing.lg,
+    backgroundColor: colors.surface,
+    borderBottomWidth: 1.5,
     borderBottomColor: colors.border,
+  },
+  indicatorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   stepDot: {
     width: 24,
@@ -258,14 +271,26 @@ const styles = StyleSheet.create({
     backgroundColor: colors.purple,
   },
   stepNum: {
-    color: colors.white,
+    color: '#FFF8ED',
     fontSize: 10,
     fontWeight: typography.weights.bold,
   },
   stepLineActive: {
-    width: 40,
+    width: 32,
     height: 3,
     backgroundColor: colors.purple,
+  },
+  heartIndicator: {
+    backgroundColor: '#FFEBEB',
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: radius.chip,
+    borderWidth: 1.5,
+    borderColor: '#FFC1C1',
+  },
+  heartText: {
+    fontSize: 12,
+    fontWeight: 'bold',
   },
   content: {
     flex: 1,
@@ -274,18 +299,40 @@ const styles = StyleSheet.create({
   },
   headerInfo: {
     alignItems: 'center',
-    marginBottom: spacing.sm,
+    backgroundColor: colors.surface,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    borderRadius: radius.card,
+    padding: spacing.md,
+    position: 'relative',
+    ...shadows.sm,
+  },
+  mascotBadge: {
+    position: 'absolute',
+    top: 6,
+    right: 10,
+    width: 36,
+    height: 36,
+    borderRadius: radius.full,
+    backgroundColor: '#FFF8ED',
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  mascotEmoji: {
+    fontSize: 20,
   },
   activityLabel: {
     color: colors.purple,
-    fontSize: typography.sizes.xs,
+    fontSize: typography.sizes.caption,
     fontWeight: typography.weights.bold,
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
   guideNameText: {
-    color: colors.text,
-    fontSize: 24,
+    color: colors.textPrimary,
+    fontSize: 22,
     fontWeight: typography.weights.black,
   },
   canvasWrapper: {
@@ -306,18 +353,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
-    backgroundColor: colors.green + '12',
+    backgroundColor: '#E2F0D9',
     paddingVertical: spacing.xs,
     paddingHorizontal: spacing.md,
     borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: colors.green + '25',
+    borderWidth: 1.5,
+    borderColor: '#A8D08D',
     marginBottom: spacing.xs,
   },
   congratsText: {
     color: colors.green,
     fontWeight: typography.weights.bold,
-    fontSize: typography.sizes.sm,
+    fontSize: typography.sizes.small,
   },
   starsContainer: {
     alignItems: 'center',
@@ -331,36 +378,36 @@ const styles = StyleSheet.create({
   },
   scoreText: {
     fontSize: 14,
-    color: colors.textMuted,
+    color: colors.textSecondary,
     fontWeight: '600',
   },
   actionBtn: {
     backgroundColor: colors.purple,
     paddingVertical: spacing.md,
-    borderRadius: radius.xl,
+    borderRadius: radius.button,
     width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
     gap: spacing.sm,
-    height: 54,
-    ...shadows.md,
+    height: 56,
+    ...shadows.sm,
   },
   actionBtnPressed: {
     transform: [{ scale: 0.98 }],
     opacity: 0.9,
   },
   actionBtnText: {
-    color: colors.white,
+    color: '#FFF8ED',
     fontWeight: typography.weights.bold,
-    fontSize: typography.sizes.md,
+    fontSize: typography.sizes.body,
   },
   nextBtn: {
     backgroundColor: colors.green,
   },
   tipText: {
-    color: colors.textMuted,
-    fontSize: typography.sizes.xs,
+    color: colors.textSecondary,
+    fontSize: typography.sizes.caption,
     textAlign: 'center',
   },
 });

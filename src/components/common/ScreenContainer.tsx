@@ -12,7 +12,7 @@ interface ScreenContainerProps {
 export const ScreenContainer: React.FC<ScreenContainerProps> = ({ children, style }) => {
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.background} />
+      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
       <View 
         onTouchStart={() => useTutorialStore.getState().recordInteraction()}
         style={[styles.container, style]}

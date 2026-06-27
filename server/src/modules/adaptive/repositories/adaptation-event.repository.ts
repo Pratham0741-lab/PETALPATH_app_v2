@@ -1,5 +1,5 @@
 import { prisma } from '../../../config/database.js';
-import { AdaptationEventType } from '@prisma/client';
+import { AdaptationEventType } from '../../../shared/enums.js';
 
 export class AdaptationEventRepository {
   async create(data: {
@@ -26,6 +26,18 @@ export class AdaptationEventRepository {
       where: { childId, eventType },
       orderBy: { createdAt: 'desc' },
       take: limit,
+    });
+  }
+
+  async findRecent(childId: string, eventType: AdaptationEventType, since: Date) {
+    return prisma.adaptationEvent.findFirst({
+      where: {
+        childId,
+        eventType,
+        createdAt: {
+          gte: since,
+        },
+      },
     });
   }
 }

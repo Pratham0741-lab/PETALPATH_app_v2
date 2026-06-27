@@ -1,5 +1,5 @@
 import { prisma } from '../../../config/database.js';
-import { MasteryState } from '@prisma/client';
+import { MasteryState } from '../../../shared/enums.js';
 
 export class SkillHealthRepository {
   async findByChildAndSkill(childId: string, skillId: string) {

@@ -1,70 +1,77 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { StyleSheet, ScrollView, View, Text, Pressable, ActivityIndicator } from 'react-native';
 import { ScreenContainer } from '../../components/common/ScreenContainer';
 import { TopBar } from '../../components/navigation/TopBar';
-import { useFocusEffect } from '@react-navigation/native';
 import { useRewardsStore } from '../../store/rewardsStore';
-import { RewardCard } from '../../components/cards/RewardCard';
-import { colors, spacing, radius, typography } from '../../theme';
-import { Ionicons } from '@expo/vector-icons';
 import { useChildStore } from '../../store/childStore';
-import { NavigationGuide } from '../../components/tutorial/NavigationGuide';
+import { Card, SectionHeader } from '../../components/ui';
+import { RewardCard } from '../../components/cards/RewardCard';
+import { colors, spacing, radius, typography, shadows } from '../../theme';
+import { Ionicons } from '@expo/vector-icons';
 
 export const RewardsMobile: React.FC = () => {
   const activeChild = useChildStore((state) => state.activeChild);
   const { totalStars, stickers, badges, loading, error, refreshRewards } = useRewardsStore();
   const [activeTab, setActiveTab] = useState<'stickers' | 'badges'>('stickers');
 
-  const tabRef = useRef<View>(null);
-  const [handCoords, setHandCoords] = useState<{ x: number; y: number } | undefined>(undefined);
+  useEffect(() => {
+    refreshRewards();
+  }, []);
 
-  const measureTarget = () => {
-    if (tabRef.current) {
-      tabRef.current.measureInWindow((x, y, width, height) => {
-        if (width > 0 && height > 0) {
-          setHandCoords({ x: x + width / 2, y: y + height / 2 });
-        }
-      });
-    }
-  };
-
-  useFocusEffect(
-    React.useCallback(() => {
-      refreshRewards();
-      const timer = setTimeout(measureTarget, 300);
-      return () => clearTimeout(timer);
-    }, [refreshRewards])
-  );
+  const childName = activeChild?.name || 'Explorer';
 
   return (
     <ScreenContainer>
       <TopBar title="My Rewards" />
       <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
-        {/* Wallet Overview Panel */}
-        <View style={styles.walletCard}>
-          <View style={styles.walletHeader}>
-            <Ionicons name="star" size={32} color={colors.yellow} />
-            <View>
-              <Text style={styles.walletTitle}>{activeChild?.name || 'Buddy'}'s Star Bank</Text>
-              <Text style={styles.walletCount}>{totalStars} Stars</Text>
+        
+        {/* LION PURPLE HERO CARD */}
+        <Card style={styles.purpleHeroCard}>
+          <View style={styles.heroRow}>
+            <View style={styles.heroTextSection}>
+              <Text style={[styles.heroBadge, { fontFamily: typography.families.rounded }]}>LION MENTOR'S TREASURE</Text>
+              <Text style={[styles.heroTitle, { fontFamily: typography.families.rounded }]}>{childName}'s Star Bank</Text>
+              
+              <View style={styles.statsRow}>
+                <View style={styles.statItem}>
+                  <Text style={styles.statLabel}>⭐ Stars</Text>
+                  <Text style={[styles.statValue, { fontFamily: typography.families.rounded }]}>{totalStars}</Text>
+                </View>
+                <View style={styles.statItem}>
+                  <Text style={styles.statLabel}>💖 Hearts</Text>
+                  <Text style={[styles.statValue, { fontFamily: typography.families.rounded }]}>8</Text>
+                </View>
+                <View style={styles.statItem}>
+                  <Text style={styles.statLabel}>🌸 Petals</Text>
+                  <Text style={[styles.statValue, { fontFamily: typography.families.rounded }]}>12</Text>
+                </View>
+              </View>
             </View>
+            <Text style={styles.heroEmoji}>🦁</Text>
           </View>
-        </View>
+        </Card>
 
         {/* Tab Switcher */}
         <View style={styles.tabContainer}>
           <Pressable
-            ref={tabRef as any}
             onPress={() => setActiveTab('stickers')}
             style={[styles.tab, activeTab === 'stickers' && styles.activeTab]}
           >
-            <Text style={[styles.tabText, activeTab === 'stickers' && styles.activeTabText]}>Stickers</Text>
+            <Text style={[
+              styles.tabText, 
+              activeTab === 'stickers' && styles.activeTabText,
+              { fontFamily: typography.families.rounded }
+            ]}>Stickers</Text>
           </Pressable>
           <Pressable
             onPress={() => setActiveTab('badges')}
             style={[styles.tab, activeTab === 'badges' && styles.activeTab]}
           >
-            <Text style={[styles.tabText, activeTab === 'badges' && styles.activeTabText]}>Badges</Text>
+            <Text style={[
+              styles.tabText, 
+              activeTab === 'badges' && styles.activeTabText,
+              { fontFamily: typography.families.rounded }
+            ]}>Badges</Text>
           </Pressable>
         </View>
 
@@ -74,6 +81,10 @@ export const RewardsMobile: React.FC = () => {
           <Text style={styles.errorText}>{error}</Text>
         ) : (
           <View style={styles.list}>
+            <SectionHeader
+              title={activeTab === 'stickers' ? 'Magical Stickers' : 'Learning Badges'}
+              subtitle={activeTab === 'stickers' ? 'Collect stars to unlock cute forest animals!' : 'Earned by completing subject paths!'}
+            />
             {activeTab === 'stickers'
               ? stickers.map((s) => (
                   <RewardCard
@@ -97,54 +108,74 @@ export const RewardsMobile: React.FC = () => {
           </View>
         )}
       </ScrollView>
-      <NavigationGuide
-        screenKey="rewards"
-        guideKey="reward"
-        message="Look at your rewards!"
-        showHand={!!handCoords}
-        handMode="tap"
-        handX={handCoords?.x}
-        handY={handCoords?.y}
-      />
     </ScreenContainer>
   );
 };
 
 const styles = StyleSheet.create({
   scrollContainer: {
-    paddingBottom: spacing.xxl,
+    paddingBottom: 100,
   },
-  walletCard: {
-    backgroundColor: colors.backgroundSecondary,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    borderRadius: radius.lg,
+  purpleHeroCard: {
+    backgroundColor: colors.purple,
+    borderColor: '#7C68B8',
+    borderWidth: 2,
     marginHorizontal: spacing.lg,
     marginTop: spacing.md,
-    padding: spacing.md,
+    padding: spacing.lg,
   },
-  walletHeader: {
+  heroRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  heroTextSection: {
+    flex: 1.2,
+    gap: spacing.xs,
+  },
+  heroBadge: {
+    color: '#E6DAC4',
+    fontSize: 10,
+    fontWeight: typography.weights.black,
+    letterSpacing: 1.2,
+  },
+  heroTitle: {
+    color: '#FFF8ED',
+    fontSize: typography.sizes.sectionTitle,
+    fontWeight: typography.weights.black,
+  },
+  statsRow: {
+    flexDirection: 'row',
     gap: spacing.md,
+    marginTop: spacing.sm,
   },
-  walletTitle: {
-    color: colors.textMuted,
-    fontSize: typography.sizes.xs,
-    fontWeight: typography.weights.medium,
-    textTransform: 'uppercase',
+  statItem: {
+    backgroundColor: 'rgba(255, 248, 237, 0.15)',
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: radius.md,
+    alignItems: 'center',
   },
-  walletCount: {
-    color: colors.text,
-    fontSize: typography.sizes.xl,
-    fontWeight: typography.weights.bold,
+  statLabel: {
+    color: '#E6DAC4',
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
+  statValue: {
+    color: '#FFF8ED',
+    fontSize: typography.sizes.body,
+    fontWeight: 'bold',
+    marginTop: 2,
+  },
+  heroEmoji: {
+    fontSize: 72,
   },
   tabContainer: {
     flexDirection: 'row',
     marginHorizontal: spacing.lg,
     marginVertical: spacing.lg,
-    backgroundColor: colors.border + '30',
-    borderRadius: radius.md,
+    backgroundColor: colors.border,
+    borderRadius: radius.card,
     padding: 4,
     gap: 4,
   },
@@ -152,21 +183,19 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: spacing.sm,
     alignItems: 'center',
-    borderRadius: radius.sm,
+    borderRadius: radius.button,
   },
   activeTab: {
-    backgroundColor: colors.backgroundSecondary,
-    borderWidth: 1,
-    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    ...shadows.sm,
   },
   tabText: {
-    color: colors.textMuted,
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.medium,
+    color: colors.textSecondary,
+    fontSize: typography.sizes.small,
+    fontWeight: typography.weights.bold,
   },
   activeTabText: {
     color: colors.purple,
-    fontWeight: typography.weights.bold,
   },
   list: {
     paddingHorizontal: spacing.lg,
@@ -179,8 +208,9 @@ const styles = StyleSheet.create({
     marginTop: spacing.xxl,
   },
   errorText: {
-    color: '#FF4A4A',
+    color: colors.coral,
     textAlign: 'center',
     marginTop: spacing.lg,
   },
 });
+export default RewardsMobile;
