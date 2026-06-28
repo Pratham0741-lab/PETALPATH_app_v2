@@ -4,7 +4,7 @@ import { useNavigation } from '@react-navigation/native';
 import { ScreenContainer } from '../../components/common/ScreenContainer';
 import { AppButton } from '../../components/buttons/AppButton';
 import { colors, spacing, typography, radius, shadows } from '../../theme';
-import { api } from '../../utils/api';
+import { api } from '../../api/client';
 
 export const ForgotPasswordScreen: React.FC = () => {
   const navigation = useNavigation<any>();

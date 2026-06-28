@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, View, Text, Switch, ScrollView, TouchableOpacity, Alert, Platform } from 'react-native';
 import { ScreenContainer } from '../../components/common/ScreenContainer';
-import { api } from '../../utils/api';
+import { api } from '../../api/client';
 import { SectionHeader } from '../../components/common/SectionHeader';
 import { AppCard } from '../../components/cards/AppCard';
 import { useAppStore } from '../../store/appStore';

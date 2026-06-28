@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { api } from '../utils/api';
+import { api } from '../api/client';
 
 export interface Sticker {
   id: string;

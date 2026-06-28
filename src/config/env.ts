@@ -1,13 +1,7 @@
-import { Platform } from 'react-native';
-
 /**
- * Centered configuration for API and assets host url.
- * During local development, this points to your computer's local IP or localhost.
- * When deploying to production, replace BACKEND_URL with your online hosted server URL
- * (e.g. 'https://petalpath-api.onrender.com').
+ * Legacy shim — re-exports from the new centralized config.
+ *
+ * @deprecated Import from '../config/api' instead.
+ * This file exists only so that any missed import still compiles.
  */
-export const BACKEND_URL = Platform.OS === 'android'
-  ? 'http://localhost:5000' // Directs to PC's localhost via 'adb reverse tcp:5000 tcp:5000'
-  : 'http://localhost:5000';
-
-export const API_URL = `${BACKEND_URL}/api`;
+export { API_BASE_URL as BACKEND_URL, API_URL } from './api';

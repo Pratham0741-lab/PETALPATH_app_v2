@@ -2,8 +2,7 @@
  * Audio Guide Map — maps mentor characterTypes to audio folder names
  * and defines guide keys to file name patterns.
  *
- * Audio files are served statically from:
- *   http://{host}:5000/storage/audio/{folder}/{filename}
+ * Audio files are served from CloudFront CDN or the configured STORAGE_URL.
  */
 
 
@@ -76,12 +75,12 @@ const getGuideFilename = (prefix: string, guideKey: GuideKey): string | null => 
 
 // ---------- Base URL ----------
 
-import { BACKEND_URL } from '../config/env';
+import { STORAGE_URL } from '../config/api';
 
 const CDN_URL = process.env.EXPO_PUBLIC_CDN_BASE_URL;
 const AUDIO_BASE_URL = CDN_URL
   ? `${CDN_URL.replace(/\/$/, '')}/audio`
-  : `${BACKEND_URL}/storage/audio`;
+  : `${STORAGE_URL}/audio`;
 
 // ---------- Public API ----------
 

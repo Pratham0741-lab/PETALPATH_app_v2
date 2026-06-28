@@ -10,7 +10,7 @@ import { enhanceMentor, MENTORS } from '../../constants/mentors';
 import { useNavigation } from '@react-navigation/native';
 import { useRoadmapStore } from '../../store/roadmapStore';
 import { Ionicons } from '@expo/vector-icons';
-import { api } from '../../utils/api';
+import { api } from '../../api/client';
 import { navigateToActivity } from '../../utils/navigationFlow';
 
 export const LessonOverviewDesktop: React.FC = () => {

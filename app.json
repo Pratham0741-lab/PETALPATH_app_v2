@@ -2,6 +2,7 @@
   "expo": {
     "name": "petalpath_app_v2",
     "slug": "petalpath_app_v2",
+    "scheme": "petalpath",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
