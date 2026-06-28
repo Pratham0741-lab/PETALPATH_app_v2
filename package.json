@@ -1,0 +1,20 @@
+{
+  "name": "petalpath-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "frontend",
+    "server"
+  ],
+  "scripts": {
+    "start": "npm start --prefix frontend",
+    "android": "npm run android --prefix frontend",
+    "ios": "npm run ios --prefix frontend",
+    "web": "npm run web --prefix frontend",
+    "server": "npm run dev --prefix server",
+    "dev": "concurrently \"npm run dev --prefix server\" \"npm run start --prefix frontend\""
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.3"
+  }
+}
