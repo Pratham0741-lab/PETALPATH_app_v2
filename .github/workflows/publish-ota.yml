@@ -1,0 +1,46 @@
+name: Publish Expo OTA Update
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  publish:
+    name: Publish OTA Update
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: |
+          echo "Installing project dependencies..."
+          npm ci
+
+      - name: Setup EAS CLI and Authenticate
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Verify EAS CLI
+        run: npx eas --version
+
+      - name: Publish OTA Update to Preview
+        run: |
+          echo "Publishing EAS Update to preview branch..."
+          npx eas update \
+            --branch preview \
+            --message "${{ github.event.head_commit.message }}" \
+            --non-interactive
+          echo "EAS Update published successfully."
