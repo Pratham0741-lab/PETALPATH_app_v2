@@ -34,12 +34,12 @@ jobs:
           token: ${{ secrets.EXPO_TOKEN }}
 
       - name: Verify EAS CLI
-        run: npx eas --version
+        run: eas --version
 
       - name: Publish OTA Update to Preview
         run: |
           echo "Publishing EAS Update to preview branch..."
-          npx eas update \
+          npx update \
             --branch preview \
             --message "${{ github.event.head_commit.message }}" \
             --non-interactive
