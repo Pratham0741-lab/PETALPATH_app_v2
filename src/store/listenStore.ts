@@ -179,7 +179,10 @@ export const useListenStore = create<ListenState>((set, get) => {
           }
         }
 
-        const audio = audios[0];
+        const audio = {
+          ...audios[0],
+          activityId,
+        };
         
         // Fetch progress from backend
         let isCompleted = false;

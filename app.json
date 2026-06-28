@@ -8,7 +8,11 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSSpeechRecognitionUsageDescription": "Allow PetalPath to use speech recognition for learning activities.",
+        "NSMicrophoneUsageDescription": "Allow PetalPath to use the microphone for speech activities."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -18,9 +22,16 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.anonymous.petalpath_app_v2"
+      "package": "com.anonymous.petalpath_app_v2",
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
+      ]
     },
     "plugins": [
+      "./plugins/withAndroidNetworkSecurity",
       [
         "@react-native-google-signin/google-signin",
         {
@@ -35,10 +46,17 @@
           "microphonePermission": "Allow PetalPath to use the microphone for speech activities.",
           "speechRecognitionPermission": "Allow PetalPath to use speech recognition for learning activities."
         }
-      ]
+      ],
+      "expo-font",
+      "expo-asset"
     ],
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "22bc5504-842c-4282-b770-b1f26f3d79f8"
+      }
     }
   }
 }

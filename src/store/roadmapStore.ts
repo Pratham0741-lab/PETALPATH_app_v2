@@ -434,6 +434,10 @@ export const useRoadmapStore = create<RoadmapState>((set, get) => ({
     try {
       await api.post('/progress/reset', {});
       await get().loadRoadmap();
+      const { useProgressStore } = await import('./progressStore');
+      const { useRewardsStore } = await import('./rewardsStore');
+      await useProgressStore.getState().refreshProgress();
+      await useRewardsStore.getState().refreshRewards();
     } catch (err: any) {
       set({ error: err.message || 'Failed to reset progress' });
     } finally {

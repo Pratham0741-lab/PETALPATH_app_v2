@@ -35,6 +35,14 @@ export const IS_DEV: boolean = typeof __DEV__ !== 'undefined' ? __DEV__ : false;
  */
 export const API_BASE_URL: string = getApiBaseUrl();
 
+// DEBUG ONLY - REMOVE AFTER NETWORK DIAGNOSIS
+console.log("========== PETALPATH CONFIG ==========");
+console.log("API_BASE_URL:", API_BASE_URL);
+console.log("EXPO_PUBLIC_API_URL:", process.env.EXPO_PUBLIC_API_URL);
+console.log("__DEV__:", __DEV__);
+console.log("======================================");
+// END DEBUG ONLY
+
 /**
  * The API endpoint prefix for REST calls.
  * Example: `http://13.235.178.117/api`
