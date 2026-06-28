@@ -9,6 +9,9 @@ jobs:
   publish:
     name: Publish OTA Update
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
 
     steps:
       - name: Checkout repository code
@@ -21,6 +24,7 @@ jobs:
         with:
           node-version: 22
           cache: npm
+          cache-dependency-path: frontend/package-lock.json
 
       - name: Install dependencies
         run: |
@@ -39,7 +43,7 @@ jobs:
       - name: Publish OTA Update to Preview
         run: |
           echo "Publishing EAS Update to preview branch..."
-          npx update \
+          npx eas update \
             --branch preview \
             --message "${{ github.event.head_commit.message }}" \
             --non-interactive

@@ -29,7 +29,7 @@ interface VideoState {
 }
 
 export const useVideoStore = create<VideoState>((set, get) => {
-  let saveTimeout: NodeJS.Timeout | null = null;
+  let saveTimeout: any = null;
 
   return {
     currentVideo: null,
