@@ -7,6 +7,8 @@ cd backend
 npm install
 npm run build
 
-pm2 restart petalpath-api
+pm2 delete petalpath-api || true
+pm2 start dist/server.js --name petalpath-api
+pm2 save
 
 echo "Deployment complete."
