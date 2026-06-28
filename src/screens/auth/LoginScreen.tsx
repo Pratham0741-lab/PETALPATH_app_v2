@@ -80,7 +80,7 @@ export const LoginScreen: React.FC = () => {
     <ScreenContainer>
       <ScrollView contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled">
         <View style={styles.header}>
-          <Text style={styles.title}>PetalPath OTA TEST 🌸</Text>
+          <Text style={styles.title}>PetalPath 🌸</Text>
           <Text style={styles.subtitle}>Begin your language learning journey!</Text>
         </View>
 
