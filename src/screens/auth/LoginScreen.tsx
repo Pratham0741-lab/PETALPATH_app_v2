@@ -54,7 +54,7 @@ export const LoginScreen: React.FC = () => {
         if (!idToken) {
           throw new Error('Google Sign-In returned no ID Token.');
         }
-        
+
         const apiResponse = await api.post('/auth/google', { idToken });
         setSession(apiResponse.data);
         Alert.alert('Welcome Back!', `Signed in via Google successfully.`);
@@ -80,7 +80,7 @@ export const LoginScreen: React.FC = () => {
     <ScreenContainer>
       <ScrollView contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled">
         <View style={styles.header}>
-          <Text style={styles.title}>PetalPath 🌸</Text>
+          <Text style={styles.title}>PetalPath OTA TEST 🌸</Text>
           <Text style={styles.subtitle}>Begin your language learning journey!</Text>
         </View>
 
@@ -139,14 +139,14 @@ export const LoginScreen: React.FC = () => {
           />
 
           <View style={styles.links}>
-            <Text 
-              style={styles.linkText} 
+            <Text
+              style={styles.linkText}
               onPress={() => navigation.navigate('Register')}
             >
               Don't have an account? Sign Up
             </Text>
-            <Text 
-              style={styles.linkText} 
+            <Text
+              style={styles.linkText}
               onPress={() => navigation.navigate('ForgotPassword')}
             >
               Forgot Password?
