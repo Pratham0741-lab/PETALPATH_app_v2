@@ -4,15 +4,15 @@
   "private": true,
   "workspaces": [
     "frontend",
-    "server"
+    "backend"
   ],
   "scripts": {
     "start": "npm start --prefix frontend",
     "android": "npm run android --prefix frontend",
     "ios": "npm run ios --prefix frontend",
     "web": "npm run web --prefix frontend",
-    "server": "npm run dev --prefix server",
-    "dev": "concurrently \"npm run dev --prefix server\" \"npm run start --prefix frontend\""
+    "server": "npm run dev --prefix backend",
+    "dev": "concurrently \"npm run dev --prefix backend\" \"npm run start --prefix frontend\""
   },
   "devDependencies": {
     "concurrently": "^10.0.3"

@@ -3,7 +3,7 @@
 cd ~/PETALPATH_app_v2
 git pull
 
-cd server
+cd backend
 npm install
 npm run build
 
