@@ -56,6 +56,9 @@ DATABASE_URL="$(grep -E "^DATABASE_URL=" "$ENV_FILE" | head -1 | cut -d '=' -f2-
 
 [ -n "$DATABASE_URL" ] || die "DATABASE_URL is empty or missing in $ENV_FILE"
 
+# Strip Prisma-specific query params (e.g. ?schema=public) that pg_dump doesn't understand
+PGDUMP_URL="${DATABASE_URL%%\?*}"
+
 # Verify pg_dump is installed
 command -v pg_dump >/dev/null 2>&1 || die "pg_dump not found. Install with: sudo apt install postgresql-client"
 
@@ -68,7 +71,7 @@ mkdir -p "$BACKUP_DIR"
 log "Starting backup..."
 log "Destination: $BACKUP_PATH"
 
-pg_dump "$DATABASE_URL" --no-owner --no-privileges | gzip > "$BACKUP_PATH"
+pg_dump "$PGDUMP_URL" --no-owner --no-privileges | gzip > "$BACKUP_PATH"
 
 # ── Verify backup ─────────────────────────────────────────
 
