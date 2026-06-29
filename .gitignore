@@ -73,3 +73,9 @@ prisma/dev.db
 # IDE
 .vscode/
 .idea/
+
+# Backups
+backups/
+
+# Logs
+logs/
