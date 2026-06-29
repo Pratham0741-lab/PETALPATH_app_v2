@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { loggerMiddleware } from './middleware/logger.middleware.js';
@@ -11,6 +12,14 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
+
+// Security hardening
+app.disable('x-powered-by');
+app.use(
+  helmet({
+    crossOriginResourcePolicy: false,
+  })
+);
 
 // Standard middlewares
 app.use(cors());
