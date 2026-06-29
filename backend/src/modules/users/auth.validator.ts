@@ -23,3 +23,9 @@ export const ResetPasswordSchema = z.object({
   token: z.string().min(1, 'Token is required'),
   newPassword: z.string().min(8, 'New password must be at least 8 characters long'),
 });
+
+export type GoogleAuthInput = z.infer<typeof GoogleAuthSchema>;
+export type RegisterInput = z.infer<typeof RegisterSchema>;
+export type LoginInput = z.infer<typeof LoginSchema>;
+export type ForgotPasswordInput = z.infer<typeof ForgotPasswordSchema>;
+export type ResetPasswordInput = z.infer<typeof ResetPasswordSchema>;

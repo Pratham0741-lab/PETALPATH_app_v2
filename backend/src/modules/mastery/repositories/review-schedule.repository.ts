@@ -1,4 +1,5 @@
 import { prisma } from '../../../config/database.js';
+import { SkillHealth } from '@prisma/client';
 
 export interface DerivedReviewSchedule {
   id: string;
@@ -10,7 +11,7 @@ export interface DerivedReviewSchedule {
 }
 
 export class ReviewScheduleRepository {
-  private mapToDerived(healthRecord: any): DerivedReviewSchedule | null {
+  private mapToDerived(healthRecord: SkillHealth | null): DerivedReviewSchedule | null {
     if (!healthRecord) return null;
     return {
       id: healthRecord.id,

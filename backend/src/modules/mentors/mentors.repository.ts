@@ -1,4 +1,5 @@
 import { prisma } from '../../config/database.js';
+import { Prisma } from '@prisma/client';
 
 export class MentorsRepository {
   async findAll() {
@@ -13,7 +14,7 @@ export class MentorsRepository {
     });
   }
 
-  async create(data: any) {
+  async create(data: Prisma.MentorCreateInput) {
     return prisma.mentor.create({
       data,
     });

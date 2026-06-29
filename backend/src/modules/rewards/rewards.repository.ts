@@ -1,4 +1,5 @@
 import { prisma } from '../../config/database.js';
+import { Prisma } from '@prisma/client';
 
 export class RewardsRepository {
   async findAll() {
@@ -19,13 +20,13 @@ export class RewardsRepository {
     });
   }
 
-  async create(data: any) {
+  async create(data: Prisma.RewardCreateInput) {
     return prisma.reward.create({
       data,
     });
   }
 
-  async update(id: string, data: any) {
+  async update(id: string, data: Prisma.RewardUpdateInput) {
     return prisma.reward.update({
       where: { id },
       data,

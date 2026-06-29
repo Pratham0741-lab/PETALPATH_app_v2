@@ -1,4 +1,5 @@
 import { lessonsRepository } from './lessons.repository.js';
+import { Prisma } from '@prisma/client';
 
 export class LessonsService {
   async getAllLessons(moduleId?: string) {
@@ -12,11 +13,11 @@ export class LessonsService {
     return lessonsRepository.findById(id);
   }
 
-  async createLesson(data: any) {
+  async createLesson(data: Prisma.LessonUncheckedCreateInput) {
     return lessonsRepository.create(data);
   }
 
-  async updateLesson(id: string, data: any) {
+  async updateLesson(id: string, data: Prisma.LessonUncheckedUpdateInput) {
     return lessonsRepository.update(id, data);
   }
 

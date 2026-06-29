@@ -1,4 +1,5 @@
 import { prisma } from '../../config/database.js';
+import { Prisma } from '@prisma/client';
 
 export class CategoriesRepository {
   async findAll() {
@@ -14,13 +15,13 @@ export class CategoriesRepository {
     });
   }
 
-  async create(data: any) {
+  async create(data: Prisma.CategoryCreateInput) {
     return prisma.category.create({
       data,
     });
   }
 
-  async update(id: string, data: any) {
+  async update(id: string, data: Prisma.CategoryUpdateInput) {
     return prisma.category.update({
       where: { id },
       data,

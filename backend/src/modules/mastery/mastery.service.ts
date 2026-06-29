@@ -5,6 +5,7 @@ import { regressionLogRepository } from './repositories/regression-log.repositor
 import { reviewScheduleRepository } from './repositories/review-schedule.repository.js';
 import { PerformanceRecordDto } from './mastery.validator.js';
 import { logger } from '../../utils/logger.js';
+import { SkillHealth } from '@prisma/client';
 
 export class MasteryEngineService {
   /**
@@ -43,7 +44,7 @@ export class MasteryEngineService {
    * Future performances adjust retention upwards (on success) or leave it decayed.
    * Range: 0–100
    */
-  calculateRetentionScore(previousHealth: any, currentDate: Date, currentAccuracy: number): number {
+  calculateRetentionScore(previousHealth: SkillHealth | null, currentDate: Date, currentAccuracy: number): number {
     const defaultDecayFactor = 0.995;
     const initialRetention = 100.0;
 

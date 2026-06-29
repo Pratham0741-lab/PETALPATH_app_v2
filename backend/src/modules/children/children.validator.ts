@@ -8,3 +8,6 @@ export const createChildSchema = z.object({
 });
 
 export const updateChildSchema = createChildSchema.partial();
+
+export type CreateChildInput = z.infer<typeof createChildSchema>;
+export type UpdateChildInput = z.infer<typeof updateChildSchema>;

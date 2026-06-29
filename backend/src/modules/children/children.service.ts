@@ -1,5 +1,7 @@
 import { childrenRepository } from './children.repository.js';
 import { NotFoundError, ForbiddenError } from '../../utils/errors.js';
+import { CreateChildInput, UpdateChildInput } from './children.validator.js';
+import { Prisma } from '@prisma/client';
 
 export class ChildrenService {
   /**
@@ -27,7 +29,7 @@ export class ChildrenService {
     return child;
   }
 
-  async createChild(userId: string, data: any) {
+  async createChild(userId: string, data: CreateChildInput) {
     const ageGroup = this.determineAgeGroup(data.age);
     return childrenRepository.create({
       userId,
@@ -39,18 +41,20 @@ export class ChildrenService {
     });
   }
 
-  async updateChild(id: string, userId: string, data: any) {
+  async updateChild(id: string, userId: string, data: UpdateChildInput) {
     // Enforce ownership check
     await this.getChildById(id, userId);
 
-    const updateData: any = {};
+    const updateData: Prisma.ChildUncheckedUpdateInput = {};
     if (data.name !== undefined) updateData.name = data.name;
     if (data.age !== undefined) {
       updateData.age = data.age;
       updateData.ageGroup = this.determineAgeGroup(data.age);
     }
     if (data.avatar !== undefined) updateData.avatar = data.avatar;
-    if (data.mentorId !== undefined) updateData.mentorId = data.mentorId;
+    if (data.mentorId !== undefined) {
+      updateData.mentorId = data.mentorId || null;
+    }
 
     return childrenRepository.update(id, updateData);
   }

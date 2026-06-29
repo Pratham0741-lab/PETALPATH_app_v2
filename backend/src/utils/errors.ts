@@ -18,9 +18,9 @@ export class NotFoundError extends AppError {
 }
 
 export class ValidationError extends AppError {
-  public errors?: any;
+  public errors?: Record<string, string[] | object>;
 
-  constructor(message = 'Validation failed', errors?: any) {
+  constructor(message = 'Validation failed', errors?: Record<string, string[] | object>) {
     super(message, 400);
     this.errors = errors;
   }

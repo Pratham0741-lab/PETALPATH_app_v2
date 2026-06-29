@@ -1,12 +1,13 @@
 import { prisma } from '../../../config/database.js';
 import { ReinforcementEventType } from '../../../shared/enums.js';
+import { Prisma } from '@prisma/client';
 
 export class ReinforcementEventRepository {
   async create(data: {
     childId: string;
     skillId: string;
     eventType: ReinforcementEventType;
-    metadata?: any;
+    metadata?: Prisma.InputJsonValue;
   }) {
     return prisma.reinforcementEvent.create({ data });
   }

@@ -1,4 +1,5 @@
 import { prisma } from '../../config/database.js';
+import { Prisma } from '@prisma/client';
 
 export class QuestionnairesRepository {
   async findAll() {
@@ -17,13 +18,13 @@ export class QuestionnairesRepository {
     });
   }
 
-  async create(data: any) {
+  async create(data: Prisma.QuestionnaireCreateInput) {
     return prisma.questionnaire.create({
       data,
     });
   }
 
-  async update(id: string, data: any) {
+  async update(id: string, data: Prisma.QuestionnaireUpdateInput) {
     return prisma.questionnaire.update({
       where: { id },
       data,

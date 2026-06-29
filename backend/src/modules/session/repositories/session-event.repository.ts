@@ -1,17 +1,18 @@
 import { prisma } from '../../../config/database.js';
 import { SessionEventType } from '../../../shared/enums.js';
+import { Prisma } from '@prisma/client';
 
 export class SessionEventRepository {
   async create(data: {
     sessionPlanId: string;
     eventType: SessionEventType;
-    metadata?: any;
+    metadata?: Prisma.InputJsonValue;
   }) {
     return prisma.sessionEvent.create({
       data: {
         sessionPlanId: data.sessionPlanId,
         eventType: data.eventType,
-        metadata: data.metadata || null,
+        metadata: data.metadata ?? Prisma.DbNull,
       },
     });
   }

@@ -1,4 +1,5 @@
 import { activitiesRepository } from './activities.repository.js';
+import { Prisma } from '@prisma/client';
 
 export class ActivitiesService {
   async getAllActivities(lessonId?: string) {
@@ -12,11 +13,11 @@ export class ActivitiesService {
     return activitiesRepository.findById(id);
   }
 
-  async createActivity(data: any) {
+  async createActivity(data: Prisma.ActivityUncheckedCreateInput) {
     return activitiesRepository.create(data);
   }
 
-  async updateActivity(id: string, data: any) {
+  async updateActivity(id: string, data: Prisma.ActivityUncheckedUpdateInput) {
     return activitiesRepository.update(id, data);
   }
 

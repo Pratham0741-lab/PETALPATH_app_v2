@@ -1,4 +1,5 @@
 import { progressRepository } from './progress.repository.js';
+import { Prisma } from '@prisma/client';
 
 export class ProgressService {
   async getAllProgress() {
@@ -9,11 +10,11 @@ export class ProgressService {
     return progressRepository.findById(id);
   }
 
-  async createProgress(data: any) {
+  async createProgress(data: Prisma.LessonProgressCreateInput) {
     return progressRepository.create(data);
   }
 
-  async updateProgress(id: string, data: any) {
+  async updateProgress(id: string, data: Prisma.LessonProgressUpdateInput) {
     return progressRepository.update(id, data);
   }
 

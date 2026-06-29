@@ -3,6 +3,7 @@ import { starService } from '../stars/star.service.js';
 import { moduleProgressService } from './module-progress.service.js';
 import { categoryProgressService } from './category-progress.service.js';
 import { rewardService } from '../rewards/rewards.service.js';
+import { Prisma } from '@prisma/client';
 
 export class ProgressRepository {
   async findAll() {
@@ -31,13 +32,13 @@ export class ProgressRepository {
     });
   }
 
-  async create(data: any) {
+  async create(data: Prisma.LessonProgressCreateInput) {
     return prisma.lessonProgress.create({
       data,
     });
   }
 
-  async update(id: string, data: any) {
+  async update(id: string, data: Prisma.LessonProgressUpdateInput) {
     return prisma.lessonProgress.update({
       where: { id },
       data,
@@ -60,7 +61,21 @@ export class ProgressRepository {
       });
     }
 
-    const updateData: any = {};
+    interface ProgressUpdatePayload {
+      status?: 'IN_PROGRESS' | 'COMPLETED';
+      completedAt?: Date | null;
+      videoCompleted?: boolean;
+      videoStars?: number;
+      listenCompleted?: boolean;
+      listenStars?: number;
+      speakCompleted?: boolean;
+      speakStars?: number;
+      writeCompleted?: boolean;
+      writeStars?: number;
+      totalStars?: number;
+    }
+
+    const updateData: ProgressUpdatePayload = {};
     if (activityType === 'video') {
       updateData.videoCompleted = true;
       updateData.videoStars = stars;

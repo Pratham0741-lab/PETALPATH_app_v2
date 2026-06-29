@@ -1,10 +1,11 @@
 import { Request, Response, NextFunction } from 'express';
 import { videosService } from './videos.service.js';
-import { createVideoSchema, updateVideoSchema } from './videos.validator.js';
+import { createVideoSchema, updateVideoSchema, CreateVideoInput, UpdateVideoInput } from './videos.validator.js';
 import { ValidationError } from '../../utils/errors.js';
 import { storageService } from '../../shared/services/storage.service.js';
+import { Video } from '@prisma/client';
 
-const formatVideo = (video: any) => {
+const formatVideo = (video: Video | null) => {
   if (!video) return null;
   return {
     id: video.id,
@@ -17,15 +18,15 @@ const formatVideo = (video: any) => {
     createdAt: video.createdAt,
     updatedAt: video.updatedAt,
     videoUrl: storageService.getVideoUrl(video.videoKey),
-    thumbnailUrl: storageService.getPublicUrl(video.thumbnailKey),
+    thumbnailUrl: storageService.getPublicUrl(video.thumbnailKey || null),
   };
 };
 
 export class VideosController {
-  async getAll(req: Request, res: Response, next: NextFunction) {
+  async getAll(req: Request<object, any, any, { activityId?: string }>, res: Response, next: NextFunction) {
     try {
       const { activityId } = req.query;
-      const videos = await videosService.getAllVideos(activityId as string);
+      const videos = await videosService.getAllVideos(activityId);
       
       const formattedVideos = videos.map(formatVideo);
 
@@ -38,7 +39,7 @@ export class VideosController {
     }
   }
 
-  async getById(req: Request, res: Response, next: NextFunction) {
+  async getById(req: Request<{ id: string }>, res: Response, next: NextFunction) {
     try {
       const { id } = req.params;
       console.log("Video selected: " + id);
@@ -59,7 +60,7 @@ export class VideosController {
     }
   }
 
-  async create(req: Request, res: Response, next: NextFunction) {
+  async create(req: Request<object, any, CreateVideoInput>, res: Response, next: NextFunction) {
     try {
       const parsed = createVideoSchema.safeParse(req.body);
       if (!parsed.success) {
@@ -75,7 +76,7 @@ export class VideosController {
     }
   }
 
-  async update(req: Request, res: Response, next: NextFunction) {
+  async update(req: Request<{ id: string }, any, UpdateVideoInput>, res: Response, next: NextFunction) {
     try {
       const { id } = req.params;
       const parsed = updateVideoSchema.safeParse(req.body);
@@ -92,7 +93,7 @@ export class VideosController {
     }
   }
 
-  async delete(req: Request, res: Response, next: NextFunction) {
+  async delete(req: Request<{ id: string }>, res: Response, next: NextFunction) {
     try {
       const { id } = req.params;
       await videosService.deleteVideo(id);

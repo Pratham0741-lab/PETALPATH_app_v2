@@ -1,4 +1,5 @@
 import { prisma } from '../../config/database.js';
+import { Prisma } from '@prisma/client';
 
 export class ModulesRepository {
   async findAll() {
@@ -21,13 +22,13 @@ export class ModulesRepository {
     });
   }
 
-  async create(data: any) {
+  async create(data: Prisma.ModuleUncheckedCreateInput) {
     return prisma.module.create({
       data,
     });
   }
 
-  async update(id: string, data: any) {
+  async update(id: string, data: Prisma.ModuleUncheckedUpdateInput) {
     return prisma.module.update({
       where: { id },
       data,

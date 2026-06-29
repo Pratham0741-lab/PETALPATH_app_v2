@@ -1,4 +1,5 @@
 import { prisma } from '../../config/database.js';
+import { Prisma } from '@prisma/client';
 
 export class UsersRepository {
   async findAll() {
@@ -37,13 +38,13 @@ export class UsersRepository {
     });
   }
 
-  async create(data: any) {
+  async create(data: Prisma.UserCreateInput) {
     return prisma.user.create({
       data,
     });
   }
 
-  async update(id: string, data: any) {
+  async update(id: string, data: Prisma.UserUpdateInput) {
     return prisma.user.update({
       where: { id },
       data,

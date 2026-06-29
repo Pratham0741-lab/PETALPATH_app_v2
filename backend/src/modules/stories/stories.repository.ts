@@ -1,4 +1,5 @@
 import { prisma } from '../../config/database.js';
+import { Prisma } from '@prisma/client';
 
 export class StoriesRepository {
   async findAll() {
@@ -19,13 +20,13 @@ export class StoriesRepository {
     });
   }
 
-  async create(data: any) {
+  async create(data: Prisma.StoryCreateInput) {
     return prisma.story.create({
       data,
     });
   }
 
-  async update(id: string, data: any) {
+  async update(id: string, data: Prisma.StoryUpdateInput) {
     return prisma.story.update({
       where: { id },
       data,

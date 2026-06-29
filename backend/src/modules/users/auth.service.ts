@@ -4,6 +4,7 @@ import { OAuth2Client } from 'google-auth-library';
 import { env } from '../../config/env.js';
 import { usersRepository } from './users.repository.js';
 import { refreshTokenRepository } from './refresh-token.repository.js';
+import { RegisterInput, LoginInput, ResetPasswordInput } from './auth.validator.js';
 import { 
   generateAccessToken, 
   generateRefreshToken, 
@@ -99,7 +100,7 @@ export class AuthService {
   /**
    * Email registration flow
    */
-  async registerUser(data: any) {
+  async registerUser(data: RegisterInput) {
     const existingUser = await usersRepository.findByEmail(data.email);
     if (existingUser) {
       throw new ConflictError('User with this email already exists');
@@ -122,7 +123,7 @@ export class AuthService {
   /**
    * Email login flow
    */
-  async loginUser(data: any) {
+  async loginUser(data: LoginInput) {
     const user = await usersRepository.findByEmail(data.email);
     if (!user || user.provider !== 'email' || !user.passwordHash) {
       throw new UnauthorizedError('Invalid email or password');
@@ -223,7 +224,7 @@ export class AuthService {
   /**
    * Reset password with valid token
    */
-  async resetPassword(data: any) {
+  async resetPassword(data: ResetPasswordInput) {
     const user = await usersRepository.findByResetToken(data.token);
     if (!user) {
       throw new ValidationError('Invalid or expired reset token');

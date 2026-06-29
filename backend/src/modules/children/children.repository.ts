@@ -1,4 +1,5 @@
 import { prisma } from '../../config/database.js';
+import { Prisma } from '@prisma/client';
 
 export class ChildrenRepository {
   async findAllByUserId(userId: string) {
@@ -15,14 +16,14 @@ export class ChildrenRepository {
     });
   }
 
-  async create(data: any) {
+  async create(data: Prisma.ChildUncheckedCreateInput) {
     return prisma.child.create({
       data,
       include: { mentor: true },
     });
   }
 
-  async update(id: string, data: any) {
+  async update(id: string, data: Prisma.ChildUncheckedUpdateInput) {
     return prisma.child.update({
       where: { id },
       data,

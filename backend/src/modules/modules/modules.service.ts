@@ -1,4 +1,5 @@
 import { modulesRepository } from './modules.repository.js';
+import { Prisma } from '@prisma/client';
 
 export class ModulesService {
   async getAllModules(categoryId?: string) {
@@ -12,11 +13,11 @@ export class ModulesService {
     return modulesRepository.findById(id);
   }
 
-  async createModule(data: any) {
+  async createModule(data: Prisma.ModuleUncheckedCreateInput) {
     return modulesRepository.create(data);
   }
 
-  async updateModule(id: string, data: any) {
+  async updateModule(id: string, data: Prisma.ModuleUncheckedUpdateInput) {
     return modulesRepository.update(id, data);
   }
 

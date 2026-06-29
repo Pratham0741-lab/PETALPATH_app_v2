@@ -1,24 +1,31 @@
 import { roadmapRepository } from './roadmap.repository.js';
 import { storageService } from '../../shared/services/storage.service.js';
+import { Activity, Video, Audio, LessonProgress } from '@prisma/client';
 
-const formatRoadmapActivity = (activity: any) => {
-  const formatted: any = { ...activity };
-  if (formatted.video) {
-    formatted.video = {
-      ...formatted.video,
-      videoUrl: storageService.getVideoUrl(formatted.video.videoKey),
-      thumbnailUrl: storageService.getPublicUrl(formatted.video.thumbnailKey),
-      filename: formatted.video.videoKey,
-    };
-  }
-  if (formatted.audio) {
-    formatted.audio = {
-      ...formatted.audio,
-      audioUrl: storageService.getAudioUrl(formatted.audio.audioKey),
-      filename: formatted.audio.audioKey,
-    };
-  }
-  return formatted;
+type ActivityWithRelations = Activity & {
+  video: Video | null;
+  audio: Audio | null;
+};
+
+const formatRoadmapActivity = (activity: ActivityWithRelations) => {
+  return {
+    ...activity,
+    video: activity.video
+      ? {
+          ...activity.video,
+          videoUrl: storageService.getVideoUrl(activity.video.videoKey),
+          thumbnailUrl: storageService.getPublicUrl(activity.video.thumbnailKey || null),
+          filename: activity.video.videoKey,
+        }
+      : null,
+    audio: activity.audio
+      ? {
+          ...activity.audio,
+          audioUrl: storageService.getAudioUrl(activity.audio.audioKey),
+          filename: activity.audio.audioKey,
+        }
+      : null,
+  };
 };
 
 export class RoadmapService {
@@ -26,7 +33,7 @@ export class RoadmapService {
     const categories = await roadmapRepository.getCurriculumTree();
     const progressList = await roadmapRepository.getChildProgress(childId);
 
-    const progressMap = new Map();
+    const progressMap = new Map<string, LessonProgress>();
     progressList.forEach((p) => {
       progressMap.set(p.lessonId, p);
     });

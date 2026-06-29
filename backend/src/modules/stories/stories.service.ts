@@ -1,4 +1,5 @@
 import { storiesRepository } from './stories.repository.js';
+import { Prisma } from '@prisma/client';
 
 export class StoriesService {
   async getAllStories() {
@@ -9,11 +10,11 @@ export class StoriesService {
     return storiesRepository.findById(id);
   }
 
-  async createStory(data: any) {
+  async createStory(data: Prisma.StoryCreateInput) {
     return storiesRepository.create(data);
   }
 
-  async updateStory(id: string, data: any) {
+  async updateStory(id: string, data: Prisma.StoryUpdateInput) {
     return storiesRepository.update(id, data);
   }
 

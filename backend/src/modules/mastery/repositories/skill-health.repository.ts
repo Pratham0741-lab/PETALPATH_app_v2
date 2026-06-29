@@ -1,5 +1,6 @@
 import { prisma } from '../../../config/database.js';
 import { MasteryState } from '../../../shared/enums.js';
+import { Prisma } from '@prisma/client';
 
 export class SkillHealthRepository {
   async findByChildAndSkill(childId: string, skillId: string) {
@@ -50,7 +51,7 @@ export class SkillHealthRepository {
     });
   }
 
-  async upsert(childId: string, skillId: string, data: any) {
+  async upsert(childId: string, skillId: string, data: Prisma.SkillHealthUpdateInput) {
     return prisma.skillHealth.upsert({
       where: {
         childId_skillId: {
@@ -63,7 +64,7 @@ export class SkillHealthRepository {
         childId,
         skillId,
         ...data,
-      },
+      } as Prisma.SkillHealthUncheckedCreateInput,
       include: { skill: true },
     });
   }

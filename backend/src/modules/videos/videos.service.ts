@@ -1,4 +1,5 @@
 import { videosRepository } from './videos.repository.js';
+import { CreateVideoInput, UpdateVideoInput } from './videos.validator.js';
 
 export class VideosService {
   async getAllVideos(activityId?: string) {
@@ -13,11 +14,11 @@ export class VideosService {
     return videosRepository.findById(id);
   }
 
-  async createVideo(data: any) {
+  async createVideo(data: CreateVideoInput) {
     return videosRepository.create(data);
   }
 
-  async updateVideo(id: string, data: any) {
+  async updateVideo(id: string, data: UpdateVideoInput) {
     return videosRepository.update(id, data);
   }
 

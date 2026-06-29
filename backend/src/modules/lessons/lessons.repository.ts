@@ -1,4 +1,5 @@
 import { prisma } from '../../config/database.js';
+import { Prisma } from '@prisma/client';
 
 export class LessonsRepository {
   async findAll() {
@@ -21,13 +22,13 @@ export class LessonsRepository {
     });
   }
 
-  async create(data: any) {
+  async create(data: Prisma.LessonUncheckedCreateInput) {
     return prisma.lesson.create({
       data,
     });
   }
 
-  async update(id: string, data: any) {
+  async update(id: string, data: Prisma.LessonUncheckedUpdateInput) {
     return prisma.lesson.update({
       where: { id },
       data,

@@ -1,4 +1,5 @@
 import { categoriesRepository } from './categories.repository.js';
+import { Prisma } from '@prisma/client';
 
 export class CategoriesService {
   async getAllCategories() {
@@ -9,11 +10,11 @@ export class CategoriesService {
     return categoriesRepository.findById(id);
   }
 
-  async createCategory(data: any) {
+  async createCategory(data: Prisma.CategoryCreateInput) {
     return categoriesRepository.create(data);
   }
 
-  async updateCategory(id: string, data: any) {
+  async updateCategory(id: string, data: Prisma.CategoryUpdateInput) {
     return categoriesRepository.update(id, data);
   }
 

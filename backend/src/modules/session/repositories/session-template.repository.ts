@@ -1,7 +1,8 @@
 import { prisma } from '../../../config/database.js';
+import { Prisma } from '@prisma/client';
 
 export class SessionTemplateRepository {
-  async create(data: { name: string; durationMinutes: number; blockSequence: any }) {
+  async create(data: { name: string; durationMinutes: number; blockSequence: Prisma.InputJsonValue }) {
     return prisma.sessionTemplate.create({
       data: {
         name: data.name,
@@ -36,7 +37,7 @@ export class SessionTemplateRepository {
     });
   }
 
-  async upsert(name: string, durationMinutes: number, blockSequence: any) {
+  async upsert(name: string, durationMinutes: number, blockSequence: Prisma.InputJsonValue) {
     const existing = await prisma.sessionTemplate.findFirst({
       where: { name },
     });

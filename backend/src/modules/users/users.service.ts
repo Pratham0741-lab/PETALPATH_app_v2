@@ -1,4 +1,5 @@
 import { usersRepository } from './users.repository.js';
+import { Prisma } from '@prisma/client';
 
 export class UsersService {
   async getAllUsers() {
@@ -9,11 +10,11 @@ export class UsersService {
     return usersRepository.findById(id);
   }
 
-  async createUser(data: any) {
+  async createUser(data: Prisma.UserCreateInput) {
     return usersRepository.create(data);
   }
 
-  async updateUser(id: string, data: any) {
+  async updateUser(id: string, data: Prisma.UserUpdateInput) {
     return usersRepository.update(id, data);
   }
 

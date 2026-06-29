@@ -1,4 +1,5 @@
 import { prisma } from '../../config/database.js';
+import { Prisma } from '@prisma/client';
 
 export class VideosRepository {
   async findAll() {
@@ -17,13 +18,13 @@ export class VideosRepository {
     });
   }
 
-  async create(data: any) {
+  async create(data: Prisma.VideoUncheckedCreateInput) {
     return prisma.video.create({
       data,
     });
   }
 
-  async update(id: string, data: any) {
+  async update(id: string, data: Prisma.VideoUncheckedUpdateInput) {
     return prisma.video.update({
       where: { id },
       data,

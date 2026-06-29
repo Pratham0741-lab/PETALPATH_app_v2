@@ -1,4 +1,5 @@
 import { prisma } from '../../config/database.js';
+import { Prisma } from '@prisma/client';
 
 export class ActivitiesRepository {
   async findAll() {
@@ -24,13 +25,13 @@ export class ActivitiesRepository {
     });
   }
 
-  async create(data: any) {
+  async create(data: Prisma.ActivityUncheckedCreateInput) {
     return prisma.activity.create({
       data,
     });
   }
 
-  async update(id: string, data: any) {
+  async update(id: string, data: Prisma.ActivityUncheckedUpdateInput) {
     return prisma.activity.update({
       where: { id },
       data,
