@@ -122,7 +122,7 @@ export const HandPointer: React.FC<HandPointerProps> = ({
     };
   }, [visible, mode, animationsEnabled, reduceMotion, x, y]);
 
-  if (!visible || !animationsEnabled || !measured) return null;
+  if (!visible || !animationsEnabled) return null;
 
   return (
     <View 
@@ -130,32 +130,34 @@ export const HandPointer: React.FC<HandPointerProps> = ({
       style={StyleSheet.absoluteFill} 
       pointerEvents="none"
     >
-      <Animated.View
-        pointerEvents="none"
-        style={[
-          styles.container,
-          {
-            left: x - (isTablet ? offsets.x : 0) - size / 2,
-            top: y - (isTablet ? offsets.y : 0),
-            width: size,
-            height: size,
-            opacity,
-            transform: [
-              { translateX },
-              { translateY },
-              { scale },
-            ],
-          },
-        ]}
-      >
-        {/* Soft glow behind finger */}
-        <View style={[styles.glow, { width: size * 0.6, height: size * 0.6 }]} />
-        <Image
-          source={handPointerImage}
-          style={[styles.fingerImage, { width: size, height: size }]}
-          resizeMode="contain"
-        />
-      </Animated.View>
+      {measured && (
+        <Animated.View
+          pointerEvents="none"
+          style={[
+            styles.container,
+            {
+              left: x - (isTablet ? offsets.x : 0) - size / 2,
+              top: y - (isTablet ? offsets.y : 0),
+              width: size,
+              height: size,
+              opacity,
+              transform: [
+                { translateX },
+                { translateY },
+                { scale },
+              ],
+            },
+          ]}
+        >
+          {/* Soft glow behind finger */}
+          <View style={[styles.glow, { width: size * 0.6, height: size * 0.6 }]} />
+          <Image
+            source={handPointerImage}
+            style={[styles.fingerImage, { width: size, height: size }]}
+            resizeMode="contain"
+          />
+        </Animated.View>
+      )}
     </View>
   );
 };
