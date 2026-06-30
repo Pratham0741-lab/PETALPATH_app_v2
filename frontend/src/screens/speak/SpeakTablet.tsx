@@ -11,6 +11,7 @@ import { getNextActivity, navigateToActivity } from '../../utils/navigationFlow'
 import { useChildStore } from '../../store/childStore';
 import { enhanceMentor, MENTORS } from '../../constants/mentors';
 import { AvatarCard } from '../../components/cards/AvatarCard';
+import { NavigationGuide } from '../../components/tutorial/NavigationGuide';
 
 export const SpeakTablet: React.FC = () => {
   const navigation = useNavigation<any>();
@@ -39,6 +40,32 @@ export const SpeakTablet: React.FC = () => {
 
   const micRef = useRef<View>(null);
   const actionBtnRef = useRef<View>(null);
+  const [handCoords, setHandCoords] = useState<{ x: number; y: number } | undefined>(undefined);
+
+  const measureTarget = () => {
+    if (isCompleted) {
+      if (actionBtnRef.current) {
+        actionBtnRef.current.measureInWindow((x, y, width, height) => {
+          if (width > 0 && height > 0) {
+            setHandCoords({ x: x + width / 2, y: y + height / 2 });
+          }
+        });
+      }
+    } else {
+      if (micRef.current) {
+        micRef.current.measureInWindow((x, y, width, height) => {
+          if (width > 0 && height > 0) {
+            setHandCoords({ x: x + width / 2, y: y + height / 2 });
+          }
+        });
+      }
+    }
+  };
+
+  useEffect(() => {
+    const timer = setTimeout(measureTarget, 200);
+    return () => clearTimeout(timer);
+  }, [isCompleted, isRecording, activityId]);
 
   useEffect(() => {
     const rec = new UniversalSpeechRecognizer();
@@ -280,6 +307,15 @@ export const SpeakTablet: React.FC = () => {
           </View>
         </View>
       </View>
+      <NavigationGuide
+        screenKey="speak"
+        guideKey="speak"
+        message="Say it out loud!"
+        showHand={!!handCoords}
+        handMode={isCompleted ? 'tap' : 'bounce'}
+        handX={handCoords?.x}
+        handY={handCoords?.y}
+      />
     </ScreenContainer>
   );
 };

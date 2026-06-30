@@ -10,6 +10,7 @@ import { getNextActivity, navigateToActivity } from '../../utils/navigationFlow'
 import { Ionicons } from '@expo/vector-icons';
 import { ScreenContainer } from '../../components/common/ScreenContainer';
 import { Card, Button } from '../../components/ui';
+import { NavigationGuide } from '../../components/tutorial/NavigationGuide';
 
 const VideoPlayerTablet: React.FC<{
   currentVideo: any;
@@ -380,25 +381,39 @@ export const VideoTablet: React.FC = () => {
 
   if (isComingSoon) {
     return (
-      <VideoComingSoonTablet
-        video={currentVideo}
-        navigation={navigation}
-        selectedLesson={selectedLesson}
-      />
+      <View style={{ flex: 1 }}>
+        <VideoComingSoonTablet
+          video={currentVideo}
+          navigation={navigation}
+          selectedLesson={selectedLesson}
+        />
+        <NavigationGuide
+          screenKey="video"
+          guideKey="video"
+          message="Watch carefully!"
+        />
+      </View>
     );
   }
 
   return (
-    <VideoPlayerTablet
-      currentVideo={currentVideo}
-      currentPosition={currentPosition}
-      duration={duration}
-      isCompleted={isCompleted}
-      savePosition={savePosition}
-      completeVideo={completeVideo}
-      navigation={navigation}
-      selectedLesson={selectedLesson}
-    />
+    <View style={{ flex: 1 }}>
+      <VideoPlayerTablet
+        currentVideo={currentVideo}
+        currentPosition={currentPosition}
+        duration={duration}
+        isCompleted={isCompleted}
+        savePosition={savePosition}
+        completeVideo={completeVideo}
+        navigation={navigation}
+        selectedLesson={selectedLesson}
+      />
+      <NavigationGuide
+        screenKey="video"
+        guideKey="video"
+        message="Watch carefully!"
+      />
+    </View>
   );
 };
 

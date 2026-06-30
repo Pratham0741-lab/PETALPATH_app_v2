@@ -20,6 +20,7 @@ import { colors, spacing, radius, typography, shadows } from '../../theme';
 import { navigateToActivity } from '../../utils/navigationFlow';
 import Svg, { Path, Circle, Rect } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
+import { NavigationGuide } from '../../components/tutorial/NavigationGuide';
 
 // -------------------------------------------------------------
 // DECORATIVE BACKGROUND COMPONENTS
@@ -849,6 +850,11 @@ export const HomeTablet: React.FC = () => {
           </View>
         )}
       </View>
+      <NavigationGuide
+        screenKey="roadmap"
+        guideKey="roadmap"
+        message="Welcome to PetalPath! Let's follow the cozy map to complete the levels!"
+      />
     </ScreenContainer>
   );
 };

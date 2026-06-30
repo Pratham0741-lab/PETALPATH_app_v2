@@ -11,6 +11,7 @@ import { getNextActivity, navigateToActivity } from '../../utils/navigationFlow'
 import { useChildStore } from '../../store/childStore';
 import { enhanceMentor, MENTORS } from '../../constants/mentors';
 import { AvatarCard } from '../../components/cards/AvatarCard';
+import { NavigationGuide } from '../../components/tutorial/NavigationGuide';
 
 export const ListenTablet: React.FC = () => {
   const navigation = useNavigation<any>();
@@ -38,6 +39,40 @@ export const ListenTablet: React.FC = () => {
 
   const speakerRef = useRef<View>(null);
   const actionBtnRef = useRef<View>(null);
+  const [handCoords, setHandCoords] = useState<{ x: number; y: number } | undefined>(undefined);
+
+  const measureTarget = () => {
+    if (answered) {
+      if (actionBtnRef.current) {
+        actionBtnRef.current.measureInWindow((x, y, width, height) => {
+          if (width > 0 && height > 0) {
+            setHandCoords({ x: x + width / 2, y: y + height / 2 });
+          }
+        });
+      }
+    } else if (!selectedAnswer) {
+      if (speakerRef.current) {
+        speakerRef.current.measureInWindow((x, y, width, height) => {
+          if (width > 0 && height > 0) {
+            setHandCoords({ x: x + width / 2, y: y + height / 2 });
+          }
+        });
+      }
+    } else {
+      if (actionBtnRef.current) {
+        actionBtnRef.current.measureInWindow((x, y, width, height) => {
+          if (width > 0 && height > 0) {
+            setHandCoords({ x: x + width / 2, y: y + height / 2 });
+          }
+        });
+      }
+    }
+  };
+
+  useEffect(() => {
+    const timer = setTimeout(measureTarget, 200);
+    return () => clearTimeout(timer);
+  }, [answered, selectedAnswer, isPlaying, currentAudio]);
 
   useEffect(() => {
     if (currentAudio) {
@@ -323,6 +358,15 @@ export const ListenTablet: React.FC = () => {
           </View>
         </View>
       </View>
+      <NavigationGuide
+        screenKey="listen"
+        guideKey="listen"
+        message="Listen carefully!"
+        showHand={!!handCoords}
+        handMode={answered || selectedAnswer ? 'tap' : 'bounce'}
+        handX={handCoords?.x}
+        handY={handCoords?.y}
+      />
     </ScreenContainer>
   );
 };
