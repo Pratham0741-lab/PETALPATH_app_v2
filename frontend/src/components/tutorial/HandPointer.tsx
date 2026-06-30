@@ -11,6 +11,9 @@ import { Animated, StyleSheet, Image, View } from 'react-native';
 import { useTutorialStore } from '../../store/tutorialStore';
 import { useHandPointerAnimation } from '../../hooks/useHandPointerAnimation';
 
+import { useDeviceType } from '../../hooks/useDeviceType';
+import { useState, useRef } from 'react';
+
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const handPointerImage = require('../../../assets/tutorial/hand_pointer.png');
 
@@ -41,6 +44,32 @@ export const HandPointer: React.FC<HandPointerProps> = ({
   delay = 0,
   pointerOpacity = 0.95,
 }) => {
+  const deviceType = useDeviceType();
+  const isTablet = deviceType === 'tablet';
+
+  const containerRef = useRef<View>(null);
+  const [measured, setMeasured] = useState(false);
+  const [offsets, setOffsets] = useState({ x: 0, y: 0 });
+
+  const measureOffset = () => {
+    if (containerRef.current) {
+      containerRef.current.measureInWindow((containerX, containerY) => {
+        setOffsets({ x: containerX, y: containerY });
+        setMeasured(true);
+      });
+    }
+  };
+
+  useEffect(() => {
+    if (visible && isTablet) {
+      setMeasured(false);
+      const timer = setTimeout(measureOffset, 100);
+      return () => clearTimeout(timer);
+    } else {
+      setMeasured(true);
+    }
+  }, [visible, x, y, isTablet]);
+
   const { animationsEnabled, reduceMotion } = useTutorialStore();
   const {
     translateX,
@@ -93,35 +122,41 @@ export const HandPointer: React.FC<HandPointerProps> = ({
     };
   }, [visible, mode, animationsEnabled, reduceMotion, x, y]);
 
-  if (!visible || !animationsEnabled) return null;
+  if (!visible || !animationsEnabled || !measured) return null;
 
   return (
-    <Animated.View
+    <View 
+      ref={containerRef} 
+      style={StyleSheet.absoluteFill} 
       pointerEvents="none"
-      style={[
-        styles.container,
-        {
-          left: x - size / 2,
-          top: y,
-          width: size,
-          height: size,
-          opacity,
-          transform: [
-            { translateX },
-            { translateY },
-            { scale },
-          ],
-        },
-      ]}
     >
-      {/* Soft glow behind finger */}
-      <View style={[styles.glow, { width: size * 0.6, height: size * 0.6 }]} />
-      <Image
-        source={handPointerImage}
-        style={[styles.fingerImage, { width: size, height: size }]}
-        resizeMode="contain"
-      />
-    </Animated.View>
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          styles.container,
+          {
+            left: x - (isTablet ? offsets.x : 0) - size / 2,
+            top: y - (isTablet ? offsets.y : 0),
+            width: size,
+            height: size,
+            opacity,
+            transform: [
+              { translateX },
+              { translateY },
+              { scale },
+            ],
+          },
+        ]}
+      >
+        {/* Soft glow behind finger */}
+        <View style={[styles.glow, { width: size * 0.6, height: size * 0.6 }]} />
+        <Image
+          source={handPointerImage}
+          style={[styles.fingerImage, { width: size, height: size }]}
+          resizeMode="contain"
+        />
+      </Animated.View>
+    </View>
   );
 };
 
