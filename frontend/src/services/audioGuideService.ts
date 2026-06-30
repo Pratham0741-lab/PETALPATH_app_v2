@@ -85,6 +85,15 @@ export const replayGuide = (onFinished?: () => void): boolean => {
 };
 
 /**
+ * Register the last guide parameters for replaying.
+ */
+export const setLastGuide = (characterType: string, guideKey: GuideKey): void => {
+  currentCharacterType = characterType;
+  currentGuideKey = guideKey;
+};
+
+
+/**
  * Set the volume for guide playback (0-1).
  * Note: Volume control is applied to future playback. The built-in
  * UniversalAudioPlayer doesn't expose volume controls, so this is

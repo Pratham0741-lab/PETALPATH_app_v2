@@ -16,12 +16,16 @@ export const MentorMobile: React.FC = () => {
   const { mentorList, refreshMentors, loading } = useMentorStore();
   const { totalStars } = useRewardsStore();
 
-  const [petalPoints, setPetalPoints] = useState(12);
+  const [petalPoints, setPetalPoints] = useState(totalStars === 0 ? 0 : 12);
   const [wateringMessage, setWateringMessage] = useState<string | null>(null);
 
   useEffect(() => {
     refreshMentors();
   }, []);
+
+  useEffect(() => {
+    setPetalPoints(totalStars === 0 ? 0 : 12);
+  }, [totalStars]);
 
   const activeMentor = activeChild?.mentor ? enhanceMentor(activeChild.mentor) : null;
 

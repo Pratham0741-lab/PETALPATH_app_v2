@@ -54,6 +54,18 @@ export const useChildStore = create<ChildState>((set, get) => ({
         console.warn('Failed to register child selection with backend:', err);
       }
       await storage.setItem('activeChild', JSON.stringify(child));
+      
+      // Hydrate rewards and progress stores with the selected child's stats
+      try {
+        const { useRewardsStore } = await import('./rewardsStore');
+        const { useProgressStore } = await import('./progressStore');
+        await Promise.all([
+          useRewardsStore.getState().refreshRewards(),
+          useProgressStore.getState().refreshProgress(),
+        ]);
+      } catch (err) {
+        console.warn('Failed to sync child stores:', err);
+      }
     } else {
       await storage.removeItem('activeChild');
     }

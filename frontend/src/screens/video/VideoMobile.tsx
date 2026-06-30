@@ -9,6 +9,7 @@ import { getNextActivity, navigateToActivity } from '../../utils/navigationFlow'
 import { Ionicons } from '@expo/vector-icons';
 import { ScreenContainer } from '../../components/common/ScreenContainer';
 import { Card, Button } from '../../components/ui';
+import { NavigationGuide } from '../../components/tutorial/NavigationGuide';
 
 const VideoPlayerMobile: React.FC<{
   currentVideo: any;
@@ -374,19 +375,35 @@ export const VideoMobile: React.FC = () => {
   const isComingSoon = currentVideo.filename === 'coming_soon' || currentVideo.videoUrl?.includes('coming_soon');
 
   if (isComingSoon) {
-    return <VideoComingSoonMobile video={currentVideo} navigation={navigation} />;
+    return (
+      <View style={{ flex: 1 }}>
+        <VideoComingSoonMobile video={currentVideo} navigation={navigation} />
+        <NavigationGuide
+          screenKey="video"
+          guideKey="video"
+          message="Watch carefully!"
+        />
+      </View>
+    );
   }
 
   return (
-    <VideoPlayerMobile
-      currentVideo={currentVideo}
-      currentPosition={currentPosition}
-      duration={duration}
-      isCompleted={isCompleted}
-      savePosition={savePosition}
-      completeVideo={completeVideo}
-      navigation={navigation}
-    />
+    <View style={{ flex: 1 }}>
+      <VideoPlayerMobile
+        currentVideo={currentVideo}
+        currentPosition={currentPosition}
+        duration={duration}
+        isCompleted={isCompleted}
+        savePosition={savePosition}
+        completeVideo={completeVideo}
+        navigation={navigation}
+      />
+      <NavigationGuide
+        screenKey="video"
+        guideKey="video"
+        message="Watch carefully!"
+      />
+    </View>
   );
 };
 

@@ -143,8 +143,8 @@ export class ProgressController {
           totalLessonsCount,
           continueLearning: currentTarget,
           recentAchievements: {
-            badges: recentBadges.map(b => b.badge),
-            stickers: recentStickers.map(s => s.sticker),
+            badges: recentBadges.map(b => b.badge).filter(Boolean),
+            stickers: recentStickers.map(s => s.sticker).filter(Boolean),
           },
         },
       });

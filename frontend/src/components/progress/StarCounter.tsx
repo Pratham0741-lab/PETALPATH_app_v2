@@ -2,14 +2,14 @@ import React from 'react';
 import { StyleSheet, View, Text, ViewStyle } from 'react-native';
 import { colors, typography, spacing, radius, shadows } from '../../theme';
 import { Ionicons } from '@expo/vector-icons';
-import { useAppStore } from '../../store/appStore';
+import { useRewardsStore } from '../../store/rewardsStore';
 
 interface StarCounterProps {
   style?: ViewStyle;
 }
 
 export const StarCounter: React.FC<StarCounterProps> = ({ style }) => {
-  const stars = useAppStore((state) => state.stars);
+  const stars = useRewardsStore((state) => state.totalStars);
 
   return (
     <View style={[styles.container, style]}>

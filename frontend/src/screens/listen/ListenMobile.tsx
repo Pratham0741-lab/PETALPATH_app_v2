@@ -346,6 +346,15 @@ export const ListenMobile: React.FC = () => {
           )}
         </View>
       </View>
+      <NavigationGuide
+        screenKey="listen"
+        guideKey="listen"
+        message="Listen carefully!"
+        showHand={!!handCoords}
+        handMode={answered || selectedAnswer ? 'tap' : 'bounce'}
+        handX={handCoords?.x}
+        handY={handCoords?.y}
+      />
     </ScreenContainer>
   );
 };

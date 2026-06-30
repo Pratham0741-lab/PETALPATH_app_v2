@@ -4,6 +4,7 @@ import { ScreenContainer } from '../../components/common/ScreenContainer';
 import { Card, Button } from '../../components/ui';
 import { colors, typography, spacing, radius, shadows } from '../../theme';
 import { useAppNavigation } from '../../hooks/useAppNavigation';
+import { useIsFocused } from '@react-navigation/native';
 import { useRoadmapStore } from '../../store/roadmapStore';
 import { useProgressStore } from '../../store/progressStore';
 import { Ionicons } from '@expo/vector-icons';
@@ -24,12 +25,15 @@ export const LessonCompleteScreen: React.FC = () => {
   const { selectedLesson, completeLesson, loadCategories, categories } = useRoadmapStore();
   const completeLessonBackend = useProgressStore((state) => state.completeLesson);
 
+  const isFocused = useIsFocused();
+
   const [loading, setLoading] = useState(true);
   const [completionResult, setCompletionResult] = useState<any>(null);
   const completionStartedRef = useRef<string | null>(null);
 
   useEffect(() => {
     const performCompletion = async () => {
+      if (!isFocused) return;
       if (selectedLesson && completionStartedRef.current !== selectedLesson.id) {
         completionStartedRef.current = selectedLesson.id;
         try {
@@ -48,7 +52,7 @@ export const LessonCompleteScreen: React.FC = () => {
     };
 
     performCompletion();
-  }, [selectedLesson, completeLessonBackend, completeLesson, loadCategories]);
+  }, [selectedLesson, completeLessonBackend, completeLesson, loadCategories, isFocused]);
 
   const findLessonContext = (lessonId: string) => {
     for (const category of categories) {

@@ -22,6 +22,8 @@
 import React, { useEffect, useRef, useCallback } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { useTutorialStore } from '../../store/tutorialStore';
+import { useChildStore } from '../../store/childStore';
+import * as audioGuideService from '../../services/audioGuideService';
 import { AudioGuideButton } from './AudioGuideButton';
 import { TutorialBubble } from './TutorialBubble';
 import { HandPointer } from './HandPointer';
@@ -87,6 +89,16 @@ export const NavigationGuide: React.FC<NavigationGuideProps> = ({
     animationsEnabled,
     interactionTimestamp,
   } = useTutorialStore();
+
+  const activeChild = useChildStore((state) => state.activeChild);
+  const characterType = activeChild?.mentor?.characterType || 'panda';
+
+  // Register this screen's guide info so the replay button can access it immediately
+  useEffect(() => {
+    if (enabled) {
+      audioGuideService.setLastGuide(characterType, guideKey);
+    }
+  }, [enabled, characterType, guideKey]);
 
   const hasPlayedAudioRef = useRef(false);
   const [showingBubble, setShowingBubble] = React.useState(false);

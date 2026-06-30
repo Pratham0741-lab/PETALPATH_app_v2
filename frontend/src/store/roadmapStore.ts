@@ -440,6 +440,7 @@ export const useRoadmapStore = create<RoadmapState>((set, get) => ({
       await useRewardsStore.getState().refreshRewards();
     } catch (err: any) {
       set({ error: err.message || 'Failed to reset progress' });
+      throw err;
     } finally {
       set({ loading: false });
     }

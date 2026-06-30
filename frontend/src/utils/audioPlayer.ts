@@ -22,8 +22,53 @@ export class UniversalAudioPlayer {
     this.onFinished = onFinished;
     if (onTimeUpdate) this.onTimeUpdate = onTimeUpdate;
 
+    // Correct URL paths to match S3/CloudFront bucket structure (insert subfolders)
+    let cleanUrl = url;
+    if (url && url.includes('/audio/')) {
+      // Check if it's missing the subfolder prefix
+      if (
+        !url.includes('mentor_audio/') &&
+        !url.includes('lines_curves/') &&
+        !url.includes('shapes/') &&
+        !url.includes('alphabet_audio/')
+      ) {
+        const filename = url.substring(url.lastIndexOf('/') + 1);
+        if (
+          filename.includes('standing') ||
+          filename.includes('sleeping') ||
+          filename.includes('slanting') ||
+          filename.includes('curve') ||
+          filename.includes('spiral') ||
+          filename.includes('loop') ||
+          filename.includes('zigzag')
+        ) {
+          cleanUrl = url.replace('/audio/', '/audio/lines_curves/');
+        } else if (
+          filename.includes('circle') ||
+          filename.includes('square') ||
+          filename.includes('triangle') ||
+          filename.includes('rectangle') ||
+          filename.includes('oval') ||
+          filename.includes('star') ||
+          filename.includes('heart') ||
+          filename.includes('diamond') ||
+          filename.includes('pentagon') ||
+          filename.includes('hexagon')
+        ) {
+          cleanUrl = url.replace('/audio/', '/audio/shapes/');
+        } else if (
+          filename.match(/speech_guide_[a-z]_en\.mp3/) ||
+          filename.includes('alphabet')
+        ) {
+          cleanUrl = url.replace('/audio/', '/audio/alphabet_audio/');
+        }
+      }
+    }
+
+    console.log('[UniversalAudioPlayer] Resolved URL:', cleanUrl);
+
     if (Platform.OS === 'web') {
-      this.webAudio = new window.Audio(url);
+      this.webAudio = new window.Audio(cleanUrl);
       this.webAudio.addEventListener('ended', () => {
         this.onFinished();
         this.stopPolling();
@@ -31,7 +76,8 @@ export class UniversalAudioPlayer {
     } else {
       if (createAudioPlayer) {
         try {
-          this.nativeSound = createAudioPlayer({ uri: url });
+          // expo-audio v56: createAudioPlayer accepts a string URL or AudioSource object
+          this.nativeSound = createAudioPlayer(cleanUrl);
           this.subscription = this.nativeSound.addListener('playbackStatusUpdate', (status: any) => {
             if (status) {
               if (status.didJustFinish) {
@@ -58,7 +104,7 @@ export class UniversalAudioPlayer {
     } else if (this.nativeSound) {
       try {
         this.nativeSound.play();
-        this.startPolling(); // Poll for native currentTime/duration too just in case status update has delays
+        this.startPolling();
       } catch (err: any) {
         console.warn('Native sound play failed:', err);
       }
@@ -86,7 +132,9 @@ export class UniversalAudioPlayer {
       this.stopPolling();
     } else if (this.nativeSound) {
       try {
-        this.nativeSound.stop();
+        // expo-audio v56 AudioPlayer has no .stop() method — use pause + seekTo(0)
+        this.nativeSound.pause();
+        this.nativeSound.seekTo(0);
       } catch (err: any) {
         console.warn('Native sound stop failed:', err);
       }
@@ -110,9 +158,10 @@ export class UniversalAudioPlayer {
     }
     if (this.nativeSound) {
       try {
-        this.nativeSound.release();
+        // expo-audio v56 AudioPlayer uses .remove() to free resources, not .release()
+        this.nativeSound.remove();
       } catch (err: any) {
-        console.warn('Failed to release expo-audio native player:', err);
+        console.warn('Failed to remove expo-audio native player:', err);
       }
       this.nativeSound = null;
     }
@@ -124,7 +173,6 @@ export class UniversalAudioPlayer {
       if (Platform.OS === 'web' && this.webAudio) {
         this.onTimeUpdate(this.webAudio.currentTime, this.webAudio.duration || 0);
       } else if (this.nativeSound) {
-        // Also poll properties directly from expo-audio player instance in case status events are throttled
         try {
           const current = this.nativeSound.currentTime || 0;
           const duration = this.nativeSound.duration || 0;
@@ -143,4 +191,5 @@ export class UniversalAudioPlayer {
     }
   }
 }
+
 

@@ -291,6 +291,15 @@ export const SpeakMobile: React.FC = () => {
           )}
         </View>
       </View>
+      <NavigationGuide
+        screenKey="speak"
+        guideKey="speak"
+        message="Say it out loud!"
+        showHand={!!handCoords}
+        handMode={isCompleted ? 'tap' : 'bounce'}
+        handX={handCoords?.x}
+        handY={handCoords?.y}
+      />
     </ScreenContainer>
   );
 };

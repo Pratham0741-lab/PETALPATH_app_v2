@@ -104,11 +104,16 @@ export const ProfileMobile: React.FC = () => {
       await resetProgress();
       setShowResetConfirm(false);
       setResetting(false);
+      setParentSectionOpen(false); // Relock parents section
+      
       if (Platform.OS === 'web') {
         window.alert('Your learning progress has been successfully reset.');
       } else {
         Alert.alert('Success', 'Your learning progress has been successfully reset.');
       }
+
+      // Automatically switch to the Journey/Roadmap tab to visually show the reset map
+      navigation.navigate('MainTabs', { screen: 'Journey' });
     } catch (err) {
       console.error('[RESET] error:', err);
       setResetting(false);
@@ -150,24 +155,24 @@ export const ProfileMobile: React.FC = () => {
           </View>
 
           {/* ===== Recent Achievements (outside Parents Section) ===== */}
-          {((recentAchievements?.badges?.length ?? 0) > 0 || (recentAchievements?.stickers?.length ?? 0) > 0) && (
+          {((recentAchievements?.badges?.filter(Boolean).length ?? 0) > 0 || (recentAchievements?.stickers?.filter(Boolean).length ?? 0) > 0) && (
             <View style={styles.achievementsSection}>
               <Text style={styles.sectionTitle}>Recent Achievements</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.achievementsScroll}>
-                {recentAchievements.badges.map((badge, idx) => (
+                {recentAchievements.badges.filter(Boolean).map((badge, idx) => (
                   <View key={`b-${idx}`} style={styles.achievementItem}>
                     <View style={styles.achievementBadge}>
                       <Ionicons name="ribbon" size={24} color={colors.purple} />
                     </View>
-                    <Text style={styles.achievementText} numberOfLines={1}>{badge.name}</Text>
+                    <Text style={styles.achievementText} numberOfLines={1}>{badge?.name || 'Badge'}</Text>
                   </View>
                 ))}
-                {recentAchievements.stickers.map((sticker, idx) => (
+                {recentAchievements.stickers.filter(Boolean).map((sticker, idx) => (
                   <View key={`s-${idx}`} style={styles.achievementItem}>
                     <View style={styles.achievementSticker}>
                       <Ionicons name="sparkles" size={24} color={colors.yellow} />
                     </View>
-                    <Text style={styles.achievementText} numberOfLines={1}>{sticker.name}</Text>
+                    <Text style={styles.achievementText} numberOfLines={1}>{sticker?.name || 'Sticker'}</Text>
                   </View>
                 ))}
               </ScrollView>

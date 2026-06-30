@@ -20,6 +20,7 @@ import { colors, spacing, radius, typography, shadows } from '../../theme';
 import { navigateToActivity } from '../../utils/navigationFlow';
 import Svg, { Path, Circle, Rect } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
+import { NavigationGuide } from '../../components/tutorial/NavigationGuide';
 
 // -------------------------------------------------------------
 // DECORATIVE BACKGROUND COMPONENTS
@@ -340,7 +341,7 @@ export const HomeMobile: React.FC = () => {
     return pathNodes.map((item, index) => {
       const isHero = item.status === 'current' && item.type === 'lesson';
       const height = isHero ? 190 : 120;
-      const x = Math.sin(index * 1.25) * 18; // sine curve offset
+      const x = Math.sin(index * 1.25) * 12; // curve offset (reduced from 18 to give cards more space on mobile)
       return { x, height };
     });
   }, [pathNodes]);
@@ -424,8 +425,8 @@ export const HomeMobile: React.FC = () => {
     if (!layout) return null;
 
     const isHero = item.status === 'current' && item.type === 'lesson';
-    const flowerSize = isHero ? 90 : (item.type === 'milestone' ? 80 : (item.type === 'reward' ? 72 : 56));
-    const cardMarginLeft = 12;
+    const flowerSize = isHero ? 68 : (item.type === 'milestone' ? 80 : (item.type === 'reward' ? 72 : 56));
+    const cardMarginLeft = 6;
     const flowerLeft = pathCenterX + layout.x - flowerSize / 2;
     const rowHeight = layout.height;
 
@@ -578,6 +579,158 @@ export const HomeMobile: React.FC = () => {
       );
     }
 
+    const isCardOnLeft = layout.x >= 0;
+
+    const flowerElement = (
+      <View style={{ width: flowerSize, height: flowerSize, alignItems: 'center', justifyContent: 'center' }}>
+        {item.type === 'lesson' && item.status === 'completed' && (
+          <CompletedFlowerNode size={flowerSize} onPress={() => item.lesson && handleLessonClick(item.lesson)}>
+            <Svg viewBox="0 0 100 100" width="100%" height="100%">
+              <Path d="M50 70 L50 95" stroke="#7CA767" strokeWidth="6" strokeLinecap="round" />
+              <Path d="M50 80 Q35 75 40 70" stroke="#7CA767" strokeWidth="5" strokeLinecap="round" fill="none" />
+              <Path d="M50 85 Q65 80 60 75" stroke="#7CA767" strokeWidth="5" strokeLinecap="round" fill="none" />
+              <Circle cx="50" cy="30" r="16" fill="#F6B5C5" />
+              <Circle cx="30" cy="45" r="16" fill="#F6B5C5" />
+              <Circle cx="70" cy="45" r="16" fill="#F6B5C5" />
+              <Circle cx="38" cy="65" r="16" fill="#F6B5C5" />
+              <Circle cx="62" cy="65" r="16" fill="#F6B5C5" />
+              <Circle cx="50" cy="50" r="18" fill="#FFF" />
+              <Circle cx="50" cy="50" r="14" fill="#8DBB75" />
+              <Path d="M43 50 L48 55 L58 45" stroke="#FFF" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+            </Svg>
+          </CompletedFlowerNode>
+        )}
+
+        {item.type === 'lesson' && item.status === 'current' && (
+          <CurrentFlowerNode size={flowerSize}>
+            <Pressable onPress={handlePlayContinue} style={{ width: '100%', height: '100%' }}>
+              <Svg viewBox="0 0 100 100" width="100%" height="100%">
+                <Path d="M50 70 L50 95" stroke="#7CA767" strokeWidth="8" strokeLinecap="round" />
+                <Path d="M50 80 Q30 75 35 68" stroke="#7CA767" strokeWidth="6" strokeLinecap="round" fill="none" />
+                <Path d="M50 85 Q70 80 65 73" stroke="#7CA767" strokeWidth="6" strokeLinecap="round" fill="none" />
+                <Circle cx="50" cy="26" r="20" fill="#8B78D8" />
+                <Circle cx="26" cy="44" r="20" fill="#8B78D8" />
+                <Circle cx="74" cy="44" r="20" fill="#8B78D8" />
+                <Circle cx="35" cy="68" r="20" fill="#8B78D8" />
+                <Circle cx="65" cy="68" r="20" fill="#8B78D8" />
+                <Circle cx="50" cy="50" r="22" fill="#F7C94B" />
+                <Circle cx="50" cy="50" r="16" fill="#FAD875" />
+              </Svg>
+            </Pressable>
+          </CurrentFlowerNode>
+        )}
+
+        {item.type === 'lesson' && item.status === 'locked' && (
+          <View style={{ width: flowerSize, height: flowerSize, opacity: 0.7 }}>
+            <Svg viewBox="0 0 100 100" width="100%" height="100%">
+              <Path d="M50 70 L50 95" stroke="#C7C7CC" strokeWidth="6" strokeLinecap="round" />
+              <Circle cx="50" cy="30" r="16" fill="#E5E5EA" />
+              <Circle cx="34" cy="46" r="16" fill="#E5E5EA" />
+              <Circle cx="66" cy="46" r="16" fill="#E5E5EA" />
+              <Circle cx="40" cy="66" r="16" fill="#E5E5EA" />
+              <Circle cx="60" cy="66" r="16" fill="#E5E5EA" />
+              <Circle cx="50" cy="50" r="18" fill="#D1D1D6" />
+              <Rect x="42" y="48" width="16" height="12" rx="2" fill="#8E8E93" />
+              <Path d="M46 48 V43 A4 4 0 0 1 54 43 V48" stroke="#8E8E93" strokeWidth="2.5" fill="none" />
+            </Svg>
+          </View>
+        )}
+
+        {item.type === 'milestone' && (
+          <Pressable
+            onPress={() => item.status !== 'locked' && navigation.navigate('Rewards')}
+            style={{ width: flowerSize, height: flowerSize, opacity: item.status === 'locked' ? 0.6 : 1 }}
+          >
+            <Svg viewBox="0 0 100 100" width="100%" height="100%">
+              <Path d="M50 70 L50 95" stroke={item.status === 'locked' ? '#C7C7CC' : '#7CA767'} strokeWidth="7" strokeLinecap="round" />
+              <Circle cx="50" cy="48" r="30" fill={item.status === 'locked' ? '#E5E5EA' : '#FFF3D6'} stroke={item.status === 'locked' ? '#F7C94B' : '#F7C94B'} strokeWidth="2" />
+              <Path d="M50 28 L55 39 L67 41 L58 49 L61 61 L50 55 L39 61 L42 49 L33 41 L45 39 Z" fill={item.status === 'locked' ? '#8E8E93' : '#F7C94B'} />
+            </Svg>
+          </Pressable>
+        )}
+
+        {item.type === 'reward' && (
+          <Pressable
+            onPress={() => item.status !== 'locked' && navigation.navigate('Rewards')}
+            style={{ width: flowerSize, height: flowerSize, opacity: item.status === 'locked' ? 0.6 : 1 }}
+          >
+            <Svg viewBox="0 0 100 100" width="100%" height="100%">
+              <Path d="M50 70 L50 95" stroke={item.status === 'locked' ? '#C7C7CC' : '#7CA767'} strokeWidth="6" strokeLinecap="round" />
+              <Circle cx="50" cy="48" r="28" fill={item.status === 'locked' ? '#E5E5EA' : '#FFF2F5'} stroke={item.status === 'locked' ? '#D1D1D6' : '#F6B5C5'} strokeWidth="2.5" />
+              <Rect x="36" y="38" width="28" height="24" rx="2" fill={item.status === 'locked' ? '#8E8E93' : '#F6B5C5'} />
+              <Rect x="34" y="34" width="32" height="6" rx="1" fill={item.status === 'locked' ? '#AEAEB2' : '#F29A8F'} />
+              <Rect x="47" y="34" width="6" height="28" fill="#FFF" />
+            </Svg>
+          </Pressable>
+        )}
+      </View>
+    );
+
+    const cardElement = isHero ? (
+      <Pressable
+        onPress={handlePlayContinue}
+        style={[
+          styles.currentLessonCard,
+          { borderColor: colors.purple, borderWidth: 2 },
+        ]}
+      >
+        <View style={styles.currentCardContent}>
+          <Text style={[styles.cardTitle, styles.boldText]}>
+            {item.title}
+          </Text>
+          <Text style={[styles.currentCardSubtext, { fontFamily: typography.families.rounded }]}>
+            Current Lesson
+          </Text>
+        </View>
+        
+        <View style={styles.continueButton}>
+          <Ionicons name="arrow-forward" size={20} color="#FFF" />
+        </View>
+      </Pressable>
+    ) : (
+      <Pressable
+        onPress={() => item.type === 'lesson' && item.lesson && handleLessonClick(item.lesson)}
+        disabled={item.status === 'locked'}
+        style={[
+          styles.normalLessonCard,
+          { opacity: item.status === 'locked' ? 0.75 : 1 },
+        ]}
+      >
+        <View style={styles.normalCardContent}>
+          <Text style={[styles.cardTitle, { color: item.status === 'locked' ? '#8F8A82' : colors.textPrimary }]}>
+            {item.title}
+          </Text>
+          
+          {item.status === 'completed' && (
+            <View style={styles.completedBadgeRow}>
+              <Text style={[styles.completedBadgeText, { fontFamily: typography.families.rounded }]}>
+                Completed
+              </Text>
+              <Text style={styles.starText}>⭐</Text>
+            </View>
+          )}
+
+          {item.status === 'locked' && (
+            <Text style={[styles.lockedCardSubtext, { fontFamily: typography.families.rounded }]}>
+              Locked
+            </Text>
+          )}
+
+          {item.type === 'milestone' && (
+            <Text style={[styles.milestoneSubtext, { fontFamily: typography.families.rounded, color: item.status === 'locked' ? '#8F8A82' : colors.purple }]}>
+              {item.status === 'completed' ? 'Milestone Complete!' : 'Milestone'}
+            </Text>
+          )}
+
+          {item.type === 'reward' && (
+            <Text style={[styles.rewardSubtext, { fontFamily: typography.families.rounded, color: item.status === 'locked' ? '#8F8A82' : colors.coral }]}>
+              {item.status === 'completed' ? 'Reward Claimed!' : 'Special Reward!'}
+            </Text>
+          )}
+        </View>
+      </Pressable>
+    );
+
     return (
       <View style={{ height: rowHeight, position: 'relative', width: screenWidth }}>
         {/* virtualized background hill elements */}
@@ -589,162 +742,29 @@ export const HomeMobile: React.FC = () => {
         {outroSegment}
 
         {/* virtualized node element */}
-        <View style={[styles.nodeRow, { position: 'relative', height: rowHeight, width: screenWidth }]}>
-          <View style={{ width: flowerLeft }} />
-
-          <View style={{ width: flowerSize, height: flowerSize, alignItems: 'center', justifyContent: 'center' }}>
-            {item.type === 'lesson' && item.status === 'completed' && (
-              <CompletedFlowerNode size={flowerSize} onPress={() => item.lesson && handleLessonClick(item.lesson)}>
-                <Svg viewBox="0 0 100 100" width="100%" height="100%">
-                  <Path d="M50 70 L50 95" stroke="#7CA767" strokeWidth="6" strokeLinecap="round" />
-                  <Path d="M50 80 Q35 75 40 70" stroke="#7CA767" strokeWidth="5" strokeLinecap="round" fill="none" />
-                  <Path d="M50 85 Q65 80 60 75" stroke="#7CA767" strokeWidth="5" strokeLinecap="round" fill="none" />
-                  <Circle cx="50" cy="30" r="16" fill="#F6B5C5" />
-                  <Circle cx="30" cy="45" r="16" fill="#F6B5C5" />
-                  <Circle cx="70" cy="45" r="16" fill="#F6B5C5" />
-                  <Circle cx="38" cy="65" r="16" fill="#F6B5C5" />
-                  <Circle cx="62" cy="65" r="16" fill="#F6B5C5" />
-                  <Circle cx="50" cy="50" r="18" fill="#FFF" />
-                  <Circle cx="50" cy="50" r="14" fill="#8DBB75" />
-                  <Path d="M43 50 L48 55 L58 45" stroke="#FFF" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-                </Svg>
-              </CompletedFlowerNode>
-            )}
-
-            {item.type === 'lesson' && item.status === 'current' && (
-              <CurrentFlowerNode size={flowerSize}>
-                <Pressable onPress={handlePlayContinue} style={{ width: '100%', height: '100%' }}>
-                  <Svg viewBox="0 0 100 100" width="100%" height="100%">
-                    <Path d="M50 70 L50 95" stroke="#7CA767" strokeWidth="8" strokeLinecap="round" />
-                    <Path d="M50 80 Q30 75 35 68" stroke="#7CA767" strokeWidth="6" strokeLinecap="round" fill="none" />
-                    <Path d="M50 85 Q70 80 65 73" stroke="#7CA767" strokeWidth="6" strokeLinecap="round" fill="none" />
-                    <Circle cx="50" cy="26" r="20" fill="#8B78D8" />
-                    <Circle cx="26" cy="44" r="20" fill="#8B78D8" />
-                    <Circle cx="74" cy="44" r="20" fill="#8B78D8" />
-                    <Circle cx="35" cy="68" r="20" fill="#8B78D8" />
-                    <Circle cx="65" cy="68" r="20" fill="#8B78D8" />
-                    <Circle cx="50" cy="50" r="22" fill="#F7C94B" />
-                    <Circle cx="50" cy="50" r="16" fill="#FAD875" />
-                  </Svg>
-                </Pressable>
-              </CurrentFlowerNode>
-            )}
-
-            {item.type === 'lesson' && item.status === 'locked' && (
-              <View style={{ width: flowerSize, height: flowerSize, opacity: 0.7 }}>
-                <Svg viewBox="0 0 100 100" width="100%" height="100%">
-                  <Path d="M50 70 L50 95" stroke="#C7C7CC" strokeWidth="6" strokeLinecap="round" />
-                  <Circle cx="50" cy="30" r="16" fill="#E5E5EA" />
-                  <Circle cx="34" cy="46" r="16" fill="#E5E5EA" />
-                  <Circle cx="66" cy="46" r="16" fill="#E5E5EA" />
-                  <Circle cx="40" cy="66" r="16" fill="#E5E5EA" />
-                  <Circle cx="60" cy="66" r="16" fill="#E5E5EA" />
-                  <Circle cx="50" cy="50" r="18" fill="#D1D1D6" />
-                  <Rect x="42" y="48" width="16" height="12" rx="2" fill="#8E8E93" />
-                  <Path d="M46 48 V43 A4 4 0 0 1 54 43 V48" stroke="#8E8E93" strokeWidth="2.5" fill="none" />
-                </Svg>
+        <View style={[styles.nodeRow, { position: 'relative', height: rowHeight, width: screenWidth, flexDirection: 'row', alignItems: 'center' }]}>
+          {isCardOnLeft ? (
+            <>
+              <View style={{ flex: 1, flexDirection: 'row', justifyContent: 'flex-end', paddingRight: cardMarginLeft }}>
+                {cardElement}
               </View>
-            )}
-
-            {item.type === 'milestone' && (
-              <Pressable
-                onPress={() => item.status !== 'locked' && navigation.navigate('Rewards')}
-                style={{ width: flowerSize, height: flowerSize, opacity: item.status === 'locked' ? 0.6 : 1 }}
-              >
-                <Svg viewBox="0 0 100 100" width="100%" height="100%">
-                  <Path d="M50 70 L50 95" stroke={item.status === 'locked' ? '#C7C7CC' : '#7CA767'} strokeWidth="7" strokeLinecap="round" />
-                  <Circle cx="50" cy="48" r="30" fill={item.status === 'locked' ? '#E5E5EA' : '#FFF3D6'} stroke={item.status === 'locked' ? '#F7C94B' : '#F7C94B'} strokeWidth="2" />
-                  <Path d="M50 28 L55 39 L67 41 L58 49 L61 61 L50 55 L39 61 L42 49 L33 41 L45 39 Z" fill={item.status === 'locked' ? '#8E8E93' : '#F7C94B'} />
-                </Svg>
-              </Pressable>
-            )}
-
-            {item.type === 'reward' && (
-              <Pressable
-                onPress={() => item.status !== 'locked' && navigation.navigate('Rewards')}
-                style={{ width: flowerSize, height: flowerSize, opacity: item.status === 'locked' ? 0.6 : 1 }}
-              >
-                <Svg viewBox="0 0 100 100" width="100%" height="100%">
-                  <Path d="M50 70 L50 95" stroke={item.status === 'locked' ? '#C7C7CC' : '#7CA767'} strokeWidth="6" strokeLinecap="round" />
-                  <Circle cx="50" cy="48" r="28" fill={item.status === 'locked' ? '#E5E5EA' : '#FFF2F5'} stroke={item.status === 'locked' ? '#D1D1D6' : '#F6B5C5'} strokeWidth="2.5" />
-                  <Rect x="36" y="38" width="28" height="24" rx="2" fill={item.status === 'locked' ? '#8E8E93' : '#F6B5C5'} />
-                  <Rect x="34" y="34" width="32" height="6" rx="1" fill={item.status === 'locked' ? '#AEAEB2' : '#F29A8F'} />
-                  <Rect x="47" y="34" width="6" height="28" fill="#FFF" />
-                </Svg>
-              </Pressable>
-            )}
-          </View>
-
-          <View style={[styles.cardWrapper, { marginLeft: cardMarginLeft }]}>
-            {isHero ? (
-              <Pressable
-                onPress={handlePlayContinue}
-                style={[
-                  styles.currentLessonCard,
-                  { borderColor: colors.purple, borderWidth: 2 },
-                ]}
-              >
-                <View style={styles.currentCardContent}>
-                  <Text style={[styles.cardTitle, styles.boldText]} numberOfLines={1}>
-                    {item.title}
-                  </Text>
-                  <Text style={[styles.currentCardSubtext, { fontFamily: typography.families.rounded }]}>
-                    Current Lesson
-                  </Text>
-                </View>
-                
-                <View style={styles.continueButton}>
-                  <Ionicons name="arrow-forward" size={20} color="#FFF" />
-                </View>
-              </Pressable>
-            ) : (
-              <Pressable
-                onPress={() => item.type === 'lesson' && item.lesson && handleLessonClick(item.lesson)}
-                disabled={item.status === 'locked'}
-                style={[
-                  styles.normalLessonCard,
-                  { opacity: item.status === 'locked' ? 0.75 : 1 },
-                ]}
-              >
-                <View style={styles.normalCardContent}>
-                  <Text style={[styles.cardTitle, { color: item.status === 'locked' ? '#8F8A82' : colors.textPrimary }]} numberOfLines={1}>
-                    {item.title}
-                  </Text>
-                  
-                  {item.status === 'completed' && (
-                    <View style={styles.completedBadgeRow}>
-                      <Text style={[styles.completedBadgeText, { fontFamily: typography.families.rounded }]}>
-                        Completed
-                      </Text>
-                      <Text style={styles.starText}>⭐</Text>
-                    </View>
-                  )}
-
-                  {item.status === 'locked' && (
-                    <Text style={[styles.lockedCardSubtext, { fontFamily: typography.families.rounded }]}>
-                      Locked
-                    </Text>
-                  )}
-
-                  {item.type === 'milestone' && (
-                    <Text style={[styles.milestoneSubtext, { fontFamily: typography.families.rounded, color: item.status === 'locked' ? '#8F8A82' : colors.purple }]}>
-                      {item.status === 'completed' ? 'Milestone Complete!' : 'Milestone'}
-                    </Text>
-                  )}
-
-                  {item.type === 'reward' && (
-                    <Text style={[styles.rewardSubtext, { fontFamily: typography.families.rounded, color: item.status === 'locked' ? '#8F8A82' : colors.coral }]}>
-                      {item.status === 'completed' ? 'Reward Claimed!' : 'Special Reward!'}
-                    </Text>
-                  )}
-                </View>
-              </Pressable>
-            )}
-          </View>
+              {flowerElement}
+              <View style={{ width: Math.max(0, screenWidth - flowerLeft - flowerSize) }} />
+            </>
+          ) : (
+            <>
+              <View style={{ width: flowerLeft }} />
+              {flowerElement}
+              <View style={{ flex: 1, flexDirection: 'row', justifyContent: 'flex-start', paddingLeft: cardMarginLeft }}>
+                {cardElement}
+              </View>
+            </>
+          )}
         </View>
       </View>
     );
   };
+
 
   return (
     <ScreenContainer>
@@ -800,6 +820,11 @@ export const HomeMobile: React.FC = () => {
           </View>
         )}
       </View>
+      <NavigationGuide
+        screenKey="roadmap"
+        guideKey="roadmap"
+        message="Welcome to PetalPath! Let's follow the cozy map to complete the levels!"
+      />
     </ScreenContainer>
   );
 };
@@ -877,45 +902,46 @@ const styles = StyleSheet.create({
     position: 'absolute',
     flexDirection: 'row',
     alignItems: 'center',
-    paddingRight: 16,
   },
   cardWrapper: {
     justifyContent: 'center',
   },
   currentLessonCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    padding: 16,
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 10,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    width: '100%',
     minWidth: 110,
-    maxWidth: 160,
+    maxWidth: 180,
     ...shadows.md,
   },
   currentCardContent: {
     flex: 1,
-    marginRight: 8,
+    marginRight: 6,
     gap: 3,
   },
   cardTitle: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '800',
     color: '#3B342F',
   },
   boldText: {
-    fontSize: 17,
+    fontSize: 15,
     fontWeight: '900',
   },
   currentCardSubtext: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#8B78D8',
     fontWeight: '700',
   },
   continueButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: '#8B78D8',
     alignItems: 'center',
     justifyContent: 'center',
@@ -924,12 +950,13 @@ const styles = StyleSheet.create({
   normalLessonCard: {
     backgroundColor: '#FFFFFF',
     borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     borderWidth: 1.5,
     borderColor: '#F1E4D3',
+    width: '100%',
     minWidth: 110,
-    maxWidth: 160,
+    maxWidth: 180,
     ...shadows.sm,
   },
   normalCardContent: {

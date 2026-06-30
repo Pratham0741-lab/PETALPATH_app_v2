@@ -100,7 +100,7 @@ export const getGuideUrl = (characterType: string, guideKey: GuideKey): string |
   const prefix = MENTOR_PREFIX_MAP[characterType] || 'penny';
   const filename = getGuideFilename(prefix, guideKey);
   if (!filename) return null;
-  return `${AUDIO_BASE_URL}/${folder}/${filename}`;
+  return `${AUDIO_BASE_URL}/mentor_audio/${folder}/${filename}`;
 };
 
 /**

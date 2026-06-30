@@ -9,6 +9,19 @@ import { checkServerHealth } from './src/api/health';
 import { IS_DEV, API_BASE_URL } from './src/config/api';
 // END DEBUG ONLY
 
+// Configure audio session for native platforms
+if (Platform.OS !== 'web') {
+  try {
+    const { setAudioModeAsync } = require('expo-audio');
+    setAudioModeAsync({
+      playsInSilentMode: true,
+      interruptionMode: 'duckOthers',
+    });
+  } catch (e) {
+    console.warn('Failed to configure audio mode:', e);
+  }
+}
+
 // Inject global web styles for video scaling on web
 if (Platform.OS === 'web') {
   const style = document.createElement('style');

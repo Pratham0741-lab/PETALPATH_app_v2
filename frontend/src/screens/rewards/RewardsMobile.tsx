@@ -39,11 +39,11 @@ export const RewardsMobile: React.FC = () => {
                 </View>
                 <View style={styles.statItem}>
                   <Text style={styles.statLabel}>💖 Hearts</Text>
-                  <Text style={[styles.statValue, { fontFamily: typography.families.rounded }]}>8</Text>
+                  <Text style={[styles.statValue, { fontFamily: typography.families.rounded }]}>{totalStars === 0 ? 0 : 8}</Text>
                 </View>
                 <View style={styles.statItem}>
                   <Text style={styles.statLabel}>🌸 Petals</Text>
-                  <Text style={[styles.statValue, { fontFamily: typography.families.rounded }]}>12</Text>
+                  <Text style={[styles.statValue, { fontFamily: typography.families.rounded }]}>{totalStars === 0 ? 0 : 12}</Text>
                 </View>
               </View>
             </View>
