@@ -10,6 +10,8 @@ import { useProgressStore } from '../../store/progressStore';
 import { Ionicons } from '@expo/vector-icons';
 import { useChildStore } from '../../store/childStore';
 import { enhanceMentor, MENTORS } from '../../constants/mentors';
+import { useDeviceType } from '../../hooks/useDeviceType';
+import { NavigationGuide } from '../../components/tutorial/NavigationGuide';
 
 const categoryBadgeMap: Record<string, string> = {
   'Shapes': 'Shape Master',
@@ -26,6 +28,8 @@ export const LessonCompleteScreen: React.FC = () => {
   const completeLessonBackend = useProgressStore((state) => state.completeLesson);
 
   const isFocused = useIsFocused();
+  const deviceType = useDeviceType();
+  const isTablet = deviceType === 'tablet';
 
   const [loading, setLoading] = useState(true);
   const [completionResult, setCompletionResult] = useState<any>(null);
@@ -176,8 +180,14 @@ export const LessonCompleteScreen: React.FC = () => {
             style={styles.doneBtn}
           />
         </View>
-
       </View>
+      {isTablet && (
+        <NavigationGuide
+          screenKey="lesson_complete"
+          guideKey="lesson_complete"
+          message="Lesson completed! You did an amazing job!"
+        />
+      )}
     </ScreenContainer>
   );
 };
