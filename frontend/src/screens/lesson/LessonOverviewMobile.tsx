@@ -5,14 +5,14 @@ import { TopBar } from '../../components/navigation/TopBar';
 import { Card, SectionHeader, Button } from '../../components/ui';
 import { ActivityCard } from '../../components/cards/ActivityCard';
 import { spacing, colors, radius, typography, shadows } from '../../theme';
-import { useNavigation } from '@react-navigation/native';
+import { useAppNavigation } from '../../hooks/useAppNavigation';
 import { useRoadmapStore } from '../../store/roadmapStore';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '../../api/client';
 import { navigateToActivity } from '../../utils/navigationFlow';
 
 export const LessonOverviewMobile: React.FC = () => {
-  const navigation = useNavigation<any>();
+  const { navigateToTab, navigation } = useAppNavigation();
   const {
     selectedLesson,
     activities,
@@ -21,6 +21,27 @@ export const LessonOverviewMobile: React.FC = () => {
     completeLesson,
     completedLessons,
   } = useRoadmapStore();
+
+  React.useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      useRoadmapStore.getState().loadRoadmap();
+    });
+    return unsubscribe;
+  }, [navigation]);
+
+  const isActivityUnlocked = (act: any, index: number) => {
+    if (index === 0) return true;
+    const prevAct = activities[index - 1];
+    const progress = selectedLesson?.progress;
+    if (!progress) return false;
+    
+    if (prevAct.activityType === 'video') return progress.videoCompleted;
+    if (prevAct.activityType === 'listen') return progress.listenCompleted;
+    if (prevAct.activityType === 'speak') return progress.speakCompleted;
+    if (prevAct.activityType === 'write') return progress.writeCompleted;
+    
+    return false;
+  };
 
   const handleActivityPress = async (act: any) => {
     console.log(`Activity selected: ${act.id}`);
@@ -38,7 +59,7 @@ export const LessonOverviewMobile: React.FC = () => {
       Alert.alert(
         'Lesson Completed!',
         `Congratulations, you completed "${selectedLesson.title}"!`,
-        [{ text: 'OK', onPress: () => navigation.navigate('MainTabs', { screen: 'Journey' }) }]
+        [{ text: 'OK', onPress: () => navigateToTab('Journey') }]
       );
     }
   };
@@ -98,12 +119,13 @@ export const LessonOverviewMobile: React.FC = () => {
               <Text style={[styles.emptyText, { fontFamily: typography.families.rounded }]}>No activities found in this lesson.</Text>
             ) : (
               <View style={styles.list}>
-                {activities.map((act) => (
+                {activities.map((act, index) => (
                   <ActivityCard
                     key={act.id}
                     title={act.title}
                     duration={act.video?.duration ? `${Math.ceil(act.video.duration / 60)} mins` : '5 mins'}
                     type={act.activityType as any}
+                    locked={!isActivityUnlocked(act, index)}
                     onPress={() => handleActivityPress(act)}
                     style={styles.card}
                   />

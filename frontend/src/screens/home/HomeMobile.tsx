@@ -340,13 +340,13 @@ export const HomeMobile: React.FC = () => {
     return pathNodes.map((item, index) => {
       const isHero = item.status === 'current' && item.type === 'lesson';
       const height = isHero ? 190 : 120;
-      const x = Math.sin(index * 1.25) * 25; // sine curve offset
+      const x = Math.sin(index * 1.25) * 18; // sine curve offset
       return { x, height };
     });
   }, [pathNodes]);
 
-  // Center path on 28% of the viewport width to leave plenty of room for cards on the right
-  const pathCenterX = screenWidth * 0.28;
+  // Center path in the middle of the viewport width
+  const pathCenterX = screenWidth * 0.5;
 
   // 3. Auto-scroll to center current active lesson index
   useEffect(() => {
@@ -782,7 +782,7 @@ export const HomeMobile: React.FC = () => {
           </View>
         ) : (
           <View style={{ flex: 1 }}>
-            <View style={[styles.centeredContainer, { width: screenWidth, left: leftOffset }]}>
+            <View style={[styles.centeredContainer, { width: screenWidth }]}>
               <FlatList
                 ref={flatListRef}
                 data={pathNodes}
@@ -880,7 +880,6 @@ const styles = StyleSheet.create({
     paddingRight: 16,
   },
   cardWrapper: {
-    flex: 1,
     justifyContent: 'center',
   },
   currentLessonCard: {
@@ -890,6 +889,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    minWidth: 110,
+    maxWidth: 160,
     ...shadows.md,
   },
   currentCardContent: {
@@ -927,6 +928,8 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderWidth: 1.5,
     borderColor: '#F1E4D3',
+    minWidth: 110,
+    maxWidth: 160,
     ...shadows.sm,
   },
   normalCardContent: {

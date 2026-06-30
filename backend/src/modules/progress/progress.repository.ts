@@ -90,11 +90,21 @@ export class ProgressRepository {
       updateData.writeStars = stars;
     }
 
+    // Load actual activities configured for the lesson to determine completion criteria
+    const lessonActivities = await prisma.activity.findMany({
+      where: { lessonId, deletedAt: null },
+    });
+
+    const hasVideo = lessonActivities.some((a) => a.activityType === 'video');
+    const hasListen = lessonActivities.some((a) => a.activityType === 'listen');
+    const hasSpeak = lessonActivities.some((a) => a.activityType === 'speak');
+    const hasWrite = lessonActivities.some((a) => a.activityType === 'write');
+
     // Check if all are completed
-    const isVideoDone = updateData.videoCompleted ?? progress.videoCompleted;
-    const isListenDone = updateData.listenCompleted ?? progress.listenCompleted;
-    const isSpeakDone = updateData.speakCompleted ?? progress.speakCompleted;
-    const isWriteDone = updateData.writeCompleted ?? progress.writeCompleted;
+    const isVideoDone = hasVideo ? (updateData.videoCompleted ?? progress.videoCompleted) : true;
+    const isListenDone = hasListen ? (updateData.listenCompleted ?? progress.listenCompleted) : true;
+    const isSpeakDone = hasSpeak ? (updateData.speakCompleted ?? progress.speakCompleted) : true;
+    const isWriteDone = hasWrite ? (updateData.writeCompleted ?? progress.writeCompleted) : true;
 
     const currentVideoStars = updateData.videoStars ?? progress.videoStars;
     const currentListenStars = updateData.listenStars ?? progress.listenStars;

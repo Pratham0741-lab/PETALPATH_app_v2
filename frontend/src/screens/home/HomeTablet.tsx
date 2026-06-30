@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useCallback } from 'react';
 import {
   StyleSheet,
   ScrollView,
@@ -247,6 +247,372 @@ interface PathNode {
   categoryTitle?: string;
 }
 
+const PathRowItem = React.memo(({
+  item,
+  index,
+  layout,
+  nextLayout,
+  isFirst,
+  isLast,
+  screenWidth,
+  pathCenterX,
+  handleLessonClick,
+  handlePlayContinue,
+  navigation,
+}: {
+  item: PathNode;
+  index: number;
+  layout: { x: number; height: number };
+  nextLayout?: { x: number; height: number };
+  isFirst: boolean;
+  isLast: boolean;
+  screenWidth: number;
+  pathCenterX: number;
+  handleLessonClick: (lesson: Lesson) => void;
+  handlePlayContinue: () => void;
+  navigation: any;
+}) => {
+  const isHero = item.status === 'current' && item.type === 'lesson';
+  const flowerSize = isHero ? 90 : (item.type === 'milestone' ? 80 : (item.type === 'reward' ? 72 : 56));
+  const cardMarginLeft = 12;
+  const flowerLeft = pathCenterX + layout.x - flowerSize / 2;
+  const rowHeight = layout.height;
+
+  // Render path segment connecting this row center to next row center
+  let pathSegment = null;
+  if (!isLast && nextLayout) {
+    const segmentHeight = rowHeight / 2 + nextLayout.height / 2;
+    const startX = pathCenterX + layout.x;
+    const endX = pathCenterX + nextLayout.x;
+    const midY = segmentHeight / 2;
+    const d = `M ${startX} 0 C ${startX} ${midY}, ${endX} ${midY}, ${endX} ${segmentHeight}`;
+
+    pathSegment = (
+      <View
+        style={{
+          position: 'absolute',
+          top: rowHeight / 2,
+          left: 0,
+          width: screenWidth,
+          height: segmentHeight,
+          zIndex: -1,
+        }}
+        pointerEvents="none"
+      >
+        <Svg width={screenWidth} height={segmentHeight}>
+          <Path
+            d={d}
+            stroke="#FFE5D9"
+            strokeWidth={28}
+            fill="none"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            opacity={0.9}
+          />
+          <Path
+            d={d}
+            stroke="#D6BCFA"
+            strokeWidth={3}
+            strokeDasharray="6, 8"
+            fill="none"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </Svg>
+      </View>
+    );
+  }
+
+  // Render intro straight path segment (only for the very first item)
+  let introSegment = null;
+  if (isFirst) {
+    introSegment = (
+      <View
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: screenWidth,
+          height: rowHeight / 2,
+          zIndex: -1,
+        }}
+        pointerEvents="none"
+      >
+        <Svg width={screenWidth} height={rowHeight / 2}>
+          <Path
+            d={`M ${pathCenterX + layout.x} 0 L ${pathCenterX + layout.x} ${rowHeight / 2}`}
+            stroke="#FFE5D9"
+            strokeWidth={28}
+            fill="none"
+            strokeLinecap="round"
+            opacity={0.9}
+          />
+          <Path
+            d={`M ${pathCenterX + layout.x} 0 L ${pathCenterX + layout.x} ${rowHeight / 2}`}
+            stroke="#D6BCFA"
+            strokeWidth={3}
+            strokeDasharray="6, 8"
+            fill="none"
+            strokeLinecap="round"
+          />
+        </Svg>
+      </View>
+    );
+  }
+
+  // Render outro straight path segment (only for the very last item)
+  let outroSegment = null;
+  if (isLast) {
+    outroSegment = (
+      <View
+        style={{
+          position: 'absolute',
+          top: rowHeight / 2,
+          left: 0,
+          width: screenWidth,
+          height: 100,
+          zIndex: -1,
+        }}
+        pointerEvents="none"
+      >
+        <Svg width={screenWidth} height={100}>
+          <Path
+            d={`M ${pathCenterX + layout.x} 0 L ${pathCenterX + layout.x} 100`}
+            stroke="#FFE5D9"
+            strokeWidth={28}
+            fill="none"
+            strokeLinecap="round"
+            opacity={0.9}
+          />
+          <Path
+            d={`M ${pathCenterX + layout.x} 0 L ${pathCenterX + layout.x} 100`}
+            stroke="#D6BCFA"
+            strokeWidth={3}
+            strokeDasharray="6, 8"
+            fill="none"
+            strokeLinecap="round"
+          />
+        </Svg>
+      </View>
+    );
+  }
+
+  // Render background landscapes matching index (decided deterministically)
+  let rowDecoration = null;
+  const hillTop = -20;
+  if (index % 3 === 0) {
+    rowDecoration = (
+      <>
+        <LeftHill top={hillTop} width={screenWidth} />
+        <GardenTree top={hillTop + 40} left={20} />
+        <TinyFlower top={hillTop + 110} left={65} color="#F6B5C5" />
+        <TinyFlower top={hillTop + 130} left={85} color="#B89DE8" />
+        <FloatingPetal top={hillTop + 20} left={pathCenterX + 20} delay={index * 300} />
+      </>
+    );
+  } else if (index % 3 === 1) {
+    rowDecoration = (
+      <>
+        <RightHill top={hillTop} width={screenWidth} />
+        <GardenBush top={hillTop + 50} left={screenWidth - 70} />
+        <TinyFlower top={hillTop + 100} left={screenWidth - 90} color="#F29A8F" />
+        <FloatingPetal top={hillTop + 150} left={pathCenterX - 30} delay={index * 300} />
+      </>
+    );
+  } else {
+    rowDecoration = (
+      <>
+        <FloatingPetal top={hillTop + 50} left={pathCenterX + 40} delay={index * 200} />
+      </>
+    );
+  }
+
+  const flowerElement = (
+    <View style={{ width: flowerSize, height: flowerSize, alignItems: 'center', justifyContent: 'center' }}>
+      {item.type === 'lesson' && item.status === 'completed' && (
+        <CompletedFlowerNode size={flowerSize} onPress={() => item.lesson && handleLessonClick(item.lesson)}>
+          <Svg viewBox="0 0 100 100" width="100%" height="100%">
+            <Path d="M50 70 L50 95" stroke="#7CA767" strokeWidth="6" strokeLinecap="round" />
+            <Path d="M50 80 Q35 75 40 70" stroke="#7CA767" strokeWidth="5" strokeLinecap="round" fill="none" />
+            <Path d="M50 85 Q65 80 60 75" stroke="#7CA767" strokeWidth="5" strokeLinecap="round" fill="none" />
+            <Circle cx="50" cy="30" r="16" fill="#F6B5C5" />
+            <Circle cx="30" cy="45" r="16" fill="#F6B5C5" />
+            <Circle cx="70" cy="45" r="16" fill="#F6B5C5" />
+            <Circle cx="38" cy="65" r="16" fill="#F6B5C5" />
+            <Circle cx="62" cy="65" r="16" fill="#F6B5C5" />
+            <Circle cx="50" cy="50" r="18" fill="#FFF" />
+            <Circle cx="50" cy="50" r="14" fill="#8DBB75" />
+            <Path d="M43 50 L48 55 L58 45" stroke="#FFF" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+          </Svg>
+        </CompletedFlowerNode>
+      )}
+
+      {item.type === 'lesson' && item.status === 'current' && (
+        <CurrentFlowerNode size={flowerSize}>
+          <Pressable onPress={handlePlayContinue} style={{ width: '100%', height: '100%' }}>
+            <Svg viewBox="0 0 100 100" width="100%" height="100%">
+              <Path d="M50 70 L50 95" stroke="#7CA767" strokeWidth="8" strokeLinecap="round" />
+              <Path d="M50 80 Q30 75 35 68" stroke="#7CA767" strokeWidth="6" strokeLinecap="round" fill="none" />
+              <Path d="M50 85 Q70 80 65 73" stroke="#7CA767" strokeWidth="6" strokeLinecap="round" fill="none" />
+              <Circle cx="50" cy="26" r="20" fill="#8B78D8" />
+              <Circle cx="26" cy="44" r="20" fill="#8B78D8" />
+              <Circle cx="74" cy="44" r="20" fill="#8B78D8" />
+              <Circle cx="35" cy="68" r="20" fill="#8B78D8" />
+              <Circle cx="65" cy="68" r="20" fill="#8B78D8" />
+              <Circle cx="50" cy="50" r="22" fill="#F7C94B" />
+              <Circle cx="50" cy="50" r="16" fill="#FAD875" />
+            </Svg>
+          </Pressable>
+        </CurrentFlowerNode>
+      )}
+
+      {item.type === 'lesson' && item.status === 'locked' && (
+        <View style={{ width: flowerSize, height: flowerSize, opacity: 0.7 }}>
+          <Svg viewBox="0 0 100 100" width="100%" height="100%">
+            <Path d="M50 70 L50 95" stroke="#C7C7CC" strokeWidth="6" strokeLinecap="round" />
+            <Circle cx="50" cy="30" r="16" fill="#E5E5EA" />
+            <Circle cx="34" cy="46" r="16" fill="#E5E5EA" />
+            <Circle cx="66" cy="46" r="16" fill="#E5E5EA" />
+            <Circle cx="40" cy="66" r="16" fill="#E5E5EA" />
+            <Circle cx="60" cy="66" r="16" fill="#E5E5EA" />
+            <Circle cx="50" cy="50" r="18" fill="#D1D1D6" />
+            <Rect x="42" y="48" width="16" height="12" rx="2" fill="#8E8E93" />
+            <Path d="M46 48 V43 A4 4 0 0 1 54 43 V48" stroke="#8E8E93" strokeWidth="2.5" fill="none" />
+          </Svg>
+        </View>
+      )}
+
+      {item.type === 'milestone' && (
+        <Pressable
+          onPress={() => item.status !== 'locked' && navigation.navigate('Rewards')}
+          style={{ width: flowerSize, height: flowerSize, opacity: item.status === 'locked' ? 0.6 : 1 }}
+        >
+          <Svg viewBox="0 0 100 100" width="100%" height="100%">
+            <Path d="M50 70 L50 95" stroke={item.status === 'locked' ? '#C7C7CC' : '#7CA767'} strokeWidth="7" strokeLinecap="round" />
+            <Circle cx="50" cy="48" r="30" fill={item.status === 'locked' ? '#E5E5EA' : '#FFF3D6'} stroke={item.status === 'locked' ? '#F7C94B' : '#F7C94B'} strokeWidth="2" />
+            <Path d="M50 28 L55 39 L67 41 L58 49 L61 61 L50 55 L39 61 L42 49 L33 41 L45 39 Z" fill={item.status === 'locked' ? '#8E8E93' : '#F7C94B'} />
+          </Svg>
+        </Pressable>
+      )}
+
+      {item.type === 'reward' && (
+        <Pressable
+          onPress={() => item.status !== 'locked' && navigation.navigate('Rewards')}
+          style={{ width: flowerSize, height: flowerSize, opacity: item.status === 'locked' ? 0.6 : 1 }}
+        >
+          <Svg viewBox="0 0 100 100" width="100%" height="100%">
+            <Path d="M50 70 L50 95" stroke={item.status === 'locked' ? '#C7C7CC' : '#7CA767'} strokeWidth="6" strokeLinecap="round" />
+            <Circle cx="50" cy="48" r="28" fill={item.status === 'locked' ? '#E5E5EA' : '#FFF2F5'} stroke={item.status === 'locked' ? '#D1D1D6' : '#F6B5C5'} strokeWidth="2.5" />
+            <Rect x="36" y="38" width="28" height="24" rx="2" fill={item.status === 'locked' ? '#8E8E93' : '#F6B5C5'} />
+            <Rect x="34" y="34" width="32" height="6" rx="1" fill={item.status === 'locked' ? '#AEAEB2' : '#F29A8F'} />
+            <Rect x="47" y="34" width="6" height="28" fill="#FFF" />
+          </Svg>
+        </Pressable>
+      )}
+    </View>
+  );
+
+  const cardElement = (
+    <View style={styles.cardWrapper}>
+      {isHero ? (
+        <Pressable
+          onPress={handlePlayContinue}
+          style={[
+            styles.currentLessonCard,
+            { borderColor: colors.purple, borderWidth: 2 },
+          ]}
+        >
+          <View style={styles.currentCardContent}>
+            <Text style={[styles.cardTitle, styles.boldText]} numberOfLines={1}>
+              {item.title}
+            </Text>
+            <Text style={[styles.currentCardSubtext, { fontFamily: typography.families.rounded }]} numberOfLines={1}>
+              Current Lesson
+            </Text>
+          </View>
+
+          <View style={styles.continueButton}>
+            <Ionicons name="arrow-forward" size={20} color="#FFF" />
+          </View>
+        </Pressable>
+      ) : (
+        <Pressable
+          onPress={() => item.type === 'lesson' && item.lesson && handleLessonClick(item.lesson)}
+          disabled={item.status === 'locked'}
+          style={[
+            styles.normalLessonCard,
+            { opacity: item.status === 'locked' ? 0.75 : 1 },
+          ]}
+        >
+          <View style={styles.normalCardContent}>
+            <Text style={[styles.cardTitle, { color: item.status === 'locked' ? '#8F8A82' : colors.textPrimary }]} numberOfLines={1}>
+              {item.title}
+            </Text>
+
+            {item.status === 'completed' && (
+              <View style={styles.completedBadgeRow}>
+                <Text style={[styles.completedBadgeText, { fontFamily: typography.families.rounded }]}>
+                  Completed
+                </Text>
+                <Text style={styles.starText}>⭐</Text>
+              </View>
+            )}
+
+            {item.status === 'locked' && (
+              <Text style={[styles.lockedCardSubtext, { fontFamily: typography.families.rounded }]}>
+                Locked
+              </Text>
+            )}
+
+            {item.type === 'milestone' && (
+              <Text style={[styles.milestoneSubtext, { fontFamily: typography.families.rounded, color: item.status === 'locked' ? '#8F8A82' : colors.purple }]}>
+                {item.status === 'completed' ? 'Milestone Complete!' : 'Milestone'}
+              </Text>
+            )}
+
+            {item.type === 'reward' && (
+              <Text style={[styles.rewardSubtext, { fontFamily: typography.families.rounded, color: item.status === 'locked' ? '#8F8A82' : colors.coral }]}>
+                {item.status === 'completed' ? 'Reward Claimed!' : 'Special Reward!'}
+              </Text>
+            )}
+          </View>
+        </Pressable>
+      )}
+    </View>
+  );
+
+  const isCardOnLeft = layout.x >= 0;
+
+  return (
+    <View style={{ height: rowHeight, position: 'relative', width: screenWidth }}>
+      {rowDecoration}
+      {introSegment}
+      {pathSegment}
+      {outroSegment}
+
+      <View style={[styles.nodeRow, { position: 'relative', height: rowHeight, width: screenWidth, flexDirection: 'row' }]}>
+        {isCardOnLeft ? (
+          <>
+            <View style={{ flex: 1, flexDirection: 'row', justifyContent: 'flex-end', paddingRight: cardMarginLeft }}>
+              {cardElement}
+            </View>
+            {flowerElement}
+            <View style={{ width: Math.max(0, screenWidth - flowerLeft - flowerSize) }} />
+          </>
+        ) : (
+          <>
+            <View style={{ width: flowerLeft }} />
+            {flowerElement}
+            <View style={{ flex: 1, flexDirection: 'row', justifyContent: 'flex-start', paddingLeft: cardMarginLeft }}>
+              {cardElement}
+            </View>
+          </>
+        )}
+      </View>
+    </View>
+  );
+});
+
 export const HomeTablet: React.FC = () => {
   const navigation = useNavigation<any>();
   const activeChild = useChildStore((state) => state.activeChild);
@@ -338,8 +704,8 @@ export const HomeTablet: React.FC = () => {
     });
   }, [pathNodes]);
 
-  // Center path on 28% of the viewport width to leave plenty of room for cards on the right
-  const pathCenterX = screenWidth * 0.28;
+  // Center path in the middle of the viewport width
+  const pathCenterX = screenWidth * 0.5;
 
   // 3. Auto-scroll to center current active lesson index
   useEffect(() => {
@@ -358,7 +724,7 @@ export const HomeTablet: React.FC = () => {
     }
   }, [currentLesson, pathNodes]);
 
-  const handlePlayContinue = async () => {
+  const handlePlayContinue = useCallback(async () => {
     if (!currentLesson) return;
     await selectLesson(currentLesson);
     
@@ -385,14 +751,14 @@ export const HomeTablet: React.FC = () => {
     } else {
       navigation.navigate('LessonOverview');
     }
-  };
+  }, [currentLesson, selectLesson, navigation]);
 
-  const handleLessonClick = async (lesson: Lesson) => {
+  const handleLessonClick = useCallback(async (lesson: Lesson) => {
     if (isLessonUnlocked(lesson.id)) {
       await selectLesson(lesson);
       navigation.navigate('LessonOverview');
     }
-  };
+  }, [isLessonUnlocked, selectLesson, navigation]);
 
   const getItemLayout = (data: any, index: number) => {
     let offset = 0;
@@ -409,333 +775,23 @@ export const HomeTablet: React.FC = () => {
 
   const childName = activeChild?.name || 'Explorer';
 
-  const renderItem = ({ item, index }: { item: PathNode; index: number }) => {
-    const layout = nodeLayouts[index];
-    const nextLayout = nodeLayouts[index + 1];
-    if (!layout) return null;
-
-    const isHero = item.status === 'current' && item.type === 'lesson';
-    const flowerSize = isHero ? 90 : (item.type === 'milestone' ? 80 : (item.type === 'reward' ? 72 : 56));
-    const cardMarginLeft = 12;
-    const flowerLeft = pathCenterX + layout.x - flowerSize / 2;
-    const rowHeight = layout.height;
-
-    // Render path segment connecting this row center to next row center
-    let pathSegment = null;
-    if (index < pathNodes.length - 1 && nextLayout) {
-      const segmentHeight = rowHeight / 2 + nextLayout.height / 2;
-      const startX = pathCenterX + layout.x;
-      const endX = pathCenterX + nextLayout.x;
-      const midY = segmentHeight / 2;
-      const d = `M ${startX} 0 C ${startX} ${midY}, ${endX} ${midY}, ${endX} ${segmentHeight}`;
-
-      pathSegment = (
-        <View
-          style={{
-            position: 'absolute',
-            top: rowHeight / 2,
-            left: 0,
-            width: screenWidth,
-            height: segmentHeight,
-            zIndex: -1,
-          }}
-          pointerEvents="none"
-        >
-          <Svg width={screenWidth} height={segmentHeight}>
-            <Path
-              d={d}
-              stroke="#FFE5D9"
-              strokeWidth={28}
-              fill="none"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              opacity={0.9}
-            />
-            <Path
-              d={d}
-              stroke="#D6BCFA"
-              strokeWidth={3}
-              strokeDasharray="6, 8"
-              fill="none"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </Svg>
-        </View>
-      );
-    }
-
-    // Render intro straight path segment (only for the very first item)
-    let introSegment = null;
-    if (index === 0) {
-      introSegment = (
-        <View
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            width: screenWidth,
-            height: rowHeight / 2,
-            zIndex: -1,
-          }}
-          pointerEvents="none"
-        >
-          <Svg width={screenWidth} height={rowHeight / 2}>
-            <Path
-              d={`M ${pathCenterX + layout.x} 0 L ${pathCenterX + layout.x} ${rowHeight / 2}`}
-              stroke="#FFE5D9"
-              strokeWidth={28}
-              fill="none"
-              strokeLinecap="round"
-              opacity={0.9}
-            />
-            <Path
-              d={`M ${pathCenterX + layout.x} 0 L ${pathCenterX + layout.x} ${rowHeight / 2}`}
-              stroke="#D6BCFA"
-              strokeWidth={3}
-              strokeDasharray="6, 8"
-              fill="none"
-              strokeLinecap="round"
-            />
-          </Svg>
-        </View>
-      );
-    }
-
-    // Render outro straight path segment (only for the very last item)
-    let outroSegment = null;
-    if (index === pathNodes.length - 1) {
-      outroSegment = (
-        <View
-          style={{
-            position: 'absolute',
-            top: rowHeight / 2,
-            left: 0,
-            width: screenWidth,
-            height: 100,
-            zIndex: -1,
-          }}
-          pointerEvents="none"
-        >
-          <Svg width={screenWidth} height={100}>
-            <Path
-              d={`M ${pathCenterX + layout.x} 0 L ${pathCenterX + layout.x} 100`}
-              stroke="#FFE5D9"
-              strokeWidth={28}
-              fill="none"
-              strokeLinecap="round"
-              opacity={0.9}
-            />
-            <Path
-              d={`M ${pathCenterX + layout.x} 0 L ${pathCenterX + layout.x} 100`}
-              stroke="#D6BCFA"
-              strokeWidth={3}
-              strokeDasharray="6, 8"
-              fill="none"
-              strokeLinecap="round"
-            />
-          </Svg>
-        </View>
-      );
-    }
-
-    // Render background landscapes matching index (decided deterministically)
-    let rowDecoration = null;
-    const hillTop = -20;
-    if (index % 3 === 0) {
-      rowDecoration = (
-        <>
-          <LeftHill top={hillTop} width={screenWidth} />
-          <GardenTree top={hillTop + 40} left={20} />
-          <TinyFlower top={hillTop + 110} left={65} color="#F6B5C5" />
-          <TinyFlower top={hillTop + 130} left={85} color="#B89DE8" />
-          <FloatingPetal top={hillTop + 20} left={pathCenterX + 20} delay={index * 300} />
-        </>
-      );
-    } else if (index % 3 === 1) {
-      rowDecoration = (
-        <>
-          <RightHill top={hillTop} width={screenWidth} />
-          <GardenBush top={hillTop + 50} left={screenWidth - 70} />
-          <TinyFlower top={hillTop + 100} left={screenWidth - 90} color="#F29A8F" />
-          <FloatingPetal top={hillTop + 150} left={pathCenterX - 30} delay={index * 300} />
-        </>
-      );
-    } else {
-      rowDecoration = (
-        <>
-          <FloatingPetal top={hillTop + 50} left={pathCenterX + 40} delay={index * 200} />
-        </>
-      );
-    }
-
+  const renderItem = useCallback(({ item, index }: { item: PathNode; index: number }) => {
     return (
-      <View style={{ height: rowHeight, position: 'relative', width: screenWidth }}>
-        {/* virtualized background hill elements */}
-        {rowDecoration}
-
-        {/* virtualized connecting SVGs */}
-        {introSegment}
-        {pathSegment}
-        {outroSegment}
-
-        {/* virtualized node element */}
-        <View style={[styles.nodeRow, { position: 'relative', height: rowHeight, width: screenWidth }]}>
-          <View style={{ width: flowerLeft }} />
-
-          <View style={{ width: flowerSize, height: flowerSize, alignItems: 'center', justifyContent: 'center' }}>
-            {item.type === 'lesson' && item.status === 'completed' && (
-              <CompletedFlowerNode size={flowerSize} onPress={() => item.lesson && handleLessonClick(item.lesson)}>
-                <Svg viewBox="0 0 100 100" width="100%" height="100%">
-                  <Path d="M50 70 L50 95" stroke="#7CA767" strokeWidth="6" strokeLinecap="round" />
-                  <Path d="M50 80 Q35 75 40 70" stroke="#7CA767" strokeWidth="5" strokeLinecap="round" fill="none" />
-                  <Path d="M50 85 Q65 80 60 75" stroke="#7CA767" strokeWidth="5" strokeLinecap="round" fill="none" />
-                  <Circle cx="50" cy="30" r="16" fill="#F6B5C5" />
-                  <Circle cx="30" cy="45" r="16" fill="#F6B5C5" />
-                  <Circle cx="70" cy="45" r="16" fill="#F6B5C5" />
-                  <Circle cx="38" cy="65" r="16" fill="#F6B5C5" />
-                  <Circle cx="62" cy="65" r="16" fill="#F6B5C5" />
-                  <Circle cx="50" cy="50" r="18" fill="#FFF" />
-                  <Circle cx="50" cy="50" r="14" fill="#8DBB75" />
-                  <Path d="M43 50 L48 55 L58 45" stroke="#FFF" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-                </Svg>
-              </CompletedFlowerNode>
-            )}
-
-            {item.type === 'lesson' && item.status === 'current' && (
-              <CurrentFlowerNode size={flowerSize}>
-                <Pressable onPress={handlePlayContinue} style={{ width: '100%', height: '100%' }}>
-                  <Svg viewBox="0 0 100 100" width="100%" height="100%">
-                    <Path d="M50 70 L50 95" stroke="#7CA767" strokeWidth="8" strokeLinecap="round" />
-                    <Path d="M50 80 Q30 75 35 68" stroke="#7CA767" strokeWidth="6" strokeLinecap="round" fill="none" />
-                    <Path d="M50 85 Q70 80 65 73" stroke="#7CA767" strokeWidth="6" strokeLinecap="round" fill="none" />
-                    <Circle cx="50" cy="26" r="20" fill="#8B78D8" />
-                    <Circle cx="26" cy="44" r="20" fill="#8B78D8" />
-                    <Circle cx="74" cy="44" r="20" fill="#8B78D8" />
-                    <Circle cx="35" cy="68" r="20" fill="#8B78D8" />
-                    <Circle cx="65" cy="68" r="20" fill="#8B78D8" />
-                    <Circle cx="50" cy="50" r="22" fill="#F7C94B" />
-                    <Circle cx="50" cy="50" r="16" fill="#FAD875" />
-                  </Svg>
-                </Pressable>
-              </CurrentFlowerNode>
-            )}
-
-            {item.type === 'lesson' && item.status === 'locked' && (
-              <View style={{ width: flowerSize, height: flowerSize, opacity: 0.7 }}>
-                <Svg viewBox="0 0 100 100" width="100%" height="100%">
-                  <Path d="M50 70 L50 95" stroke="#C7C7CC" strokeWidth="6" strokeLinecap="round" />
-                  <Circle cx="50" cy="30" r="16" fill="#E5E5EA" />
-                  <Circle cx="34" cy="46" r="16" fill="#E5E5EA" />
-                  <Circle cx="66" cy="46" r="16" fill="#E5E5EA" />
-                  <Circle cx="40" cy="66" r="16" fill="#E5E5EA" />
-                  <Circle cx="60" cy="66" r="16" fill="#E5E5EA" />
-                  <Circle cx="50" cy="50" r="18" fill="#D1D1D6" />
-                  <Rect x="42" y="48" width="16" height="12" rx="2" fill="#8E8E93" />
-                  <Path d="M46 48 V43 A4 4 0 0 1 54 43 V48" stroke="#8E8E93" strokeWidth="2.5" fill="none" />
-                </Svg>
-              </View>
-            )}
-
-            {item.type === 'milestone' && (
-              <Pressable
-                onPress={() => item.status !== 'locked' && navigation.navigate('Rewards')}
-                style={{ width: flowerSize, height: flowerSize, opacity: item.status === 'locked' ? 0.6 : 1 }}
-              >
-                <Svg viewBox="0 0 100 100" width="100%" height="100%">
-                  <Path d="M50 70 L50 95" stroke={item.status === 'locked' ? '#C7C7CC' : '#7CA767'} strokeWidth="7" strokeLinecap="round" />
-                  <Circle cx="50" cy="48" r="30" fill={item.status === 'locked' ? '#E5E5EA' : '#FFF3D6'} stroke={item.status === 'locked' ? '#F7C94B' : '#F7C94B'} strokeWidth="2" />
-                  <Path d="M50 28 L55 39 L67 41 L58 49 L61 61 L50 55 L39 61 L42 49 L33 41 L45 39 Z" fill={item.status === 'locked' ? '#8E8E93' : '#F7C94B'} />
-                </Svg>
-              </Pressable>
-            )}
-
-            {item.type === 'reward' && (
-              <Pressable
-                onPress={() => item.status !== 'locked' && navigation.navigate('Rewards')}
-                style={{ width: flowerSize, height: flowerSize, opacity: item.status === 'locked' ? 0.6 : 1 }}
-              >
-                <Svg viewBox="0 0 100 100" width="100%" height="100%">
-                  <Path d="M50 70 L50 95" stroke={item.status === 'locked' ? '#C7C7CC' : '#7CA767'} strokeWidth="6" strokeLinecap="round" />
-                  <Circle cx="50" cy="48" r="28" fill={item.status === 'locked' ? '#E5E5EA' : '#FFF2F5'} stroke={item.status === 'locked' ? '#D1D1D6' : '#F6B5C5'} strokeWidth="2.5" />
-                  <Rect x="36" y="38" width="28" height="24" rx="2" fill={item.status === 'locked' ? '#8E8E93' : '#F6B5C5'} />
-                  <Rect x="34" y="34" width="32" height="6" rx="1" fill={item.status === 'locked' ? '#AEAEB2' : '#F29A8F'} />
-                  <Rect x="47" y="34" width="6" height="28" fill="#FFF" />
-                </Svg>
-              </Pressable>
-            )}
-          </View>
-
-          <View style={[styles.cardWrapper, { marginLeft: cardMarginLeft }]}>
-            {isHero ? (
-              <Pressable
-                onPress={handlePlayContinue}
-                style={[
-                  styles.currentLessonCard,
-                  { borderColor: colors.purple, borderWidth: 2 },
-                ]}
-              >
-                <View style={styles.currentCardContent}>
-                  <Text style={[styles.cardTitle, styles.boldText]} numberOfLines={1}>
-                    {item.title}
-                  </Text>
-                  <Text style={[styles.currentCardSubtext, { fontFamily: typography.families.rounded }]}>
-                    Current Lesson
-                  </Text>
-                </View>
-                
-                <View style={styles.continueButton}>
-                  <Ionicons name="arrow-forward" size={20} color="#FFF" />
-                </View>
-              </Pressable>
-            ) : (
-              <Pressable
-                onPress={() => item.type === 'lesson' && item.lesson && handleLessonClick(item.lesson)}
-                disabled={item.status === 'locked'}
-                style={[
-                  styles.normalLessonCard,
-                  { opacity: item.status === 'locked' ? 0.75 : 1 },
-                ]}
-              >
-                <View style={styles.normalCardContent}>
-                  <Text style={[styles.cardTitle, { color: item.status === 'locked' ? '#8F8A82' : colors.textPrimary }]} numberOfLines={1}>
-                    {item.title}
-                  </Text>
-                  
-                  {item.status === 'completed' && (
-                    <View style={styles.completedBadgeRow}>
-                      <Text style={[styles.completedBadgeText, { fontFamily: typography.families.rounded }]}>
-                        Completed
-                      </Text>
-                      <Text style={styles.starText}>⭐</Text>
-                    </View>
-                  )}
-
-                  {item.status === 'locked' && (
-                    <Text style={[styles.lockedCardSubtext, { fontFamily: typography.families.rounded }]}>
-                      Locked
-                    </Text>
-                  )}
-
-                  {item.type === 'milestone' && (
-                    <Text style={[styles.milestoneSubtext, { fontFamily: typography.families.rounded, color: item.status === 'locked' ? '#8F8A82' : colors.purple }]}>
-                      {item.status === 'completed' ? 'Milestone Complete!' : 'Milestone'}
-                    </Text>
-                  )}
-
-                  {item.type === 'reward' && (
-                    <Text style={[styles.rewardSubtext, { fontFamily: typography.families.rounded, color: item.status === 'locked' ? '#8F8A82' : colors.coral }]}>
-                      {item.status === 'completed' ? 'Reward Claimed!' : 'Special Reward!'}
-                    </Text>
-                  )}
-                </View>
-              </Pressable>
-            )}
-          </View>
-        </View>
-      </View>
+      <PathRowItem
+        item={item}
+        index={index}
+        layout={nodeLayouts[index]}
+        nextLayout={nodeLayouts[index + 1]}
+        isFirst={index === 0}
+        isLast={index === pathNodes.length - 1}
+        screenWidth={screenWidth}
+        pathCenterX={pathCenterX}
+        handleLessonClick={handleLessonClick}
+        handlePlayContinue={handlePlayContinue}
+        navigation={navigation}
+      />
     );
-  };
+  }, [nodeLayouts, pathNodes.length, screenWidth, pathCenterX, handleLessonClick, handlePlayContinue, navigation]);
 
   return (
     <ScreenContainer>
@@ -775,7 +831,7 @@ export const HomeTablet: React.FC = () => {
           </View>
         ) : (
           <View style={{ flex: 1 }}>
-            <View style={[styles.centeredContainer, { width: screenWidth, left: leftOffset }]}>
+            <View style={[styles.centeredContainer, { width: screenWidth }]}>
               <FlatList
                 ref={flatListRef}
                 data={pathNodes}
@@ -875,8 +931,8 @@ const styles = StyleSheet.create({
     paddingRight: 20,
   },
   cardWrapper: {
-    flex: 1,
     justifyContent: 'center',
+    flexShrink: 1,
   },
   currentLessonCard: {
     backgroundColor: '#FFFFFF',
@@ -885,10 +941,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    minWidth: 140,
+    maxWidth: 360,
     ...shadows.md,
   },
   currentCardContent: {
-    flex: 1,
+    flexShrink: 1,
     marginRight: 8,
     gap: 4,
   },
@@ -922,10 +980,13 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderWidth: 1.5,
     borderColor: '#F1E4D3',
+    minWidth: 140,
+    maxWidth: 360,
     ...shadows.sm,
   },
   normalCardContent: {
     gap: 3,
+    flexShrink: 1,
   },
   completedBadgeRow: {
     flexDirection: 'row',

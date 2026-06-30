@@ -122,8 +122,10 @@ export const SpeakMobile: React.FC = () => {
     const next = getNextActivity(activityId);
     if (next) {
       await navigateToActivity(navigation, next);
-    } else {
+    } else if (next === null) {
       navigation.navigate('LessonComplete');
+    } else {
+      navigation.navigate('LessonOverview');
     }
   };
 

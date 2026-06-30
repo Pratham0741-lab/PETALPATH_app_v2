@@ -4,7 +4,7 @@
     "slug": "petalpath_app_v2",
     "scheme": "petalpath",
     "version": "1.0.0",
-    "orientation": "portrait",
+    "orientation": "default",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
@@ -36,6 +36,7 @@
     },
     "plugins": [
       "./plugins/withAndroidNetworkSecurity",
+      "./plugins/withAndroidLargeScreen",
       [
         "@react-native-google-signin/google-signin",
         {
@@ -52,7 +53,8 @@
         }
       ],
       "expo-font",
-      "expo-asset"
+      "expo-asset",
+      "expo-splash-screen"
     ],
     "web": {
       "favicon": "./assets/favicon.png"
@@ -62,9 +64,7 @@
         "projectId": "22bc5504-842c-4282-b770-b1f26f3d79f8"
       }
     },
-    "runtimeVersion": {
-      "policy": "appVersion"
-    },
+    "runtimeVersion": "1.0.0",
     "updates": {
       "url": "https://u.expo.dev/22bc5504-842c-4282-b770-b1f26f3d79f8"
     }

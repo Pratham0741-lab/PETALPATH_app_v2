@@ -5,11 +5,17 @@ import { useSpeakStore } from '../store/speakStore';
 import { useWriteStore } from '../store/writeStore';
 import { Alert } from 'react-native';
 
-export const getNextActivity = (currentActivityId: string): Activity | null => {
+export const getNextActivity = (currentActivityId: string): Activity | null | undefined => {
   const { activities } = useRoadmapStore.getState();
+  if (!activities || activities.length === 0) {
+    return undefined;
+  }
   const currentIndex = activities.findIndex(a => a.id === currentActivityId);
-  if (currentIndex === -1 || currentIndex === activities.length - 1) {
-    return null; // No next activity
+  if (currentIndex === -1) {
+    return undefined;
+  }
+  if (currentIndex === activities.length - 1) {
+    return null; // No next activity (end of sequence)
   }
   return activities[currentIndex + 1];
 };

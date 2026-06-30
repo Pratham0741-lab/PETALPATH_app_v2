@@ -3,7 +3,7 @@ import { StyleSheet, View, Text, ActivityIndicator } from 'react-native';
 import { ScreenContainer } from '../../components/common/ScreenContainer';
 import { Card, Button } from '../../components/ui';
 import { colors, typography, spacing, radius, shadows } from '../../theme';
-import { useNavigation } from '@react-navigation/native';
+import { useAppNavigation } from '../../hooks/useAppNavigation';
 import { useRoadmapStore } from '../../store/roadmapStore';
 import { useProgressStore } from '../../store/progressStore';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,7 +18,7 @@ const categoryBadgeMap: Record<string, string> = {
 };
 
 export const LessonCompleteScreen: React.FC = () => {
-  const navigation = useNavigation<any>();
+  const { navigateToTab, navigateTo, navigation } = useAppNavigation();
   const activeChild = useChildStore((state) => state.activeChild);
   const activeMentor = enhanceMentor(activeChild?.mentor) || enhanceMentor(MENTORS[0])!;
   const { selectedLesson, completeLesson, loadCategories, categories } = useRoadmapStore();
@@ -69,7 +69,7 @@ export const LessonCompleteScreen: React.FC = () => {
 
   const handleFinish = () => {
     if (!selectedLesson || !completionResult) {
-      navigation.navigate('MainTabs', { screen: 'Journey' });
+      navigateToTab('Journey');
       return;
     }
 
@@ -77,17 +77,17 @@ export const LessonCompleteScreen: React.FC = () => {
 
     if (completionResult.categoryCompleted && context?.category) {
       const badge = categoryBadgeMap[context.category.title] || 'Alphabet Explorer';
-      navigation.navigate('CategoryComplete', {
+      navigateTo('CategoryComplete', {
         categoryTitle: context.category.title,
         badgeName: badge,
       });
     } else if (completionResult.moduleCompleted && context?.module) {
-      navigation.navigate('ModuleComplete', {
+      navigateTo('ModuleComplete', {
         moduleTitle: context.module.title,
         nextModuleTitle: context.nextModule?.title || null,
       });
     } else {
-      navigation.navigate('MainTabs', { screen: 'Journey' });
+      navigateToTab('Journey');
     }
   };
 
@@ -162,7 +162,7 @@ export const LessonCompleteScreen: React.FC = () => {
           <Button
             label="View Rewards"
             variant="secondary"
-            onPress={() => navigation.navigate('MainTabs', { screen: 'Rewards' })}
+            onPress={() => navigateToTab('Rewards')}
             style={styles.rewardsBtn}
           />
           <Button

@@ -12,6 +12,7 @@ interface ActivityCardProps {
   type: ActivityType;
   onPress?: () => void;
   style?: StyleProp<ViewStyle>;
+  locked?: boolean;
 }
 
 export const ActivityCard: React.FC<ActivityCardProps> = ({
@@ -20,8 +21,12 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
   type,
   onPress,
   style,
+  locked = false,
 }) => {
   const getThemeColor = () => {
+    if (locked) {
+      return '#A0A0A0'; // Grayed out for locked state
+    }
     switch (type) {
       case 'listen':
         return colors.blue;
@@ -59,8 +64,13 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
 
   return (
     <AppCard
-      onPress={onPress}
-      style={[styles.card, { borderLeftColor: color, borderLeftWidth: 6 }, style]}
+      onPress={locked ? undefined : onPress}
+      style={[
+        styles.card,
+        { borderLeftColor: color, borderLeftWidth: 6 },
+        locked && { opacity: 0.55 },
+        style,
+      ]}
     >
       <View style={styles.container}>
         <View style={[styles.iconBox, { backgroundColor: color + '15' }]}>
@@ -70,7 +80,11 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
           <Text style={styles.title}>{title}</Text>
           <Text style={styles.duration}>{duration}</Text>
         </View>
-        <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+        <Ionicons
+          name={locked ? 'lock-closed' : 'chevron-forward'}
+          size={20}
+          color={colors.textMuted}
+        />
       </View>
     </AppCard>
   );

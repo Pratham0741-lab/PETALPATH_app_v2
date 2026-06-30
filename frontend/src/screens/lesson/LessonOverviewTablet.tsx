@@ -26,6 +26,27 @@ export const LessonOverviewTablet: React.FC = () => {
     completedLessons,
   } = useRoadmapStore();
 
+  React.useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      useRoadmapStore.getState().loadRoadmap();
+    });
+    return unsubscribe;
+  }, [navigation]);
+
+  const isActivityUnlocked = (act: any, index: number) => {
+    if (index === 0) return true;
+    const prevAct = activities[index - 1];
+    const progress = selectedLesson?.progress;
+    if (!progress) return false;
+    
+    if (prevAct.activityType === 'video') return progress.videoCompleted;
+    if (prevAct.activityType === 'listen') return progress.listenCompleted;
+    if (prevAct.activityType === 'speak') return progress.speakCompleted;
+    if (prevAct.activityType === 'write') return progress.writeCompleted;
+    
+    return false;
+  };
+
   const handleActivityPress = async (act: any) => {
     console.log(`Activity selected: ${act.id}`);
     try {
@@ -95,12 +116,13 @@ export const LessonOverviewTablet: React.FC = () => {
                 <Text style={[styles.emptyText, { fontFamily: typography.families.rounded }]}>No activities found in this lesson.</Text>
               ) : (
                 <View style={styles.list}>
-                  {activities.map((act) => (
+                  {activities.map((act, index) => (
                     <ActivityCard
                       key={act.id}
                       title={act.title}
                       duration={act.video?.duration ? `${Math.ceil(act.video.duration / 60)} mins` : '5 mins'}
                       type={act.activityType as any}
+                      locked={!isActivityUnlocked(act, index)}
                       onPress={() => handleActivityPress(act)}
                       style={styles.card}
                     />

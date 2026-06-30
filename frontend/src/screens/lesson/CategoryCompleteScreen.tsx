@@ -3,19 +3,20 @@ import { StyleSheet, View, Text } from 'react-native';
 import { ScreenContainer } from '../../components/common/ScreenContainer';
 import { AppButton } from '../../components/buttons/AppButton';
 import { colors, typography, spacing, radius } from '../../theme';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useRoute } from '@react-navigation/native';
+import { useAppNavigation } from '../../hooks/useAppNavigation';
 import { Ionicons } from '@expo/vector-icons';
 import { useChildStore } from '../../store/childStore';
 
 export const CategoryCompleteScreen: React.FC = () => {
-  const navigation = useNavigation<any>();
+  const { navigateToTab } = useAppNavigation();
   const route = useRoute<any>();
   const activeChild = useChildStore((state) => state.activeChild);
   
   const { categoryTitle, badgeName } = route.params || {};
 
   const handleContinue = () => {
-    navigation.navigate('MainTabs', { screen: 'Journey' });
+    navigateToTab('Journey');
   };
 
   return (
@@ -44,7 +45,7 @@ export const CategoryCompleteScreen: React.FC = () => {
 
         <AppButton
           label="View Rewards"
-          onPress={() => navigation.navigate('MainTabs', { screen: 'Rewards' })}
+          onPress={() => navigateToTab('Rewards')}
           style={styles.rewardsButton}
           variant="secondary"
         />

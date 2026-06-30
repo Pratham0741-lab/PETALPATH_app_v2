@@ -3,19 +3,20 @@ import { StyleSheet, View, Text } from 'react-native';
 import { ScreenContainer } from '../../components/common/ScreenContainer';
 import { Card, Button } from '../../components/ui';
 import { colors, typography, spacing, radius, shadows } from '../../theme';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useRoute } from '@react-navigation/native';
+import { useAppNavigation } from '../../hooks/useAppNavigation';
 import { Ionicons } from '@expo/vector-icons';
 import { useChildStore } from '../../store/childStore';
 
 export const ModuleCompleteScreen: React.FC = () => {
-  const navigation = useNavigation<any>();
+  const { navigateToTab } = useAppNavigation();
   const route = useRoute<any>();
   const activeChild = useChildStore((state) => state.activeChild);
   
   const { moduleTitle, nextModuleTitle } = route.params || {};
 
   const handleContinue = () => {
-    navigation.navigate('MainTabs', { screen: 'Journey' });
+    navigateToTab('Journey');
   };
 
   return (
