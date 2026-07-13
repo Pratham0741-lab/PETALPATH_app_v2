@@ -62,6 +62,14 @@ export class PracticeRepository implements IPracticeRepository {
     return data.map(mapToEntity);
   }
 
+  async findByChildIdAndTopicId(childId: string, topicId: string): Promise<Practice[]> {
+    const data = await prisma.practice.findMany({
+      where: { childId, topicId },
+      orderBy: { scheduledFor: 'asc' },
+    });
+    return data.map(mapToEntity);
+  }
+
   async findPendingByChildId(childId: string): Promise<Practice[]> {
     const data = await prisma.practice.findMany({
       where: { childId, completed: false },
@@ -81,7 +89,7 @@ export class PracticeRepository implements IPracticeRepository {
   async update(practice: Practice): Promise<Practice> {
     const updated = await prisma.practice.update({
       where: { id: practice.id },
-      data: practice.toPrismaCreate(),
+      data: practice.toPrismaUpdate(),
     });
     return mapToEntity(updated);
   }

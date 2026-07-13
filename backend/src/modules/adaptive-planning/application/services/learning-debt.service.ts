@@ -2,7 +2,6 @@ import { LearningDebt } from '../../domain/entities/learning-debt.entity.js';
 import { ILearningDebtRepository } from '../../domain/repositories/repository-interfaces.js';
 import { LearningDebtType } from '../../domain/value-objects/planning-types.js';
 import { TopicStateType } from '../../../intelligence-core/domain/value-objects/intelligence-types.js';
-import { Modality } from '../../../adaptive-learning/domain/value-objects/event-types.js';
 
 export class LearningDebtService {
   constructor(private readonly learningDebtRepo: ILearningDebtRepository) {}

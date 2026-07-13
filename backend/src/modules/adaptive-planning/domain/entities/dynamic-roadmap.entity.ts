@@ -63,4 +63,13 @@ export class DynamicRoadmap {
       updatedAt: this.props.updatedAt,
     };
   }
+
+  toPrismaUpdate(): any {
+    return {
+      roadmapJson: JSON.stringify(this.props.roadmapJson),
+      version: this.props.version,
+      validUntil: this.props.validUntil ?? null,
+      updatedAt: this.props.updatedAt,
+    };
+  }
 }

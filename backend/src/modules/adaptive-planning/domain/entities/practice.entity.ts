@@ -62,4 +62,16 @@ export class Practice {
       createdAt: this.props.createdAt,
     };
   }
+
+  toPrismaUpdate(): any {
+    return {
+      topicId: this.props.topicId,
+      modality: this.props.modality ?? null,
+      type: this.props.type,
+      debtId: this.props.debtId ?? null,
+      scheduledFor: this.props.scheduledFor,
+      completedAt: this.props.completedAt ?? null,
+      completed: this.props.completed,
+    };
+  }
 }

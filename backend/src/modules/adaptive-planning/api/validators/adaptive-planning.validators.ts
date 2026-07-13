@@ -1,25 +1,21 @@
 import { z } from 'zod';
-import { RoadmapSectionType, SessionBlockType, RecoveryModeStatus, LearningDebtType, ReinforcementQueueStatus, PracticeType } from '../../domain/value-objects/planning-types.js';
+import { RoadmapSectionType, LearningDebtType, ReinforcementQueueStatus, PracticeType } from '../../domain/value-objects/planning-types.js';
 
 export const createRoadmapSchema = z.object({
-  childId: z.string().uuid(),
   forceRegenerate: z.boolean().optional(),
 });
 
 export const getRoadmapSchema = z.object({
-  childId: z.string().uuid(),
   version: z.number().int().optional(),
 });
 
 export const getRoadmapItemsSchema = z.object({
-  childId: z.string().uuid(),
   sectionType: z.nativeEnum(RoadmapSectionType).optional(),
   limit: z.coerce.number().int().min(1).max(100).default(50),
   offset: z.coerce.number().int().min(0).default(0),
 });
 
 export const createLearningDebtSchema = z.object({
-  childId: z.string().uuid(),
   topicId: z.string().uuid(),
   modality: z.string().optional(),
   debtType: z.nativeEnum(LearningDebtType),
@@ -28,7 +24,6 @@ export const createLearningDebtSchema = z.object({
 });
 
 export const getLearningDebtsSchema = z.object({
-  childId: z.string().uuid(),
   topicId: z.string().uuid().optional(),
   resolved: z.coerce.boolean().optional(),
   limit: z.coerce.number().int().min(1).max(100).default(50),
@@ -40,14 +35,12 @@ export const resolveDebtSchema = z.object({
 });
 
 export const getReinforcementQueuesSchema = z.object({
-  childId: z.string().uuid(),
   status: z.nativeEnum(ReinforcementQueueStatus).optional(),
   limit: z.coerce.number().int().min(1).max(100).default(50),
   offset: z.coerce.number().int().min(0).default(0),
 });
 
 export const createPracticeSchema = z.object({
-  childId: z.string().uuid(),
   topicId: z.string().uuid(),
   modality: z.string().optional(),
   type: z.nativeEnum(PracticeType),
@@ -56,7 +49,6 @@ export const createPracticeSchema = z.object({
 });
 
 export const getPracticesSchema = z.object({
-  childId: z.string().uuid(),
   topicId: z.string().uuid().optional(),
   type: z.nativeEnum(PracticeType).optional(),
   completed: z.coerce.boolean().optional(),
@@ -66,22 +58,18 @@ export const getPracticesSchema = z.object({
 });
 
 export const getRecoveryModeSchema = z.object({
-  childId: z.string().uuid(),
 });
 
 export const createRecoveryModeSchema = z.object({}).optional();
 
 export const resolveRecoverySchema = z.object({
-  childId: z.string().uuid(),
 });
 
 export const getAdaptiveConstraintsSchema = z.object({
-  childId: z.string().uuid(),
   activeOnly: z.coerce.boolean().optional(),
 });
 
 export const createAdaptiveConstraintSchema = z.object({
-  childId: z.string().uuid(),
   type: z.string(),
   name: z.string().min(1),
   value: z.record(z.unknown()),
@@ -89,13 +77,11 @@ export const createAdaptiveConstraintSchema = z.object({
 });
 
 export const createSessionPlanSchema = z.object({
-  childId: z.string().uuid(),
   durationMinutes: z.coerce.number().int().min(5).max(60),
   roadmapId: z.string().uuid().optional(),
 });
 
 export const getSessionPlanSchema = z.object({
-  childId: z.string().uuid(),
   status: z.string().optional(),
   limit: z.coerce.number().int().min(1).max(100).default(50),
   offset: z.coerce.number().int().min(0).default(0),
@@ -124,19 +110,15 @@ export const skipBlockSchema = z.object({
 });
 
 export const getNextRecommendationSchema = z.object({
-  childId: z.string().uuid(),
 });
 
 export const getPracticeRecommendationSchema = z.object({
-  childId: z.string().uuid(),
 });
 
 export const getAdaptiveRecommendationSchema = z.object({
-  childId: z.string().uuid(),
 });
 
 export const getRecoveryRecommendationSchema = z.object({
-  childId: z.string().uuid(),
 });
 
 export type CreateRoadmapInput = z.infer<typeof createRoadmapSchema>;

@@ -192,6 +192,40 @@ export const engineConfig = {
     topStrongSkillsCount: 5,
     reviewsDueSkillIdsCount: 10,
   },
+
+  /**
+   * Phase 4.1 — Learning State Engine
+   * Tuning constants for mastery, confidence, and forgetting curve calculations.
+   */
+  learningState: {
+    mastery: {
+      correctBaseIncrement: 5,
+      incorrectBaseDecrement: 4,
+      diminishingReturnsThreshold: 5,
+      penaltyAccelerationThreshold: 3,
+      minValue: 0,
+      maxValue: 100,
+    },
+    confidence: {
+      baseConfidencePerStreak: 10,
+      retryPenalty: 15,
+      hintPenalty: 10,
+      consistencyWindow: 5,
+      recentPerformanceWeight: 0.4,
+      maxConfidence: 100,
+    },
+    forgettingCurve: {
+      initialStability: 0.5,
+      stabilityIncrementCorrect: 0.1,
+      stabilityDecrementIncorrect: 0.15,
+      stabilityMin: 0.1,
+      stabilityMax: 10.0,
+      baseForgettingRate: 0.1,
+      minForgettingRate: 0.05,
+      reviewIntervalMinDays: 0,
+      retentionDecayPower: 1.5,
+    },
+  },
 } as const;
 
 export type EngineConfig = typeof engineConfig;

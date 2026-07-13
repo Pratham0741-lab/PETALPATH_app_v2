@@ -1,5 +1,4 @@
 import { DynamicRoadmap } from '../../domain/entities/dynamic-roadmap.entity.js';
-import { RecoveryMode } from '../../domain/entities/recovery-mode.entity.js';
 import { RecoveryModeStatus } from '../../domain/value-objects/planning-types.js';
 
 export class RecommendationEngine {

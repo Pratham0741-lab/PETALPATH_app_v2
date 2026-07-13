@@ -63,4 +63,16 @@ export class LearningDebt {
       resolved: this.props.resolved,
     };
   }
+
+  toPrismaUpdate(): any {
+    return {
+      topicId: this.props.topicId,
+      modality: this.props.modality ?? null,
+      debtType: this.props.debtType,
+      severity: this.props.severity,
+      description: this.props.description,
+      resolvedAt: this.props.resolvedAt ?? null,
+      resolved: this.props.resolved,
+    };
+  }
 }

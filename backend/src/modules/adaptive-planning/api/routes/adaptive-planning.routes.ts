@@ -1,5 +1,4 @@
 import { Router } from 'express';
-import { AdaptivePlanningController } from '../controllers/adaptive-planning.controller.js';
 import { authMiddleware } from '../../../../middleware/auth.middleware.js';
 
 export function createAdaptivePlanningRoutes(controller: any): any {

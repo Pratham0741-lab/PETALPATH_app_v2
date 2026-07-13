@@ -32,10 +32,6 @@ import {
   getSessionBlocksSchema,
   completeBlockSchema,
   skipBlockSchema,
-  getNextRecommendationSchema,
-  getPracticeRecommendationSchema,
-  getAdaptiveRecommendationSchema,
-  getRecoveryRecommendationSchema,
 } from '../validators/adaptive-planning.validators.js';
 
 export class AdaptivePlanningController {
@@ -173,22 +169,22 @@ export class AdaptivePlanningController {
 
       let practices;
       if (result.data.topicId) {
-        practices = await this.roadmapBuilder.getPracticesByChildAndDateRange(childId, new Date(), new Date());
+        practices = await this.roadmapBuilder.getPracticesByChildAndTopic(childId, result.data.topicId);
       } else if (result.data.completed !== undefined) {
         if (result.data.completed) {
-          practices = await this.roadmapBuilder.getPracticesByChild(childId);
+          practices = await this.roadmapBuilder.getPracticesByChild(childId, result.data.limit, result.data.offset);
         } else {
           practices = await this.roadmapBuilder.getPendingPracticesByChild(childId);
         }
       } else if (result.data.type) {
-        practices = await this.roadmapBuilder.getPracticesByChildAndType(childId, result.data.type);
+        practices = await this.roadmapBuilder.getPracticesByChildAndType(childId, result.data.type, result.data.limit, result.data.offset);
       } else if (result.data.debtId) {
         practices = await this.roadmapBuilder.getPracticesByDebtId(result.data.debtId);
       } else {
-        practices = await this.roadmapBuilder.getPracticesByChild(childId);
+        practices = await this.roadmapBuilder.getPracticesByChild(childId, result.data.limit, result.data.offset);
       }
 
-      return res.status(200).json({ success: true, data: practices.slice(result.data.offset, result.data.offset + result.data.limit) });
+      return res.status(200).json({ success: true, data: practices });
     } catch (error) { next(error); }
   }
 
@@ -216,8 +212,7 @@ export class AdaptivePlanningController {
 
       // Fetch topic states for proper recovery evaluation
       const topicStates = await this.topicStateRepo.findByChildId(childId);
-      const knowledgeStates = await this.knowledgeStateRepo.findByChildId(childId);
-      
+
       // Calculate effort level from topic states (based on state)
       const effortLevel = topicStates.length > 0 
         ? Math.max(...topicStates.map(t => {
@@ -293,8 +288,13 @@ export class AdaptivePlanningController {
 
       const roadmap = await this.roadmapBuilder.getRoadmap(childId);
       if (!roadmap) return res.status(404).json({ success: false, message: 'Roadmap not found' });
-      
-      const session = await this.sessionBuilder.generateSession(childId, roadmap);
+
+      const [recoveryMode, adaptiveConstraints] = await Promise.all([
+        this.recoveryModeService.getActiveRecoveryMode(childId),
+        this.roadmapBuilder.getAdaptiveConstraints(childId, true),
+      ]);
+
+      const session = await this.sessionBuilder.generateSession(childId, roadmap, recoveryMode ?? undefined, adaptiveConstraints);
       return res.status(201).json({ success: true, data: session });
     } catch (error) { next(error); }
   }
@@ -366,7 +366,7 @@ export class AdaptivePlanningController {
 
   async completeBlock(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
-      const result = completeBlockSchema.safeParse(req.body);
+      const result = completeBlockSchema.safeParse(req.params);
       if (!result.success) throw new ValidationError('Invalid parameters', result.error.format());
 
       const block = await this.sessionBuilder.completeBlock(result.data.sessionPlanId, result.data.blockId);
@@ -376,7 +376,7 @@ export class AdaptivePlanningController {
 
   async skipBlock(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
-      const result = skipBlockSchema.safeParse(req.body);
+      const result = skipBlockSchema.safeParse(req.params);
       if (!result.success) throw new ValidationError('Invalid parameters', result.error.format());
 
       const block = await this.sessionBuilder.skipBlock(result.data.sessionPlanId, result.data.blockId);

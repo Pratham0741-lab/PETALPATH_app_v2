@@ -65,7 +65,7 @@ export class LearningDebtRepository implements ILearningDebtRepository {
   async update(debt: LearningDebt): Promise<LearningDebt> {
     const updated = await prisma.learningDebt.update({
       where: { id: debt.id },
-      data: debt.toPrismaCreate(),
+      data: debt.toPrismaUpdate(),
     });
     return mapToEntity(updated);
   }

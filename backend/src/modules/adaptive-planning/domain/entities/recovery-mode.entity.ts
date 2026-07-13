@@ -77,4 +77,16 @@ export class RecoveryMode {
       updatedAt: this.props.updatedAt,
     };
   }
+
+  toPrismaUpdate(): any {
+    return {
+      status: this.props.status,
+      triggerReason: this.props.triggerReason,
+      resolvedAt: this.props.resolvedAt ?? null,
+      effortTierDrop: this.props.effortTierDrop,
+      minTopicsAtTier: this.props.minTopicsAtTier,
+      currentTier: this.props.currentTier,
+      updatedAt: this.props.updatedAt,
+    };
+  }
 }

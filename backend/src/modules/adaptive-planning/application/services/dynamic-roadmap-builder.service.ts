@@ -8,7 +8,7 @@ import { IReinforcementQueueRepository } from '../../domain/repositories/reposit
 import { IRecoveryModeRepository } from '../../domain/repositories/repository-interfaces.js';
 import { IPracticeRepository } from '../../domain/repositories/repository-interfaces.js';
 import { ILearnerStateRepository } from '../../../intelligence-core/domain/repositories/repository-interfaces.js';
-import { RoadmapSectionType, SessionBlockType, RecoveryModeStatus } from '../../domain/value-objects/planning-types.js';
+import { RoadmapSectionType } from '../../domain/value-objects/planning-types.js';
 
 export class DynamicRoadmapBuilderService {
   constructor(
@@ -108,8 +108,8 @@ export class DynamicRoadmapBuilderService {
     return this.practiceRepo.create(practice);
   }
 
-  async getPracticesByChild(childId: string): Promise<any[]> {
-    return this.practiceRepo.findByChildId(childId);
+  async getPracticesByChild(childId: string, limit?: number, offset?: number): Promise<any[]> {
+    return this.practiceRepo.findByChildId(childId, limit, offset);
   }
 
   async getPendingPracticesByChild(childId: string): Promise<any[]> {
@@ -120,12 +120,16 @@ export class DynamicRoadmapBuilderService {
     return this.practiceRepo.findByChildIdAndDateRange(childId, from, to);
   }
 
-  async getPracticesByChildAndType(childId: string, type: string): Promise<any[]> {
-    return this.practiceRepo.findByChildIdAndType(childId, type);
+  async getPracticesByChildAndType(childId: string, type: string, limit?: number, offset?: number): Promise<any[]> {
+    return this.practiceRepo.findByChildIdAndType(childId, type, limit, offset);
   }
 
   async getPracticesByDebtId(debtId: string): Promise<any[]> {
     return this.practiceRepo.findByDebtId(debtId);
+  }
+
+  async getPracticesByChildAndTopic(childId: string, topicId: string): Promise<any[]> {
+    return this.practiceRepo.findByChildIdAndTopicId(childId, topicId);
   }
 
   // Adaptive Constraints methods - now read from LearnerState

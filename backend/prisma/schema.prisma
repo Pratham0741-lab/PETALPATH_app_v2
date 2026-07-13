@@ -1160,18 +1160,35 @@ model TopicState {
 }
 
 model KnowledgeState {
-  id                String           @id @default(uuid())
-  childId           String           @map("child_id")
-  child             Child            @relation(fields: [childId], references: [id], onDelete: Cascade)
-  topicId           String           @map("topic_id")
-  state             KnowledgeStateType @default(NEW)
-  confidence        Float            @default(0) // 0-1 confidence in classification
-  modalityCoverage  Json             @default("{}") @map("modality_coverage") // Required modalities and their states
-  enteredAt         DateTime         @default(now()) @map("entered_at")
-  lastTransitionAt  DateTime         @map("last_transition_at")
-  transitionReason  String?          @map("transition_reason")
-  createdAt         DateTime         @default(now()) @map("created_at")
-  updatedAt         DateTime         @updatedAt @map("updated_at")
+  id                  String           @id @default(uuid())
+  childId             String           @map("child_id")
+  child               Child            @relation(fields: [childId], references: [id], onDelete: Cascade)
+  topicId             String           @map("topic_id")
+  state               KnowledgeStateType @default(NEW)
+  confidence          Float            @default(0) // 0-1 confidence in classification
+  modalityCoverage    Json             @default("{}") @map("modality_coverage") // Required modalities and their states
+  enteredAt           DateTime         @default(now()) @map("entered_at")
+  lastTransitionAt    DateTime         @map("last_transition_at")
+  transitionReason    String?          @map("transition_reason")
+  createdAt           DateTime         @default(now()) @map("created_at")
+  updatedAt           DateTime         @updatedAt @map("updated_at")
+
+  // Phase 4.1 — Learning State Engine fields
+  mastery             Float            @default(0)
+  stability           Float            @default(0.5)
+  forgettingRate      Float            @default(0.1)  @map("forgetting_rate")
+  reviewIntervalDays  Int              @default(0)    @map("review_interval_days")
+  lastReviewedAt      DateTime?        @map("last_reviewed_at")
+  lastPracticedAt     DateTime?        @map("last_practiced_at")
+  correctAttempts     Int              @default(0)    @map("correct_attempts")
+  incorrectAttempts   Int              @default(0)    @map("incorrect_attempts")
+  streak              Int              @default(0)
+  totalAttempts       Int              @default(0)    @map("total_attempts")
+  averageResponseTimeMs Float          @default(0)    @map("average_response_time_ms")
+  hintUsage           Int              @default(0)    @map("hint_usage")
+  retryCount          Int              @default(0)    @map("retry_count")
+  currentDifficulty   String           @default("MEDIUM") @map("current_difficulty")
+  currentModality     Modality?
 
   @@unique([childId, topicId])
   @@index([childId])
@@ -1267,7 +1284,7 @@ model RecoveryMode {
   id                String             @id @default(uuid())
   childId           String             @unique @map("child_id")
   child             Child              @relation(fields: [childId], references: [id], onDelete: Cascade)
-  status            String             @default("ACTIVE")
+  status            RecoveryModeStatus  @default(ACTIVE)
   triggerReason     String             @map("trigger_reason")
   enteredAt         DateTime           @default(now()) @map("entered_at")
   resolvedAt        DateTime?          @map("resolved_at")

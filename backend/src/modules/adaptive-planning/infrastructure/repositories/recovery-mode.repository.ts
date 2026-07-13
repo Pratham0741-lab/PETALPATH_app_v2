@@ -41,7 +41,7 @@ export class RecoveryModeRepository implements IRecoveryModeRepository {
   async update(recoveryMode: RecoveryMode): Promise<RecoveryMode> {
     const updated = await prisma.recoveryMode.update({
       where: { id: recoveryMode.id },
-      data: recoveryMode.toPrismaCreate(),
+      data: recoveryMode.toPrismaUpdate(),
     });
     return mapToEntity(updated);
   }

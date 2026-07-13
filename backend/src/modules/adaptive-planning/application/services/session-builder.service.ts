@@ -3,7 +3,6 @@ import { SessionBlock, SessionBlockType, SessionBlockStatus } from '../../domain
 import { ISessionPlanRepository } from '../../domain/repositories/repository-interfaces.js';
 import { ISessionBlockRepository } from '../../domain/repositories/repository-interfaces.js';
 import { DynamicRoadmap } from '../../domain/entities/dynamic-roadmap.entity.js';
-import { RecoveryMode } from '../../domain/entities/recovery-mode.entity.js';
 import { RoadmapSectionType, ActivityType, DifficultyLevel } from '../../domain/value-objects/planning-types.js';
 
 export class SessionBuilderService {
@@ -95,8 +94,7 @@ export class SessionBuilderService {
     const block = await this.sessionBlockRepo.findById(blockId);
     if (!block) throw new Error('Block not found');
     
-    // For now just mark as completed with skipped flag
-    const skipped = block.complete();
+    const skipped = block.skip();
     return this.sessionBlockRepo.update(skipped);
   }
 

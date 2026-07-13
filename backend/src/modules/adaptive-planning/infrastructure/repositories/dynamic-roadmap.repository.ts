@@ -31,7 +31,7 @@ export class DynamicRoadmapRepository implements IDynamicRoadmapRepository {
   async update(roadmap: DynamicRoadmap): Promise<DynamicRoadmap> {
     const updated = await prisma.dynamicRoadmap.update({
       where: { childId: roadmap.childId },
-      data: roadmap.toPrismaCreate(),
+      data: roadmap.toPrismaUpdate(),
     });
     return mapToEntity(updated);
   }

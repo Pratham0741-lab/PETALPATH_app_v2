@@ -16,6 +16,7 @@ export interface IPracticeRepository {
   findByChildId(childId: string, limit?: number, offset?: number): Promise<Practice[]>;
   findByChildIdAndType(childId: string, type: string, limit?: number, offset?: number): Promise<Practice[]>;
   findByChildIdAndDateRange(childId: string, from: Date, to: Date): Promise<Practice[]>;
+  findByChildIdAndTopicId(childId: string, topicId: string): Promise<Practice[]>;
   findPendingByChildId(childId: string): Promise<Practice[]>;
   findByDebtId(debtId: string): Promise<Practice[]>;
   update(practice: Practice): Promise<Practice>;
