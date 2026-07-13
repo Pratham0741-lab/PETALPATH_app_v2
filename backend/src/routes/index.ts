@@ -24,6 +24,9 @@ import { adaptiveRoutes } from '../modules/adaptive/adaptive.routes.js';
 import { reinforcementRoutes } from '../modules/reinforcement/reinforcement.routes.js';
 import { sessionRoutes } from '../modules/session/session.routes.js';
 import { analyticsRoutes } from '../modules/analytics/analytics.routes.js';
+import { learnerRoutes } from '../modules/learner/learner.routes.js';
+import { getLearningEventRoutes } from '../modules/adaptive-learning/index.js';
+import { getIntelligenceCoreRoutes } from '../modules/intelligence-core/index.js';
 
 const router = Router();
 
@@ -64,6 +67,16 @@ router.use('/session', sessionRoutes);
 router.use('/v1/session', sessionRoutes);
 router.use('/analytics', analyticsRoutes);
 router.use('/v1/analytics', analyticsRoutes);
+
+// Adaptive Learning Engine — Phase 1 (LearnerFacade)
+// See docs/adaptive-engine/design-spec.md §5
+router.use('/v1/learner', learnerRoutes);
+
+// Adaptive Learning Engine — Phase 1 (Learning Events & Evidence)
+router.use('/v1/learning-events', getLearningEventRoutes());
+
+// Adaptive Learning Engine — Phase 2 (Intelligence Core)
+router.use('/v1/intelligence-core', getIntelligenceCoreRoutes());
 
 export { router as rootRouter };
 

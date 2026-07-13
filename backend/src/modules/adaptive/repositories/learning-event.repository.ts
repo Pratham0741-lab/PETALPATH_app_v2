@@ -1,11 +1,24 @@
 import { prisma } from '../../../config/database.js';
+import { LearningEventType, Modality } from '@prisma/client';
 
 export class LearningEventRepository {
   async create(data: {
+    eventId: string;
+    eventType: LearningEventType;
+    eventVersion: number;
     childId: string;
-    eventType: string;
-    value?: number | null;
-    metadata?: any;
+    sessionId: string;
+    curriculumId?: string;
+    subjectId?: string;
+    moduleId?: string;
+    topicId?: string;
+    conceptId?: string;
+    activityId?: string;
+    modality?: Modality;
+    timestamp: Date;
+    duration?: number;
+    payload?: any;
+    idempotencyKey: string;
   }) {
     return prisma.learningEvent.create({
       data,
@@ -20,7 +33,7 @@ export class LearningEventRepository {
     });
   }
 
-  async findByChildAndType(childId: string, eventType: string, limit = 50) {
+  async findByChildAndType(childId: string, eventType: LearningEventType, limit = 50) {
     return prisma.learningEvent.findMany({
       where: { childId, eventType },
       orderBy: { timestamp: 'desc' },

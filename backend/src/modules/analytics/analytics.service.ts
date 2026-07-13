@@ -10,6 +10,7 @@ import { analyticsHistoryRepository } from './repositories/analytics-history.rep
 import { trendEventRepository } from './repositories/trend-event.repository.js';
 import { subjectAnalyticsRepository } from './repositories/subject-analytics.repository.js';
 import { logger } from '../../utils/logger.js';
+import { engineConfig } from '../../shared/config/engine.config.js';
 
 export class AnalyticsService {
   // ──────────────────────────────────────────────
@@ -20,7 +21,7 @@ export class AnalyticsService {
     const healths = await prisma.skillHealth.findMany({
       where: { childId },
     });
-    if (healths.length === 0) return 80.0; // Default baseline accuracy
+    if (healths.length === 0) return engineConfig.analytics.baselines.accuracy;
     const sum = healths.reduce((acc, h) => acc + h.knowledgeScore, 0);
     return Math.round((sum / healths.length) * 100) / 100;
   }
@@ -29,7 +30,7 @@ export class AnalyticsService {
     const healths = await prisma.skillHealth.findMany({
       where: { childId },
     });
-    if (healths.length === 0) return 70.0;
+    if (healths.length === 0) return engineConfig.analytics.baselines.confidence;
     const sum = healths.reduce((acc, h) => acc + h.confidenceScore, 0);
     return Math.round((sum / healths.length) * 100) / 100;
   }
@@ -38,7 +39,7 @@ export class AnalyticsService {
     const healths = await prisma.skillHealth.findMany({
       where: { childId },
     });
-    if (healths.length === 0) return 75.0;
+    if (healths.length === 0) return engineConfig.analytics.baselines.retention;
     const sum = healths.reduce((acc, h) => acc + h.retentionScore, 0);
     return Math.round((sum / healths.length) * 100) / 100;
   }
@@ -47,14 +48,14 @@ export class AnalyticsService {
     const healths = await prisma.skillHealth.findMany({
       where: { childId },
     });
-    if (healths.length === 0) return 80.0;
+    if (healths.length === 0) return engineConfig.analytics.baselines.engagement;
     const sum = healths.reduce((acc, h) => acc + h.engagementScore, 0);
     return Math.round((sum / healths.length) * 100) / 100;
   }
 
   async calculateLearningVelocity(childId: string): Promise<number> {
     const child = await prisma.child.findUnique({ where: { id: childId } });
-    if (!child) return 1.0;
+    if (!child) return engineConfig.analytics.baselines.velocityFallback;
 
     const daysElapsed = Math.max(
       1,
@@ -64,7 +65,7 @@ export class AnalyticsService {
     const healths = await prisma.skillHealth.findMany({
       where: { childId },
     });
-    if (healths.length === 0) return 0.5;
+    if (healths.length === 0) return engineConfig.analytics.baselines.velocityDefault;
 
     const sumMastery = healths.reduce((acc, h) => acc + h.masteryScore, 0);
     const averageMastery = sumMastery / healths.length;
@@ -187,7 +188,7 @@ export class AnalyticsService {
       sevenDaysAgo,
       sevenDaysAgo
     );
-    const prevConfidence = historyConfidence[0]?.value ?? 70.0;
+    const prevConfidence = historyConfidence[0]?.value ?? engineConfig.analytics.baselines.confidence;
     const confidenceDiff = currentSnapshot.confidence - prevConfidence;
 
     if (confidenceDiff >= 5.0) {
@@ -208,7 +209,7 @@ export class AnalyticsService {
       sevenDaysAgo,
       sevenDaysAgo
     );
-    const prevRetention = historyRetention[0]?.value ?? 75.0;
+    const prevRetention = historyRetention[0]?.value ?? engineConfig.analytics.baselines.retention;
     const retentionDiff = currentSnapshot.retention - prevRetention;
 
     if (retentionDiff >= 5.0) {
@@ -390,7 +391,7 @@ export class AnalyticsService {
 
       // Calculate progress: completed skills / total skills in subject
       // Completed means masteryScore >= 85
-      const completed = healths.filter((h) => h.masteryScore >= 85.0).length;
+      const completed = healths.filter((h) => h.masteryScore >= engineConfig.analytics.subjectCompletionMasteryThreshold).length;
       const progress = Math.round((completed / skills.length) * 10000) / 100;
 
       const record = await subjectAnalyticsRepository.upsert(childId, subj.id, {

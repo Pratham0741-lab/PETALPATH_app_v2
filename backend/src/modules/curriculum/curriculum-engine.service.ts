@@ -1,5 +1,6 @@
 import { prisma } from '../../config/database.js';
 import { CurriculumState, MasteryState } from '../../shared/enums.js';
+import { engineConfig } from '../../shared/config/engine.config.js';
 import { subjectRepository } from './repositories/subject.repository.js';
 import { childSkillCurriculumRepository } from './repositories/child-skill-curriculum.repository.js';
 import { skillRepository } from './repositories/skill.repository.js';
@@ -83,7 +84,7 @@ export class CurriculumEngineService {
       }
 
       const health = await skillHealthRepository.findByChildAndSkill(childId, skill.id);
-      if (health && health.masteryScore >= 85.0) {
+      if (health && health.masteryScore >= engineConfig.curriculum.skillCompletionMasteryThreshold) {
         continue;
       }
 
@@ -94,7 +95,7 @@ export class CurriculumEngineService {
       }
 
       const unlockRatio = await this.calculateUnlockRatio(childId, skill.id);
-      if (unlockRatio >= 70.0) {
+      if (unlockRatio >= engineConfig.curriculum.unlockRatioThreshold) {
         availableSkills.push({ skill, unlockRatio });
       }
     }
@@ -147,7 +148,7 @@ export class CurriculumEngineService {
 
     return subjects
       .map((subj) => {
-        let priority = 50.0;
+        let priority: number = engineConfig.curriculum.defaultSubjectPriority;
         if (subj.name === 'Writing') {
           priority = age < 4 ? 90.0 : age < 6 ? 70.0 : 60.0;
         } else if (subj.name === 'Cognitive') {
@@ -173,7 +174,7 @@ export class CurriculumEngineService {
 
     const subjectPriorities = await this.prioritizeSubjects(childId);
     const subjectPriorityItem = subjectPriorities.find((sp) => sp.subject.id === subjectId);
-    const subjectPriority = subjectPriorityItem?.priority ?? 50.0;
+    const subjectPriority = subjectPriorityItem?.priority ?? engineConfig.curriculum.defaultSubjectPriority;
 
     const candidates: Array<CurriculumRecommendationDto> = [];
 
@@ -197,7 +198,8 @@ export class CurriculumEngineService {
       }
 
       // 3. Compute overall priority
-      const priority = 0.5 * masteryGap + 0.3 * subjectPriority + 0.2 * recencyFactor;
+      const pw = engineConfig.curriculum.priorityWeights;
+      const priority = pw.masteryGap * masteryGap + pw.subjectPriority * subjectPriority + pw.recency * recencyFactor;
 
       // 4. Draft readable reasoning
       let reason = `Recommended to practice ${skill.name}. `;
@@ -249,7 +251,7 @@ export class CurriculumEngineService {
 
     for (const skill of allSkills) {
       const health = await skillHealthRepository.findByChildAndSkill(childId, skill.id);
-      const isMastered = health && health.masteryScore >= 85.0;
+      const isMastered = health && health.masteryScore >= engineConfig.curriculum.skillCompletionMasteryThreshold;
 
       // Calculate state
       let state: CurriculumState = CurriculumState.LOCKED;
@@ -261,16 +263,17 @@ export class CurriculumEngineService {
         const existing = await childSkillCurriculumRepository.findByChildAndSkill(childId, skill.id);
         if (existing?.state === CurriculumState.ACTIVE) {
           state = CurriculumState.ACTIVE;
-        } else if (skill.isRootSkill || unlockRatio >= 70.0) {
+        } else if (skill.isRootSkill || unlockRatio >= engineConfig.curriculum.unlockRatioThreshold) {
           state = CurriculumState.AVAILABLE;
         }
       }
 
       // Compute simple priority for tracking
       const subjectPriorities = await this.prioritizeSubjects(childId);
-      const subjectPriority = subjectPriorities.find((sp) => sp.subject.id === skill.subjectId)?.priority ?? 50.0;
+      const subjectPriority = subjectPriorities.find((sp) => sp.subject.id === skill.subjectId)?.priority ?? engineConfig.curriculum.defaultSubjectPriority;
       const masteryGap = 100.0 - (health?.masteryScore ?? 0.0);
-      const priority = 0.5 * masteryGap + 0.3 * subjectPriority;
+      const gw = engineConfig.curriculum.generateCurriculumWeights;
+      const priority = gw.masteryGap * masteryGap + gw.subjectPriority * subjectPriority;
 
       const record = await childSkillCurriculumRepository.upsert(childId, skill.id, {
         state,

@@ -1,4 +1,5 @@
 import { MasteryState, ActivityType, ReinforcementEventType } from '../../shared/enums.js';
+import { engineConfig } from '../../shared/config/engine.config.js';
 import { reinforcementQueueRepository } from './repositories/reinforcement-queue.repository.js';
 import { reinforcementHistoryRepository } from './repositories/reinforcement-history.repository.js';
 import { reinforcementEventRepository } from './repositories/reinforcement-event.repository.js';
@@ -33,10 +34,11 @@ export class ReinforcementEngineService {
     const retentionGap = 100 - retentionScore;
     const confidenceGap = 100 - confidenceScore;
 
-    let priority = 0.5 * masteryGap + 0.3 * retentionGap + 0.2 * confidenceGap;
+    const pw = engineConfig.reinforcement.priorityWeights;
+    let priority = pw.masteryGap * masteryGap + pw.retentionGap * retentionGap + pw.confidenceGap * confidenceGap;
 
-    if (masteryScore < 50) {
-      priority += 20;
+    if (masteryScore < engineConfig.reinforcement.priorityLowMasteryBoostThreshold) {
+      priority += engineConfig.reinforcement.priorityLowMasteryBoost;
     }
 
     return Math.round(priority * 100) / 100; // Two decimal places
@@ -51,15 +53,16 @@ export class ReinforcementEngineService {
    * Defaults to 1 for NEW / LEARNING states.
    */
   calculateFrequencyDays(masteryState: MasteryState): number {
+    const f = engineConfig.reinforcement.frequencyDaysByState;
     switch (masteryState) {
       case MasteryState.WEAK:
-        return 1;
+        return f.weak;
       case MasteryState.STRONG:
-        return 2;
+        return f.strong;
       case MasteryState.MASTERED:
-        return 3;
+        return f.mastered;
       default:
-        return 1;
+        return f.default;
     }
   }
 
@@ -133,7 +136,7 @@ export class ReinforcementEngineService {
     const removed: string[] = [];
 
     for (const health of allHealth) {
-      if (health.masteryScore < 85.0) {
+      if (health.masteryScore < engineConfig.reinforcement.weakSkillMasteryThreshold) {
         await this.enqueueSkill(childId, health.skillId, {
           masteryScore: health.masteryScore,
           retentionScore: health.retentionScore,
@@ -186,7 +189,7 @@ export class ReinforcementEngineService {
   async selectActivityType(childId: string, skillId: string): Promise<ActivityType> {
     // Get preferred modality from the Adaptive Engine's learning profile
     const profile = await learningProfileRepository.findByChildId(childId);
-    const preferred = profile?.preferredModality ?? ActivityType.VIDEO;
+    const preferred = profile?.preferredModality ?? engineConfig.reinforcement.defaultFallbackModality;
 
     // Get the most recent reinforcement attempt for this skill
     const recent = await reinforcementHistoryRepository.findRecent(childId, skillId);
@@ -309,7 +312,7 @@ export class ReinforcementEngineService {
    * Called by the Mastery/Adaptive pipeline when retention decays significantly.
    */
   async detectRetentionDrop(childId: string, skillId: string, retentionScore: number) {
-    if (retentionScore < 50.0) {
+    if (retentionScore < engineConfig.reinforcement.retentionDropThreshold) {
       await reinforcementEventRepository.create({
         childId,
         skillId,

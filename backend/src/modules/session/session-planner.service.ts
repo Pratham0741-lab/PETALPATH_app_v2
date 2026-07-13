@@ -7,6 +7,7 @@ import {
   ActivityType,
   MasteryState,
 } from '../../shared/enums.js';
+import { engineConfig } from '../../shared/config/engine.config.js';
 import { sessionTemplateRepository } from './repositories/session-template.repository.js';
 import { sessionPlanRepository } from './repositories/session-plan.repository.js';
 import { sessionBlockRepository } from './repositories/session-block.repository.js';
@@ -91,10 +92,10 @@ export class SessionPlannerService {
     const recencyFactor = Math.min(100.0, lastPracticedDaysAgo * 10.0);
 
     const priority =
-      0.4 * curriculumPriority +
-      0.3 * reinforcementPriority +
-      0.2 * modalityFit +
-      0.1 * recencyFactor;
+      engineConfig.session.priorityWeights.curriculum * curriculumPriority +
+      engineConfig.session.priorityWeights.reinforcement * reinforcementPriority +
+      engineConfig.session.priorityWeights.modality * modalityFit +
+      engineConfig.session.priorityWeights.recency * recencyFactor;
 
     return Math.round(priority * 100) / 100;
   }
@@ -103,8 +104,8 @@ export class SessionPlannerService {
    * Estimates block count based on child's age group.
    */
   getBlockCountForAge(age: number): number {
-    if (age <= 3) return 4;
-    if (age <= 5) return 5;
+    if (age <= engineConfig.session.ageBlockCounts[0].maxAge) return 4;
+    if (age <= engineConfig.session.ageBlockCounts[1].maxAge) return 5;
     return 6;
   }
 
@@ -116,9 +117,9 @@ export class SessionPlannerService {
     if (position === totalBlocks - 1) return DifficultyLevel.EASY; // Reward/Cool-down
 
     const ratio = position / totalBlocks;
-    if (ratio < 0.4) {
+    if (ratio < engineConfig.session.difficultyCurve.easyIntroCutoff) {
       return DifficultyLevel.EASY;
-    } else if (ratio < 0.8) {
+    } else if (ratio < engineConfig.session.difficultyCurve.mediumCutoff) {
       return DifficultyLevel.MEDIUM;
     } else {
       return DifficultyLevel.HARD;
@@ -163,7 +164,7 @@ export class SessionPlannerService {
     }
 
     const reinforcementRatio = reinforcementCount / blocks.length;
-    if (reinforcementRatio > 0.3) {
+    if (reinforcementRatio > engineConfig.session.maxReinforcementRatio) {
       logger.warn(`Reinforcement ratio constraint violated: ${(reinforcementRatio * 100).toFixed(0)}%.`);
       return false;
     }
@@ -189,7 +190,7 @@ export class SessionPlannerService {
     // 1. Fetch learning profile & settings from Adaptive Engine
     const profile = await learningProfileRepository.findByChildId(childId);
     const optimalDuration = profile?.optimalSessionDuration ?? 15;
-    const preferredModality = profile?.preferredModality ?? ActivityType.VIDEO;
+    const preferredModality = profile?.preferredModality ?? engineConfig.session.defaultPreferredModality;
 
     // 2. Select appropriate template from database
     const template = await sessionTemplateRepository.findByDuration(optimalDuration);
@@ -207,7 +208,7 @@ export class SessionPlannerService {
     const blocksToBuild: any[] = [];
 
     let reinforcementUsed = 0;
-    const maxReinforcement = Math.floor(blockSequence.length * 0.3); // max 30% of slots
+    const maxReinforcement = Math.floor(blockSequence.length * engineConfig.session.maxReinforcementRatio);
 
     const subjectHistory: Record<string, number> = {};
 

@@ -66,11 +66,16 @@ model Child {
   modalityPerformances   ModalityPerformance[]
   adaptationEvents       AdaptationEvent[]
   learningEvents         LearningEvent[]
+  learningEvidence       LearningEvidence[]
   sessionPlans           SessionPlan[]
   analyticsSnapshot      AnalyticsSnapshot?
   analyticsHistories     AnalyticsHistory[]
   trendEvents            TrendEvent[]
   subjectAnalytics       SubjectAnalytics[]
+  learnerState           LearnerState?
+  metricSnapshots        MetricSnapshot[]
+  topicStates            TopicState[]
+  knowledgeStates        KnowledgeState[]
 
   @@map("children")
 }
@@ -667,18 +672,140 @@ model AdaptationEvent {
   @@map("adaptation_events")
 }
 
+enum LearningEventType {
+  SESSION_STARTED
+  SESSION_PAUSED
+  SESSION_RESUMED
+  SESSION_COMPLETED
+  SESSION_CANCELLED
+  TOPIC_STARTED
+  TOPIC_COMPLETED
+  TOPIC_SKIPPED
+  ACTIVITY_STARTED
+  ACTIVITY_COMPLETED
+  ACTIVITY_SKIPPED
+  ACTIVITY_FAILED
+  VIDEO_COMPLETED
+  AUDIO_COMPLETED
+  SPEECH_COMPLETED
+  WRITING_COMPLETED
+  RECOVERY_STARTED
+  RECOVERY_COMPLETED
+  DAILY_PRACTICE_COMPLETED
+  MASTERY_PRACTICE_COMPLETED
+  REINFORCEMENT_COMPLETED
+}
+
+enum Modality {
+  VIDEO
+  AUDIO
+  SPEECH
+  WRITING
+  GAME
+  STORY
+  MOTOR
+  CREATIVE
+  WARMUP
+  REWARD
+}
+
+enum EvidenceType {
+  ATTEMPTS
+  RETRIES
+  ACCURACY
+  COMPLETION
+  DURATION
+  HINT_USAGE
+  HELP_REQUESTS
+  ENGAGEMENT
+  CONFIDENCE
+}
+
+enum TopicStateType {
+  NEW
+  LEARNING
+  NEEDS_PRACTICE
+  STABLE
+  REINFORCEMENT
+  MASTERED
+}
+
+enum ModalityStateType {
+  NEW
+  LEARNING
+  NEEDS_PRACTICE
+  STABLE
+  REINFORCEMENT
+  MASTERED
+}
+
+enum KnowledgeStateType {
+  NEW
+  LEARNING
+  NEEDS_PRACTICE
+  STABLE
+  REINFORCEMENT
+  MASTERED
+}
+
+enum MetricCategory {
+  PERFORMANCE
+  MODALITY
+  TOPIC
+  SESSION
+  RETENTION
+}
+
 model LearningEvent {
-  id        String   @id @default(uuid())
-  childId   String   @map("child_id")
-  child     Child    @relation(fields: [childId], references: [id], onDelete: Cascade)
-  eventType String   @map("event_type")
-  value     Float?   @map("value")
-  metadata  Json?    @map("metadata")
-  timestamp DateTime @default(now()) @map("timestamp")
+  id            String           @id @default(uuid())
+  eventId       String           @unique @map("event_id")
+  eventType     LearningEventType @map("event_type")
+  eventVersion  Int              @default(1) @map("event_version")
+  childId       String           @map("child_id")
+  child         Child            @relation(fields: [childId], references: [id], onDelete: Cascade)
+  sessionId     String           @map("session_id")
+  curriculumId  String?          @map("curriculum_id")
+  subjectId     String?          @map("subject_id")
+  moduleId      String?          @map("module_id")
+  topicId       String?          @map("topic_id")
+  conceptId     String?          @map("concept_id")
+  activityId    String?          @map("activity_id")
+  modality      Modality?
+  timestamp     DateTime         @default(now())
+  duration      Int?             @map("duration_ms")
+  payload       Json?            @map("payload")
+  idempotencyKey String          @unique @map("idempotency_key")
+  learningEvidence LearningEvidence?
 
   @@index([childId])
   @@index([childId, eventType])
+  @@index([sessionId])
+  @@index([activityId])
+  @@index([topicId])
+  @@index([timestamp])
   @@map("learning_events")
+}
+
+model LearningEvidence {
+  id            String       @id @default(uuid())
+  eventId       String       @unique @map("event_id")
+  event         LearningEvent @relation(fields: [eventId], references: [eventId], onDelete: Cascade)
+  childId       String       @map("child_id")
+  child         Child        @relation(fields: [childId], references: [id], onDelete: Cascade)
+  sessionId     String       @map("session_id")
+  activityId    String?      @map("activity_id")
+  topicId       String?      @map("topic_id")
+  modality      Modality?
+  evidenceType  EvidenceType @map("evidence_type")
+  observation   Json         @map("observation")
+  createdAt     DateTime     @default(now()) @map("created_at")
+
+  @@index([childId])
+  @@index([sessionId])
+  @@index([activityId])
+  @@index([topicId])
+  @@index([createdAt])
+  @@map("learning_evidence")
 }
 
 model ReinforcementHistory {
@@ -903,3 +1030,148 @@ model SubjectAnalytics {
 
 
 
+
+// ===========================================================================
+// Adaptive Learning Engine — Phase 1 (Foundation)
+// See docs/adaptive-engine/design-spec.md §2.1
+// ===========================================================================
+
+enum RecommendationKind {
+  NEW_SKILL
+  REVIEW
+  PRACTICE
+  CHALLENGE
+  MIXED_PRACTICE
+  REST
+}
+
+// LearnerState is a materialized read-model aggregating the six adaptive
+// engines (mastery, adaptive, reinforcement, curriculum, session, analytics)
+// into a single row per child.
+//
+// Purpose: sub-100ms answers to "what is the current state of this learner"
+// without joining across 6+ tables on every request. Consumed by:
+//   - GET /v1/learner/:childId/state
+//   - GET /v1/learner/:childId/recommendation
+//   - AI Mentor context queries (Phase 2)
+//   - Parent Dashboard analytics (Phase 2)
+//
+// Consistency model: rebuilt by LearnerStateBuilder on demand and after every
+// performance event. Derived state — safe to drop and reconstruct from
+// SkillHealth + ReinforcementQueue + LearningProfile + SessionPlan.
+//
+// NOT added to Child.learnerState relation in Phase 1 to avoid touching the
+// existing Child model relations block. The FK + @@index gives an equivalent
+// lookup path; the Prisma relation can be introduced in Phase 2 alongside
+// the recordPerformance transaction.
+model LearnerState {
+  id                        String   @id @default(uuid())
+  childId                   String   @unique @map("child_id")
+  child                     Child    @relation(fields: [childId], references: [id], onDelete: Cascade)
+
+  // Aggregate mastery
+  overallMasteryScore       Float    @default(0)  @map("overall_mastery_score")
+  masteredSkillCount        Int      @default(0)  @map("mastered_skill_count")
+  strongSkillCount          Int      @default(0)  @map("strong_skill_count")
+  weakSkillCount            Int      @default(0)  @map("weak_skill_count")
+  totalSkillCount           Int      @default(0)  @map("total_skill_count")
+
+  // Denormalized top-N skill lists (arrays of skill ids)
+  topWeakSkillIds           Json     @default("[]") @map("top_weak_skill_ids")
+  topStrongSkillIds         Json     @default("[]") @map("top_strong_skill_ids")
+  reviewsDueCount           Int      @default(0)   @map("reviews_due_count")
+  reviewsDueSkillIds        Json     @default("[]") @map("reviews_due_skill_ids")
+
+  // Session
+  activeSessionPlanId       String?  @map("active_session_plan_id")
+  lastCompletedSessionAt    DateTime? @map("last_completed_session_at")
+
+  // Streak / engagement (Phase 1 leaves streak at 0; Streak model arrives in Phase 2)
+  streakDays                Int      @default(0)  @map("streak_days")
+  longestStreakDays         Int      @default(0)  @map("longest_streak_days")
+  engagementScore           Float    @default(0)  @map("engagement_score")
+
+  // Snapshot of LearningProfile preferences (denormalized)
+  preferredModality         ActivityType? @map("preferred_modality")
+  optimalSessionDurationMin Int      @default(15) @map("optimal_session_duration_min")
+
+  // Last recommendation (denormalized for TTL caching)
+  lastRecommendationKind    RecommendationKind? @map("last_recommendation_kind")
+  lastRecommendationSkillId String?             @map("last_recommendation_skill_id")
+  lastRecommendationAt      DateTime?           @map("last_recommendation_at")
+  lastRecommendationTTLSec  Int      @default(60) @map("last_recommendation_ttl_sec")
+
+  // Cache metadata
+  updatedAt                 DateTime @updatedAt  @map("updated_at")
+  version                   Int      @default(1)  // incremented per rebuild
+
+  @@index([childId])
+  @@index([updatedAt])
+  @@map("learner_state")
+}
+
+// =============================================================================
+// Phase 2 — Intelligence Core
+// =============================================================================
+
+model MetricSnapshot {
+  id                String       @id @default(uuid())
+  childId           String       @map("child_id")
+  child             Child        @relation(fields: [childId], references: [id], onDelete: Cascade)
+  category          MetricCategory
+  metrics           Json         // Aggregated metric values
+  calculationVersion String      @map("calculation_version")
+  windowStart       DateTime     @map("window_start")
+  windowEnd         DateTime     @map("window_end")
+  createdAt         DateTime     @default(now()) @map("created_at")
+
+  @@index([childId])
+  @@index([childId, category])
+  @@index([createdAt])
+  @@map("metric_snapshots")
+}
+
+model TopicState {
+  id                String        @id @default(uuid())
+  childId           String        @map("child_id")
+  child             Child         @relation(fields: [childId], references: [id], onDelete: Cascade)
+  topicId           String        @map("topic_id")
+  state             TopicStateType @default(NEW)
+  modalityStates    Json          @default("{}") @map("modality_states") // Map of modality -> ModalityStateType
+  enteredAt         DateTime      @default(now()) @map("entered_at")
+  lastTransitionAt  DateTime      @map("last_transition_at")
+  transitionReason  String?       @map("transition_reason")
+  evidenceSummary   Json?         @map("evidence_summary") // Summary of evidence supporting this state
+  createdAt         DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @updatedAt @map("updated_at")
+
+  @@unique([childId, topicId])
+  @@index([childId])
+  @@index([childId, state])
+  @@map("topic_states")
+}
+
+model KnowledgeState {
+  id                String           @id @default(uuid())
+  childId           String           @map("child_id")
+  child             Child            @relation(fields: [childId], references: [id], onDelete: Cascade)
+  topicId           String           @map("topic_id")
+  state             KnowledgeStateType @default(NEW)
+  confidence        Float            @default(0) // 0-1 confidence in classification
+  modalityCoverage  Json             @default("{}") @map("modality_coverage") // Required modalities and their states
+  enteredAt         DateTime         @default(now()) @map("entered_at")
+  lastTransitionAt  DateTime         @map("last_transition_at")
+  transitionReason  String?          @map("transition_reason")
+  createdAt         DateTime         @default(now()) @map("created_at")
+  updatedAt         DateTime         @updatedAt @map("updated_at")
+
+  @@unique([childId, topicId])
+  @@index([childId])
+  @@index([childId, state])
+  @@map("knowledge_states")
+}
+
+// Enhanced LearnerState for Phase 2
+// These fields will be added to the existing LearnerState model via migration
+// For now, we extend the model definition here for reference
+// The actual migration will add these columns to the existing table

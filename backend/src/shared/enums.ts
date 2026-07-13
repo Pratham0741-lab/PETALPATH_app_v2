@@ -19,4 +19,6 @@ export {
   DifficultyLevel,
   AnalyticsMetricType,
   TrendEventType,
+  RecommendationKind,
+  Modality,
 } from '@prisma/client';

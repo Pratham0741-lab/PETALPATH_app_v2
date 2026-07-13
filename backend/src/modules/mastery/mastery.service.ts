@@ -1,4 +1,5 @@
 import { MasteryState } from '../../shared/enums.js';
+import { engineConfig } from '../../shared/config/engine.config.js';
 import { skillHealthRepository } from './repositories/skill-health.repository.js';
 import { skillHistoryRepository } from './repositories/skill-history.repository.js';
 import { regressionLogRepository } from './repositories/regression-log.repository.js';
@@ -22,8 +23,10 @@ export class MasteryEngineService {
    * Range: 0–100
    */
   calculateConfidenceScore(retries: number, helpRequests: number): number {
-    const normalizedRetries = Math.min((retries / 5) * 100, 100);
-    const normalizedHelpRequests = Math.min((helpRequests / 5) * 100, 100);
+    const retryCeil = engineConfig.mastery.confidence.retryNormalizationCeiling;
+    const helpCeil = engineConfig.mastery.confidence.helpNormalizationCeiling;
+    const normalizedRetries = Math.min((retries / retryCeil) * 100, 100);
+    const normalizedHelpRequests = Math.min((helpRequests / helpCeil) * 100, 100);
 
     const score = 0.5 * (100 - normalizedRetries) + 0.5 * (100 - normalizedHelpRequests);
     return Math.max(0, Math.min(100, score));
@@ -33,7 +36,7 @@ export class MasteryEngineService {
    * Consistency score is the moving average accuracy over the last 5 performances.
    */
   async calculateConsistencyScore(childId: string, skillId: string, currentAccuracy: number): Promise<number> {
-    const recentHistory = await skillHistoryRepository.findRecent(childId, skillId, 4);
+    const recentHistory = await skillHistoryRepository.findRecent(childId, skillId, engineConfig.mastery.consistencyWindowSize - 1);
     const accuracies = [currentAccuracy, ...recentHistory.map((h) => h.knowledgeScore)];
     const sum = accuracies.reduce((total, val) => total + val, 0);
     return sum / accuracies.length;
@@ -45,12 +48,13 @@ export class MasteryEngineService {
    * Range: 0–100
    */
   calculateRetentionScore(previousHealth: SkillHealth | null, currentDate: Date, currentAccuracy: number): number {
-    const defaultDecayFactor = 0.995;
-    const initialRetention = 100.0;
+    const defaultDecayFactor = engineConfig.mastery.retention.decayFactor;
+    const initialRetention = engineConfig.mastery.retention.initialRetention;
+    const successThreshold = engineConfig.mastery.retention.successAccuracyThreshold;
 
     if (!previousHealth) {
       // First session: establish baseline
-      return currentAccuracy >= 80 ? initialRetention : currentAccuracy;
+      return currentAccuracy >= successThreshold ? initialRetention : currentAccuracy;
     }
 
     const lastPracticed = new Date(previousHealth.lastPracticed);
@@ -60,11 +64,11 @@ export class MasteryEngineService {
     const decayFactor = previousHealth.decayFactor ?? defaultDecayFactor;
     const decayedRetention = previousHealth.retentionScore * Math.pow(decayFactor, daysElapsed);
 
-    // Update retention based on performance success (threshold of 80% accuracy)
-    const isSuccessful = currentAccuracy >= 80;
+    // Update retention based on performance success
+    const isSuccessful = currentAccuracy >= successThreshold;
     const updatedRetention = isSuccessful
-      ? Math.min(100, decayedRetention + 30.0)
-      : Math.max(0, decayedRetention - 10.0);
+      ? Math.min(100, decayedRetention + engineConfig.mastery.retention.successBoost)
+      : Math.max(0, decayedRetention - engineConfig.mastery.retention.failurePenalty);
 
     return updatedRetention;
   }
@@ -80,12 +84,13 @@ export class MasteryEngineService {
     engagementScore: number;
     consistencyScore: number;
   }): number {
+    const w = engineConfig.mastery.weights;
     const score =
-      0.35 * scores.knowledgeScore +
-      0.25 * scores.retentionScore +
-      0.20 * scores.confidenceScore +
-      0.10 * scores.engagementScore +
-      0.10 * scores.consistencyScore;
+      w.knowledge * scores.knowledgeScore +
+      w.retention * scores.retentionScore +
+      w.confidence * scores.confidenceScore +
+      w.engagement * scores.engagementScore +
+      w.consistency * scores.consistencyScore;
     return Math.max(0, Math.min(100, score));
   }
 
@@ -94,13 +99,14 @@ export class MasteryEngineService {
    * Design accommodates potential future states (e.g. INTRODUCED, FRAGILE, PROFICIENT).
    */
   determineMasteryState(masteryScore: number): MasteryState {
-    if (masteryScore < 40.0) {
+    const t = engineConfig.mastery.stateThresholds;
+    if (masteryScore < t.learning) {
       return MasteryState.LEARNING;
     }
-    if (masteryScore >= 40.0 && masteryScore < 60.0) {
+    if (masteryScore >= t.learning && masteryScore < t.weak) {
       return MasteryState.WEAK;
     }
-    if (masteryScore >= 60.0 && masteryScore < 85.0) {
+    if (masteryScore >= t.weak && masteryScore < t.strong) {
       return MasteryState.STRONG;
     }
     return MasteryState.MASTERED;
@@ -111,23 +117,24 @@ export class MasteryEngineService {
    * Returns next review date and review frequency in days.
    */
   calculateNextReviewDate(state: MasteryState, currentDate: Date): { nextReviewDate: Date; frequencyDays: number } {
-    let frequencyDays = 2; // Default frequency
+    const cad = engineConfig.mastery.reviewCadenceDays;
+    let frequencyDays: number = engineConfig.mastery.defaultFrequencyDays;
 
     switch (state) {
       case MasteryState.LEARNING:
-        frequencyDays = 2;
+        frequencyDays = cad.learning;
         break;
       case MasteryState.WEAK:
-        frequencyDays = 1;
+        frequencyDays = cad.weak;
         break;
       case MasteryState.STRONG:
-        frequencyDays = 7;
+        frequencyDays = cad.strong;
         break;
       case MasteryState.MASTERED:
-        frequencyDays = 30;
+        frequencyDays = cad.mastered;
         break;
       default:
-        frequencyDays = 2;
+        frequencyDays = engineConfig.mastery.defaultFrequencyDays;
         break;
     }
 
@@ -139,7 +146,7 @@ export class MasteryEngineService {
    * Detect regression (drop of more than 20 points in mastery score).
    */
   detectRegression(previousScore: number, currentScore: number): boolean {
-    return previousScore - currentScore > 20.0;
+    return previousScore - currentScore > engineConfig.mastery.regressionDropThreshold;
   }
 
   /**
@@ -172,7 +179,7 @@ export class MasteryEngineService {
     const attemptCount = (previousHealth?.attemptCount ?? 0) + dto.attempts;
     const retryCount = (previousHealth?.retryCount ?? 0) + dto.retries;
     const reviewCount = previousHealth ? previousHealth.reviewCount + 1 : 1;
-    const decayFactor = previousHealth?.decayFactor ?? 0.995;
+    const decayFactor = previousHealth?.decayFactor ?? engineConfig.mastery.retention.decayFactor;
 
     // 5. Detect regression and log if applicable
     if (previousHealth) {

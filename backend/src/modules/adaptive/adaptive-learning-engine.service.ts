@@ -1,4 +1,5 @@
-import { ActivityType, AdaptationEventType } from '../../shared/enums.js';
+import { ActivityType, AdaptationEventType, Modality } from '../../shared/enums.js';
+import { engineConfig } from '../../shared/config/engine.config.js';
 import { learningProfileRepository } from './repositories/learning-profile.repository.js';
 import { modalityPerformanceRepository } from './repositories/modality-performance.repository.js';
 import { adaptationEventRepository } from './repositories/adaptation-event.repository.js';
@@ -6,6 +7,33 @@ import { learningEventRepository } from './repositories/learning-event.repositor
 import { regressionLogRepository } from './repositories/regression-log.repository.js';
 import { skillHistoryRepository } from '../mastery/repositories/skill-history.repository.js';
 import { logger } from '../../utils/logger.js';
+
+function mapActivityTypeToModality(activityType: ActivityType): Modality | undefined {
+  switch (activityType) {
+    case ActivityType.VIDEO:
+      return Modality.VIDEO;
+    case ActivityType.LISTENING:
+      return Modality.AUDIO;
+    case ActivityType.SPEAKING:
+      return Modality.SPEECH;
+    case ActivityType.WRITING:
+      return Modality.WRITING;
+    case ActivityType.GAME:
+      return Modality.GAME;
+    case ActivityType.STORY:
+      return Modality.STORY;
+    case ActivityType.MOTOR:
+      return Modality.MOTOR;
+    case ActivityType.CREATIVE:
+      return Modality.CREATIVE;
+    case ActivityType.WARMUP:
+      return Modality.WARMUP;
+    case ActivityType.REWARD:
+      return Modality.REWARD;
+    default:
+      return undefined;
+  }
+}
 
 export class AdaptiveLearningEngineService {
   /**
@@ -177,7 +205,7 @@ export class AdaptiveLearningEngineService {
 
     // Engagement drop threshold < 50 shortening duration
     if (currentEngagement < 50.0 && currentDuration > currentOptimal) {
-      const newOptimal = Math.max(10, currentOptimal - 5);
+      const newOptimal = Math.max(engineConfig.adaptive.sessionDuration.minMinutes, currentOptimal - 5);
       if (newOptimal !== currentOptimal) {
         await adaptationEventRepository.create({
           childId,
@@ -191,7 +219,7 @@ export class AdaptiveLearningEngineService {
 
     // Engagement high threshold > 85 extending duration
     if (currentEngagement > 85.0 && currentDuration >= currentOptimal) {
-      const newOptimal = Math.min(45, currentOptimal + 5);
+      const newOptimal = Math.min(engineConfig.adaptive.sessionDuration.maxMinutes, currentOptimal + 5);
       if (newOptimal !== currentOptimal) {
         await adaptationEventRepository.create({
           childId,
@@ -211,14 +239,14 @@ export class AdaptiveLearningEngineService {
    */
   async generateAdaptationEvents(childId: string, performance: any, health: any, previousHealth: any) {
     // 1. Confidence threshold checks
-    if (health.confidenceScore < 50.0 && (!previousHealth || previousHealth.confidenceScore >= 50.0)) {
+    if (health.confidenceScore < engineConfig.adaptive.confidence.lowThreshold && (!previousHealth || previousHealth.confidenceScore >= engineConfig.adaptive.confidence.lowThreshold)) {
       await adaptationEventRepository.create({
         childId,
         eventType: AdaptationEventType.CONFIDENCE_DROP,
         reason: `Confidence score dropped to ${health.confidenceScore.toFixed(1)} (below 50% threshold).`,
         metadata: { currentScore: health.confidenceScore },
       });
-    } else if (health.confidenceScore > 85.0 && (!previousHealth || previousHealth.confidenceScore <= 85.0)) {
+    } else if (health.confidenceScore > engineConfig.adaptive.confidence.highThreshold && (!previousHealth || previousHealth.confidenceScore <= engineConfig.adaptive.confidence.highThreshold)) {
       await adaptationEventRepository.create({
         childId,
         eventType: AdaptationEventType.CONFIDENCE_IMPROVEMENT,
@@ -228,14 +256,14 @@ export class AdaptiveLearningEngineService {
     }
 
     // 2. Engagement threshold checks
-    if (performance.engagementScore < 50.0 && (!previousHealth || previousHealth.engagementScore >= 50.0)) {
+    if (performance.engagementScore < engineConfig.adaptive.engagement.lowThreshold && (!previousHealth || previousHealth.engagementScore >= engineConfig.adaptive.engagement.lowThreshold)) {
       await adaptationEventRepository.create({
         childId,
         eventType: AdaptationEventType.ENGAGEMENT_DROP,
         reason: `Engagement score fell to ${performance.engagementScore.toFixed(1)} (below 50% threshold).`,
         metadata: { currentScore: performance.engagementScore },
       });
-    } else if (performance.engagementScore > 85.0 && (!previousHealth || previousHealth.engagementScore <= 85.0)) {
+    } else if (performance.engagementScore > engineConfig.adaptive.engagement.highThreshold && (!previousHealth || previousHealth.engagementScore <= engineConfig.adaptive.engagement.highThreshold)) {
       await adaptationEventRepository.create({
         childId,
         eventType: AdaptationEventType.ENGAGEMENT_IMPROVEMENT,
@@ -334,16 +362,29 @@ export class AdaptiveLearningEngineService {
 
     // 1. Ingest append-only learning event history
     await learningEventRepository.create({
+      eventId: crypto.randomUUID(),
+      eventType: 'ACTIVITY_COMPLETED',
+      eventVersion: 1,
       childId,
-      eventType: 'PRACTICE_SESSION',
-      value: performance.accuracy,
-      metadata: {
-        activityType: performance.activityType,
-        skillId: performance.skillId,
+      sessionId: crypto.randomUUID(), // Session ID should come from the session context
+      curriculumId: undefined,
+      subjectId: undefined,
+      moduleId: undefined,
+      topicId: undefined,
+      conceptId: undefined,
+      activityId: undefined,
+      modality: mapActivityTypeToModality(performance.activityType),
+      timestamp: new Date(),
+      duration: durationMins * 60 * 1000, // Convert minutes to milliseconds
+      payload: {
+        accuracy: performance.accuracy,
         responseTime: performance.responseTime,
         engagementScore: performance.engagementScore,
-        sessionDuration: durationMins,
+        attempts: performance.attempts,
+        retries: performance.retries,
+        helpRequests: performance.helpRequests,
       },
+      idempotencyKey: crypto.randomUUID(),
     });
 
     // 2. Modality Analysis
