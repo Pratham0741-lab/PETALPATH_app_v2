@@ -27,6 +27,7 @@ import { analyticsRoutes } from '../modules/analytics/analytics.routes.js';
 import { learnerRoutes } from '../modules/learner/learner.routes.js';
 import { getLearningEventRoutes } from '../modules/adaptive-learning/index.js';
 import { getIntelligenceCoreRoutes } from '../modules/intelligence-core/index.js';
+import { getAdaptivePlanningRoutes } from '../modules/adaptive-planning/index.js';
 
 const router = Router();
 
@@ -77,6 +78,9 @@ router.use('/v1/learning-events', getLearningEventRoutes());
 
 // Adaptive Learning Engine — Phase 2 (Intelligence Core)
 router.use('/v1/intelligence-core', getIntelligenceCoreRoutes());
+
+// Adaptive Learning Engine — Phase 3 (Adaptive Planning)
+router.use('/v1/adaptive-planning', getAdaptivePlanningRoutes());
 
 export { router as rootRouter };
 

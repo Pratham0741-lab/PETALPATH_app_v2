@@ -15,6 +15,12 @@ export class LearnerStateRepository {
     });
   }
 
+  async findById(id: string): Promise<LearnerState | null> {
+    return prisma.learnerState.findUnique({
+      where: { id },
+    });
+  }
+
   /**
    * Upsert the aggregate state row for a child and bump `version`.
    * The `version` field is used by clients for optimistic concurrency /
@@ -35,6 +41,17 @@ export class LearnerStateRepository {
         version: { increment: 1 },
       },
       create: createData,
+    });
+  }
+
+  async create(data: Prisma.LearnerStateCreateInput): Promise<LearnerState> {
+    return prisma.learnerState.create({ data });
+  }
+
+  async update(learnerState: any): Promise<any> {
+    return prisma.learnerState.update({
+      where: { childId: learnerState.childId },
+      data: learnerState,
     });
   }
 

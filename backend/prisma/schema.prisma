@@ -76,6 +76,11 @@ model Child {
   metricSnapshots        MetricSnapshot[]
   topicStates            TopicState[]
   knowledgeStates        KnowledgeState[]
+  learningDebts          LearningDebt[]
+  topicReinforcementQueues TopicReinforcementQueue[]
+  dynamicRoadmaps        DynamicRoadmap[]
+  recoveryMode           RecoveryMode?
+  practices              Practice[]
 
   @@map("children")
 }
@@ -1101,6 +1106,9 @@ model LearnerState {
   lastRecommendationAt      DateTime?           @map("last_recommendation_at")
   lastRecommendationTTLSec  Int      @default(60) @map("last_recommendation_ttl_sec")
 
+  // Adaptive constraints (per-learner configuration)
+  adaptiveConstraints       Json     @default("[]") @map("adaptive_constraints")
+
   // Cache metadata
   updatedAt                 DateTime @updatedAt  @map("updated_at")
   version                   Int      @default(1)  // incremented per rebuild
@@ -1171,7 +1179,153 @@ model KnowledgeState {
   @@map("knowledge_states")
 }
 
-// Enhanced LearnerState for Phase 2
-// These fields will be added to the existing LearnerState model via migration
-// For now, we extend the model definition here for reference
-// The actual migration will add these columns to the existing table
+// =============================================================================
+// Phase 3 — Adaptive Planning Models
+// =============================================================================
+
+model LearningDebt {
+  id                String           @id @default(uuid())
+  childId           String           @map("child_id")
+  child             Child            @relation(fields: [childId], references: [id], onDelete: Cascade)
+  topicId           String           @map("topic_id")
+  modality          Modality?
+  debtType          LearningDebtType @map("debt_type")
+  severity          Float            @default(1) // 0-1 scale
+  description       String
+  createdAt         DateTime         @default(now()) @map("created_at")
+  resolvedAt        DateTime?        @map("resolved_at")
+  resolved          Boolean          @default(false)
+  practices         Practice[]       // linked mastery practices
+
+  @@index([childId])
+  @@index([childId, topicId])
+  @@index([childId, resolved])
+  @@map("learning_debts")
+}
+
+model TopicReinforcementQueue {
+  id                String   @id @default(uuid())
+  childId           String   @map("child_id")
+  child             Child    @relation(fields: [childId], references: [id], onDelete: Cascade)
+  topicId           String   @map("topic_id")
+  modality          Modality?
+  startedAt         DateTime @map("started_at")
+  nextReviewAt      DateTime @map("next_review_at")
+  reviewFrequency   Int      @map("review_frequency")
+  reviewCount       Int      @default(0) @map("review_count")
+  successfulReviews Int      @default(0) @map("successful_reviews")
+  status            String   @default("ACTIVE")
+  priority          Int      @default(0)
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  @@unique([childId, topicId, modality])
+  @@index([childId])
+  @@index([childId, status])
+  @@index([nextReviewAt])
+  @@map("topic_reinforcement_queues")
+}
+
+model DynamicRoadmap {
+  id                String   @id @default(uuid())
+  childId           String   @unique @map("child_id")
+  child             Child    @relation(fields: [childId], references: [id], onDelete: Cascade)
+  roadmapJson       Json     @map("roadmap_json")
+  version           Int      @default(1)
+  generatedAt       DateTime @default(now()) @map("generated_at")
+  validUntil        DateTime? @map("valid_until")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  @@index([childId])
+  @@map("dynamic_roadmaps")
+}
+
+model Practice {
+  id                String        @id @default(uuid())
+  childId           String        @map("child_id")
+  child             Child         @relation(fields: [childId], references: [id], onDelete: Cascade)
+  topicId           String        @map("topic_id")
+  modality          Modality?
+  type              PracticeType  // DAILY, MASTERY, REINFORCEMENT
+  debtId            String?       @map("debt_id") // only for MASTERY
+  debt              LearningDebt? @relation(fields: [debtId], references: [id], onDelete: SetNull)
+  scheduledFor      DateTime      @map("scheduled_for")
+  completedAt       DateTime?     @map("completed_at")
+  completed         Boolean       @default(false)
+  createdAt         DateTime      @default(now()) @map("created_at")
+
+  @@index([childId])
+  @@index([childId, type])
+  @@index([childId, scheduledFor])
+  @@index([childId, completed])
+  @@index([debtId])
+  @@map("practices")
+}
+
+model RecoveryMode {
+  id                String             @id @default(uuid())
+  childId           String             @unique @map("child_id")
+  child             Child              @relation(fields: [childId], references: [id], onDelete: Cascade)
+  status            String             @default("ACTIVE")
+  triggerReason     String             @map("trigger_reason")
+  enteredAt         DateTime           @default(now()) @map("entered_at")
+  resolvedAt        DateTime?          @map("resolved_at")
+  effortTierDrop    Int                @default(2) @map("effort_tier_drop")
+  minTopicsAtTier   Int                @default(2) @map("min_topics_at_tier")
+  currentTier       Int                @default(1) @map("current_tier")
+  createdAt         DateTime           @default(now()) @map("created_at")
+  updatedAt         DateTime           @updatedAt @map("updated_at")
+
+  @@index([childId])
+  @@index([childId, status])
+  @@map("recovery_modes")
+}
+
+// =============================================================================
+// Phase 3 — Adaptive Planning Enums
+// =============================================================================
+
+enum LearningDebtType {
+  MASTERY_GAP
+  SKILL_DECAY
+  PREREQUISITE_MISSING
+  MODALITY_IMBALANCE
+  PACING_ISSUE
+  ENGAGEMENT_DROP
+}
+
+enum PracticeType {
+  DAILY
+  MASTERY
+  REINFORCEMENT
+}
+
+enum RoadmapSectionType {
+  NEW_LEARNING
+  REVIEW
+  REINFORCEMENT
+  MASTERY_PRACTICE
+  DAILY_PRACTICE
+  RECOVERY
+  ASSESSMENT
+}
+
+enum SessionBlockType {
+  WARMUP
+  NEW_LEARNING
+  REVIEW
+  PRACTICE
+  MASTERY
+  CHALLENGE
+  MIXED_PRACTICE
+  REST
+}
+
+enum RecoveryModeStatus {
+  ACTIVE
+  RESOLVED
+  ESCALATED
+}
+
+

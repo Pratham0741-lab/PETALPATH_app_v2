@@ -62,6 +62,8 @@ declare module '@prisma/client' {
     lastRecommendationAt: Date | null;
     lastRecommendationTTLSec: number;
 
+    adaptiveConstraints: Prisma.JsonValue;
+
     updatedAt: Date;
     version: number;
   }
@@ -101,6 +103,8 @@ declare module '@prisma/client' {
       lastRecommendationAt?: Date | string | null;
       lastRecommendationTTLSec?: number;
 
+      adaptiveConstraints?: Prisma.InputJsonValue;
+
       version?: number;
     }
 
@@ -130,6 +134,8 @@ declare module '@prisma/client' {
       lastRecommendationSkillId?: string | null;
       lastRecommendationAt?: Date | string | null;
       lastRecommendationTTLSec?: number;
+
+      adaptiveConstraints?: Prisma.InputJsonValue;
 
       version?: number | { increment: number };
     }

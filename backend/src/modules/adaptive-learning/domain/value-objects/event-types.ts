@@ -35,6 +35,26 @@ export enum Modality {
   REWARD = 'REWARD',
 }
 
+export enum ActivityType {
+  VIDEO = 'VIDEO',
+  AUDIO = 'AUDIO',
+  SPEAKING = 'SPEAKING',
+  WRITING = 'WRITING',
+  GAME = 'GAME',
+  STORY = 'STORY',
+  REWARD = 'REWARD',
+  WELCOME = 'WELCOME',
+  SUMMARY = 'SUMMARY',
+}
+
+export enum DifficultyLevel {
+  EASY = 1,
+  MEDIUM = 2,
+  HARD = 3,
+  VERY_HARD = 4,
+  EXPERT = 5,
+}
+
 export enum EvidenceType {
   ATTEMPTS = 'ATTEMPTS',
   RETRIES = 'RETRIES',
@@ -50,3 +70,5 @@ export enum EvidenceType {
 export const VALID_MODALITIES = Object.values(Modality);
 export const VALID_EVENT_TYPES = Object.values(LearningEventType);
 export const VALID_EVIDENCE_TYPES = Object.values(EvidenceType);
+export const VALID_ACTIVITY_TYPES = Object.values(ActivityType);
+export const VALID_DIFFICULTY_LEVELS = Object.values(DifficultyLevel);
