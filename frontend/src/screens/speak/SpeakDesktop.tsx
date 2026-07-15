@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, Text, Pressable, ActivityIndicator } from 'react-native';
 import { ScreenContainer } from '../../components/common/ScreenContainer';
 import { TopBar } from '../../components/navigation/TopBar';
@@ -31,6 +31,7 @@ export const SpeakDesktop: React.FC = () => {
     stopRecording,
     retry,
     completeActivity,
+    lives,
   } = useSpeakStore();
 
   const [recognizer, setRecognizer] = useState<UniversalSpeechRecognizer | null>(null);
@@ -62,12 +63,12 @@ export const SpeakDesktop: React.FC = () => {
           setLocalRecording(false);
           const success = await stopRecording(res.transcript, res.confidence);
           if (!success) {
-            setErrorMessage("That's not quite right, let's try again! 🌸");
+            setErrorMessage("That's not quite right, let's try again! ðŸŒ¸");
             retry();
           }
         },
         (err) => {
-          console.warn('Speech recognition error:', err);
+          if (__DEV__) console.warn('Speech recognition error:', err);
           setLocalRecording(false);
           
           let friendlyMsg = 'Speech recognition failed.';
@@ -144,7 +145,7 @@ export const SpeakDesktop: React.FC = () => {
           <View style={styles.stepDot}><Text style={styles.stepNum}>4</Text></View>
         </View>
         <View style={styles.heartIndicator}>
-          <Text style={styles.heartText}>💖 3 Lives</Text>
+          <Text style={styles.heartText}>ðŸ’– {lives} Lives</Text>
         </View>
       </View>
 
@@ -156,7 +157,7 @@ export const SpeakDesktop: React.FC = () => {
             
             <View style={styles.phraseCard}>
               <View style={styles.mascotBadge}>
-                <Text style={styles.mascotEmoji}>🦉</Text>
+                <Text style={styles.mascotEmoji}>ðŸ¦‰</Text>
               </View>
               <Text style={[styles.speakLabel, { fontFamily: typography.families.rounded }]}>Practice Speaking:</Text>
               <Text style={[styles.targetPhraseText, { fontFamily: typography.families.rounded }]}>"{targetPhrase}"</Text>
@@ -661,3 +662,4 @@ const styles = StyleSheet.create({
   },
 });
 export default SpeakDesktop;
+

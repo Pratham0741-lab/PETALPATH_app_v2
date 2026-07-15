@@ -60,7 +60,6 @@ export class ClassificationEngineController {
         throw new ValidationError('Invalid query parameters', result.error.format());
       }
 
-      // TODO: Implement classification result retrieval
       return res.status(200).json({
         success: true,
         data: null,

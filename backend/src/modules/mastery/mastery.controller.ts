@@ -5,6 +5,10 @@ import { updateMasterySchema } from './mastery.validator.js';
 import { skillHealthRepository } from './repositories/skill-health.repository.js';
 import { ValidationError, UnauthorizedError, NotFoundError } from '../../utils/errors.js';
 import { prisma } from '../../config/database.js';
+import { z } from 'zod';
+
+const skillIdParamSchema = z.object({ skillId: z.string().uuid('skillId must be a UUID') });
+const childIdParamSchema = z.object({ childId: z.string().uuid('childId must be a UUID') });
 
 export class MasteryController {
   async updatePerformance(req: AuthenticatedRequest, res: Response, next: NextFunction) {
@@ -48,12 +52,12 @@ export class MasteryController {
         throw new UnauthorizedError('Active child profile is not selected');
       }
 
-      const { skillId } = req.params;
-      if (!skillId) {
-        throw new ValidationError('skillId parameter is required');
+      const parsed = skillIdParamSchema.safeParse(req.params);
+      if (!parsed.success) {
+        throw new ValidationError('Validation failed', parsed.error.format());
       }
 
-      const health = await skillHealthRepository.findByChildAndSkill(childId, skillId);
+      const health = await skillHealthRepository.findByChildAndSkill(childId, parsed.data.skillId);
 
       return res.status(200).json({
         success: true,
@@ -66,21 +70,21 @@ export class MasteryController {
 
   async getChildSkills(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
-      const { childId } = req.params;
-      if (!childId) {
-        throw new ValidationError('childId parameter is required');
+      const parsed = childIdParamSchema.safeParse(req.params);
+      if (!parsed.success) {
+        throw new ValidationError('Validation failed', parsed.error.format());
       }
 
       if (req.user) {
         const child = await prisma.child.findFirst({
-          where: { id: childId, userId: req.user.userId, deletedAt: null },
+          where: { id: parsed.data.childId, userId: req.user.userId, deletedAt: null },
         });
         if (!child) {
           throw new NotFoundError('Child profile not found');
         }
       }
 
-      const skills = await skillHealthRepository.findByChild(childId);
+      const skills = await skillHealthRepository.findByChild(parsed.data.childId);
 
       return res.status(200).json({
         success: true,

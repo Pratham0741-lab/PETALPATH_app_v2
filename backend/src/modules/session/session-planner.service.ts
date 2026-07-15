@@ -8,10 +8,12 @@ import {
 
 } from '../../shared/enums.js';
 import { engineConfig } from '../../shared/config/engine.config.js';
+import { NotFoundError, ValidationError } from '../../utils/errors.js';
 import { sessionTemplateRepository } from './repositories/session-template.repository.js';
 import { sessionPlanRepository } from './repositories/session-plan.repository.js';
 import { sessionBlockRepository } from './repositories/session-block.repository.js';
 import { sessionEventRepository } from './repositories/session-event.repository.js';
+import { sessionRuntime } from './session-runtime.service.js';
 import { curriculumEngineService } from '../curriculum/curriculum-engine.service.js';
 import { reinforcementEngineService } from '../reinforcement/reinforcement-engine.service.js';
 import { learningProfileRepository } from '../adaptive/repositories/learning-profile.repository.js';
@@ -185,7 +187,7 @@ export class SessionPlannerService {
     const child = await prisma.child.findUnique({
       where: { id: childId },
     });
-    if (!child) throw new Error('Child profile not found');
+    if (!child) throw new NotFoundError('Child profile not found');
 
     // 1. Fetch learning profile & settings from Adaptive Engine
     const profile = await learningProfileRepository.findByChildId(childId);
@@ -194,7 +196,7 @@ export class SessionPlannerService {
 
     // 2. Select appropriate template from database
     const template = await sessionTemplateRepository.findByDuration(optimalDuration);
-    if (!template) throw new Error('No session templates configured in database');
+    if (!template) throw new NotFoundError('No session templates configured in database');
 
     // 3. Fetch recommended & available skills from Curriculum Engine
     const recommendedSkills = await curriculumEngineService.recommendNextSkills(childId, 10);
@@ -368,7 +370,13 @@ export class SessionPlannerService {
 
   async startSession(sessionPlanId: string) {
     const plan = await sessionPlanRepository.findById(sessionPlanId);
-    if (!plan) throw new Error('Session plan not found');
+    if (!plan) throw new NotFoundError('Session plan not found');
+
+    sessionRuntime.validateTransition(plan.status, SessionStatus.STARTED);
+
+    // Ensure no other session is already active for the same child.
+    const active = await sessionPlanRepository.findActiveSession(plan.childId);
+    sessionRuntime.checkNoActiveSession(active, plan.childId, sessionPlanId);
 
     const updated = await sessionPlanRepository.updateStatus(sessionPlanId, SessionStatus.STARTED, {
       startedAt: new Date(),
@@ -384,7 +392,9 @@ export class SessionPlannerService {
 
   async pauseSession(sessionPlanId: string) {
     const plan = await sessionPlanRepository.findById(sessionPlanId);
-    if (!plan) throw new Error('Session plan not found');
+    if (!plan) throw new NotFoundError('Session plan not found');
+
+    sessionRuntime.validateTransition(plan.status, SessionStatus.PAUSED);
 
     const updated = await sessionPlanRepository.updateStatus(sessionPlanId, SessionStatus.PAUSED);
 
@@ -398,7 +408,9 @@ export class SessionPlannerService {
 
   async resumeSession(sessionPlanId: string) {
     const plan = await sessionPlanRepository.findById(sessionPlanId);
-    if (!plan) throw new Error('Session plan not found');
+    if (!plan) throw new NotFoundError('Session plan not found');
+
+    sessionRuntime.validateTransition(plan.status, SessionStatus.STARTED);
 
     const updated = await sessionPlanRepository.updateStatus(sessionPlanId, SessionStatus.STARTED);
 
@@ -412,7 +424,9 @@ export class SessionPlannerService {
 
   async completeSession(sessionPlanId: string) {
     const plan = await sessionPlanRepository.findById(sessionPlanId);
-    if (!plan) throw new Error('Session plan not found');
+    if (!plan) throw new NotFoundError('Session plan not found');
+
+    sessionRuntime.validateTransition(plan.status, SessionStatus.COMPLETED);
 
     // Automatically mark all pending blocks as completed
     await prisma.$transaction(async (tx) => {
@@ -437,7 +451,7 @@ export class SessionPlannerService {
   async completeBlock(sessionPlanId: string, blockId: string) {
     const block = await prisma.sessionBlock.findUnique({ where: { id: blockId } });
     if (!block || block.sessionPlanId !== sessionPlanId) {
-      throw new Error('Block not found or mismatch');
+      throw new NotFoundError('Block not found or session mismatch');
     }
 
     const updatedBlock = await sessionBlockRepository.updateStatus(
@@ -458,7 +472,7 @@ export class SessionPlannerService {
   async skipBlock(sessionPlanId: string, blockId: string) {
     const block = await prisma.sessionBlock.findUnique({ where: { id: blockId } });
     if (!block || block.sessionPlanId !== sessionPlanId) {
-      throw new Error('Block not found or mismatch');
+      throw new NotFoundError('Block not found or session mismatch');
     }
 
     const updatedBlock = await sessionBlockRepository.updateStatus(
@@ -477,7 +491,9 @@ export class SessionPlannerService {
 
   async abandonSession(sessionPlanId: string) {
     const plan = await sessionPlanRepository.findById(sessionPlanId);
-    if (!plan) throw new Error('Session plan not found');
+    if (!plan) throw new NotFoundError('Session plan not found');
+
+    sessionRuntime.validateTransition(plan.status, SessionStatus.ABANDONED);
 
     const updated = await sessionPlanRepository.updateStatus(sessionPlanId, SessionStatus.ABANDONED, {
       completedAt: new Date(),

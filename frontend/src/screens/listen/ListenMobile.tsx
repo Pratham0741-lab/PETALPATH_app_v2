@@ -23,6 +23,7 @@ export const ListenMobile: React.FC = () => {
     submitAnswer,
     retry,
     isComingSoon,
+    lives,
   } = useListenStore();
 
   const [isPlaying, setIsPlaying] = useState(false);
@@ -180,7 +181,7 @@ export const ListenMobile: React.FC = () => {
           <View style={styles.stepDot}><Text style={styles.stepNum}>4</Text></View>
         </View>
         <View style={styles.heartIndicator}>
-          <Text style={styles.heartText}>💖 3</Text>
+          <Text style={styles.heartText}>💖 {lives}</Text>
         </View>
       </View>
 

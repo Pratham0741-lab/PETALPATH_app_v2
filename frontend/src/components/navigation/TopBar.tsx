@@ -2,6 +2,7 @@ import React from 'react';
 import { StyleSheet, View, Text, ViewStyle, Pressable } from 'react-native';
 import { colors, typography, spacing, radius } from '../../theme';
 import { StarCounter } from '../progress/StarCounter';
+import { NotificationBell } from '../notifications/NotificationBell';
 import { useChildStore } from '../../store/childStore';
 import { enhanceMentor } from '../../constants/mentors';
 import { Ionicons } from '@expo/vector-icons';
@@ -36,6 +37,7 @@ export const TopBar: React.FC<TopBarProps> = ({ title, showBack = false, style }
         </Text>
       </View>
       <View style={styles.rightSection}>
+        <NotificationBell color={colors.text} size={22} />
         <StarCounter />
       </View>
     </View>

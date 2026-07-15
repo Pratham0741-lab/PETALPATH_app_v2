@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { StyleSheet, View, Text, Switch, ScrollView, TouchableOpacity, Alert, Platform } from 'react-native';
 import { ScreenContainer } from '../../components/common/ScreenContainer';
 import { api } from '../../api/client';
@@ -55,7 +55,7 @@ export const ProfileTablet: React.FC = () => {
         await api.post('/auth/logout', { refreshToken });
       }
     } catch (err) {
-      console.warn('Logout failed:', err);
+      if (__DEV__) console.warn('Logout failed:', err);
     } finally {
       setActiveChild(null);
       clearSession();
@@ -80,7 +80,7 @@ export const ProfileTablet: React.FC = () => {
         Alert.alert('Success', 'Your learning progress has been successfully reset.');
       }
     } catch (err) {
-      console.error('[RESET] error:', err);
+      if (__DEV__) console.error('[RESET] error:', err);
       setResetting(false);
       if (Platform.OS === 'web') {
         window.alert('Failed to reset learning progress. Please try again.');
@@ -151,9 +151,9 @@ export const ProfileTablet: React.FC = () => {
                       </View>
                       <View style={{ flex: 1 }}>
                         <Text style={[styles.childNameText, isActive && styles.activeChildText]}>
-                          {child.name} {isActive && '🌟'}
+                          {child.name} {isActive && 'ðŸŒŸ'}
                         </Text>
-                        <Text style={styles.childAgeText}>Age {child.age} • Group {child.ageGroup}</Text>
+                        <Text style={styles.childAgeText}>Age {child.age} â€¢ Group {child.ageGroup}</Text>
                       </View>
                       <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
                     </TouchableOpacity>
@@ -584,3 +584,4 @@ const styles = StyleSheet.create({
 
 
 export default ProfileTablet;
+

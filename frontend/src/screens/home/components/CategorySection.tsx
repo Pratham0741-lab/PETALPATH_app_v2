@@ -1,8 +1,9 @@
-import React from 'react';
+﻿import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { colors, spacing, radius, typography } from '../../../theme';
 import { Ionicons } from '@expo/vector-icons';
 import { Category } from '../../../store/roadmapStore';
+import { getCategoryDetails } from '../../../utils/categoryDetails';
 
 interface CategorySectionProps {
   category: Category;
@@ -17,22 +18,6 @@ export const CategorySection: React.FC<CategorySectionProps> = ({
   onPressHeader,
   children,
 }) => {
-  const getCategoryDetails = (title: string) => {
-    const lower = title.toLowerCase();
-    if (lower.includes('prewriting')) {
-      return { color: '#EC4899', icon: 'pencil' }; // Pink
-    } else if (lower.includes('shape')) {
-      return { color: '#3B82F6', icon: 'shapes' }; // Blue
-    } else if (lower.includes('alpha') || lower.includes('letter')) {
-      return { color: '#10B981', icon: 'text' }; // Green
-    } else if (lower.includes('num')) {
-      return { color: '#F97316', icon: 'keypad' }; // Orange
-    } else if (lower.includes('word')) {
-      return { color: '#8A5CF6', icon: 'book' }; // Purple
-    }
-    return { color: '#06B6D4', icon: 'reader' }; // Cyan (Reading Readiness)
-  };
-
   const { color, icon } = getCategoryDetails(category.title);
 
   return (
@@ -187,3 +172,4 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
 });
+

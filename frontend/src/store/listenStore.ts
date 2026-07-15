@@ -1,4 +1,4 @@
-import { create } from 'zustand';
+﻿import { create } from 'zustand';
 import { api } from '../api/client';
 import { useRoadmapStore } from './roadmapStore';
 
@@ -18,6 +18,7 @@ interface ListenState {
   options: string[];
   isCompleted: boolean;
   loading: boolean;
+  lives: number;
   error: string | null;
 
   loadAudio: (activityId: string, activityTitle: string) => Promise<void>;
@@ -53,7 +54,7 @@ function generateOptionsForActivity(activityId: string, title: string): { option
       }
     }
   } catch (e) {
-    console.error('Error fetching curriculum context for listening options:', e);
+    if (typeof __DEV__ !== 'undefined' && __DEV__) console.error('Error fetching curriculum context for listening options:', e);
   }
 
   if (targetLesson && targetModule) {
@@ -152,9 +153,10 @@ export const useListenStore = create<ListenState>((set, get) => {
     isCompleted: false,
     loading: false,
     error: null,
+    lives: 3,
 
     loadAudio: async (activityId, activityTitle) => {
-      set({ loading: true, error: null, selectedAnswer: null, isComingSoon: false });
+      set({ loading: true, error: null });
       try {
         const audioRes = await api.get(`/audio?activityId=${activityId}`);
         let audios = audioRes.data || [];
@@ -192,7 +194,7 @@ export const useListenStore = create<ListenState>((set, get) => {
             isCompleted = progressRes.data.isCompleted || false;
           }
         } catch (err) {
-          console.warn('Failed to load listen progress:', err);
+          if (typeof __DEV__ !== 'undefined' && __DEV__) console.warn('Failed to load listen progress:', err);
         }
 
         const { options, correct } = generateOptionsForActivity(activityId, activityTitle);
@@ -227,7 +229,7 @@ export const useListenStore = create<ListenState>((set, get) => {
             activityId: currentAudio.activityId,
           });
         } catch (err) {
-          console.warn('Failed to mark listen progress complete:', err);
+          if (typeof __DEV__ !== 'undefined' && __DEV__) console.warn('Failed to mark listen progress complete:', err);
         }
       }
       return isCorrect;
@@ -247,7 +249,7 @@ export const useListenStore = create<ListenState>((set, get) => {
           activityId: currentAudio.activityId,
         });
       } catch (err) {
-        console.warn('Failed to mark listen progress complete:', err);
+        if (typeof __DEV__ !== 'undefined' && __DEV__) console.warn('Failed to mark listen progress complete:', err);
       }
     },
 
@@ -261,7 +263,10 @@ export const useListenStore = create<ListenState>((set, get) => {
         isCompleted: false,
         loading: false,
         error: null,
+        lives: 3,
       });
     },
   };
 });
+
+

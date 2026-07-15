@@ -8,6 +8,10 @@ import { skillRepository } from './repositories/skill.repository.js';
 import { skillHealthRepository } from '../mastery/repositories/skill-health.repository.js';
 import { ValidationError, UnauthorizedError, NotFoundError } from '../../utils/errors.js';
 import { CurriculumState } from '../../shared/enums.js';
+import { z } from 'zod';
+
+const subjectIdParamSchema = z.object({ subjectId: z.string().uuid('subjectId must be a UUID') });
+const skillIdBodySchema = z.object({ skillId: z.string().uuid('skillId must be a UUID') });
 
 export class CurriculumController {
   async getCurriculum(req: AuthenticatedRequest, res: Response, next: NextFunction) {
@@ -99,17 +103,17 @@ export class CurriculumController {
         throw new UnauthorizedError('Active child profile is not selected');
       }
 
-      const { subjectId } = req.params;
-      if (!subjectId) {
-        throw new ValidationError('subjectId parameter is required');
+      const parsed = subjectIdParamSchema.safeParse(req.params);
+      if (!parsed.success) {
+        throw new ValidationError('Validation failed', parsed.error.format());
       }
 
-      const subject = await subjectRepository.findById(subjectId);
+      const subject = await subjectRepository.findById(parsed.data.subjectId);
       if (!subject) {
         throw new NotFoundError('Subject not found');
       }
 
-      const skills = await skillRepository.findBySubject(subjectId);
+      const skills = await skillRepository.findBySubject(parsed.data.subjectId);
 
       const skillsWithState = [];
       for (const skill of skills) {
@@ -163,12 +167,12 @@ export class CurriculumController {
         throw new UnauthorizedError('Active child profile is not selected');
       }
 
-      const { skillId } = req.body;
-      if (!skillId) {
-        throw new ValidationError('skillId is required');
+      const parsed = skillIdBodySchema.safeParse(req.body);
+      if (!parsed.success) {
+        throw new ValidationError('Validation failed', parsed.error.format());
       }
 
-      const updated = await curriculumEngineService.activateSkill(childId, skillId);
+      const updated = await curriculumEngineService.activateSkill(childId, parsed.data.skillId);
 
       return res.status(200).json({
         success: true,
@@ -186,12 +190,12 @@ export class CurriculumController {
         throw new UnauthorizedError('Active child profile is not selected');
       }
 
-      const { skillId } = req.body;
-      if (!skillId) {
-        throw new ValidationError('skillId is required');
+      const parsed = skillIdBodySchema.safeParse(req.body);
+      if (!parsed.success) {
+        throw new ValidationError('Validation failed', parsed.error.format());
       }
 
-      const updated = await curriculumEngineService.completeSkill(childId, skillId);
+      const updated = await curriculumEngineService.completeSkill(childId, parsed.data.skillId);
 
       return res.status(200).json({
         success: true,

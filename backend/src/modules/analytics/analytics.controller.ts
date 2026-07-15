@@ -75,8 +75,11 @@ export class AnalyticsController {
         throw new UnauthorizedError('Active child profile is not selected');
       }
 
-      const limit = Math.min(Math.max(parseInt(req.query.limit as string, 10) || 50, 1), 200);
-      const history = await analyticsHistoryRepository.findByChild(childId, limit);
+      const parsed = z.object({ limit: z.coerce.number().int().min(1).max(200).default(50) }).safeParse(req.query);
+      if (!parsed.success) {
+        throw new ValidationError('Validation failed', parsed.error.format());
+      }
+      const history = await analyticsHistoryRepository.findByChild(childId, parsed.data.limit);
 
       return res.status(200).json({
         success: true,
@@ -94,8 +97,11 @@ export class AnalyticsController {
         throw new UnauthorizedError('Active child profile is not selected');
       }
 
-      const limit = Math.min(Math.max(parseInt(req.query.limit as string, 10) || 50, 1), 200);
-      const trends = await trendEventRepository.findByChild(childId, limit);
+      const parsed = z.object({ limit: z.coerce.number().int().min(1).max(200).default(50) }).safeParse(req.query);
+      if (!parsed.success) {
+        throw new ValidationError('Validation failed', parsed.error.format());
+      }
+      const trends = await trendEventRepository.findByChild(childId, parsed.data.limit);
 
       return res.status(200).json({
         success: true,

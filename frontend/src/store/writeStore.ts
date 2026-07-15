@@ -14,6 +14,7 @@ interface WriteState {
   accuracyScore: number | null;
   stars: number | null;
   loading: boolean;
+  lives: number;
   error: string | null;
 
   loadWrite: (activityId: string, activityTitle: string) => Promise<void>;
@@ -45,6 +46,7 @@ export const useWriteStore = create<WriteState>((set, get) => {
     stars: null,
     loading: false,
     error: null,
+    lives: 3,
 
     loadWrite: async (activityId, activityTitle) => {
       set({ loading: true, error: null, strokes: [], accuracyScore: null, stars: null });
@@ -58,7 +60,7 @@ export const useWriteStore = create<WriteState>((set, get) => {
             isCompleted = progressRes.data.isCompleted || false;
           }
         } catch (err) {
-          console.warn('Failed to load write progress:', err);
+          if (typeof __DEV__ !== 'undefined' && __DEV__) console.warn('Failed to load write progress:', err);
         }
 
         set({
@@ -89,18 +91,20 @@ export const useWriteStore = create<WriteState>((set, get) => {
       set({ strokes: [] });
     },
 
-    completeActivity: async (accuracy = 100, stars = 3) => {
+    completeActivity: async (accuracy?: number, earnedStars?: number) => {
       const { activityId } = get();
       if (!activityId) return;
 
-      set({ isCompleted: true, accuracyScore: accuracy, stars });
+      const finalAccuracy = accuracy ?? 0;
+      const finalStars = earnedStars ?? 0;
+      set({ isCompleted: true, accuracyScore: finalAccuracy, stars: finalStars });
       try {
         await api.post('/write-progress/complete', {
           activityId,
-          score: accuracy,
+          score: finalAccuracy,
         });
       } catch (err) {
-        console.warn('Failed to mark write progress complete:', err);
+        if (typeof __DEV__ !== 'undefined' && __DEV__) console.warn('Failed to mark write progress complete:', err);
       }
     },
 
@@ -114,6 +118,7 @@ export const useWriteStore = create<WriteState>((set, get) => {
         stars: null,
         loading: false,
         error: null,
+        lives: 3,
       });
     },
   };

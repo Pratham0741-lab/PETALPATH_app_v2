@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { StyleSheet, View, ScrollView, Text, ActivityIndicator } from 'react-native';
 import { ScreenContainer } from '../../components/common/ScreenContainer';
 import { SectionHeader, Card, Button } from '../../components/ui';
@@ -27,14 +27,14 @@ export const MentorDesktop: React.FC = () => {
       try {
         await updateChild(activeChild.id, { mentorId });
       } catch (err) {
-        console.error('Failed to update companion mentor', err);
+        if (__DEV__) console.error('Failed to update companion mentor', err);
       }
     }
   };
 
   const handleWaterTree = () => {
     setPetalPoints(prev => prev + 2);
-    setWateringMessage("You watered the tree! 💧🌸 +2 Petal Points!");
+    setWateringMessage("You watered the tree! ðŸ’§ðŸŒ¸ +2 Petal Points!");
     setTimeout(() => {
       setWateringMessage(null);
     }, 3000);
@@ -70,21 +70,21 @@ export const MentorDesktop: React.FC = () => {
             {/* MAGICAL GARDEN INTERACTIVE VIEW */}
             <Card style={styles.gardenVisualCard}>
               <View style={styles.gardenVisualHeader}>
-                <Text style={[styles.petalBadgeText, { fontFamily: typography.families.rounded }]}>🌸 {petalPoints} Petals</Text>
-                <Text style={styles.gardenWeather}>☀️ Sunny Day</Text>
+                <Text style={[styles.petalBadgeText, { fontFamily: typography.families.rounded }]}>ðŸŒ¸ {petalPoints} Petals</Text>
+                <Text style={styles.gardenWeather}>â˜€ï¸ Sunny Day</Text>
               </View>
 
               <View style={styles.treeScene}>
-                <Text style={styles.birdHouse}>🐦</Text>
-                <Text style={styles.butterfly}>🦋</Text>
-                <Text style={styles.treeEmoji}>🌳</Text>
+                <Text style={styles.birdHouse}>ðŸ¦</Text>
+                <Text style={styles.butterfly}>ðŸ¦‹</Text>
+                <Text style={styles.treeEmoji}>ðŸŒ³</Text>
                 <View style={styles.mascotStand}>
-                  <Text style={styles.mascotEmoji}>{activeMentor ? '🐢' : '🦊'}</Text>
+                  <Text style={styles.mascotEmoji}>{activeMentor ? 'ðŸ¢' : 'ðŸ¦Š'}</Text>
                 </View>
               </View>
 
               <Button
-                label="Water Tree 💧"
+                label="Water Tree ðŸ’§"
                 variant="success"
                 onPress={handleWaterTree}
                 style={styles.waterBtn}
@@ -269,3 +269,4 @@ const styles = StyleSheet.create({
   },
 });
 export default MentorDesktop;
+

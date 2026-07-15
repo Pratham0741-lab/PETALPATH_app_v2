@@ -26,6 +26,7 @@ export const WriteMobile: React.FC = () => {
     undo,
     clear,
     completeActivity,
+    lives,
   } = useWriteStore();
 
   const [answered, setAnswered] = useState(false);
@@ -129,7 +130,7 @@ export const WriteMobile: React.FC = () => {
           <View style={[styles.stepDot, styles.stepActive]}><Text style={styles.stepNum}>4</Text></View>
         </View>
         <View style={styles.heartIndicator}>
-          <Text style={styles.heartText}>💖 3 Lives</Text>
+          <Text style={styles.heartText}>💖 {lives} Lives</Text>
         </View>
       </View>
 

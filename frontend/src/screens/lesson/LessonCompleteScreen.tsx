@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+﻿import React, { useEffect, useState, useRef } from 'react';
 import { StyleSheet, View, Text, ActivityIndicator } from 'react-native';
 import { ScreenContainer } from '../../components/common/ScreenContainer';
 import { Card, Button } from '../../components/ui';
@@ -46,7 +46,7 @@ export const LessonCompleteScreen: React.FC = () => {
           completeLesson(selectedLesson.id);
           await loadCategories();
         } catch (err) {
-          console.error('Failed to complete lesson on backend:', err);
+          if (__DEV__) console.error('Failed to complete lesson on backend:', err);
         } finally {
           setLoading(false);
         }
@@ -331,3 +331,4 @@ const styles = StyleSheet.create({
   },
 });
 export default LessonCompleteScreen;
+

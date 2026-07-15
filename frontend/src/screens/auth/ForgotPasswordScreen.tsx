@@ -4,7 +4,7 @@ import { useNavigation } from '@react-navigation/native';
 import { ScreenContainer } from '../../components/common/ScreenContainer';
 import { AppButton } from '../../components/buttons/AppButton';
 import { colors, spacing, typography, radius, shadows } from '../../theme';
-import { api } from '../../api/client';
+import { forgotPassword } from '../../api/auth';
 
 export const ForgotPasswordScreen: React.FC = () => {
   const navigation = useNavigation<any>();
@@ -25,12 +25,13 @@ export const ForgotPasswordScreen: React.FC = () => {
     setResetToken('');
 
     try {
-      const response = await api.post('/auth/forgot-password', { email });
-      if (response.data && response.data.resetToken) {
-        setResetToken(response.data.resetToken);
-        Alert.alert('Reset Token Generated', 'A mock token has been generated and is shown on screen.');
+      const response = await forgotPassword(email);
+      const token = response?.data?.resetToken;
+      if (token) {
+        setResetToken(token);
+        Alert.alert('Reset Token Generated', 'Use the code below to reset your password.');
       } else {
-        Alert.alert('Success', 'Password reset instructions have been simulated.');
+        Alert.alert('Check Your Email', 'Password reset instructions have been sent to your email.');
       }
     } catch (err: any) {
       setError(err.message || 'Failed to request password reset.');
@@ -67,7 +68,7 @@ export const ForgotPasswordScreen: React.FC = () => {
               </View>
 
               <AppButton
-                label={loading ? 'Requesting...' : 'Generate Reset Token'}
+                label={loading ? 'Sending...' : 'Send Reset Instructions'}
                 onPress={handleForgotPassword}
                 variant="accent"
                 style={styles.requestBtn}
@@ -75,12 +76,12 @@ export const ForgotPasswordScreen: React.FC = () => {
             </>
           ) : (
             <View style={styles.tokenContainer}>
-              <Text style={styles.tokenLabel}>Mock Reset Token:</Text>
+              <Text style={styles.tokenLabel}>Reset Code:</Text>
               <Text selectable style={styles.tokenText}>{resetToken}</Text>
-              <Text style={styles.tokenHint}>Copy this code and click below to reset your password!</Text>
+              <Text style={styles.tokenHint}>Copy this code and tap below to reset your password.</Text>
 
               <AppButton
-                label="Go to Reset Password Screen"
+                label="Reset Password"
                 onPress={() => navigation.navigate('ResetPassword', { token: resetToken })}
                 variant="primary"
                 style={styles.resetNavBtn}

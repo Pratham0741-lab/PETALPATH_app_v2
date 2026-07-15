@@ -1,4 +1,5 @@
 import { prisma } from '../../config/database.js';
+import { logger } from '../../utils/logger.js';
 
 export class CategoryProgressService {
   async completeCategory(childId: string, categoryId: string): Promise<boolean> {
@@ -47,7 +48,7 @@ export class CategoryProgressService {
       },
     });
 
-    console.log(`[CATEGORY COMPLETED] Child ${childId} completed category "${categoryId}"`);
+    logger.info({ childId, categoryId }, 'Category completed');
     return true;
   }
 }

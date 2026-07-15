@@ -28,6 +28,12 @@ import LessonCompleteScreen from '../screens/lesson/LessonCompleteScreen';
 import ModuleCompleteScreen from '../screens/lesson/ModuleCompleteScreen';
 import CategoryCompleteScreen from '../screens/lesson/CategoryCompleteScreen';
 import { RecommendationsScreen } from '../screens/recommendations/RecommendationsScreen';
+import AssessmentCenterScreen from '../screens/assessment/AssessmentCenterScreen';
+import AssessmentSessionScreen from '../screens/assessment/AssessmentSessionScreen';
+import AssessmentResultScreen from '../screens/assessment/AssessmentResultScreen';
+import NotificationCenterScreen from '../screens/notifications/NotificationCenterScreen';
+import CurriculumExplorerScreen from '../screens/curriculum/CurriculumExplorerScreen';
+import SkillDetailScreen from '../screens/curriculum/SkillDetailScreen';
 
 // Auth Screens
 import { LoginScreen } from '../screens/auth/LoginScreen';
@@ -125,6 +131,12 @@ export const RootNavigator = () => {
         <Stack.Screen name="AddChild" component={AddEditChildScreen} />
         <Stack.Screen name="MentorSelection" component={MentorSelectionScreen} />
         <Stack.Screen name="Recommendations" component={RecommendationsScreen} />
+        <Stack.Screen name="AssessmentCenter" component={AssessmentCenterScreen} />
+        <Stack.Screen name="AssessmentSession" component={AssessmentSessionScreen} />
+        <Stack.Screen name="AssessmentResult" component={AssessmentResultScreen} />
+        <Stack.Screen name="NotificationCenter" component={NotificationCenterScreen} />
+        <Stack.Screen name="CurriculumExplorer" component={CurriculumExplorerScreen} />
+        <Stack.Screen name="SkillDetail" component={SkillDetailScreen} />
       </Stack.Navigator>
     );
   }
@@ -160,6 +172,12 @@ export const RootNavigator = () => {
           <Stack.Screen name="AddChild" component={AddEditChildScreen} />
           <Stack.Screen name="MentorSelection" component={MentorSelectionScreen} />
           <Stack.Screen name="Recommendations" component={RecommendationsScreen} />
+          <Stack.Screen name="AssessmentCenter" component={AssessmentCenterScreen} />
+          <Stack.Screen name="AssessmentSession" component={AssessmentSessionScreen} />
+          <Stack.Screen name="AssessmentResult" component={AssessmentResultScreen} />
+          <Stack.Screen name="NotificationCenter" component={NotificationCenterScreen} />
+          <Stack.Screen name="CurriculumExplorer" component={CurriculumExplorerScreen} />
+          <Stack.Screen name="SkillDetail" component={SkillDetailScreen} />
         </Stack.Navigator>
       </View>
     </View>

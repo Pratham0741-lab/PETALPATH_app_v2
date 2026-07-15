@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { StyleSheet, View, ScrollView, Text, ActivityIndicator, Pressable, Alert } from 'react-native';
 import { ScreenContainer } from '../../components/common/ScreenContainer';
 import { Card, SectionHeader, Button } from '../../components/ui';
@@ -48,11 +48,11 @@ export const LessonOverviewDesktop: React.FC = () => {
   };
 
   const handleActivityPress = async (act: any) => {
-    console.log(`Activity selected: ${act.id}`);
+            if (typeof __DEV__ !== 'undefined' && __DEV__) console.log(`Activity selected: ${act.id}`);
     try {
       await api.get(`/activities/${act.id}`);
     } catch (err) {
-      console.warn('Failed to log activity selection on backend:', err);
+      if (__DEV__) console.warn('Failed to log activity selection on backend:', err);
     }
     
     await navigateToActivity(navigation, act);
@@ -286,3 +286,4 @@ const styles = StyleSheet.create({
   },
 });
 export default LessonOverviewDesktop;
+

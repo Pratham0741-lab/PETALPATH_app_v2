@@ -245,7 +245,7 @@ export const useRoadmapStore = create<RoadmapState>((set, get) => ({
       try {
         await api.get(`/lessons/${lesson.id}`);
       } catch (err) {
-        console.warn('Failed to log lesson selection on backend:', err);
+        if (typeof __DEV__ !== 'undefined' && __DEV__) console.warn('Failed to log lesson selection on backend:', err);
       }
       await get().loadActivities(lesson.id);
     } else {
@@ -381,7 +381,7 @@ export const useRoadmapStore = create<RoadmapState>((set, get) => ({
       await api.post('/progress/complete', { lessonId });
       await get().loadRoadmap();
     } catch (err) {
-      console.warn('Failed to complete lesson on backend:', err);
+      if (typeof __DEV__ !== 'undefined' && __DEV__) console.warn('Failed to complete lesson on backend:', err);
     }
   },
 

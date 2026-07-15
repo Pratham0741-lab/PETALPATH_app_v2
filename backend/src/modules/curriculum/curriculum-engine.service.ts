@@ -6,6 +6,7 @@ import { childSkillCurriculumRepository } from './repositories/child-skill-curri
 import { skillRepository } from './repositories/skill.repository.js';
 import { skillDependencyRepository } from './repositories/skill-dependency.repository.js';
 import { skillHealthRepository } from '../mastery/repositories/skill-health.repository.js';
+import { NotFoundError } from '../../utils/errors.js';
 
 export interface CurriculumRecommendationDto {
   subjectId: string;
@@ -108,7 +109,7 @@ export class CurriculumEngineService {
    */
   async activateSkill(childId: string, skillId: string) {
     const skill = await skillRepository.findById(skillId);
-    if (!skill) throw new Error('Skill not found');
+    if (!skill) throw new NotFoundError('Skill not found');
 
     const unlockRatio = await this.calculateUnlockRatio(childId, skillId);
 
@@ -126,7 +127,7 @@ export class CurriculumEngineService {
    */
   async completeSkill(childId: string, skillId: string) {
     const skill = await skillRepository.findById(skillId);
-    if (!skill) throw new Error('Skill not found');
+    if (!skill) throw new NotFoundError('Skill not found');
 
     const unlockRatio = await this.calculateUnlockRatio(childId, skillId);
 

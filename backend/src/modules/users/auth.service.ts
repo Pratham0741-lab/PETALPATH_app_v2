@@ -4,11 +4,12 @@ import { OAuth2Client } from 'google-auth-library';
 import { env } from '../../config/env.js';
 import { usersRepository } from './users.repository.js';
 import { refreshTokenRepository } from './refresh-token.repository.js';
-import { RegisterInput, LoginInput, ResetPasswordInput } from './auth.validator.js';
+import { RegisterInput, LoginInput, ResetPasswordInput, RefreshTokenInput, SelectChildInput } from './auth.validator.js';
 import { 
   generateAccessToken, 
   generateRefreshToken, 
-  verifyRefreshToken 
+  verifyRefreshToken,
+  parseDurationToMs,
 } from '../../utils/jwt.js';
 import { 
   ConflictError, 
@@ -290,9 +291,8 @@ export class AuthService {
     const accessToken = generateAccessToken({ userId, role, childId });
     const refreshToken = generateRefreshToken({ userId });
 
-    // Store in DB. Calculate expiresAt based on expiry string config
-    // We default to 7 days from now
-    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    // Store in DB. Calculate expiresAt based on configured expiry string.
+    const expiresAt = new Date(Date.now() + parseDurationToMs(env.REFRESH_TOKEN_EXPIRY));
 
     await refreshTokenRepository.createToken(userId, refreshToken, expiresAt);
 

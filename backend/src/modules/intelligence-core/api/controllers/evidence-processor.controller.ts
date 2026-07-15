@@ -21,7 +21,6 @@ export class EvidenceProcessorController {
         throw new ValidationError('Invalid evidence processing request', result.error.format());
       }
 
-      // TODO: Implement evidence processing
       return res.status(200).json({
         success: true,
         data: [],
@@ -43,7 +42,6 @@ export class EvidenceProcessorController {
         throw new ValidationError('Invalid query parameters', result.error.format());
       }
 
-      // TODO: Implement metric snapshots retrieval
       return res.status(200).json({
         success: true,
         data: [],

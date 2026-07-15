@@ -10,6 +10,7 @@ interface SpeakState {
   isRecording: boolean;
   isCompleted: boolean;
   loading: boolean;
+  lives: number;
   error: string | null;
 
   loadSpeak: (activityId: string, activityTitle: string) => Promise<void>;
@@ -42,6 +43,7 @@ export const useSpeakStore = create<SpeakState>((set, get) => {
     isCompleted: false,
     loading: false,
     error: null,
+    lives: 3,
 
     loadSpeak: async (activityId, activityTitle) => {
       set({ loading: true, error: null, transcript: '', confidence: 0, stars: null, isRecording: false });
@@ -57,7 +59,7 @@ export const useSpeakStore = create<SpeakState>((set, get) => {
             confidence = Math.round(progressRes.data.bestScore * 100);
           }
         } catch (err) {
-          console.warn('Failed to load speak progress:', err);
+          if (typeof __DEV__ !== 'undefined' && __DEV__) console.warn('Failed to load speak progress:', err);
         }
 
         const starsCount = isCompleted ? (confidence >= 80 ? 3 : confidence >= 60 ? 2 : confidence >= 40 ? 1 : 0) : null;
@@ -123,7 +125,7 @@ export const useSpeakStore = create<SpeakState>((set, get) => {
           score: percentScore,
         });
       } catch (err) {
-        console.warn('Failed to mark speak progress complete:', err);
+        if (typeof __DEV__ !== 'undefined' && __DEV__) console.warn('Failed to mark speak progress complete:', err);
       }
 
       return true;
@@ -146,7 +148,7 @@ export const useSpeakStore = create<SpeakState>((set, get) => {
           score: finalScore,
         });
       } catch (err) {
-        console.warn('Failed to mark speak progress complete:', err);
+        if (typeof __DEV__ !== 'undefined' && __DEV__) console.warn('Failed to mark speak progress complete:', err);
       }
     },
 
@@ -161,6 +163,7 @@ export const useSpeakStore = create<SpeakState>((set, get) => {
         isCompleted: false,
         loading: false,
         error: null,
+        lives: 3,
       });
     },
   };

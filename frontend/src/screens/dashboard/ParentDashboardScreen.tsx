@@ -21,6 +21,7 @@ import { useRewardsStore } from '../../store/rewardsStore';
 import { useDeviceType } from '../../hooks/useDeviceType';
 import { colors, spacing, typography, radius, shadows } from '../../theme';
 import { Ionicons } from '@expo/vector-icons';
+import { NotificationBell } from '../../components/notifications/NotificationBell';
 import { getAvatarEmoji, getAvatarBgColor } from '../profile/ChildSelectionScreen';
 import { toUserMessage } from '../../api/errors';
 
@@ -111,7 +112,7 @@ export const ParentDashboardScreen: React.FC = () => {
   const quickActions: QuickAction[] = [
     { key: 'continue', label: 'Continue Learning', icon: 'play-circle', route: 'Journey' },
     { key: 'roadmap', label: 'Roadmap', icon: 'map', route: 'Journey' },
-    { key: 'assessments', label: 'Assessments', icon: 'clipboard', disabled: true },
+    { key: 'assessments', label: 'Assessments', icon: 'clipboard', route: 'AssessmentCenter' },
     { key: 'recommendations', label: 'Recommendations', icon: 'bulb', route: 'Recommendations' },
     { key: 'progress', label: 'Progress', icon: 'bar-chart', route: 'Progress' },
     { key: 'children', label: 'Children', icon: 'people', route: 'ChildSelection' },
@@ -189,7 +190,10 @@ export const ParentDashboardScreen: React.FC = () => {
       >
         {/* Greeting header */}
         <View style={styles.header}>
-          <Text style={styles.greeting}>{getGreeting()}, {parentName} 🌸</Text>
+          <View style={styles.headerTopRow}>
+            <Text style={styles.greeting}>{getGreeting()}, {parentName} 🌸</Text>
+            <NotificationBell color={colors.purple} size={22} />
+          </View>
           <Text style={styles.subtitle}>
             Here's how {activeChild.name}'s learning is going.
           </Text>
@@ -324,6 +328,11 @@ const styles = StyleSheet.create({
   },
   header: {
     marginBottom: spacing.lg,
+  },
+  headerTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   greeting: {
     fontSize: typography.sizes.xl,

@@ -5,6 +5,12 @@ import { progressRepository } from './progress.repository.js';
 import { moduleProgressService } from './module-progress.service.js';
 import { categoryProgressService } from './category-progress.service.js';
 import { UnauthorizedError, ValidationError } from '../../utils/errors.js';
+import { z } from 'zod';
+
+const lessonIdParamSchema = z.object({ lessonId: z.string().uuid('lessonId must be a UUID') });
+const lessonIdBodySchema = z.object({ lessonId: z.string().uuid('lessonId must be a UUID') });
+const moduleIdBodySchema = z.object({ moduleId: z.string().uuid('moduleId must be a UUID') });
+const categoryIdBodySchema = z.object({ categoryId: z.string().uuid('categoryId must be a UUID') });
 
 export class ProgressController {
   async getAll(req: AuthenticatedRequest, res: Response, next: NextFunction) {
@@ -31,12 +37,12 @@ export class ProgressController {
         throw new UnauthorizedError('Active child profile is not selected');
       }
 
-      const { lessonId } = req.params;
-      if (!lessonId) {
-        throw new ValidationError('lessonId parameter is required');
+      const parsed = lessonIdParamSchema.safeParse(req.params);
+      if (!parsed.success) {
+        throw new ValidationError('Validation failed', parsed.error.format());
       }
 
-      const progress = await progressRepository.findByChildAndLesson(childId, lessonId);
+      const progress = await progressRepository.findByChildAndLesson(childId, parsed.data.lessonId);
       return res.status(200).json({
         success: true,
         data: progress,
@@ -160,12 +166,12 @@ export class ProgressController {
         throw new UnauthorizedError('Active child profile is not selected');
       }
 
-      const { lessonId } = req.body;
-      if (!lessonId) {
-        throw new ValidationError('lessonId in request body is required');
+      const parsed = lessonIdBodySchema.safeParse(req.body);
+      if (!parsed.success) {
+        throw new ValidationError('Validation failed', parsed.error.format());
       }
 
-      const progress = await progressRepository.forceCompleteLesson(childId, lessonId);
+      const progress = await progressRepository.forceCompleteLesson(childId, parsed.data.lessonId);
       return res.status(200).json({
         success: true,
         data: progress,
@@ -182,12 +188,12 @@ export class ProgressController {
         throw new UnauthorizedError('Active child profile is not selected');
       }
 
-      const { moduleId } = req.body;
-      if (!moduleId) {
-        throw new ValidationError('moduleId in request body is required');
+      const parsed = moduleIdBodySchema.safeParse(req.body);
+      if (!parsed.success) {
+        throw new ValidationError('Validation failed', parsed.error.format());
       }
 
-      const completed = await moduleProgressService.completeModule(childId, moduleId);
+      const completed = await moduleProgressService.completeModule(childId, parsed.data.moduleId);
       return res.status(200).json({
         success: true,
         data: { completed },
@@ -204,12 +210,12 @@ export class ProgressController {
         throw new UnauthorizedError('Active child profile is not selected');
       }
 
-      const { categoryId } = req.body;
-      if (!categoryId) {
-        throw new ValidationError('categoryId in request body is required');
+      const parsed = categoryIdBodySchema.safeParse(req.body);
+      if (!parsed.success) {
+        throw new ValidationError('Validation failed', parsed.error.format());
       }
 
-      const completed = await categoryProgressService.completeCategory(childId, categoryId);
+      const completed = await categoryProgressService.completeCategory(childId, parsed.data.categoryId);
       return res.status(200).json({
         success: true,
         data: { completed },

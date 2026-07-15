@@ -1,35 +1,54 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, Text, Pressable } from 'react-native';
 import { ScreenContainer } from '../../components/common/ScreenContainer';
 import { TopBar } from '../../components/navigation/TopBar';
 import { Card, Button } from '../../components/ui';
+import { LoadingSpinner } from '../../components/common/LoadingSpinner';
+import { EmptyState } from '../../components/common/EmptyState';
 import { colors, typography, spacing, radius, shadows } from '../../theme';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import { api } from '../../api/client';
 
 export const StoriesScreen: React.FC = () => {
   const navigation = useNavigation();
   const [currentPage, setCurrentPage] = useState(1);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [backendAvailable, setBackendAvailable] = useState(false);
 
-  const storyPages = [
-    {
-      page: 1,
-      emoji: '🦊🌳',
-      text: "Once upon a time in the whispering woods, Benny the Fox found a magical golden leaf that glowed under the moonlight.",
-    },
-    {
-      page: 2,
-      emoji: '🦉💫',
-      text: "He carried the leaf to Oliver the Wise Owl, who lived in the hollow of a tall magical oak tree.",
-    },
-    {
-      page: 3,
-      emoji: '🐢🌸',
-      text: "Together with Toby the Turtle, they planted the golden leaf in the center of the garden, causing a beautiful flower tree to bloom!",
-    },
-  ];
+  useEffect(() => {
+    api.get('/stories')
+      .then(() => setBackendAvailable(true))
+      .catch(() => setBackendAvailable(false))
+      .finally(() => setLoading(false));
+  }, []);
 
+  if (loading) {
+    return (
+      <ScreenContainer>
+        <TopBar title="Forest Stories" showBack />
+        <View style={styles.loadingContainer}>
+          <LoadingSpinner label="Loading stories…" />
+        </View>
+      </ScreenContainer>
+    );
+  }
+
+  if (!backendAvailable) {
+    return (
+      <ScreenContainer>
+        <TopBar title="Forest Stories" showBack />
+        <EmptyState
+          icon="📚"
+          title="Stories Coming Soon"
+          message="Story time adventures are on their way! Check back for new tales and fun characters."
+        />
+      </ScreenContainer>
+    );
+  }
+
+  const storyPages: Array<{ page: number; emoji: string; text: string }> = [];
   const totalPages = storyPages.length;
   const currentStory = storyPages[currentPage - 1];
 
@@ -55,13 +74,12 @@ export const StoriesScreen: React.FC = () => {
     <ScreenContainer>
       <TopBar title="Forest Stories" showBack />
       <View style={styles.content}>
-        
         {/* Story Illustration Card */}
         <Card style={styles.illustrationCard}>
           <View style={styles.imageBackdrop}>
             <Text style={styles.storyEmoji}>{currentStory.emoji}</Text>
           </View>
-          
+
           <Text style={[styles.storyText, { fontFamily: typography.families.rounded }]}>
             {currentStory.text}
           </Text>
@@ -118,6 +136,11 @@ export const StoriesScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   content: {
     flex: 1,
     padding: spacing.lg,
@@ -135,7 +158,7 @@ const styles = StyleSheet.create({
   imageBackdrop: {
     width: '100%',
     height: 180,
-    backgroundColor: '#F5EEDC', // cozy secondary backer
+    backgroundColor: '#F5EEDC',
     borderRadius: radius.card,
     alignItems: 'center',
     justifyContent: 'center',

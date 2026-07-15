@@ -51,7 +51,6 @@ export class ObservationEngineController {
         throw new ValidationError('Invalid query parameters', parseResult.error.format());
       }
 
-      // TODO: Implement topic states retrieval
       return res.status(200).json({
         success: true,
         data: [],

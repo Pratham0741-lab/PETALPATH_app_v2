@@ -108,7 +108,9 @@ describe('Error Handling Middleware', () => {
 
       expect(res.status).toBe(400);
       expect(res.body.success).toBe(false);
-      expect(res.body.message).toMatch(/skillId is required/i);
+      expect(res.body.message).toBe('Validation failed');
+      expect(res.body.errors).toBeDefined();
+      expect(res.body.errors.skillId).toBeDefined();
     });
   });
 

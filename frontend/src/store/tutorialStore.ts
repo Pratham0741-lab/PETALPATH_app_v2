@@ -69,7 +69,7 @@ const persistSettings = async (settings: TutorialSettings): Promise<void> => {
   try {
     await storage.setItem(STORAGE_KEY_SETTINGS, JSON.stringify(settings));
   } catch (err) {
-    console.warn('[TutorialStore] Failed to persist settings:', err);
+    if (typeof __DEV__ !== 'undefined' && __DEV__) console.warn('[TutorialStore] Failed to persist settings:', err);
   }
 };
 
@@ -77,7 +77,7 @@ const persistSeenTutorials = async (seen: Record<string, boolean>): Promise<void
   try {
     await storage.setItem(STORAGE_KEY_SEEN, JSON.stringify(seen));
   } catch (err) {
-    console.warn('[TutorialStore] Failed to persist seen tutorials:', err);
+    if (typeof __DEV__ !== 'undefined' && __DEV__) console.warn('[TutorialStore] Failed to persist seen tutorials:', err);
   }
 };
 
@@ -119,13 +119,13 @@ export const useTutorialStore = create<TutorialState>((set, get) => ({
       onFinished?.();
     });
 
-    console.log(`[Tutorial] Started: ${guideKey}`);
+    if (typeof __DEV__ !== 'undefined' && __DEV__) console.log(`[Tutorial] Started: ${guideKey}`);
   },
 
   stopTutorial: () => {
     audioGuideService.stopGuide();
     set({ isPlaying: false });
-    console.log('[Tutorial] Stopped');
+    if (typeof __DEV__ !== 'undefined' && __DEV__) console.log('[Tutorial] Stopped');
   },
 
   skipTutorial: (screenKey) => {
@@ -136,7 +136,7 @@ export const useTutorialStore = create<TutorialState>((set, get) => ({
     set({ isPlaying: false, seenTutorials: updated });
     persistSeenTutorials(updated);
 
-    console.log(`[Tutorial] Skipped & marked seen: ${screenKey}`);
+    if (typeof __DEV__ !== 'undefined' && __DEV__) console.log(`[Tutorial] Skipped & marked seen: ${screenKey}`);
   },
 
   replayTutorial: () => {
@@ -149,7 +149,7 @@ export const useTutorialStore = create<TutorialState>((set, get) => ({
       set({ isPlaying: false });
     });
 
-    console.log('[Tutorial] Replayed');
+    if (typeof __DEV__ !== 'undefined' && __DEV__) console.log('[Tutorial] Replayed');
   },
 
   markSeen: (screenKey) => {
@@ -157,7 +157,7 @@ export const useTutorialStore = create<TutorialState>((set, get) => ({
     const updated = { ...state.seenTutorials, [screenKey]: true };
     set({ seenTutorials: updated });
     persistSeenTutorials(updated);
-    console.log(`[Tutorial] Marked seen: ${screenKey}`);
+    if (typeof __DEV__ !== 'undefined' && __DEV__) console.log(`[Tutorial] Marked seen: ${screenKey}`);
   },
 
   hasSeen: (screenKey) => {
@@ -168,7 +168,7 @@ export const useTutorialStore = create<TutorialState>((set, get) => ({
     const state = get();
     if (!state.enabled) return;
     if (state.inactivityCount >= 3) {
-      console.log('[Tutorial] Max inactivity retries reached');
+      if (typeof __DEV__ !== 'undefined' && __DEV__) console.log('[Tutorial] Max inactivity retries reached');
       return;
     }
 
@@ -179,7 +179,7 @@ export const useTutorialStore = create<TutorialState>((set, get) => ({
       set({ isPlaying: false });
     });
 
-    console.log(`[Tutorial] Inactivity replay #${newCount} for ${screenKey}`);
+    if (typeof __DEV__ !== 'undefined' && __DEV__) console.log(`[Tutorial] Inactivity replay #${newCount} for ${screenKey}`);
   },
 
   resetInactivity: () => {
@@ -208,7 +208,7 @@ export const useTutorialStore = create<TutorialState>((set, get) => ({
       reduceMotion: state.reduceMotion,
     });
 
-    console.log(`[Tutorial] Guide ${newEnabled ? 'enabled' : 'disabled'}`);
+    if (typeof __DEV__ !== 'undefined' && __DEV__) console.log(`[Tutorial] Guide ${newEnabled ? 'enabled' : 'disabled'}`);
   },
 
   setVolume: (value) => {
@@ -261,7 +261,7 @@ export const useTutorialStore = create<TutorialState>((set, get) => ({
         audioGuideService.setGuideVolume(settings.volume ?? 0.8);
       }
     } catch (err) {
-      console.warn('[TutorialStore] Failed to load settings:', err);
+      if (typeof __DEV__ !== 'undefined' && __DEV__) console.warn('[TutorialStore] Failed to load settings:', err);
     }
 
     try {
@@ -270,9 +270,9 @@ export const useTutorialStore = create<TutorialState>((set, get) => ({
         set({ seenTutorials: JSON.parse(seenRaw) });
       }
     } catch (err) {
-      console.warn('[TutorialStore] Failed to load seen tutorials:', err);
+      if (typeof __DEV__ !== 'undefined' && __DEV__) console.warn('[TutorialStore] Failed to load seen tutorials:', err);
     }
 
-    console.log('[TutorialStore] Settings loaded');
+    if (typeof __DEV__ !== 'undefined' && __DEV__) console.log('[TutorialStore] Settings loaded');
   },
 }));

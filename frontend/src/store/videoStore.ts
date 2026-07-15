@@ -61,7 +61,7 @@ export const useVideoStore = create<VideoState>((set, get) => {
             isCompleted = progressRes.data.isCompleted || false;
           }
         } catch (err) {
-          console.warn('Failed to load video progress:', err);
+          if (typeof __DEV__ !== 'undefined' && __DEV__) console.warn('Failed to load video progress:', err);
         }
 
         set({
@@ -100,7 +100,7 @@ export const useVideoStore = create<VideoState>((set, get) => {
             set({ isCompleted: res.data.isCompleted });
           }
         } catch (err) {
-          console.warn('Failed to save watch position:', err);
+          if (typeof __DEV__ !== 'undefined' && __DEV__) console.warn('Failed to save watch position:', err);
         }
       }, 2000);
     },
@@ -119,7 +119,7 @@ export const useVideoStore = create<VideoState>((set, get) => {
           videoId: currentVideo.id,
         });
       } catch (err) {
-        console.warn('Failed to mark video as complete:', err);
+        if (typeof __DEV__ !== 'undefined' && __DEV__) console.warn('Failed to mark video as complete:', err);
       }
     },
 

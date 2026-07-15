@@ -22,4 +22,12 @@ router.post('/abandon', sessionController.abandonSession as any);
 router.post('/:id/block/complete', sessionController.completeBlock as any);
 router.post('/:id/block/skip', sessionController.skipBlock as any);
 
+// Phase 3.5 — Learning Runtime path-param endpoints
+router.post('/', sessionController.createSession as any);
+router.post('/:id/start', sessionController.startSessionById as any);
+router.post('/:id/pause', sessionController.pauseSessionById as any);
+router.post('/:id/resume', sessionController.resumeSessionById as any);
+router.post('/:id/complete', sessionController.completeSessionById as any);
+router.post('/:id/abandon', sessionController.abandonSessionById as any);
+
 export { router as sessionRoutes };

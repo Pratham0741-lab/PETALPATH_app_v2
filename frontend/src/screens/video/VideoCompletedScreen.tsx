@@ -1,18 +1,41 @@
-import React from 'react';
-import { StyleSheet, View, Text, Pressable } from 'react-native';
+import React, { useMemo } from 'react';
+import { StyleSheet, View, Text } from 'react-native';
 import { ScreenContainer } from '../../components/common/ScreenContainer';
 import { AppCard } from '../../components/cards/AppCard';
 import { AppButton } from '../../components/buttons/AppButton';
-import { colors, typography, spacing, radius, shadows } from '../../theme';
+import { colors, typography, spacing, radius } from '../../theme';
 import { useNavigation } from '@react-navigation/native';
 import { useVideoStore } from '../../store/videoStore';
 import { useRoadmapStore } from '../../store/roadmapStore';
 import { Ionicons } from '@expo/vector-icons';
 
+const ACTIVITY_ICONS: Record<string, React.ComponentProps<typeof Ionicons>['name']> = {
+  video: 'videocam',
+  listen: 'ear',
+  speak: 'chatbubble-ellipses',
+  write: 'create',
+};
+
+const ACTIVITY_LABELS: Record<string, string> = {
+  video: 'Video',
+  listen: 'Listen',
+  speak: 'Speak',
+  write: 'Write',
+};
+
 export const VideoCompletedScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const { currentVideo } = useVideoStore();
-  const { selectedLesson } = useRoadmapStore();
+  const { selectedLesson, activities } = useRoadmapStore();
+
+  const nextActivity = useMemo(() => {
+    if (!currentVideo || !activities || activities.length === 0) return null;
+    const currentIndex = activities.findIndex(
+      (a) => a.activityType === 'video' && a.title === currentVideo.title,
+    );
+    if (currentIndex === -1 || currentIndex >= activities.length - 1) return null;
+    return activities[currentIndex + 1];
+  }, [currentVideo, activities]);
 
   const handleFinish = () => {
     if (navigation.canGoBack()) {
@@ -36,21 +59,27 @@ export const VideoCompletedScreen: React.FC = () => {
           </Text>
         </View>
 
-        {/* Next Activity Placeholder Card */}
-        <AppCard style={styles.nextCard}>
-          <Text style={styles.nextLabel}>Next Activity</Text>
-          <View style={styles.nextRow}>
-            <View style={styles.activityIcon}>
-              <Ionicons name="volume-medium" size={24} color={colors.purple} />
+        {/* Next Activity Card */}
+        {nextActivity ? (
+          <AppCard style={styles.nextCard}>
+            <Text style={styles.nextLabel}>Next Activity</Text>
+            <View style={styles.nextRow}>
+              <View style={styles.activityIcon}>
+                <Ionicons
+                  name={ACTIVITY_ICONS[nextActivity.activityType] ?? 'bulb'}
+                  size={24}
+                  color={colors.purple}
+                />
+              </View>
+              <View style={styles.activityInfo}>
+                <Text style={styles.activityTitle}>{nextActivity.title}</Text>
+                <Text style={styles.activityDesc}>
+                  {ACTIVITY_LABELS[nextActivity.activityType] ?? 'Activity'} • Continue your lesson
+                </Text>
+              </View>
             </View>
-            <View style={styles.activityInfo}>
-              <Text style={styles.activityTitle}>Listen Activity</Text>
-              <Text style={styles.activityDesc}>
-                Listen closely to the sound and identify its shape! (Coming soon)
-              </Text>
-            </View>
-          </View>
-        </AppCard>
+          </AppCard>
+        ) : null}
 
         {/* Back Button */}
         <AppButton

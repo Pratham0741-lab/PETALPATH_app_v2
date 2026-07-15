@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+﻿import React, { useEffect } from 'react';
 import { StyleSheet, ScrollView, View, Text, Switch, TouchableOpacity, Alert, Platform, TextInput } from 'react-native';
 import { ScreenContainer } from '../../components/common/ScreenContainer';
 import { api } from '../../api/client';
@@ -95,7 +95,7 @@ export const ProfileMobile: React.FC = () => {
         await api.post('/auth/logout', { refreshToken });
       }
     } catch (err) {
-      console.warn('Logout API failed:', err);
+      if (__DEV__) console.warn('Logout API failed:', err);
     } finally {
       setActiveChild(null);
       clearSession();
@@ -125,7 +125,7 @@ export const ProfileMobile: React.FC = () => {
       // Automatically switch to the Journey/Roadmap tab to visually show the reset map
       navigation.navigate('MainTabs', { screen: 'Journey' });
     } catch (err) {
-      console.error('[RESET] error:', err);
+      if (__DEV__) console.error('[RESET] error:', err);
       setResetting(false);
       if (Platform.OS === 'web') {
         window.alert('Failed to reset learning progress. Please try again.');
@@ -219,7 +219,7 @@ export const ProfileMobile: React.FC = () => {
             <View style={styles.challengeContainer}>
               <Text style={styles.challengeTitle}>Parental Verification</Text>
               <Text style={styles.challengeQuestion}>
-                What is {challengeA} × {challengeB}?
+                What is {challengeA} Ã— {challengeB}?
               </Text>
               <View style={styles.challengeInputRow}>
                 <TextInput
@@ -238,7 +238,7 @@ export const ProfileMobile: React.FC = () => {
                 </TouchableOpacity>
               </View>
               {challengeError && (
-                <Text style={styles.challengeErrorText}>That's not right — try again!</Text>
+                <Text style={styles.challengeErrorText}>That's not right â€” try again!</Text>
               )}
             </View>
           )}
@@ -288,9 +288,9 @@ export const ProfileMobile: React.FC = () => {
                           </View>
                           <View style={{ flex: 1 }}>
                             <Text style={[styles.childNameText, isActive && styles.activeChildText]}>
-                              {child.name} {isActive && '🌟'}
+                              {child.name} {isActive && 'ðŸŒŸ'}
                             </Text>
-                            <Text style={styles.childAgeText}>Age {child.age} • {child.mentor?.name || 'No companion'}</Text>
+                            <Text style={styles.childAgeText}>Age {child.age} â€¢ {child.mentor?.name || 'No companion'}</Text>
                           </View>
                         </TouchableOpacity>
 
@@ -780,3 +780,4 @@ const styles = StyleSheet.create({
 });
 
 export default ProfileMobile;
+

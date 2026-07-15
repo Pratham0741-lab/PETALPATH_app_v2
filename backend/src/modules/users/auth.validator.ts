@@ -24,8 +24,19 @@ export const ResetPasswordSchema = z.object({
   newPassword: z.string().min(8, 'New password must be at least 8 characters long'),
 });
 
+export const RefreshTokenSchema = z.object({
+  refreshToken: z.string().min(1, 'Refresh token is required'),
+  childId: z.string().uuid().optional(),
+});
+
+export const SelectChildSchema = z.object({
+  childId: z.string().uuid('childId must be a valid UUID'),
+});
+
 export type GoogleAuthInput = z.infer<typeof GoogleAuthSchema>;
 export type RegisterInput = z.infer<typeof RegisterSchema>;
 export type LoginInput = z.infer<typeof LoginSchema>;
 export type ForgotPasswordInput = z.infer<typeof ForgotPasswordSchema>;
 export type ResetPasswordInput = z.infer<typeof ResetPasswordSchema>;
+export type RefreshTokenInput = z.infer<typeof RefreshTokenSchema>;
+export type SelectChildInput = z.infer<typeof SelectChildSchema>;

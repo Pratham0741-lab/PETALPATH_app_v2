@@ -89,11 +89,11 @@ export const LoginScreen: React.FC = () => {
         setSession(apiResponse.data);
         Alert.alert('Welcome Back!', `Signed in via Google successfully.`);
       } else {
-        console.log('Google Sign-in cancelled by user');
+        if (typeof __DEV__ !== 'undefined' && __DEV__) console.log('Google Sign-in cancelled by user');
       }
     } catch (err: any) {
       if (err.code === statusCodes.SIGN_IN_CANCELLED) {
-        console.log('Google Sign-in cancelled');
+        if (typeof __DEV__ !== 'undefined' && __DEV__) console.log('Google Sign-in cancelled');
       } else if (err.code === statusCodes.IN_PROGRESS) {
         setFormError('Google sign-in is already in progress.');
       } else if (err.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {

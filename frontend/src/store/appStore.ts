@@ -42,7 +42,7 @@ interface AppState {
 }
 
 export const useAppStore = create<AppState>((set) => ({
-  stars: 12, // Starting stars for playful validation
+  stars: 0, // Stars come from backend via rewardsStore
   activeMentor: MENTORS[0], // Default is Dax the Dinosaur
   progress: {
     currentLevel: 1,
@@ -167,7 +167,7 @@ export const useAppStore = create<AppState>((set) => ({
         loadingSession: false,
       });
     } catch (err) {
-      console.warn('Failed to load session:', err);
+      if (typeof __DEV__ !== 'undefined' && __DEV__) console.warn('Failed to load session:', err);
       set({ loadingSession: false });
     }
   },

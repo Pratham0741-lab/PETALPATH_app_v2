@@ -6,6 +6,8 @@ import {
   LoginSchema,
   ForgotPasswordSchema,
   ResetPasswordSchema,
+  RefreshTokenSchema,
+  SelectChildSchema,
 } from './auth.validator.js';
 import { ValidationError } from '../../utils/errors.js';
 import { AuthenticatedRequest } from '../../middleware/auth.middleware.js';
@@ -61,11 +63,11 @@ export class AuthController {
 
   async logout(req: Request, res: Response, next: NextFunction) {
     try {
-      const { refreshToken } = req.body;
-      if (!refreshToken) {
-        throw new ValidationError('Refresh token is required');
+      const parsed = RefreshTokenSchema.safeParse(req.body);
+      if (!parsed.success) {
+        throw new ValidationError('Validation failed', parsed.error.format());
       }
-      await authService.logoutUser(refreshToken);
+      await authService.logoutUser(parsed.data.refreshToken);
       return res.status(200).json({
         success: true,
         data: { message: 'Logged out successfully' },
@@ -77,11 +79,11 @@ export class AuthController {
 
   async refresh(req: Request, res: Response, next: NextFunction) {
     try {
-      const { refreshToken, childId } = req.body;
-      if (!refreshToken) {
-        throw new ValidationError('Refresh token is required');
+      const parsed = RefreshTokenSchema.safeParse(req.body);
+      if (!parsed.success) {
+        throw new ValidationError('Validation failed', parsed.error.format());
       }
-      const data = await authService.refreshSession(refreshToken, childId);
+      const data = await authService.refreshSession(parsed.data.refreshToken, parsed.data.childId);
       return res.status(200).json({
         success: true,
         data,
@@ -156,11 +158,11 @@ export class AuthController {
     try {
       const userId = req.user!.userId;
       const role = req.user!.role;
-      const { childId } = req.body;
-      if (!childId) {
-        throw new ValidationError('childId is required');
+      const parsed = SelectChildSchema.safeParse(req.body);
+      if (!parsed.success) {
+        throw new ValidationError('Validation failed', parsed.error.format());
       }
-      const data = await authService.selectChild(userId, role, childId);
+      const data = await authService.selectChild(userId, role, parsed.data.childId);
       return res.status(200).json({
         success: true,
         data,

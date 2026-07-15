@@ -3,6 +3,8 @@ import { AuthenticatedRequest } from '../../middleware/auth.middleware.js';
 import { sessionPlannerService } from './session-planner.service.js';
 import { sessionPlanRepository } from './repositories/session-plan.repository.js';
 import { sessionEventRepository } from './repositories/session-event.repository.js';
+import { sessionRuntime } from './session-runtime.service.js';
+import { sessionIdParamSchema } from './session.validator.js';
 import { ValidationError, UnauthorizedError, NotFoundError } from '../../utils/errors.js';
 import { z } from 'zod';
 
@@ -253,6 +255,163 @@ export class SessionController {
       return res.status(200).json({
         success: true,
         data: events,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // ──────────────────────────────────────────────
+  //  PATH-PARAM ENDPOINTS (Phase 3.5)
+  // ──────────────────────────────────────────────
+
+  async createSession(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const childId = req.user?.childId;
+      if (!childId) {
+        throw new UnauthorizedError('Active child profile is not selected');
+      }
+
+      const activeSession = await sessionPlanRepository.findActiveSession(childId);
+      if (activeSession) {
+        return res.status(200).json({
+          success: true,
+          message: 'An active session plan already exists.',
+          data: activeSession,
+        });
+      }
+
+      const session = await sessionPlannerService.generateSession(childId);
+
+      return res.status(201).json({
+        success: true,
+        message: 'Session created.',
+        data: session,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async startSessionById(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const parsed = sessionIdParamSchema.safeParse(req.params);
+      if (!parsed.success) {
+        throw new ValidationError('Invalid session id', parsed.error.format());
+      }
+      const { id } = parsed.data;
+
+      const session = await sessionPlanRepository.findById(id);
+      if (!session) throw new NotFoundError('Session plan not found');
+
+      sessionRuntime.assertOwnership(session, req.user?.childId);
+
+      const result = await sessionPlannerService.startSession(id);
+
+      return res.status(200).json({
+        success: true,
+        message: 'Session started.',
+        data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async pauseSessionById(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const parsed = sessionIdParamSchema.safeParse(req.params);
+      if (!parsed.success) {
+        throw new ValidationError('Invalid session id', parsed.error.format());
+      }
+      const { id } = parsed.data;
+
+      const session = await sessionPlanRepository.findById(id);
+      if (!session) throw new NotFoundError('Session plan not found');
+
+      sessionRuntime.assertOwnership(session, req.user?.childId);
+
+      const result = await sessionPlannerService.pauseSession(id);
+
+      return res.status(200).json({
+        success: true,
+        message: 'Session paused.',
+        data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async resumeSessionById(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const parsed = sessionIdParamSchema.safeParse(req.params);
+      if (!parsed.success) {
+        throw new ValidationError('Invalid session id', parsed.error.format());
+      }
+      const { id } = parsed.data;
+
+      const session = await sessionPlanRepository.findById(id);
+      if (!session) throw new NotFoundError('Session plan not found');
+
+      sessionRuntime.assertOwnership(session, req.user?.childId);
+
+      const result = await sessionPlannerService.resumeSession(id);
+
+      return res.status(200).json({
+        success: true,
+        message: 'Session resumed.',
+        data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async completeSessionById(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const parsed = sessionIdParamSchema.safeParse(req.params);
+      if (!parsed.success) {
+        throw new ValidationError('Invalid session id', parsed.error.format());
+      }
+      const { id } = parsed.data;
+
+      const session = await sessionPlanRepository.findById(id);
+      if (!session) throw new NotFoundError('Session plan not found');
+
+      sessionRuntime.assertOwnership(session, req.user?.childId);
+
+      const result = await sessionPlannerService.completeSession(id);
+
+      return res.status(200).json({
+        success: true,
+        message: 'Session completed.',
+        data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async abandonSessionById(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const parsed = sessionIdParamSchema.safeParse(req.params);
+      if (!parsed.success) {
+        throw new ValidationError('Invalid session id', parsed.error.format());
+      }
+      const { id } = parsed.data;
+
+      const session = await sessionPlanRepository.findById(id);
+      if (!session) throw new NotFoundError('Session plan not found');
+
+      sessionRuntime.assertOwnership(session, req.user?.childId);
+
+      const result = await sessionPlannerService.abandonSession(id);
+
+      return res.status(200).json({
+        success: true,
+        message: 'Session abandoned.',
+        data: result,
       });
     } catch (error) {
       next(error);

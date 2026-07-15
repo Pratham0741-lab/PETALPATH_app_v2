@@ -184,6 +184,10 @@ class ApiClient {
     return this.request<T>('PUT', path, body);
   }
 
+  async patch<T = any>(path: string, body?: any): Promise<T> {
+    return this.request<T>('PATCH', path, body);
+  }
+
   async delete<T = any>(path: string): Promise<T> {
     return this.request<T>('DELETE', path);
   }

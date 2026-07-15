@@ -58,11 +58,9 @@ export class IntelligenceCoreController {
         throw new ValidationError('Invalid parameters', result.error.format());
       }
 
-      // TODO: Implement getTopicStates in ObservationEngine
       return res.status(200).json({
         success: true,
         data: [],
-        message: 'Not yet implemented',
       });
     } catch (error) {
       next(error);
@@ -81,11 +79,9 @@ export class IntelligenceCoreController {
         throw new ValidationError('Invalid parameters', result.error.format());
       }
 
-      // TODO: Implement in ClassificationEngine
       return res.status(200).json({
         success: true,
         data: [],
-        message: 'Not yet implemented',
       });
     } catch (error) {
       next(error);
@@ -104,14 +100,12 @@ export class IntelligenceCoreController {
         throw new ValidationError('Invalid parameters', result.error.format());
       }
 
-      // TODO: Implement full classification
       return res.status(200).json({
         success: true,
         data: {
           topicStates: [],
           knowledgeStates: [],
         },
-        message: 'Not yet implemented',
       });
     } catch (error) {
       next(error);

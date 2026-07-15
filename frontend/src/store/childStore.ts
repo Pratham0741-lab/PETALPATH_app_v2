@@ -51,7 +51,7 @@ export const useChildStore = create<ChildState>((set, get) => ({
           await useAppStore.getState().setToken(response.data.accessToken);
         }
       } catch (err) {
-        console.warn('Failed to register child selection with backend:', err);
+        if (typeof __DEV__ !== 'undefined' && __DEV__) console.warn('Failed to register child selection with backend:', err);
       }
       await storage.setItem('activeChild', JSON.stringify(child));
       
@@ -64,7 +64,7 @@ export const useChildStore = create<ChildState>((set, get) => ({
           useProgressStore.getState().refreshProgress(),
         ]);
       } catch (err) {
-        console.warn('Failed to sync child stores:', err);
+        if (typeof __DEV__ !== 'undefined' && __DEV__) console.warn('Failed to sync child stores:', err);
       }
     } else {
       await storage.removeItem('activeChild');

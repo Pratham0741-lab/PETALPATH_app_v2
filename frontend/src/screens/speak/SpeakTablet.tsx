@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import { StyleSheet, View, Text, Pressable, ActivityIndicator } from 'react-native';
 import { ScreenContainer } from '../../components/common/ScreenContainer';
 import { TopBar } from '../../components/navigation/TopBar';
@@ -32,6 +32,7 @@ export const SpeakTablet: React.FC = () => {
     stopRecording,
     retry,
     completeActivity,
+    lives,
   } = useSpeakStore();
 
   const [recognizer, setRecognizer] = useState<UniversalSpeechRecognizer | null>(null);
@@ -92,12 +93,12 @@ export const SpeakTablet: React.FC = () => {
           setLocalRecording(false);
           const success = await stopRecording(res.transcript, res.confidence);
           if (!success) {
-            setErrorMessage("That's not quite right, let's try again! 🌸");
+            setErrorMessage("That's not quite right, let's try again! ðŸŒ¸");
             retry();
           }
         },
         (err) => {
-          console.warn('Speech recognition error:', err);
+          if (__DEV__) console.warn('Speech recognition error:', err);
           setLocalRecording(false);
           
           let friendlyMsg = 'Speech recognition failed.';
@@ -174,7 +175,7 @@ export const SpeakTablet: React.FC = () => {
           <View style={styles.stepDot}><Text style={styles.stepNum}>4</Text></View>
         </View>
         <View style={styles.heartIndicator}>
-          <Text style={styles.heartText}>💖 3 Lives</Text>
+          <Text style={styles.heartText}>ðŸ’– {lives} Lives</Text>
         </View>
       </View>
 
@@ -184,7 +185,7 @@ export const SpeakTablet: React.FC = () => {
           {/* Practice Phrase Display */}
           <View style={styles.phraseCard}>
             <View style={styles.mascotBadge}>
-              <Text style={styles.mascotEmoji}>🦉</Text>
+              <Text style={styles.mascotEmoji}>ðŸ¦‰</Text>
             </View>
             <Text style={[styles.speakLabel, { fontFamily: typography.families.rounded }]}>Say out loud:</Text>
             <Text style={[styles.targetPhraseText, { fontFamily: typography.families.rounded }]}>"{targetPhrase}"</Text>
@@ -302,7 +303,7 @@ export const SpeakTablet: React.FC = () => {
           <AvatarCard mentor={activeMentor} style={styles.mentorCard} />
           <View style={styles.mentorBubble}>
             <Text style={[styles.tipsText, { fontFamily: typography.families.rounded }]}>
-              "Hi {activeChild?.name}! Click the mic and read the phrase aloud so I can listen! I know you can do it! 🌸"
+              "Hi {activeChild?.name}! Click the mic and read the phrase aloud so I can listen! I know you can do it! ðŸŒ¸"
             </Text>
           </View>
         </View>
@@ -670,3 +671,4 @@ const styles = StyleSheet.create({
   },
 });
 export default SpeakTablet;
+
