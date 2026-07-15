@@ -39,18 +39,4 @@ export class LearningEvidence {
   get observation(): Record<string, unknown> { return this.props.observation; }
   get createdAt(): Date { return this.props.createdAt; }
 
-  toPrismaCreate(): Record<string, unknown> {
-    return {
-      id: this.props.id,
-      eventId: this.props.eventId,
-      childId: this.props.childId,
-      sessionId: this.props.sessionId,
-      activityId: this.props.activityId,
-      topicId: this.props.topicId,
-      modality: this.props.modality,
-      evidenceType: this.props.evidenceType,
-      observation: JSON.stringify(this.props.observation),
-      createdAt: this.props.createdAt,
-    };
-  }
 }

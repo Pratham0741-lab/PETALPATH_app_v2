@@ -41,7 +41,7 @@ interface AggregatedMetrics {
 
 export class EvidenceProcessor {
   constructor(
-    private readonly metricSnapshotRepo: IMetricSnapshotRepository,
+    private readonly metricSnapshotRepo?: IMetricSnapshotRepository,
   ) {}
 
   async processEvidence(
@@ -72,8 +72,10 @@ export class EvidenceProcessor {
     snapshots.push(retentionSnapshot);
 
     // Persist all snapshots
-    for (const snapshot of snapshots) {
-      await this.metricSnapshotRepo.create(snapshot);
+    if (this.metricSnapshotRepo) {
+      for (const snapshot of snapshots) {
+        await this.metricSnapshotRepo.create(snapshot);
+      }
     }
 
     return snapshots;
@@ -109,13 +111,14 @@ export class EvidenceProcessor {
       ? retries.reduce((a, b) => a + b, 0) / retries.length
       : 0;
 
-    const totalActivities = events.filter(e => 
-      e.eventType === LearningEventType.ACTIVITY_STARTED
+    const totalActivities = events.filter(e =>
+      e.eventType === LearningEventType.ACTIVITY_STARTED ||
+      e.eventType === LearningEventType.ACTIVITY_COMPLETED
     ).length;
     const completedActivities = completedEvents.length;
     const completionRate = totalActivities > 0 ? completedActivities / totalActivities : 0;
 
-    const successEvents = completedEvents.filter(e => 
+    const successEvents = completedEvents.filter(e =>
       (e.payload?.accuracy as number) >= 70
     ).length;
     const successRate = completedActivities > 0 ? successEvents / completedActivities : 0;
@@ -185,14 +188,15 @@ export class EvidenceProcessor {
         ? retries.reduce((a, b) => a + b, 0) / retries.length
         : 0;
 
-      const totalActivities = modalityEventList.filter(e => 
-        e.eventType === LearningEventType.ACTIVITY_STARTED
+      const totalActivities = modalityEventList.filter(e =>
+        e.eventType === LearningEventType.ACTIVITY_STARTED ||
+        e.eventType === LearningEventType.ACTIVITY_COMPLETED
       ).length;
       const completedActivities = completedEvents.length;
       const completionRate = totalActivities > 0 ? completedActivities / totalActivities : 0;
 
       snapshots.push(MetricSnapshot.create({
-        childId: '',
+        childId,
         category: MetricCategory.MODALITY,
         metrics: {
           modality,
@@ -250,14 +254,15 @@ export class EvidenceProcessor {
         ? durationValues.reduce((a, b) => a + b, 0) / durationValues.length
         : 0;
 
-      const totalActivities = topicEventList.filter(e => 
-        e.eventType === LearningEventType.ACTIVITY_STARTED
+      const totalActivities = topicEventList.filter(e =>
+        e.eventType === LearningEventType.ACTIVITY_STARTED ||
+        e.eventType === LearningEventType.ACTIVITY_COMPLETED
       ).length;
       const completedActivities = completedEvents.length;
       const completionRate = totalActivities > 0 ? completedActivities / totalActivities : 0;
 
       snapshots.push(MetricSnapshot.create({
-        childId: '',
+        childId,
         category: MetricCategory.TOPIC,
         metrics: {
           topicId,
@@ -318,7 +323,7 @@ export class EvidenceProcessor {
     const windowStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
     return MetricSnapshot.create({
-      childId: '',
+      childId,
       category: MetricCategory.SESSION,
       metrics: {
         avgDuration,
@@ -380,7 +385,7 @@ export class EvidenceProcessor {
     const windowStart = new Date(nowDate.getTime() - 30 * 24 * 60 * 60 * 1000);
 
     return MetricSnapshot.create({
-      childId: '',
+      childId,
       category: MetricCategory.RETENTION,
       metrics: {
         reviewSuccessRate,

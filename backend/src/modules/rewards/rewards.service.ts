@@ -1,4 +1,5 @@
 import { prisma } from '../../config/database.js';
+import { logger } from '../../utils/logger.js';
 
 export class RewardService {
   async unlockSticker(childId: string, stickerId: string): Promise<void> {
@@ -13,7 +14,7 @@ export class RewardService {
         data: { childId, stickerId },
       });
       const sticker = await prisma.sticker.findUnique({ where: { id: stickerId } });
-      console.log(`[STICKER UNLOCKED] Child ${childId} unlocked sticker "${sticker?.name}"`);
+      logger.info({ childId, stickerId: sticker?.id, stickerName: sticker?.name }, 'sticker unlocked');
     }
   }
 
@@ -29,7 +30,7 @@ export class RewardService {
         data: { childId, badgeId },
       });
       const badge = await prisma.badge.findUnique({ where: { id: badgeId } });
-      console.log(`[BADGE EARNED] Child ${childId} earned badge "${badge?.name}"`);
+      logger.info({ childId, badgeId: badge?.id, badgeName: badge?.name }, 'badge earned');
     }
   }
 

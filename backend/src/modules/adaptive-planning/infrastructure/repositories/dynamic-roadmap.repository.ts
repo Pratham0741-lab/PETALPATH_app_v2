@@ -2,6 +2,28 @@ import { prisma } from '../../../../config/database.js';
 import { DynamicRoadmap } from '../../domain/entities/dynamic-roadmap.entity.js';
 import { IDynamicRoadmapRepository } from '../../domain/repositories/repository-interfaces.js';
 
+function toPrismaCreate(entity: DynamicRoadmap): Record<string, unknown> {
+  return {
+    id: entity.id,
+    childId: entity.childId,
+    roadmapJson: JSON.stringify(entity.roadmapJson),
+    version: entity.version,
+    generatedAt: entity.generatedAt,
+    validUntil: entity.validUntil ?? null,
+    createdAt: entity.createdAt,
+    updatedAt: entity.updatedAt,
+  };
+}
+
+function toPrismaUpdate(entity: DynamicRoadmap): Record<string, unknown> {
+  return {
+    roadmapJson: JSON.stringify(entity.roadmapJson),
+    version: entity.version,
+    validUntil: entity.validUntil ?? null,
+    updatedAt: entity.updatedAt,
+  };
+}
+
 function mapToEntity(data: any): DynamicRoadmap {
   return new DynamicRoadmap({
     id: data.id,
@@ -18,7 +40,7 @@ function mapToEntity(data: any): DynamicRoadmap {
 export class DynamicRoadmapRepository implements IDynamicRoadmapRepository {
   async create(roadmap: DynamicRoadmap): Promise<DynamicRoadmap> {
     const created = await prisma.dynamicRoadmap.create({
-      data: roadmap.toPrismaCreate(),
+      data: toPrismaCreate(roadmap) as any,
     });
     return mapToEntity(created);
   }
@@ -31,7 +53,7 @@ export class DynamicRoadmapRepository implements IDynamicRoadmapRepository {
   async update(roadmap: DynamicRoadmap): Promise<DynamicRoadmap> {
     const updated = await prisma.dynamicRoadmap.update({
       where: { childId: roadmap.childId },
-      data: roadmap.toPrismaUpdate(),
+      data: toPrismaUpdate(roadmap) as any,
     });
     return mapToEntity(updated);
   }

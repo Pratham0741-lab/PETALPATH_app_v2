@@ -5,6 +5,7 @@ import { RootNavigator } from './src/navigation/RootNavigator';
 import { navigationRef } from './src/navigation/navigationRef';
 import { useTutorialStore } from './src/store/tutorialStore';
 import { checkServerHealth } from './src/api/health';
+import { AppProviders } from './src/providers/AppProviders';
 // DEBUG ONLY - REMOVE AFTER NETWORK DIAGNOSIS
 import { IS_DEV, API_BASE_URL } from './src/config/api';
 // END DEBUG ONLY
@@ -156,7 +157,9 @@ export default function App() {
 
   return (
     <NavigationContainer ref={navigationRef} linking={linking}>
-      <RootNavigator />
+      <AppProviders>
+        <RootNavigator />
+      </AppProviders>
     </NavigationContainer>
   );
 }

@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { categoriesService } from './categories.service.js';
 import { createCategorySchema, updateCategorySchema } from './categories.validator.js';
 import { ValidationError } from '../../utils/errors.js';
+import { logger } from '../../utils/logger.js';
 
 export class CategoriesController {
   async getAll(req: Request, res: Response, next: NextFunction) {
@@ -19,7 +20,7 @@ export class CategoriesController {
   async getById(req: Request, res: Response, next: NextFunction) {
     try {
       const { id } = req.params;
-      console.log(`Category selected: ${id}`);
+      logger.info({ categoryId: id }, 'category selected');
       const category = await categoriesService.getCategoryById(id);
       if (!category) {
         return res.status(404).json({

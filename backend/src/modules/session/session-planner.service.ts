@@ -5,7 +5,7 @@ import {
   SessionEventType,
   DifficultyLevel,
   ActivityType,
-  MasteryState,
+
 } from '../../shared/enums.js';
 import { engineConfig } from '../../shared/config/engine.config.js';
 import { sessionTemplateRepository } from './repositories/session-template.repository.js';
@@ -215,7 +215,7 @@ export class SessionPlannerService {
     // 5. Build session blocks sequentially
     for (let pos = 0; pos < blockSequence.length; pos++) {
       const step = blockSequence[pos];
-      const activityType = step.activityType as ActivityType;
+      const activityType = (step.activityType as ActivityType) ?? ActivityType.GAME;
       const duration = step.estimatedMinutes as number;
 
       // Special blocks: WARMUP & REWARD have no specific skills

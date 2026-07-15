@@ -67,6 +67,24 @@ export enum EvidenceType {
   CONFIDENCE = 'CONFIDENCE',
 }
 
+export const CORRECT_EVENT_TYPES: ReadonlySet<string> = new Set([
+  LearningEventType.ACTIVITY_COMPLETED,
+  LearningEventType.TOPIC_COMPLETED,
+  LearningEventType.MASTERY_PRACTICE_COMPLETED,
+  LearningEventType.REINFORCEMENT_COMPLETED,
+  LearningEventType.DAILY_PRACTICE_COMPLETED,
+  LearningEventType.VIDEO_COMPLETED,
+  LearningEventType.AUDIO_COMPLETED,
+  LearningEventType.SPEECH_COMPLETED,
+  LearningEventType.WRITING_COMPLETED,
+  LearningEventType.RECOVERY_COMPLETED,
+]);
+
+export function isCorrectEvent(eventType: string, payloadCorrect: unknown): boolean {
+  if (typeof payloadCorrect === 'boolean') return payloadCorrect;
+  return CORRECT_EVENT_TYPES.has(eventType);
+}
+
 export const VALID_MODALITIES = Object.values(Modality);
 export const VALID_EVENT_TYPES = Object.values(LearningEventType);
 export const VALID_EVIDENCE_TYPES = Object.values(EvidenceType);

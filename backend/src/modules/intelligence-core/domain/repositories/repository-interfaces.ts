@@ -14,17 +14,17 @@ export interface ITopicStateRepository {
 }
 
 export interface IKnowledgeStateRepository {
-  create(knowledgeState: any): Promise<any>;
-  findByChildAndTopic(childId: string, topicId: string): Promise<any | null>;
-  findByChildId(childId: string): Promise<any[]>;
-  update(knowledgeState: any): Promise<any>;
+  create(knowledgeState: KnowledgeState): Promise<KnowledgeState>;
+  findByChildAndTopic(childId: string, topicId: string): Promise<KnowledgeState | null>;
+  findByChildId(childId: string): Promise<KnowledgeState[]>;
+  update(knowledgeState: KnowledgeState): Promise<KnowledgeState>;
 }
 
 export interface IMetricSnapshotRepository {
-  create(snapshot: any): Promise<any>;
-  findByChild(childId: string, limit?: number): Promise<any[]>;
-  findByChildAndCategory(childId: string, category: string, limit?: number): Promise<any[]>;
-  findLatestByChildAndCategory(childId: string, category: string): Promise<any | null>;
+  create(snapshot: MetricSnapshot): Promise<MetricSnapshot>;
+  findByChild(childId: string, limit?: number): Promise<MetricSnapshot[]>;
+  findByChildAndCategory(childId: string, category: string, limit?: number): Promise<MetricSnapshot[]>;
+  findLatestByChildAndCategory(childId: string, category: string): Promise<MetricSnapshot | null>;
 }
 
 export interface ILearnerStateRepository {

@@ -49,30 +49,4 @@ export class LearningDebt {
     });
   }
 
-  toPrismaCreate(): any {
-    return {
-      id: this.props.id,
-      childId: this.props.childId,
-      topicId: this.props.topicId,
-      modality: this.props.modality ?? null,
-      debtType: this.props.debtType,
-      severity: this.props.severity,
-      description: this.props.description,
-      createdAt: this.props.createdAt,
-      resolvedAt: this.props.resolvedAt ?? null,
-      resolved: this.props.resolved,
-    };
-  }
-
-  toPrismaUpdate(): any {
-    return {
-      topicId: this.props.topicId,
-      modality: this.props.modality ?? null,
-      debtType: this.props.debtType,
-      severity: this.props.severity,
-      description: this.props.description,
-      resolvedAt: this.props.resolvedAt ?? null,
-      resolved: this.props.resolved,
-    };
-  }
 }

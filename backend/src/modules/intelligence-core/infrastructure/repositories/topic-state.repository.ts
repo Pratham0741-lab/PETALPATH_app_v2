@@ -3,6 +3,21 @@ import { TopicState } from '../../domain/entities/topic-state.entity.js';
 import { ITopicStateRepository } from '../../domain/repositories/repository-interfaces.js';
 import { TopicStateType, ModalityStateType } from '../../domain/value-objects/intelligence-types.js';
 
+function toPrismaCreate(entity: TopicState): Record<string, unknown> {
+  return {
+    id: entity.id,
+    childId: entity.childId,
+    topicId: entity.topicId,
+    state: entity.state,
+    modalityStates: entity.modalityStates,
+    enteredAt: entity.enteredAt,
+    lastTransitionAt: entity.lastTransitionAt,
+    transitionReason: entity.transitionReason ?? null,
+    evidenceSummary: entity.evidenceSummary ?? null,
+    createdAt: entity.createdAt,
+  };
+}
+
 function mapToEntity(data: any): TopicState {
   return new TopicState({
     id: data.id,
@@ -22,7 +37,7 @@ function mapToEntity(data: any): TopicState {
 export class TopicStateRepository implements ITopicStateRepository {
   async create(topicState: TopicState): Promise<TopicState> {
     const created = await prisma.topicState.create({
-      data: topicState.toPrismaCreate(),
+      data: toPrismaCreate(topicState) as any,
     });
     return mapToEntity(created);
   }
@@ -50,7 +65,7 @@ export class TopicStateRepository implements ITopicStateRepository {
   async update(topicState: TopicState): Promise<TopicState> {
     const updated = await prisma.topicState.update({
       where: { id: topicState.id },
-      data: topicState.toPrismaCreate(),
+      data: toPrismaCreate(topicState) as any,
     });
     return mapToEntity(updated);
   }

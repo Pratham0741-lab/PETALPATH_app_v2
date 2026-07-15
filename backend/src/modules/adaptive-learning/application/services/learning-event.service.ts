@@ -107,7 +107,7 @@ export class LearningEventApplicationService {
   }
 
   private validateInput(input: CreateLearningEventInput): void {
-    if (!input.eventId || input.eventId.trim() === '') {
+    if (input.eventId !== undefined && input.eventId.trim() === '') {
       throw new Error('Event ID is required');
     }
     if (!Object.values(LearningEventType).includes(input.eventType)) {

@@ -4,6 +4,35 @@ import { SessionBlockType, ActivityType, DifficultyLevel } from '../../domain/va
 import { SessionBlockStatus } from '../../domain/entities/session-block.entity.js';
 import { ISessionBlockRepository } from '../../domain/repositories/repository-interfaces.js';
 
+function toPrismaCreate(entity: SessionBlock): Record<string, unknown> {
+  return {
+    id: entity.id,
+    sessionPlanId: entity.sessionPlanId,
+    skillId: null,
+    subjectId: null,
+    activityType: entity.activityType,
+    difficulty: entity.difficulty,
+    estimatedMinutes: entity.estimatedMinutes,
+    position: entity.order,
+    status: entity.status,
+    isReinforcement: entity.isReinforcement,
+    metadata: entity.metadata ? JSON.stringify(entity.metadata) : null,
+    createdAt: entity.createdAt,
+  };
+}
+
+function toPrismaUpdate(entity: SessionBlock): Record<string, unknown> {
+  return {
+    activityType: entity.activityType,
+    difficulty: entity.difficulty,
+    estimatedMinutes: entity.estimatedMinutes,
+    position: entity.order,
+    status: entity.status,
+    isReinforcement: entity.isReinforcement,
+    metadata: entity.metadata ? JSON.stringify(entity.metadata) : null,
+  };
+}
+
 function mapToEntity(data: any): SessionBlock {
   return new SessionBlock({
     id: data.id,
@@ -27,7 +56,7 @@ function mapToEntity(data: any): SessionBlock {
 export class SessionBlockRepository implements ISessionBlockRepository {
   async create(sessionBlock: SessionBlock): Promise<SessionBlock> {
     const created = await prisma.sessionBlock.create({
-      data: sessionBlock.toPrismaCreate() as any,
+      data: toPrismaCreate(sessionBlock) as any,
     });
     return mapToEntity(created);
   }
@@ -56,7 +85,7 @@ export class SessionBlockRepository implements ISessionBlockRepository {
   async update(sessionBlock: SessionBlock): Promise<SessionBlock> {
     const updated = await prisma.sessionBlock.update({
       where: { id: sessionBlock.id },
-      data: sessionBlock.toPrismaUpdate() as any,
+      data: toPrismaUpdate(sessionBlock) as any,
     });
     return mapToEntity(updated);
   }

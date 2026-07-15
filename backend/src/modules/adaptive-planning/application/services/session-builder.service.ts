@@ -29,10 +29,12 @@ export class SessionBuilderService {
       status: SessionStatus.GENERATED,
     });
 
+    const savedPlan = await this.sessionPlanRepo.create(sessionPlan);
+
     let order = 0;
     for (const block of validatedBlocks) {
       const sessionBlock = SessionBlock.create({
-        sessionPlanId: sessionPlan.id,
+        sessionPlanId: savedPlan.id,
         type: block.type as SessionBlockType,
         topicId: block.topicId,
         modality: block.modality,
@@ -48,7 +50,6 @@ export class SessionBuilderService {
       await this.sessionBlockRepo.create(sessionBlock);
     }
 
-    const savedPlan = await this.sessionPlanRepo.create(sessionPlan);
     return savedPlan;
   }
 

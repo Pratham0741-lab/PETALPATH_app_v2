@@ -3,7 +3,7 @@ import { IKnowledgeStateRepository } from '../../domain/repositories/repository-
 import { TopicState } from '../../domain/entities/topic-state.entity.js';
 import { KnowledgeState } from '../../domain/entities/knowledge-state.entity.js';
 import { MetricSnapshot } from '../../domain/entities/metric-snapshot.entity.js';
-import { TopicStateType, ModalityStateType, KnowledgeStateType } from '../../domain/value-objects/intelligence-types.js';
+import { TopicStateType, ModalityStateType, KnowledgeStateType, Modality } from '../../domain/value-objects/intelligence-types.js';
 
 export interface ClassificationResult {
   topicStates: TopicState[];
@@ -64,6 +64,7 @@ export class ClassificationEngine {
     topicId: string,
     metrics: Record<string, unknown>[]
   ): Promise<TopicState> {
+    let isNew = false;
     let topicState = await this.topicStateRepo.findByChildAndTopic(childId, topicId);
     
     if (!topicState) {
@@ -75,6 +76,7 @@ export class ClassificationEngine {
         enteredAt: new Date(),
         lastTransitionAt: new Date(),
       });
+      isNew = true;
     }
 
     const modalityStates = this.classifyModalityStates(metrics);
@@ -86,7 +88,7 @@ export class ClassificationEngine {
     const overallState = this.deriveTopicState(modalityStates);
     topicState = topicState.transitionTo(overallState, `Classified based on modality states: ${JSON.stringify(modalityStates)}`);
 
-    if (topicState.id === '') {
+    if (isNew) {
       await this.topicStateRepo.create(topicState);
     } else {
       await this.topicStateRepo.update(topicState);
@@ -117,7 +119,7 @@ export class ClassificationEngine {
     if (metrics.length > 0 && metrics[0].speechAccuracy !== undefined) {
       const accuracy = metrics[0].speechAccuracy as number;
       if (accuracy >= 0.85) modalityStates['SPEECH'] = ModalityStateType.MASTERED;
-      else if (accuracy >= 0.7) modalityStates['SPEECH'] = ModalityStateType.STABLE;
+      else if (accuracy >= 0.65) modalityStates['SPEECH'] = ModalityStateType.STABLE;
       else if (accuracy >= 0.5) modalityStates['SPEECH'] = ModalityStateType.LEARNING;
       else modalityStates['SPEECH'] = ModalityStateType.NEEDS_PRACTICE;
     }
@@ -125,7 +127,7 @@ export class ClassificationEngine {
     if (metrics.length > 0 && metrics[0].writingAccuracy !== undefined) {
       const accuracy = metrics[0].writingAccuracy as number;
       if (accuracy >= 0.85) modalityStates['WRITING'] = ModalityStateType.MASTERED;
-      else if (accuracy >= 0.7) modalityStates['WRITING'] = ModalityStateType.STABLE;
+      else if (accuracy >= 0.65) modalityStates['WRITING'] = ModalityStateType.STABLE;
       else if (accuracy >= 0.5) modalityStates['WRITING'] = ModalityStateType.LEARNING;
       else modalityStates['WRITING'] = ModalityStateType.NEEDS_PRACTICE;
     }
@@ -164,38 +166,42 @@ export class ClassificationEngine {
   private async classifyKnowledge(
     childId: string,
     topicStates: TopicState[]
-  ): Promise<any[]> {
-    const results: any[] = [];
+  ): Promise<KnowledgeState[]> {
+    const results: KnowledgeState[] = [];
 
     for (const topicState of topicStates) {
-      let knowledgeState = await this.knowledgeStateRepo.findByChildAndTopic(
-        childId,
-        topicState.topicId
-      );
+      const newState = this.mapTopicToKnowledgeState(topicState.state) as KnowledgeStateType;
+      const confidence = this.calculateConfidence(topicState);
+      const requiredModalities = this.getRequiredModalities(topicState.topicId);
+      const modalityCoverage: Record<string, ModalityStateType> = {};
+      for (const mod of requiredModalities) {
+        modalityCoverage[mod] = topicState.modalityStates[mod] ?? ModalityStateType.NEEDS_PRACTICE;
+      }
 
-      if (!knowledgeState) {
-        const requiredModalities = this.getRequiredModalities(topicState.topicId);
-        const modalityCoverage: Record<string, any> = {};
-        for (const mod of requiredModalities) {
-          modalityCoverage[mod] = topicState.modalityStates[mod] ?? 'REQUIRED';
-        }
+      const existing = await this.knowledgeStateRepo.findByChildAndTopic(childId, topicState.topicId);
 
-        knowledgeState = {
+      let knowledgeState: KnowledgeState;
+      if (!existing) {
+        knowledgeState = KnowledgeState.create({
           childId,
           topicId: topicState.topicId,
-          state: this.mapTopicToKnowledgeState(topicState.state),
-          confidence: this.calculateConfidence(topicState),
+          state: newState,
+          confidence,
           modalityCoverage,
           enteredAt: new Date(),
           lastTransitionAt: new Date(),
-        } as any;
+        });
+        await this.knowledgeStateRepo.create(knowledgeState);
       } else {
-        const newState = this.mapTopicToKnowledgeState(topicState.state);
-        const confidence = this.calculateConfidence(topicState);
-        // knowledgeState = knowledgeState.transitionTo(newState, confidence, 'Updated from topic state');
+        knowledgeState = existing.transitionTo(newState, confidence, `Updated from topic state: ${topicState.state}`);
+        if (JSON.stringify(knowledgeState.modalityCoverage) !== JSON.stringify(modalityCoverage)) {
+          for (const mod of requiredModalities) {
+            knowledgeState = knowledgeState.updateModalityCoverage(mod as Modality, modalityCoverage[mod]);
+          }
+        }
+        await this.knowledgeStateRepo.update(knowledgeState);
       }
 
-      // await this.knowledgeStateRepo.update(knowledgeState);
       results.push(knowledgeState);
     }
 

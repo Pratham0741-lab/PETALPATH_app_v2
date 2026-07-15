@@ -3,18 +3,28 @@
  *
  * Wire type for GET /v1/learner/:childId/recommendation.
  *
- * Phase 1: skillId / sessionPlanId are always null because the endpoint
- * delegates to the existing modality/duration recommendation from the
- * adaptive engine. Later phases fill these fields when the full
- * recommendation algorithm arrives (see design §7.2).
+ * `kind` is a string union of the six recommendation kinds produced by the
+ * deterministic engine (Phase 3.4). The frontend (Phase 2.6
+ * RecommendationsScreen) consumes `kind` as a plain title-cased string, so
+ * widening it from the legacy Prisma enum to this explicit union keeps the
+ * wire contract identical while matching the production engine's output.
  *
  * @see docs/adaptive-engine/design-spec.md §4.1
  */
 
-import type { ActivityType, RecommendationKind } from '../../../shared/enums.js';
+import type { ActivityType } from '../../../shared/enums.js';
+
+/** Recommendation kinds the deterministic engine can emit (Phase 3.4). */
+export type RecommendationKindValue =
+  | 'CONTINUE_LESSON'
+  | 'RETRY_ASSESSMENT'
+  | 'PRACTICE'
+  | 'REVIEW'
+  | 'ROADMAP'
+  | 'REWARD';
 
 export interface RecommendationDto {
-  kind: RecommendationKind;
+  kind: RecommendationKindValue;
   skillId: string | null;
   sessionPlanId: string | null;
   activityType: ActivityType | null;

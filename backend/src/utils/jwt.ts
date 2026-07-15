@@ -1,15 +1,20 @@
+import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
+import { z } from 'zod';
 import { env } from '../config/env.js';
 
-export interface AccessTokenPayload {
-  userId: string;
-  role: string;
-  childId?: string;
-}
+const AccessTokenPayloadSchema = z.object({
+  userId: z.string(),
+  role: z.string(),
+  childId: z.string().optional(),
+});
 
-export interface RefreshTokenPayload {
-  userId: string;
-}
+const RefreshTokenPayloadSchema = z.object({
+  userId: z.string(),
+});
+
+export type AccessTokenPayload = z.infer<typeof AccessTokenPayloadSchema>;
+export type RefreshTokenPayload = z.infer<typeof RefreshTokenPayloadSchema>;
 
 export const generateAccessToken = (payload: AccessTokenPayload): string => {
   return jwt.sign(payload, env.JWT_SECRET, {
@@ -18,15 +23,17 @@ export const generateAccessToken = (payload: AccessTokenPayload): string => {
 };
 
 export const generateRefreshToken = (payload: RefreshTokenPayload): string => {
-  return jwt.sign(payload, env.JWT_REFRESH_SECRET, {
+  return jwt.sign({ ...payload, jti: crypto.randomUUID() }, env.JWT_REFRESH_SECRET, {
     expiresIn: env.REFRESH_TOKEN_EXPIRY as any,
   });
 };
 
 export const verifyAccessToken = (token: string): AccessTokenPayload => {
-  return jwt.verify(token, env.JWT_SECRET) as AccessTokenPayload;
+  const decoded = jwt.verify(token, env.JWT_SECRET);
+  return AccessTokenPayloadSchema.parse(decoded);
 };
 
 export const verifyRefreshToken = (token: string): RefreshTokenPayload => {
-  return jwt.verify(token, env.JWT_REFRESH_SECRET) as RefreshTokenPayload;
+  const decoded = jwt.verify(token, env.JWT_REFRESH_SECRET);
+  return RefreshTokenPayloadSchema.parse(decoded);
 };

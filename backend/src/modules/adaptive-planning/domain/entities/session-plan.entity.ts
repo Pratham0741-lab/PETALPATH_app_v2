@@ -92,24 +92,4 @@ export class SessionPlan {
     });
   }
 
-  toPrismaCreate(): Record<string, unknown> {
-    return {
-      id: this.props.id,
-      child: { connect: { id: this.props.childId } },
-      durationMinutes: this.props.durationMinutes,
-      status: this.props.status,
-      roadmapId: this.props.roadmapId ?? null,
-      startedAt: this.props.startedAt ?? null,
-      completedAt: this.props.completedAt ?? null,
-    };
-  }
-
-  toPrismaUpdate(): Record<string, unknown> {
-    return {
-      status: this.props.status,
-      startedAt: this.props.startedAt ?? null,
-      completedAt: this.props.completedAt ?? null,
-      updatedAt: this.props.updatedAt,
-    };
-  }
 }

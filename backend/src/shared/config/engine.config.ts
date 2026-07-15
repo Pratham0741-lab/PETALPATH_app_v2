@@ -177,6 +177,17 @@ export const engineConfig = {
 
   recommendation: {
     ttlSec: 60,
+    /**
+     * Deterministic engine thresholds (Phase 3.4).
+     * A completed assessment attempt below this percentage is treated as a
+     * "failed" attempt that should be retried.
+     */
+    failedAssessmentThresholdPct: 60,
+    /**
+     * Days of inactivity after which a completed lesson becomes a review
+     * candidate (priority 6).
+     */
+    reviewInactivityDays: 14,
     // Placeholder — algorithm arrives in Phase 2 per design §7.2
     weights: {
       dueReviews: 0.4,
@@ -197,6 +208,23 @@ export const engineConfig = {
    * Phase 4.1 — Learning State Engine
    * Tuning constants for mastery, confidence, and forgetting curve calculations.
    */
+  intervention: {
+    confidenceCollapseThreshold: 20,
+    debtAccumulationThreshold: 3,
+    highSeverityDebtThreshold: 0.8,
+    consecutiveFailuresHigh: 3,
+    consecutiveFailuresMedium: 2,
+    failureRateHigh: 0.6,
+    failureRateLow: 0.4,
+  },
+
+  spacing: {
+    contractFailureRateThreshold: 0.5,
+    contractRetryCountThreshold: 2,
+    expandMasteryThreshold: 85,
+    expandStabilityThreshold: 1,
+  },
+
   learningState: {
     mastery: {
       correctBaseIncrement: 5,

@@ -1,5 +1,5 @@
 import { ReinforcementQueueStatus } from '../value-objects/planning-types.js';
-import { Modality } from '../../../adaptive-learning/domain/value-objects/event-types.js';
+import { Modality } from '../../../../shared/enums.js';
 
 export interface ReinforcementQueueProps {
   id: string;
@@ -92,33 +92,4 @@ export class ReinforcementQueue {
     });
   }
 
-  toPrismaCreate(): Record<string, unknown> {
-    return {
-      id: this.props.id,
-      child: { connect: { id: this.props.childId } },
-      topicId: this.props.topicId,
-      modality: this.props.modality ?? null,
-      startedAt: this.props.startedAt,
-      nextReviewAt: this.props.nextReviewAt,
-      reviewFrequency: this.props.reviewFrequency,
-      reviewCount: this.props.reviewCount,
-      successfulReviews: this.props.successfulReviews,
-      status: this.props.status,
-      priority: this.props.priority,
-    };
-  }
-
-  toPrismaUpdate(): Record<string, unknown> {
-    return {
-      topicId: this.props.topicId,
-      modality: this.props.modality ?? null,
-      startedAt: this.props.startedAt,
-      nextReviewAt: this.props.nextReviewAt,
-      reviewFrequency: this.props.reviewFrequency,
-      reviewCount: this.props.reviewCount,
-      successfulReviews: this.props.successfulReviews,
-      status: this.props.status,
-      priority: this.props.priority,
-    };
-  }
 }

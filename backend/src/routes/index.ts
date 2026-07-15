@@ -13,7 +13,7 @@ import { videoProgressRoutes } from '../modules/video-progress/video-progress.ro
 import { progressRoutes } from '../modules/progress/progress.routes.js';
 import { rewardsRoutes } from '../modules/rewards/rewards.routes.js';
 import { storiesRoutes } from '../modules/stories/stories.routes.js';
-import { questionnairesRoutes } from '../modules/questionnaires/questionnaires.routes.js';
+import { assessmentsRoutes } from '../modules/assessments/assessments.routes.js';
 import { audioRoutes } from '../modules/audio/audio.routes.js';
 import { listenProgressRoutes } from '../modules/listen-progress/listen-progress.routes.js';
 import { speakProgressRoutes } from '../modules/speak-progress/speak-progress.routes.js';
@@ -25,6 +25,7 @@ import { reinforcementRoutes } from '../modules/reinforcement/reinforcement.rout
 import { sessionRoutes } from '../modules/session/session.routes.js';
 import { analyticsRoutes } from '../modules/analytics/analytics.routes.js';
 import { learnerRoutes } from '../modules/learner/learner.routes.js';
+import { notificationsRoutes } from '../modules/notifications/notifications.routes.js';
 import { getLearningEventRoutes } from '../modules/adaptive-learning/index.js';
 import { getIntelligenceCoreRoutes } from '../modules/intelligence-core/index.js';
 import { getAdaptivePlanningRoutes } from '../modules/adaptive-planning/index.js';
@@ -51,7 +52,9 @@ router.use('/video-progress', videoProgressRoutes);
 router.use('/progress', progressRoutes);
 router.use('/rewards', rewardsRoutes);
 router.use('/stories', storiesRoutes);
-router.use('/questionnaires', questionnairesRoutes);
+router.use('/assessments', assessmentsRoutes);
+// Backwards-compatible alias for the legacy /questionnaires stub (Phase 3.1)
+router.use('/questionnaires', assessmentsRoutes);
 router.use('/audio', audioRoutes);
 router.use('/listen-progress', listenProgressRoutes);
 router.use('/speak-progress', speakProgressRoutes);
@@ -72,6 +75,9 @@ router.use('/v1/analytics', analyticsRoutes);
 // Adaptive Learning Engine — Phase 1 (LearnerFacade)
 // See docs/adaptive-engine/design-spec.md §5
 router.use('/v1/learner', learnerRoutes);
+
+// Phase 3.2 — Notifications
+router.use('/notifications', notificationsRoutes);
 
 // Adaptive Learning Engine — Phase 1 (Learning Events & Evidence)
 router.use('/v1/learning-events', getLearningEventRoutes());

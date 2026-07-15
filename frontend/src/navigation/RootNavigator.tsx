@@ -8,7 +8,7 @@ import { useAppStore } from '../store/appStore';
 
 // Screens
 import HomeScreen from '../screens/home';
-import JourneyScreen from '../screens/journey';
+import { ParentDashboardScreen } from '../screens/dashboard/ParentDashboardScreen';
 import MentorScreen from '../screens/mentor';
 import RewardsScreen from '../screens/rewards';
 import ProfileScreen from '../screens/profile';
@@ -27,6 +27,7 @@ import LessonOverviewScreen from '../screens/lesson';
 import LessonCompleteScreen from '../screens/lesson/LessonCompleteScreen';
 import ModuleCompleteScreen from '../screens/lesson/ModuleCompleteScreen';
 import CategoryCompleteScreen from '../screens/lesson/CategoryCompleteScreen';
+import { RecommendationsScreen } from '../screens/recommendations/RecommendationsScreen';
 
 // Auth Screens
 import { LoginScreen } from '../screens/auth/LoginScreen';
@@ -60,8 +61,8 @@ const MobileTabs = () => {
       tabBar={(props) => <BottomNavigation {...props} />}
       screenOptions={{ headerShown: false }}
     >
-      <Tab.Screen name="Home" component={HomeScreen} />
-      <Tab.Screen name="Journey" component={JourneyScreen} />
+      <Tab.Screen name="Home" component={ParentDashboardScreen} />
+      <Tab.Screen name="Journey" component={HomeScreen} />
       <Tab.Screen name="Mentor" component={MentorScreen} />
       <Tab.Screen name="Rewards" component={RewardsScreen} />
       <Tab.Screen name="Profile" component={ProfileScreen} />
@@ -123,6 +124,7 @@ export const RootNavigator = () => {
         <Stack.Screen name="ChildSelection" component={ChildSelectionScreen} />
         <Stack.Screen name="AddChild" component={AddEditChildScreen} />
         <Stack.Screen name="MentorSelection" component={MentorSelectionScreen} />
+        <Stack.Screen name="Recommendations" component={RecommendationsScreen} />
       </Stack.Navigator>
     );
   }
@@ -138,9 +140,9 @@ export const RootNavigator = () => {
             animation: 'fade', // Clean cross-fade transition on larger displays
           }}
         >
-          <Stack.Screen name="Home" component={HomeScreen} />
+          <Stack.Screen name="Home" component={ParentDashboardScreen} />
           <Stack.Screen name="LessonOverview" component={LessonOverviewScreen} />
-          <Stack.Screen name="Journey" component={JourneyScreen} />
+          <Stack.Screen name="Journey" component={HomeScreen} />
           <Stack.Screen name="Mentor" component={MentorScreen} />
           <Stack.Screen name="Rewards" component={RewardsScreen} />
           <Stack.Screen name="Profile" component={ProfileScreen} />
@@ -157,6 +159,7 @@ export const RootNavigator = () => {
           <Stack.Screen name="ChildSelection" component={ChildSelectionScreen} />
           <Stack.Screen name="AddChild" component={AddEditChildScreen} />
           <Stack.Screen name="MentorSelection" component={MentorSelectionScreen} />
+          <Stack.Screen name="Recommendations" component={RecommendationsScreen} />
         </Stack.Navigator>
       </View>
     </View>

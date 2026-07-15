@@ -1,5 +1,6 @@
 import { LearningState } from '../../domain/entities/learning-state.entity.js';
 import { ForgettingCurveConfig } from '../../domain/value-objects/calculation-config.js';
+import { retentionPercentage } from '../../../../shared/retention-formula.js';
 
 export interface ForgettingCurveResult {
   retention: number;
@@ -19,12 +20,7 @@ export class ForgettingCurveService {
     const now = Date.now();
     const lastReview = state.lastReviewedAt?.getTime() ?? state.createdAt.getTime();
     const elapsedDays = Math.max(0, (now - lastReview) / (1000 * 60 * 60 * 24));
-
-    if (state.stability <= 0) return 100;
-    const normalizedTime = elapsedDays / state.stability;
-    return Math.round(
-      100 * Math.exp(-(normalizedTime ** this.config.retentionDecayPower)),
-    );
+    return Math.round(retentionPercentage(state.stability, elapsedDays, this.config.retentionDecayPower));
   }
 
   calculateDecay(state: LearningState, correct: boolean): ForgettingCurveResult {

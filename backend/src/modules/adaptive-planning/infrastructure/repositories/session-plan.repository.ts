@@ -2,6 +2,26 @@ import { prisma } from '../../../../config/database.js';
 import { SessionPlan, SessionStatus } from '../../domain/entities/session-plan.entity.js';
 import { ISessionPlanRepository } from '../../domain/repositories/repository-interfaces.js';
 
+function toPrismaCreate(entity: SessionPlan): Record<string, unknown> {
+  return {
+    id: entity.id,
+    child: { connect: { id: entity.childId } },
+    durationMinutes: entity.durationMinutes,
+    status: entity.status,
+    roadmapId: entity.roadmapId ?? null,
+    startedAt: entity.startedAt ?? null,
+    completedAt: entity.completedAt ?? null,
+  };
+}
+
+function toPrismaUpdate(entity: SessionPlan): Record<string, unknown> {
+  return {
+    status: entity.status,
+    startedAt: entity.startedAt ?? null,
+    completedAt: entity.completedAt ?? null,
+  };
+}
+
 function mapToEntity(data: any): SessionPlan {
   return new SessionPlan({
     id: data.id,
@@ -20,7 +40,7 @@ function mapToEntity(data: any): SessionPlan {
 export class SessionPlanRepository implements ISessionPlanRepository {
   async create(sessionPlan: SessionPlan): Promise<SessionPlan> {
     const created = await prisma.sessionPlan.create({
-      data: sessionPlan.toPrismaCreate() as any,
+      data: toPrismaCreate(sessionPlan) as any,
     });
     return mapToEntity(created);
   }
@@ -49,9 +69,13 @@ export class SessionPlanRepository implements ISessionPlanRepository {
   }
 
   async updateStatus(id: string, status: SessionStatus, data?: any): Promise<SessionPlan> {
+    const updateData: Record<string, unknown> = { status };
+    if (status === SessionStatus.STARTED && data?.startedAt === undefined) {
+      updateData.startedAt = new Date();
+    }
     const updated = await prisma.sessionPlan.update({
       where: { id },
-      data: { status, ...data } as any,
+      data: { ...updateData, ...data } as any,
     });
     return mapToEntity(updated);
   }
@@ -59,7 +83,7 @@ export class SessionPlanRepository implements ISessionPlanRepository {
   async update(sessionPlan: SessionPlan): Promise<SessionPlan> {
     const updated = await prisma.sessionPlan.update({
       where: { id: sessionPlan.id },
-      data: sessionPlan.toPrismaUpdate() as any,
+      data: toPrismaUpdate(sessionPlan) as any,
     });
     return mapToEntity(updated);
   }

@@ -54,7 +54,7 @@ export class LearnerController {
         success: true,
         data: recommendation,
         meta: {
-          generatedAt: recommendation.computedAt,
+          generatedAt: recommendation ? recommendation.computedAt : new Date().toISOString(),
         },
       });
     } catch (error) {

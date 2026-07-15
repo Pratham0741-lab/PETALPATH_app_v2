@@ -37,16 +37,4 @@ export class MetricSnapshot {
   get windowEnd(): Date { return this.props.windowEnd; }
   get createdAt(): Date { return this.props.createdAt; }
 
-  toPrismaCreate(): Record<string, unknown> {
-    return {
-      id: this.props.id,
-      childId: this.props.childId,
-      category: this.props.category,
-      metrics: JSON.stringify(this.props.metrics),
-      calculationVersion: this.props.calculationVersion,
-      windowStart: this.props.windowStart,
-      windowEnd: this.props.windowEnd,
-      createdAt: this.props.createdAt,
-    };
-  }
 }

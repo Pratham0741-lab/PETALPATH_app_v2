@@ -80,7 +80,7 @@ export class CurriculumController {
         throw new UnauthorizedError('Active child profile is not selected');
       }
 
-      const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 3;
+      const limit = Math.min(Math.max(parseInt(req.query.limit as string, 10) || 3, 1), 50);
       const recommendations = await curriculumEngineService.recommendNextSkills(childId, limit);
 
       return res.status(200).json({

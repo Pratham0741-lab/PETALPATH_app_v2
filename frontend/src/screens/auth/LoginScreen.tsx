@@ -1,12 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, TextInput, Alert, ScrollView } from 'react-native';
+import { StyleSheet, View, Text, TextInput, Alert, ScrollView, TouchableOpacity } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import { useMutation } from '@tanstack/react-query';
+import { Ionicons } from '@expo/vector-icons';
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import { ScreenContainer } from '../../components/common/ScreenContainer';
 import { AppButton } from '../../components/buttons/AppButton';
 import { useAppStore } from '../../store/appStore';
 import { colors, spacing, typography, radius, shadows } from '../../theme';
 import { api } from '../../api/client';
+import { toUserMessage } from '../../api/errors';
+import { isValidEmail } from '../../auth';
 
 export const LoginScreen: React.FC = () => {
   const navigation = useNavigation<any>();
@@ -14,9 +18,11 @@ export const LoginScreen: React.FC = () => {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [emailError, setEmailError] = useState('');
+  const [passwordError, setPasswordError] = useState('');
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [formError, setFormError] = useState('');
 
   useEffect(() => {
     GoogleSignin.configure({
@@ -25,27 +31,51 @@ export const LoginScreen: React.FC = () => {
     });
   }, []);
 
-  const handleLogin = async () => {
-    if (!email || !password) {
-      setError('Please fill in all email and password fields.');
+  const loginMutation = useMutation({
+    mutationFn: async (vars: { email: string; password: string }) => {
+      const response = await api.post('/auth/login', vars);
+      return response.data;
+    },
+    onSuccess: (data) => {
+      setSession(data);
+    },
+    onError: (err) => {
+      setFormError(toUserMessage(err));
+    },
+  });
+
+  const validate = (): boolean => {
+    let valid = true;
+    if (!email.trim()) {
+      setEmailError('Please enter your email address.');
+      valid = false;
+    } else if (!isValidEmail(email)) {
+      setEmailError('Please enter a valid email address.');
+      valid = false;
+    } else {
+      setEmailError('');
+    }
+
+    if (!password) {
+      setPasswordError('Please enter your password.');
+      valid = false;
+    } else {
+      setPasswordError('');
+    }
+    return valid;
+  };
+
+  const handleLogin = () => {
+    setFormError('');
+    if (!validate()) {
       return;
     }
-    setLoading(true);
-    setError('');
-    try {
-      const response = await api.post('/auth/login', { email, password });
-      setSession(response.data);
-      Alert.alert('Welcome Back!', `Logged in successfully.`);
-    } catch (err: any) {
-      setError(err.message || 'Login failed. Please try again.');
-    } finally {
-      setLoading(false);
-    }
+    loginMutation.mutate({ email: email.trim(), password });
   };
 
   const handleGoogleLogin = async () => {
     setGoogleLoading(true);
-    setError('');
+    setFormError('');
     try {
       await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
       const response = await GoogleSignin.signIn();
@@ -65,16 +95,18 @@ export const LoginScreen: React.FC = () => {
       if (err.code === statusCodes.SIGN_IN_CANCELLED) {
         console.log('Google Sign-in cancelled');
       } else if (err.code === statusCodes.IN_PROGRESS) {
-        setError('Google sign-in is already in progress.');
+        setFormError('Google sign-in is already in progress.');
       } else if (err.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
-        setError('Google Play Services not available or outdated.');
+        setFormError('Google Play Services not available or outdated.');
       } else {
-        setError(err.message || 'Google sign-in failed.');
+        setFormError(toUserMessage(err));
       }
     } finally {
       setGoogleLoading(false);
     }
   };
+
+  const isLoading = loginMutation.isPending || googleLoading;
 
   return (
     <ScreenContainer>
@@ -85,13 +117,13 @@ export const LoginScreen: React.FC = () => {
         </View>
 
         <View style={styles.form}>
-          {error ? <Text style={styles.errorText}>{error}</Text> : null}
+          {formError ? <Text style={styles.errorText}>{formError}</Text> : null}
 
           {/* Google Sign In (Primary) */}
           <AppButton
             label={googleLoading ? 'Connecting...' : 'Continue with Google'}
             onPress={handleGoogleLogin}
-            disabled={googleLoading}
+            disabled={isLoading}
             variant="primary"
             style={styles.googleBtn}
           />
@@ -107,33 +139,62 @@ export const LoginScreen: React.FC = () => {
             <Text style={styles.label}>Email Address</Text>
             <TextInput
               value={email}
-              onChangeText={setEmail}
+              onChangeText={(text) => {
+                setEmail(text);
+                if (emailError) setEmailError('');
+              }}
               placeholder="explorer@petalpath.com"
               placeholderTextColor={colors.textMuted}
               keyboardType="email-address"
               autoCapitalize="none"
               autoCorrect={false}
-              style={styles.input}
+              textContentType="emailAddress"
+              accessibilityLabel="Email address"
+              editable={!isLoading}
+              style={[styles.input, emailError ? styles.inputError : null]}
             />
+            {emailError ? <Text style={styles.fieldError}>{emailError}</Text> : null}
           </View>
 
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Password</Text>
-            <TextInput
-              value={password}
-              onChangeText={setPassword}
-              placeholder="••••••••"
-              placeholderTextColor={colors.textMuted}
-              secureTextEntry
-              autoCapitalize="none"
-              autoCorrect={false}
-              style={styles.input}
-            />
+            <View style={[styles.inputWrap, passwordError ? styles.inputWrapError : null]}>
+              <TextInput
+                value={password}
+                onChangeText={(text) => {
+                  setPassword(text);
+                  if (passwordError) setPasswordError('');
+                }}
+                placeholder="••••••••"
+                placeholderTextColor={colors.textMuted}
+                secureTextEntry={!showPassword}
+                autoCapitalize="none"
+                autoCorrect={false}
+                textContentType="password"
+                accessibilityLabel="Password"
+                editable={!isLoading}
+                style={[styles.input, styles.inputNoBorder]}
+              />
+              <TouchableOpacity
+                style={styles.eyeButton}
+                onPress={() => setShowPassword((prev) => !prev)}
+                accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+                accessibilityRole="button"
+              >
+                <Ionicons
+                  name={showPassword ? 'eye-off' : 'eye'}
+                  size={20}
+                  color={colors.textMuted}
+                />
+              </TouchableOpacity>
+            </View>
+            {passwordError ? <Text style={styles.fieldError}>{passwordError}</Text> : null}
           </View>
 
           <AppButton
-            label={loading ? 'Logging in...' : 'Login'}
+            label={loginMutation.isPending ? 'Logging in...' : 'Login'}
             onPress={handleLogin}
+            disabled={isLoading}
             variant="primary"
             style={styles.loginBtn}
           />
@@ -141,13 +202,13 @@ export const LoginScreen: React.FC = () => {
           <View style={styles.links}>
             <Text
               style={styles.linkText}
-              onPress={() => navigation.navigate('Register')}
+              onPress={() => !isLoading && navigation.navigate('Register')}
             >
               Don't have an account? Sign Up
             </Text>
             <Text
               style={styles.linkText}
-              onPress={() => navigation.navigate('ForgotPassword')}
+              onPress={() => !isLoading && navigation.navigate('ForgotPassword')}
             >
               Forgot Password?
             </Text>
@@ -208,6 +269,36 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.sm,
     marginBottom: spacing.md,
   },
+  inputError: {
+    borderColor: '#EF4444',
+  },
+  inputWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.background,
+    borderColor: colors.border,
+    borderWidth: 1,
+    borderRadius: radius.md,
+    marginBottom: spacing.md,
+  },
+  inputWrapError: {
+    borderColor: '#EF4444',
+  },
+  inputNoBorder: {
+    flex: 1,
+    borderWidth: 0,
+    marginBottom: 0,
+  },
+  eyeButton: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  fieldError: {
+    color: '#EF4444',
+    fontSize: typography.sizes.xs,
+    marginTop: -spacing.sm,
+    marginBottom: spacing.sm,
+  },
   inputGroup: {
     marginBottom: spacing.xs,
   },
@@ -230,7 +321,7 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.xs,
   },
   loginBtn: {
-    marginTop: spacing.md,
+    marginTop: spacing.sm,
   },
   links: {
     marginTop: spacing.lg,
@@ -245,4 +336,3 @@ const styles = StyleSheet.create({
 });
 
 export default LoginScreen;
-

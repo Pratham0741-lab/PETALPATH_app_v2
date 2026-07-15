@@ -119,7 +119,7 @@ export function getReinforcementQueueService(): ReinforcementQueueService {
 
 export function getRecoveryModeService(): RecoveryModeService {
   if (!recoveryModeService) {
-    recoveryModeService = new RecoveryModeService(getRecoveryModeRepository());
+    recoveryModeService = new RecoveryModeService(getRecoveryModeRepository(), getTopicStateRepository());
   }
   return recoveryModeService;
 }
@@ -150,9 +150,6 @@ export function getAdaptivePlanningController(): AdaptivePlanningController {
       getRecoveryModeService(),
       getSessionBuilder(),
       getRecommendationEngine(),
-      getTopicStateRepository(),
-      getKnowledgeStateRepository(),
-      getRecoveryModeRepository(),
     );
   }
   return adaptivePlanningController;

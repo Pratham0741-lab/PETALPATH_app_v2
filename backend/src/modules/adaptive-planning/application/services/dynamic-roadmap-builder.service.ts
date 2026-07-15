@@ -187,9 +187,9 @@ export class DynamicRoadmapBuilderService {
   private async buildDailyPracticeSection(childId: string, topicStates: any[], knowledgeStates: any[]): Promise<any[]> {
     const items: any[] = [];
     const stableTopics = topicStates.filter(t => t.state === 'STABLE');
+    const existing = await this.practiceRepo.findByChildIdAndDateRange(childId, new Date(), new Date());
 
     for (const topic of stableTopics) {
-      const existing = await this.practiceRepo.findByChildIdAndDateRange(childId, new Date(), new Date());
       const topicExisting = existing.find(e => e.topicId === topic.topicId);
       
       if (!topicExisting) {

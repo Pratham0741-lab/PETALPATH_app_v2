@@ -1,7 +1,37 @@
 import { prisma } from '../../../../config/database.js';
 import { ReinforcementQueue } from '../../domain/entities/reinforcement-queue.entity.js';
 import { IReinforcementQueueRepository } from '../../domain/repositories/repository-interfaces.js';
-import { Modality } from '../../../adaptive-learning/domain/value-objects/event-types.js';
+import { Modality } from '../../../../shared/enums.js';
+
+function toPrismaCreate(entity: ReinforcementQueue): Record<string, unknown> {
+  return {
+    id: entity.id,
+    child: { connect: { id: entity.childId } },
+    topicId: entity.topicId,
+    modality: entity.modality ?? null,
+    startedAt: entity.startedAt,
+    nextReviewAt: entity.nextReviewAt,
+    reviewFrequency: entity.reviewFrequency,
+    reviewCount: entity.reviewCount,
+    successfulReviews: entity.successfulReviews,
+    status: entity.status,
+    priority: entity.priority,
+  };
+}
+
+function toPrismaUpdate(entity: ReinforcementQueue): Record<string, unknown> {
+  return {
+    topicId: entity.topicId,
+    modality: entity.modality ?? null,
+    startedAt: entity.startedAt,
+    nextReviewAt: entity.nextReviewAt,
+    reviewFrequency: entity.reviewFrequency,
+    reviewCount: entity.reviewCount,
+    successfulReviews: entity.successfulReviews,
+    status: entity.status,
+    priority: entity.priority,
+  };
+}
 
 function mapToEntity(data: any): ReinforcementQueue {
   return new ReinforcementQueue({
@@ -24,7 +54,7 @@ function mapToEntity(data: any): ReinforcementQueue {
 export class ReinforcementQueueRepository implements IReinforcementQueueRepository {
   async create(queue: ReinforcementQueue): Promise<ReinforcementQueue> {
     const created = await prisma.topicReinforcementQueue.create({
-      data: queue.toPrismaCreate() as any,
+      data: toPrismaCreate(queue) as any,
     });
     return mapToEntity(created);
   }
@@ -55,7 +85,7 @@ export class ReinforcementQueueRepository implements IReinforcementQueueReposito
   async update(queue: ReinforcementQueue): Promise<ReinforcementQueue> {
     const updated = await prisma.topicReinforcementQueue.update({
       where: { id: queue.id },
-      data: queue.toPrismaUpdate() as any,
+      data: toPrismaUpdate(queue) as any,
     });
     return mapToEntity(updated);
   }

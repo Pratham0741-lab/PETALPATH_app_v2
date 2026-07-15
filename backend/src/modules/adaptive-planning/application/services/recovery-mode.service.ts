@@ -1,19 +1,34 @@
 import { RecoveryMode } from '../../domain/entities/recovery-mode.entity.js';
-import { IRecoveryModeRepository } from '../../domain/repositories/repository-interfaces.js';
+import { IRecoveryModeRepository, ITopicStateRepository } from '../../domain/repositories/repository-interfaces.js';
 import { RecoveryModeStatus } from '../../domain/value-objects/planning-types.js';
 
 export class RecoveryModeService {
   constructor(
     private readonly recoveryModeRepo: IRecoveryModeRepository,
+    private readonly topicStateRepo: ITopicStateRepository,
   ) {}
 
-  async checkAndActivateRecovery(childId: string, topicStates: any[], effortLevel: number): Promise<any | null> {
+  async checkAndActivateRecovery(childId: string): Promise<any | null> {
+    const topicStates = await this.topicStateRepo.findByChildId(childId);
     if (!topicStates || topicStates.length === 0) {
       throw new Error('topicStates required for recovery evaluation');
     }
 
     const existing = await this.recoveryModeRepo.findActiveByChildId(childId);
     if (existing) return existing;
+
+    const effortLevel = topicStates.length > 0
+      ? Math.max(...topicStates.map(t => {
+          switch (t.state) {
+            case 'MASTERED': return 1;
+            case 'STABLE': return 2;
+            case 'LEARNING': return 3;
+            case 'NEEDS_PRACTICE': return 4;
+            case 'NEW': return 5;
+            default: return 3;
+          }
+        }))
+      : 3;
 
     const needsPracticeCount = topicStates.filter(t => t.state === 'NEEDS_PRACTICE').length;
     const weakModalityCount = topicStates.flatMap(t => 

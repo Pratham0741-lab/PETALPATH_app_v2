@@ -4,12 +4,49 @@ import { analyticsService } from './analytics.service.js';
 import { analyticsHistoryRepository } from './repositories/analytics-history.repository.js';
 import { trendEventRepository } from './repositories/trend-event.repository.js';
 import { subjectAnalyticsRepository } from './repositories/subject-analytics.repository.js';
-import { ValidationError, UnauthorizedError } from '../../utils/errors.js';
+import { ValidationError, UnauthorizedError, ForbiddenError, NotFoundError } from '../../utils/errors.js';
+import { prisma } from '../../config/database.js';
 import { z } from 'zod';
+import {
+  overviewQuerySchema,
+  activityQuerySchema,
+  progressQuerySchema,
+  rewardsQuerySchema,
+  timelineQuerySchema,
+} from './analytics.validators.js';
 
 const reportQuerySchema = z.object({
   window: z.enum(['DAILY', 'WEEKLY', 'MONTHLY', 'LIFETIME']).optional().default('WEEKLY'),
 });
+
+/**
+ * Resolves the child context for parent-facing analytics endpoints.
+ * Defaults to the JWT's active child (selected profile) and, optionally,
+ * accepts an explicit `childId` query param — both paths enforce ownership
+ * (the child must belong to the authenticated user), reusing the same
+ * IDOR safeguard semantics as `assertChildOwnership`.
+ */
+async function resolveChildId(req: AuthenticatedRequest): Promise<string> {
+  if (!req.user?.userId) {
+    throw new UnauthorizedError('Authentication required');
+  }
+  const requested = typeof req.query.childId === 'string' ? req.query.childId : undefined;
+  const childId = requested ?? req.user.childId;
+  if (!childId) {
+    throw new UnauthorizedError('Active child profile is not selected');
+  }
+  const child = await prisma.child.findFirst({
+    where: { id: childId, deletedAt: null },
+    select: { userId: true },
+  });
+  if (!child) {
+    throw new NotFoundError('Child profile not found');
+  }
+  if (child.userId !== req.user.userId) {
+    throw new ForbiddenError('Not authorized for this child profile');
+  }
+  return childId;
+}
 
 export class AnalyticsController {
   async getSnapshot(req: AuthenticatedRequest, res: Response, next: NextFunction) {
@@ -38,7 +75,7 @@ export class AnalyticsController {
         throw new UnauthorizedError('Active child profile is not selected');
       }
 
-      const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 50;
+      const limit = Math.min(Math.max(parseInt(req.query.limit as string, 10) || 50, 1), 200);
       const history = await analyticsHistoryRepository.findByChild(childId, limit);
 
       return res.status(200).json({
@@ -57,7 +94,7 @@ export class AnalyticsController {
         throw new UnauthorizedError('Active child profile is not selected');
       }
 
-      const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 50;
+      const limit = Math.min(Math.max(parseInt(req.query.limit as string, 10) || 50, 1), 200);
       const trends = await trendEventRepository.findByChild(childId, limit);
 
       return res.status(200).json({
@@ -127,6 +164,96 @@ export class AnalyticsController {
       return res.status(200).json({
         success: true,
         data: report,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // ──────────────────────────────────────────────
+  //  PARENT-FACING AGGREGATED ANALYTICS (Phase 3.3)
+  // ──────────────────────────────────────────────
+
+  async getOverview(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const parsed = overviewQuerySchema.safeParse(req.query);
+      if (!parsed.success) {
+        throw new ValidationError('Validation failed', parsed.error.format());
+      }
+      const childId = await resolveChildId(req);
+      const metrics = await analyticsService.getOverview(childId);
+      return res.status(200).json({
+        success: true,
+        data: metrics,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getActivity(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const parsed = activityQuerySchema.safeParse(req.query);
+      if (!parsed.success) {
+        throw new ValidationError('Validation failed', parsed.error.format());
+      }
+      const childId = await resolveChildId(req);
+      const series = await analyticsService.getActivity(childId, parsed.data.period);
+      return res.status(200).json({
+        success: true,
+        data: series,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getProgress(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const parsed = progressQuerySchema.safeParse(req.query);
+      if (!parsed.success) {
+        throw new ValidationError('Validation failed', parsed.error.format());
+      }
+      const childId = await resolveChildId(req);
+      const summary = await analyticsService.getProgress(childId);
+      return res.status(200).json({
+        success: true,
+        data: summary,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getRewards(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const parsed = rewardsQuerySchema.safeParse(req.query);
+      if (!parsed.success) {
+        throw new ValidationError('Validation failed', parsed.error.format());
+      }
+      const childId = await resolveChildId(req);
+      const summary = await analyticsService.getRewards(childId);
+      return res.status(200).json({
+        success: true,
+        data: summary,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getTimeline(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const parsed = timelineQuerySchema.safeParse(req.query);
+      if (!parsed.success) {
+        throw new ValidationError('Validation failed', parsed.error.format());
+      }
+      const childId = await resolveChildId(req);
+      const result = await analyticsService.getTimeline(childId, parsed.data.page, parsed.data.limit);
+      return res.status(200).json({
+        success: true,
+        data: result.data,
+        pagination: result.pagination,
       });
     } catch (error) {
       next(error);

@@ -16,7 +16,7 @@ export const createLearningEventSchema = z.object({
   timestamp: z.coerce.date().optional(),
   duration: z.number().int().nonnegative().optional(),
   payload: z.record(z.unknown()).optional(),
-  idempotencyKey: z.string().uuid().optional(),
+  idempotencyKey: z.string().min(1).optional(),
 });
 
 export const getEventsByChildSchema = z.object({

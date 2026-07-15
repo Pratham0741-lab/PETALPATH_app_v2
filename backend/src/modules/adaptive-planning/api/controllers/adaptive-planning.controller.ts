@@ -7,9 +7,7 @@ import { RecoveryModeService } from '../../application/services/recovery-mode.se
 import { SessionBuilderService } from '../../application/services/session-builder.service.js';
 import { RecommendationEngine } from '../../application/services/recommendation-engine.service.js';
 import { ValidationError, UnauthorizedError } from '../../../../utils/errors.js';
-import { ITopicStateRepository } from '../../domain/repositories/repository-interfaces.js';
-import { IKnowledgeStateRepository } from '../../domain/repositories/repository-interfaces.js';
-import { IRecoveryModeRepository } from '../../domain/repositories/repository-interfaces.js';
+import { flattenRoadmapItems } from '../../../../shared/roadmap-utils.js';
 import {
   createRoadmapSchema,
   getRoadmapSchema,
@@ -42,9 +40,6 @@ export class AdaptivePlanningController {
     private readonly recoveryModeService: RecoveryModeService,
     private readonly sessionBuilder: SessionBuilderService,
     private readonly recommendationEngine: RecommendationEngine,
-    private readonly topicStateRepo: ITopicStateRepository,
-    private readonly knowledgeStateRepo: IKnowledgeStateRepository,
-    private readonly recoveryModeRepo: IRecoveryModeRepository,
   ) {}
 
   // Roadmap endpoints
@@ -87,8 +82,8 @@ export class AdaptivePlanningController {
       const roadmap = await this.roadmapBuilder.getRoadmap(childId);
       if (!roadmap) return res.status(404).json({ success: false, message: 'Roadmap not found' });
 
-      const roadmapData = roadmap.roadmapJson as any;
-      const items = this.flattenRoadmapItems(roadmapData, result.data.sectionType, result.data.limit, result.data.offset);
+      const roadmapData = roadmap.roadmapJson as Record<string, unknown>;
+      const items = flattenRoadmapItems(roadmapData, { sectionType: result.data.sectionType, limit: result.data.limit, offset: result.data.offset });
 
       return res.status(200).json({ success: true, data: items });
     } catch (error) { next(error); }
@@ -210,24 +205,7 @@ export class AdaptivePlanningController {
       const result = createRecoveryModeSchema.safeParse(req.body);
       if (!result.success) throw new ValidationError('Invalid data', result.error.format());
 
-      // Fetch topic states for proper recovery evaluation
-      const topicStates = await this.topicStateRepo.findByChildId(childId);
-
-      // Calculate effort level from topic states (based on state)
-      const effortLevel = topicStates.length > 0 
-        ? Math.max(...topicStates.map(t => {
-            switch (t.state) {
-              case 'MASTERED': return 1;
-              case 'STABLE': return 2;
-              case 'LEARNING': return 3;
-              case 'NEEDS_PRACTICE': return 4;
-              case 'NEW': return 5;
-              default: return 3;
-            }
-          })) 
-        : 3;
-
-      const recovery = await this.recoveryModeService.checkAndActivateRecovery(childId, topicStates, effortLevel);
+      const recovery = await this.recoveryModeService.checkAndActivateRecovery(childId);
       
       if (!recovery) {
         return res.status(200).json({ success: true, data: null, message: 'Recovery conditions not met' });
@@ -439,14 +417,4 @@ export class AdaptivePlanningController {
     } catch (error) { next(error); }
   }
 
-  private flattenRoadmapItems(roadmapData: any, sectionType?: string, limit = 50, offset = 0): any[] {
-    const items: any[] = [];
-    for (const section of roadmapData.sections || []) {
-      if (sectionType && section.type !== sectionType) continue;
-      for (const item of section.items || []) {
-        items.push({ ...item, sectionType: section.type });
-      }
-    }
-    return items.slice(offset, offset + limit);
-  }
 }

@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { lessonsService } from './lessons.service.js';
 import { createLessonSchema, updateLessonSchema } from './lessons.validator.js';
 import { ValidationError } from '../../utils/errors.js';
+import { logger } from '../../utils/logger.js';
 
 export class LessonsController {
   async getAll(req: Request, res: Response, next: NextFunction) {
@@ -20,7 +21,7 @@ export class LessonsController {
   async getById(req: Request, res: Response, next: NextFunction) {
     try {
       const { id } = req.params;
-      console.log(`Lesson selected: ${id}`);
+      logger.info({ lessonId: id }, 'lesson selected');
       const lesson = await lessonsService.getLessonById(id);
       if (!lesson) {
         return res.status(404).json({

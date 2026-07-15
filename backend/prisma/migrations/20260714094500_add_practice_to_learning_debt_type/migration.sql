@@ -1,0 +1,1 @@
+ALTER TYPE "LearningDebtType" ADD VALUE 'PRACTICE';

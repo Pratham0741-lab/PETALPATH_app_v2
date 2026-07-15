@@ -1,4 +1,5 @@
-import { Modality, LearningEventType, EvidenceType } from '../../../adaptive-learning/domain/value-objects/event-types.js';
+import { Modality } from '../../../../shared/enums.js';
+import { LearningEventType, EvidenceType } from '../../../adaptive-learning/domain/value-objects/event-types.js';
 
 export enum TopicStateType {
   NEW = 'NEW',

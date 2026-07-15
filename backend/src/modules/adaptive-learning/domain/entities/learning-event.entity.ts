@@ -59,24 +59,4 @@ export class LearningEvent {
   get payload(): Record<string, unknown> | undefined { return this.props.payload; }
   get idempotencyKey(): string { return this.props.idempotencyKey; }
 
-  toPrismaCreate(): Record<string, unknown> {
-    return {
-      eventId: this.props.eventId,
-      eventType: this.props.eventType,
-      eventVersion: this.props.eventVersion,
-      childId: this.props.childId,
-      sessionId: this.props.sessionId,
-      curriculumId: this.props.curriculumId,
-      subjectId: this.props.subjectId,
-      moduleId: this.props.moduleId,
-      topicId: this.props.topicId,
-      conceptId: this.props.conceptId,
-      activityId: this.props.activityId,
-      modality: this.props.modality,
-      timestamp: this.props.timestamp,
-      duration: this.props.duration,
-      payload: this.props.payload ? JSON.stringify(this.props.payload) : null,
-      idempotencyKey: this.props.idempotencyKey,
-    };
-  }
 }

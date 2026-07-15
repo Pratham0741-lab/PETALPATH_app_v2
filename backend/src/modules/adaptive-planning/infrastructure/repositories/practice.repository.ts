@@ -3,6 +3,33 @@ import { Practice } from '../../domain/entities/practice.entity.js';
 import { IPracticeRepository } from '../../domain/repositories/repository-interfaces.js';
 import { PracticeType } from '../../domain/value-objects/planning-types.js';
 
+function toPrismaCreate(entity: Practice): Record<string, unknown> {
+  return {
+    id: entity.id,
+    childId: entity.childId,
+    topicId: entity.topicId,
+    modality: entity.modality ?? null,
+    type: entity.type,
+    debtId: entity.debtId ?? null,
+    scheduledFor: entity.scheduledFor,
+    completedAt: entity.completedAt ?? null,
+    completed: entity.completed,
+    createdAt: entity.createdAt,
+  };
+}
+
+function toPrismaUpdate(entity: Practice): Record<string, unknown> {
+  return {
+    topicId: entity.topicId,
+    modality: entity.modality ?? null,
+    type: entity.type,
+    debtId: entity.debtId ?? null,
+    scheduledFor: entity.scheduledFor,
+    completedAt: entity.completedAt ?? null,
+    completed: entity.completed,
+  };
+}
+
 function mapToEntity(data: any): Practice {
   return new Practice({
     id: data.id,
@@ -21,7 +48,7 @@ function mapToEntity(data: any): Practice {
 export class PracticeRepository implements IPracticeRepository {
   async create(practice: Practice): Promise<Practice> {
     const created = await prisma.practice.create({
-      data: practice.toPrismaCreate(),
+      data: toPrismaCreate(practice) as any,
     });
     return mapToEntity(created);
   }
@@ -89,7 +116,7 @@ export class PracticeRepository implements IPracticeRepository {
   async update(practice: Practice): Promise<Practice> {
     const updated = await prisma.practice.update({
       where: { id: practice.id },
-      data: practice.toPrismaUpdate(),
+      data: toPrismaUpdate(practice) as any,
     });
     return mapToEntity(updated);
   }

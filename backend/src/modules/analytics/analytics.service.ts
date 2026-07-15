@@ -9,6 +9,7 @@ import { analyticsSnapshotRepository } from './repositories/analytics-snapshot.r
 import { analyticsHistoryRepository } from './repositories/analytics-history.repository.js';
 import { trendEventRepository } from './repositories/trend-event.repository.js';
 import { subjectAnalyticsRepository } from './repositories/subject-analytics.repository.js';
+import { analyticsReadRepository } from './repositories/analytics-read.repository.js';
 import { logger } from '../../utils/logger.js';
 import { engineConfig } from '../../shared/config/engine.config.js';
 
@@ -472,6 +473,32 @@ export class AnalyticsService {
       subjects,
       insights,
     };
+  }
+
+  // ──────────────────────────────────────────────
+  //  PARENT-FACING AGGREGATED ANALYTICS (Phase 3.3)
+  //  Read-only rollups over progress, assessments,
+  //  rewards, lessons, videos, speaking/listening/writing.
+  // ──────────────────────────────────────────────
+
+  async getOverview(childId: string) {
+    return analyticsReadRepository.getOverview(childId);
+  }
+
+  async getActivity(childId: string, period: 'daily' | 'weekly' | 'monthly') {
+    return analyticsReadRepository.getActivity(childId, period);
+  }
+
+  async getProgress(childId: string) {
+    return analyticsReadRepository.getProgress(childId);
+  }
+
+  async getRewards(childId: string) {
+    return analyticsReadRepository.getRewards(childId);
+  }
+
+  async getTimeline(childId: string, page: number, limit: number) {
+    return analyticsReadRepository.getTimeline(childId, page, limit);
   }
 }
 

@@ -31,8 +31,7 @@ function getObservationEngine(): ObservationEngine {
 
 function getEvidenceProcessor(): EvidenceProcessor {
   if (!evidenceProcessor) {
-    // Will be initialized with proper repositories when needed
-    evidenceProcessor = new EvidenceProcessor(null as any);
+    evidenceProcessor = new EvidenceProcessor();
   }
   return evidenceProcessor;
 }

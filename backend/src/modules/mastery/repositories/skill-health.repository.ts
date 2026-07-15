@@ -52,6 +52,24 @@ export class SkillHealthRepository {
   }
 
   async upsert(childId: string, skillId: string, data: Prisma.SkillHealthUpdateInput) {
+    const defaults: Prisma.SkillHealthUncheckedCreateInput = {
+      childId,
+      skillId,
+      confidenceScore: 0,
+      retentionScore: 0,
+      engagementScore: 0,
+      consistencyScore: 0,
+      masteryScore: 0,
+      lastPracticed: new Date(),
+      nextReviewDate: new Date(),
+      reviewCount: 0,
+      attemptCount: 0,
+      retryCount: 0,
+      decayFactor: 0.5,
+      frequencyDays: 7,
+      ...data,
+    } as Prisma.SkillHealthUncheckedCreateInput;
+
     return prisma.skillHealth.upsert({
       where: {
         childId_skillId: {
@@ -60,11 +78,7 @@ export class SkillHealthRepository {
         },
       },
       update: data,
-      create: {
-        childId,
-        skillId,
-        ...data,
-      } as Prisma.SkillHealthUncheckedCreateInput,
+      create: defaults,
       include: { skill: true },
     });
   }

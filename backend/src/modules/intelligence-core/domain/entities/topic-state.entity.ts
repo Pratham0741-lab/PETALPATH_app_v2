@@ -72,19 +72,4 @@ export class TopicState {
     });
   }
 
-  toPrismaCreate(): any {
-    return {
-      id: this.props.id,
-      childId: this.props.childId,
-      topicId: this.props.topicId,
-      state: this.props.state,
-      modalityStates: JSON.stringify(this.props.modalityStates),
-      enteredAt: this.props.enteredAt,
-      lastTransitionAt: this.props.lastTransitionAt,
-      transitionReason: this.props.transitionReason ?? null,
-      evidenceSummary: this.props.evidenceSummary ? JSON.stringify(this.props.evidenceSummary) : null,
-      createdAt: this.props.createdAt,
-      updatedAt: this.props.updatedAt,
-    };
-  }
 }

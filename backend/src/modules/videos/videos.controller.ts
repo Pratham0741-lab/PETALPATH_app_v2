@@ -4,6 +4,7 @@ import { createVideoSchema, updateVideoSchema, CreateVideoInput, UpdateVideoInpu
 import { ValidationError } from '../../utils/errors.js';
 import { storageService } from '../../shared/services/storage.service.js';
 import { Video } from '@prisma/client';
+import { logger } from '../../utils/logger.js';
 
 const formatVideo = (video: Video | null) => {
   if (!video) return null;
@@ -42,7 +43,7 @@ export class VideosController {
   async getById(req: Request<{ id: string }>, res: Response, next: NextFunction) {
     try {
       const { id } = req.params;
-      console.log("Video selected: " + id);
+      logger.info({ videoId: id }, 'video selected');
       const video = await videosService.getVideoById(id);
       if (!video) {
         return res.status(404).json({

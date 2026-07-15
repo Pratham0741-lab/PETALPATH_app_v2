@@ -3,6 +3,27 @@ import { LearningEvent, LearningEventProps } from '../../domain/entities/learnin
 import { ILearningEventRepository } from '../../domain/repositories/repository-interfaces.js';
 import { LearningEventType, Modality } from '../../domain/value-objects/event-types.js';
 
+function toPrismaCreate(entity: LearningEvent): Record<string, unknown> {
+  return {
+    eventId: entity.eventId,
+    eventType: entity.eventType,
+    eventVersion: entity.eventVersion,
+    childId: entity.childId,
+    sessionId: entity.sessionId,
+    curriculumId: entity.curriculumId,
+    subjectId: entity.subjectId,
+    moduleId: entity.moduleId,
+    topicId: entity.topicId,
+    conceptId: entity.conceptId,
+    activityId: entity.activityId,
+    modality: entity.modality,
+    timestamp: entity.timestamp,
+    duration: entity.duration,
+    payload: entity.payload ? JSON.stringify(entity.payload) : null,
+    idempotencyKey: entity.idempotencyKey,
+  };
+}
+
 function mapToEntity(data: any): LearningEvent {
   return new LearningEvent({
     eventId: data.eventId as string,
@@ -26,26 +47,8 @@ function mapToEntity(data: any): LearningEvent {
 
 export class LearningEventRepository implements ILearningEventRepository {
   async create(event: LearningEvent): Promise<LearningEvent> {
-    const props = event.toPrismaCreate();
     const created = await prisma.learningEvent.create({
-      data: {
-        eventId: props.eventId as string,
-        eventType: props.eventType as any,
-        eventVersion: props.eventVersion as number,
-        childId: props.childId as string,
-        sessionId: props.sessionId as string,
-        curriculumId: props.curriculumId as string | undefined,
-        subjectId: props.subjectId as string | undefined,
-        moduleId: props.moduleId as string | undefined,
-        topicId: props.topicId as string | undefined,
-        conceptId: props.conceptId as string | undefined,
-        activityId: props.activityId as string | undefined,
-        modality: props.modality as any,
-        timestamp: props.timestamp as Date,
-        duration: props.duration as number | undefined,
-        payload: props.payload as any,
-        idempotencyKey: props.idempotencyKey as string,
-      },
+      data: toPrismaCreate(event) as any,
     });
     return mapToEntity(created);
   }

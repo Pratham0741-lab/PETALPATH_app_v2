@@ -22,11 +22,6 @@ interface HealthResponse {
 export async function checkServerHealth(): Promise<HealthResponse> {
   const url = `${API_URL}/health`;
 
-  // DEBUG ONLY - REMOVE AFTER NETWORK DIAGNOSIS
-  console.log("=== START HEALTH CHECK ===");
-  console.log("URL:", url);
-  // END DEBUG ONLY
-
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 8_000);
@@ -37,16 +32,6 @@ export async function checkServerHealth(): Promise<HealthResponse> {
     });
 
     clearTimeout(timeoutId);
-
-    // DEBUG ONLY - REMOVE AFTER NETWORK DIAGNOSIS
-    console.log("FETCH STATUS", response.status);
-    try {
-      const text = await response.clone().text();
-      console.log(text);
-    } catch (e) {
-      console.log("Error reading response text:", e);
-    }
-    // END DEBUG ONLY
 
     if (response.ok) {
       const json = await response.json();
@@ -60,11 +45,6 @@ export async function checkServerHealth(): Promise<HealthResponse> {
       requestedUrl: url 
     };
   } catch (error: any) {
-    // DEBUG ONLY - REMOVE AFTER NETWORK DIAGNOSIS
-    console.log("FETCH ERROR");
-    console.log(error);
-    // END DEBUG ONLY
-
     let errorDetails = 'Unknown network error';
     if (error) {
       errorDetails = error.message || String(error);

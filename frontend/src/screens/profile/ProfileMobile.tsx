@@ -13,10 +13,18 @@ import { useProgressStore } from '../../store/progressStore';
 import { spacing, colors, typography, radius } from '../../theme';
 import { AppButton } from '../../components/buttons/AppButton';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useQueryClient } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
 import { getAvatarEmoji, getAvatarBgColor } from './ChildSelectionScreen';
 import { useTutorialStore } from '../../store/tutorialStore';
 
+const getInitials = (name?: string | null): string => {
+  if (!name) return '?';
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '?';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+};
 
 export const ProfileMobile: React.FC = () => {
   const navigation = useNavigation<any>();
@@ -27,6 +35,7 @@ export const ProfileMobile: React.FC = () => {
   const toggleMusic = useAppStore((state) => state.toggleMusic);
   const refreshToken = useAppStore((state) => state.refreshToken);
   const clearSession = useAppStore((state) => state.clearSession);
+  const queryClient = useQueryClient();
 
   const { childrenList, activeChild, setActiveChild, refreshChildren } = useChildStore();
   const { totalStars, stickers, badges, refreshRewards } = useRewardsStore();
@@ -90,6 +99,7 @@ export const ProfileMobile: React.FC = () => {
     } finally {
       setActiveChild(null);
       clearSession();
+      queryClient.clear();
     }
   };
 
@@ -240,10 +250,17 @@ export const ProfileMobile: React.FC = () => {
               <AppCard style={styles.card} outlined>
                 <Text style={styles.cardTitle}>Parent Account</Text>
                 <View style={styles.parentRow}>
-                  <Ionicons name="person-circle-outline" size={40} color={colors.purple} style={{ marginRight: spacing.md }} />
+                  <View style={styles.parentAvatar}>
+                    <Text style={styles.parentAvatarText}>{getInitials(user?.name)}</Text>
+                  </View>
                   <View>
                     <Text style={styles.parentName}>{user?.name || 'Explorer Parent'}</Text>
                     <Text style={styles.parentEmail}>{user?.email || 'parent@petalpath.com'}</Text>
+                    <Text style={styles.parentRole}>
+                      {user?.role
+                        ? `${user.role.charAt(0)}${user.role.slice(1).toLowerCase()} Account`
+                        : 'Parent Account'}
+                    </Text>
                   </View>
                 </View>
               </AppCard>
@@ -345,6 +362,30 @@ export const ProfileMobile: React.FC = () => {
                     thumbColor={colors.white}
                   />
                 </View>
+              </AppCard>
+
+              {/* Privacy */}
+              <AppCard style={styles.card}>
+                <Text style={styles.cardTitle}>Privacy</Text>
+                <Text style={styles.infoText}>
+                  Your child's learning activity is stored securely and used only to personalize their experience. We never sell personal information.
+                </Text>
+              </AppCard>
+
+              {/* About */}
+              <AppCard style={styles.card}>
+                <Text style={styles.cardTitle}>About PetalPath</Text>
+                <Text style={styles.infoText}>
+                  PetalPath helps children learn through playful, adaptive activities guided by a friendly companion. This parent section lets you manage profiles and preferences.
+                </Text>
+              </AppCard>
+
+              {/* Help & Support */}
+              <AppCard style={styles.card}>
+                <Text style={styles.cardTitle}>Help &amp; Support</Text>
+                <Text style={styles.infoText}>
+                  For questions or assistance, contact your program administrator or visit the PetalPath Help Center.
+                </Text>
               </AppCard>
 
               {/* Reset Progress */}
@@ -576,6 +617,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
+  parentAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: radius.full,
+    backgroundColor: colors.purple,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: spacing.md,
+  },
+  parentAvatarText: {
+    color: colors.white,
+    fontSize: typography.sizes.md,
+    fontWeight: typography.weights.bold,
+  },
   parentName: {
     fontSize: typography.sizes.sm,
     fontWeight: typography.weights.bold,
@@ -585,6 +640,17 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.xs,
     color: colors.textMuted,
     marginTop: 2,
+  },
+  parentRole: {
+    fontSize: typography.sizes.xs,
+    color: colors.purple,
+    marginTop: 2,
+    fontWeight: typography.weights.bold,
+  },
+  infoText: {
+    fontSize: typography.sizes.xs,
+    color: colors.textMuted,
+    lineHeight: 18,
   },
   sectionHeaderRow: {
     flexDirection: 'row',

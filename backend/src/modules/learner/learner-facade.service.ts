@@ -23,13 +23,14 @@
  * @see docs/adaptive-engine/design-spec.md §4.1
  */
 
-import { adaptiveLearningEngineService } from '../adaptive/adaptive-learning-engine.service.js';
+import { roadmapService } from '../roadmap/roadmap.service.js';
 import { engineConfig } from '../../shared/config/engine.config.js';
-import { RecommendationKind } from '../../shared/enums.js';
+import { ActivityType } from '../../shared/enums.js';
 import { NotFoundError } from '../../utils/errors.js';
 import { prisma } from '../../config/database.js';
 import { learnerStateBuilder } from './learner-state.builder.js';
 import { learnerStateRepository } from './repositories/learner-state.repository.js';
+import { recommendationRepository } from './repositories/recommendation.repository.js';
 import type { LearnerStateDto } from './dto/learner-state.dto.js';
 import type { RecommendationDto } from './dto/recommendation.dto.js';
 import type { LearnerState } from '@prisma/client';
@@ -60,34 +61,155 @@ export class LearnerFacadeService {
   /**
    * Return the next-best-action recommendation.
    *
-   * Phase 1 behavior: delegates to the existing adaptive engine's modality
-   * and duration recommendation to preserve current behavior. The advanced
-   * decision tree (§7.2 of the design) arrives in Phase 2 — this method's
-   * signature will remain stable so downstream consumers do not need to
-   * change.
+   * Deterministic, read-only engine (Phase 3.4). Inspects progress, roadmap,
+   * assessments, rewards and mastery, then returns the single highest-priority
+   * recommendation (or `null` when the learner has no actionable signal yet).
+   *
+   * Priority order (highest → lowest):
+   *   1. CONTINUE_LESSON   — a lesson started but not finished
+   *   2. RETRY_ASSESSMENT  — a completed assessment below the pass threshold
+   *   3. PRACTICE          — the child's weakest skill area
+   *   4. ROADMAP           — the next unlocked, not-yet-started lesson
+   *   5. REWARD            — the next reward the child is close to unlocking
+   *   6. REVIEW            — a completed lesson untouched for a long time
+   *
+   * The signature is stable (returns `RecommendationDto | null`) so the
+   * existing endpoint and consumers are unaffected.
    */
-  async getNextRecommendation(childId: string): Promise<RecommendationDto> {
-    // Ensure a LearnerState exists so the ETag / version numbers are stable.
-    await this.getLearnerState(childId);
+  async getNextRecommendation(childId: string): Promise<RecommendationDto | null> {
+    // Read-only guard: confirm the child exists; surface a clean 404.
+    const child = await prisma.child.findFirst({
+      where: { id: childId, deletedAt: null },
+      select: { id: true },
+    });
+    if (!child) {
+      throw new NotFoundError('Child profile not found');
+    }
 
-    const [preferredModality, optimalSessionDuration] = await Promise.all([
-      adaptiveLearningEngineService.recommendModality(childId),
-      adaptiveLearningEngineService.recommendSessionDuration(childId),
-    ]);
-
+    const profile = await prisma.learningProfile.findUnique({
+      where: { childId },
+      select: { preferredModality: true, optimalSessionDuration: true },
+    });
+    const activityType = profile?.preferredModality ?? engineConfig.session.defaultPreferredModality;
+    const optimalSessionDurationMin =
+      profile?.optimalSessionDuration ?? engineConfig.session.defaultOptimalDurationMinutes;
+    const ttlSec = engineConfig.recommendation.ttlSec;
     const now = new Date();
-    return {
-      kind: RecommendationKind.PRACTICE,
-      skillId: null,
-      sessionPlanId: null,
-      activityType: preferredModality,
-      optimalSessionDurationMin: optimalSessionDuration,
-      reasonCode: 'ADAPTIVE_MODALITY_AND_DURATION',
-      reasonText: `Recommends ${preferredModality} activities in ${optimalSessionDuration} minute sessions based on the child's recent performance.`,
-      confidence: 0.5, // Phase 1 placeholder — real confidence in Phase 2 §7.2.
-      ttlSec: engineConfig.recommendation.ttlSec,
-      computedAt: now.toISOString(),
-    };
+    const computedAt = now.toISOString();
+
+    // 1. Incomplete lesson — resume the in-progress lesson.
+    const incompleteLesson = await recommendationRepository.findIncompleteLesson(childId);
+    if (incompleteLesson) {
+      return {
+        kind: 'CONTINUE_LESSON',
+        skillId: null,
+        sessionPlanId: null,
+        activityType,
+        optimalSessionDurationMin,
+        reasonCode: 'INCOMPLETE_LESSON',
+        reasonText: `Resume "${incompleteLesson.title}" — you started it but haven't finished yet.`,
+        confidence: 0.85,
+        ttlSec,
+        computedAt,
+      };
+    }
+
+    // 2. Failed assessment retry.
+    const failedAttempt = await recommendationRepository.findFailedAssessmentAttempt(
+      childId,
+      engineConfig.recommendation.failedAssessmentThresholdPct
+    );
+    if (failedAttempt) {
+      const pct = Math.round(failedAttempt.percentage ?? 0);
+      return {
+        kind: 'RETRY_ASSESSMENT',
+        skillId: null,
+        sessionPlanId: null,
+        activityType,
+        optimalSessionDurationMin,
+        reasonCode: 'FAILED_ASSESSMENT_RETRY',
+        reasonText: `Retake "${failedAttempt.title}" — your last score was ${pct}%. A quick retry strengthens retention.`,
+        confidence: 0.8,
+        ttlSec,
+        computedAt,
+      };
+    }
+
+    // 3. Weak mastery area — practise the weakest skill.
+    const weakSkill = await recommendationRepository.findWeakestSkill(childId);
+    if (weakSkill) {
+      return {
+        kind: 'PRACTICE',
+        skillId: weakSkill.skillId,
+        sessionPlanId: null,
+        activityType,
+        optimalSessionDurationMin,
+        reasonCode: 'WEAK_MASTERY_AREA',
+        reasonText: `Practice the "${weakSkill.name}" skill — it's currently your weakest area and needs reinforcement.`,
+        confidence: 0.7,
+        ttlSec,
+        computedAt,
+      };
+    }
+
+    // 4. Continue roadmap — the next unlocked, not-yet-started lesson.
+    const roadmap = await roadmapService.getRoadmap(childId);
+    const currentLesson = roadmap.currentLesson;
+    if (currentLesson && !currentLesson.isCompleted) {
+      return {
+        kind: 'ROADMAP',
+        skillId: null,
+        sessionPlanId: null,
+        activityType,
+        optimalSessionDurationMin,
+        reasonCode: 'CONTINUE_ROADMAP',
+        reasonText: `Continue your roadmap with "${currentLesson.title}" — the next lesson ready for you.`,
+        confidence: 0.65,
+        ttlSec,
+        computedAt,
+      };
+    }
+
+    // 5. Reward opportunity — the next reward the child is close to unlocking.
+    const sticker = await recommendationRepository.findNextStickerReward(childId);
+    if (sticker) {
+      const needed = sticker.requiredStars - sticker.currentStars;
+      return {
+        kind: 'REWARD',
+        skillId: null,
+        sessionPlanId: null,
+        activityType: ActivityType.REWARD,
+        optimalSessionDurationMin,
+        reasonCode: 'REWARD_OPPORTUNITY',
+        reasonText: `Earn ${needed} more star${needed === 1 ? '' : 's'} to unlock the "${sticker.name}" reward!`,
+        confidence: 0.6,
+        ttlSec,
+        computedAt,
+      };
+    }
+
+    // 6. Review after long inactivity — refresh a long-completed lesson.
+    const review = await recommendationRepository.findReviewCandidate(
+      childId,
+      engineConfig.recommendation.reviewInactivityDays
+    );
+    if (review) {
+      return {
+        kind: 'REVIEW',
+        skillId: null,
+        sessionPlanId: null,
+        activityType,
+        optimalSessionDurationMin,
+        reasonCode: 'REVIEW_AFTER_INACTIVITY',
+        reasonText: `Review "${review.title}" — you finished it a while ago. A quick refresher keeps it strong.`,
+        confidence: 0.55,
+        ttlSec,
+        computedAt,
+      };
+    }
+
+    // No actionable signal — let the client show its empty state.
+    return null;
   }
 
   /**

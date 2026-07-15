@@ -28,6 +28,39 @@ export class LearningState {
   private readonly props: LearningStateProps;
 
   constructor(props: LearningStateProps) {
+    if (props.mastery < 0 || props.mastery > 100) {
+      throw new Error(`LearningState mastery must be 0-100, got ${props.mastery}`);
+    }
+    if (props.confidence < 0 || props.confidence > 100) {
+      throw new Error(`LearningState confidence must be 0-100, got ${props.confidence}`);
+    }
+    if (props.stability < 0) {
+      throw new Error(`LearningState stability must be >= 0, got ${props.stability}`);
+    }
+    if (props.forgettingRate < 0) {
+      throw new Error(`LearningState forgettingRate must be >= 0, got ${props.forgettingRate}`);
+    }
+    if (props.reviewIntervalDays < 0) {
+      throw new Error(`LearningState reviewIntervalDays must be >= 0, got ${props.reviewIntervalDays}`);
+    }
+    if (props.correctAttempts < 0) {
+      throw new Error(`LearningState correctAttempts must be >= 0, got ${props.correctAttempts}`);
+    }
+    if (props.incorrectAttempts < 0) {
+      throw new Error(`LearningState incorrectAttempts must be >= 0, got ${props.incorrectAttempts}`);
+    }
+    if (props.streak < 0) {
+      throw new Error(`LearningState streak must be >= 0, got ${props.streak}`);
+    }
+    if (props.totalAttempts < 0) {
+      throw new Error(`LearningState totalAttempts must be >= 0, got ${props.totalAttempts}`);
+    }
+    if (props.averageResponseTimeMs < 0) {
+      throw new Error(`LearningState averageResponseTimeMs must be >= 0, got ${props.averageResponseTimeMs}`);
+    }
+    if (props.retryCount < 0) {
+      throw new Error(`LearningState retryCount must be >= 0, got ${props.retryCount}`);
+    }
     this.props = Object.freeze({ ...props });
   }
 
@@ -117,9 +150,13 @@ export class LearningState {
   }
 
   toPrismaCreate(): Record<string, unknown> {
+    const { updatedAt, ...rest } = this.props;
     return {
-      ...this.props,
-      currentModality: this.props.currentModality ?? null,
+      ...rest,
+      currentModality: rest.currentModality ?? null,
+      state: 'NEW',
+      enteredAt: rest.createdAt,
+      lastTransitionAt: rest.createdAt,
     };
   }
 

@@ -9,6 +9,7 @@ import { loggerMiddleware } from './middleware/logger.middleware.js';
 import { errorHandler } from './middleware/error.middleware.js';
 import { rootRouter } from './routes/index.js';
 import { NotFoundError } from './utils/errors.js';
+import { env } from './config/env.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -52,12 +53,12 @@ app.use(
 app.use(compression());
 
 // Standard middlewares
+const allowedOrigins = env.CORS_ORIGINS.split(',').map(s => s.trim()).filter(Boolean);
+if (env.NODE_ENV === 'development') {
+  allowedOrigins.push('http://localhost:8081', 'http://localhost:19006');
+}
 app.use(cors({
-  origin: [
-    "http://localhost:8081",
-    "http://localhost:19006",
-    "http://13.235.178.117"
-  ],
+  origin: allowedOrigins,
   credentials: true
 }));
 app.use(express.json());

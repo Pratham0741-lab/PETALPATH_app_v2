@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useCallback } from 'react';
+import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import {
   StyleSheet,
   ScrollView,
@@ -10,9 +10,13 @@ import {
   useWindowDimensions,
   Animated,
   FlatList,
+  RefreshControl,
 } from 'react-native';
 import { ScreenContainer } from '../../components/common/ScreenContainer';
-import { useNavigation } from '@react-navigation/native';
+import { ErrorState } from '../../components/common/ErrorState';
+import { EmptyState } from '../../components/common/EmptyState';
+import { toUserMessage } from '../../api/errors';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useRoadmapStore, Lesson } from '../../store/roadmapStore';
 import { useChildStore } from '../../store/childStore';
 import { useRewardsStore } from '../../store/rewardsStore';
@@ -623,6 +627,7 @@ export const HomeTablet: React.FC = () => {
     categories,
     currentLesson,
     loading: roadmapLoading,
+    error: roadmapError,
     loadRoadmap,
     selectLesson,
     isLessonUnlocked,
@@ -637,6 +642,20 @@ export const HomeTablet: React.FC = () => {
     loadRoadmap();
     refreshRewards();
   }, []);
+
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await Promise.all([loadRoadmap(), refreshRewards()]);
+    setRefreshing(false);
+  }, [loadRoadmap, refreshRewards]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadRoadmap();
+    }, [loadRoadmap]),
+  );
 
   // 1. Flatten path items
   const pathNodes = useMemo<PathNode[]>(() => {
@@ -826,7 +845,23 @@ export const HomeTablet: React.FC = () => {
           </View>
         </View>
 
-        {roadmapLoading && pathNodes.length === 0 ? (
+        {roadmapError && categories.length === 0 ? (
+          <View style={styles.centerLoader}>
+            <ErrorState
+              title="Couldn't load roadmap"
+              message={toUserMessage(roadmapError)}
+              onRetry={loadRoadmap}
+            />
+          </View>
+        ) : !roadmapLoading && !roadmapError && categories.length === 0 ? (
+          <View style={styles.centerLoader}>
+            <EmptyState
+              icon="🌱"
+              title="No learning path yet"
+              message="New lessons will appear here soon!"
+            />
+          </View>
+        ) : roadmapLoading && pathNodes.length === 0 ? (
           <View style={styles.centerLoader}>
             <ActivityIndicator size="large" color={colors.purple} />
           </View>
@@ -841,6 +876,9 @@ export const HomeTablet: React.FC = () => {
                 getItemLayout={getItemLayout}
                 contentContainerStyle={{ paddingBottom: 100 }}
                 showsVerticalScrollIndicator={false}
+                refreshControl={
+                  <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.purple} />
+                }
                 removeClippedSubviews={Platform.OS === 'android'}
                 maxToRenderPerBatch={6}
                 windowSize={5}

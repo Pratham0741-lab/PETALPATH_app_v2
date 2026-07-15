@@ -14,10 +14,10 @@ const envSchema = z.object({
 
   // Auth secrets — required in production, defaults for local dev
   JWT_SECRET: isProduction
-    ? z.string().min(16, 'JWT_SECRET must be at least 16 characters in production')
+    ? z.string()
     : z.string().default('super-secret-jwt-key'),
   JWT_REFRESH_SECRET: isProduction
-    ? z.string().min(16, 'JWT_REFRESH_SECRET must be at least 16 characters in production')
+    ? z.string()
     : z.string().default('super-secret-refresh-jwt-key'),
   ACCESS_TOKEN_EXPIRY: z.string().default('15m'),
   REFRESH_TOKEN_EXPIRY: z.string().default('7d'),
@@ -29,6 +29,9 @@ const envSchema = z.object({
   GOOGLE_CLIENT_SECRET: isProduction
     ? z.string().min(1, 'GOOGLE_CLIENT_SECRET is required in production')
     : z.string().default('placeholder-google-client-secret'),
+
+  // CORS — comma-separated allowed origins
+  CORS_ORIGINS: z.string().default('http://localhost:8081,http://localhost:19006'),
 
   // CDN
   CDN_BASE_URL: z.string().default('https://dy3um9dzarz6y.cloudfront.net'),
@@ -45,4 +48,26 @@ if (!parsed.success) {
 }
 
 export const env = parsed.data;
+
+// Fail-fast: production deployments must use secure, non-default JWT secrets.
+// The application must never start with known/weak secrets in production.
+if (isProduction) {
+  const secretErrors: string[] = [];
+  if (!env.JWT_SECRET || env.JWT_SECRET.length < 32) {
+    secretErrors.push(
+      'Missing required environment variable JWT_SECRET.\n' +
+      'Production deployments require secure secrets (minimum 32 characters).'
+    );
+  }
+  if (!env.JWT_REFRESH_SECRET || env.JWT_REFRESH_SECRET.length < 32) {
+    secretErrors.push(
+      'Missing required environment variable JWT_REFRESH_SECRET.\n' +
+      'Production deployments require secure secrets (minimum 32 characters).'
+    );
+  }
+  if (secretErrors.length > 0) {
+    console.error(`\n❌ ${secretErrors.join('\n')}\n`);
+    process.exit(1);
+  }
+}
 

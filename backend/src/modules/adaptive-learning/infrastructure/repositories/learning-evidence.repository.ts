@@ -3,6 +3,21 @@ import { LearningEvidence, LearningEvidenceProps } from '../../domain/entities/l
 import { ILearningEvidenceRepository } from '../../domain/repositories/repository-interfaces.js';
 import { Modality, EvidenceType } from '../../domain/value-objects/event-types.js';
 
+function toPrismaCreate(entity: LearningEvidence): Record<string, unknown> {
+  return {
+    id: entity.id,
+    eventId: entity.eventId,
+    childId: entity.childId,
+    sessionId: entity.sessionId,
+    activityId: entity.activityId,
+    topicId: entity.topicId,
+    modality: entity.modality,
+    evidenceType: entity.evidenceType,
+    observation: JSON.stringify(entity.observation),
+    createdAt: entity.createdAt,
+  };
+}
+
 function mapToEntity(data: any): LearningEvidence {
   return new LearningEvidence({
     id: data.id as string,
@@ -20,26 +35,14 @@ function mapToEntity(data: any): LearningEvidence {
 
 export class LearningEvidenceRepository implements ILearningEvidenceRepository {
   async create(evidence: LearningEvidence): Promise<LearningEvidence> {
-    const props = evidence.toPrismaCreate();
     const created = await prisma.learningEvidence.create({
-      data: {
-        id: props.id as string,
-        eventId: props.eventId as string,
-        childId: props.childId as string,
-        sessionId: props.sessionId as string,
-        activityId: props.activityId as string | undefined,
-        topicId: props.topicId as string | undefined,
-        modality: props.modality as any,
-        evidenceType: props.evidenceType as any,
-        observation: props.observation as any,
-        createdAt: props.createdAt as Date,
-      },
+      data: toPrismaCreate(evidence) as any,
     });
     return mapToEntity(created);
   }
 
   async findByEventId(eventId: string): Promise<LearningEvidence | null> {
-    const data = await prisma.learningEvidence.findUnique({
+    const data = await prisma.learningEvidence.findFirst({
       where: { eventId },
     });
     return data ? mapToEntity(data) : null;

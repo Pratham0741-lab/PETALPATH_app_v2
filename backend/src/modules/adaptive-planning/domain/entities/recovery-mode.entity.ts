@@ -62,31 +62,4 @@ export class RecoveryMode {
     });
   }
 
-  toPrismaCreate(): any {
-    return {
-      id: this.props.id,
-      childId: this.props.childId,
-      status: this.props.status,
-      triggerReason: this.props.triggerReason,
-      enteredAt: this.props.enteredAt,
-      resolvedAt: this.props.resolvedAt ?? null,
-      effortTierDrop: this.props.effortTierDrop,
-      minTopicsAtTier: this.props.minTopicsAtTier,
-      currentTier: this.props.currentTier,
-      createdAt: this.props.createdAt,
-      updatedAt: this.props.updatedAt,
-    };
-  }
-
-  toPrismaUpdate(): any {
-    return {
-      status: this.props.status,
-      triggerReason: this.props.triggerReason,
-      resolvedAt: this.props.resolvedAt ?? null,
-      effortTierDrop: this.props.effortTierDrop,
-      minTopicsAtTier: this.props.minTopicsAtTier,
-      currentTier: this.props.currentTier,
-      updatedAt: this.props.updatedAt,
-    };
-  }
 }

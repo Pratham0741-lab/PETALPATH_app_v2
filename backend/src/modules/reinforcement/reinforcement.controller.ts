@@ -96,7 +96,7 @@ export class ReinforcementController {
         throw new UnauthorizedError('Active child profile is not selected');
       }
 
-      const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 50;
+      const limit = Math.min(Math.max(parseInt(req.query.limit as string, 10) || 50, 1), 200);
       const history = await reinforcementEngineService.getHistory(childId, limit);
 
       return res.status(200).json({
@@ -115,7 +115,7 @@ export class ReinforcementController {
         throw new UnauthorizedError('Active child profile is not selected');
       }
 
-      const limit = req.query.limit ? parseInt(req.query.limit as string, 10) : 50;
+      const limit = Math.min(Math.max(parseInt(req.query.limit as string, 10) || 50, 1), 200);
       const events = await reinforcementEngineService.getEvents(childId, limit);
 
       return res.status(200).json({

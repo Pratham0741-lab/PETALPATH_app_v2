@@ -85,34 +85,4 @@ export class SessionBlock {
     });
   }
 
-  toPrismaCreate(): Record<string, unknown> {
-    return {
-      id: this.props.id,
-      sessionPlan: { connect: { id: this.props.sessionPlanId } },
-      skillId: null,
-      subjectId: null,
-      activityType: this.props.activityType,
-      difficulty: this.props.difficulty,
-      estimatedMinutes: this.props.estimatedMinutes,
-      position: this.props.order,
-      status: this.props.status,
-      isReinforcement: this.props.isReinforcement,
-      metadata: this.props.metadata ? JSON.stringify(this.props.metadata) : null,
-      createdAt: this.props.createdAt,
-      updatedAt: this.props.updatedAt,
-    };
-  }
-
-  toPrismaUpdate(): Record<string, unknown> {
-    return {
-      activityType: this.props.activityType,
-      difficulty: this.props.difficulty,
-      estimatedMinutes: this.props.estimatedMinutes,
-      position: this.props.order,
-      status: this.props.status,
-      isReinforcement: this.props.isReinforcement,
-      metadata: this.props.metadata ? JSON.stringify(this.props.metadata) : null,
-      updatedAt: this.props.updatedAt,
-    };
-  }
 }

@@ -1,0 +1,2 @@
+DO $$ DECLARE r RECORD; BEGIN FOR r IN (SELECT tablename FROM pg_tables WHERE schemaname = 'public') LOOP EXECUTE 'DROP TABLE IF EXISTS "' || r.tablename || '" CASCADE'; END LOOP; END $$;
+DROP TYPE IF EXISTS "MasteryState", "CurriculumState", "ActivityType", "ReinforcementEventType", "AdaptationEventType", "LearningEventType", "Modality", "EvidenceType", "TopicStateType", "ModalityStateType", "AnalyticsMetricType", "TrendEventType", "RecommendationKind", "SessionStatus", "SessionBlockStatus", "SessionEventType", "DifficultyLevel" CASCADE;

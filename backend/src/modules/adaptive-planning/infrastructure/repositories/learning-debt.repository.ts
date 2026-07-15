@@ -2,6 +2,33 @@ import { prisma } from '../../../../config/database.js';
 import { LearningDebt } from '../../domain/entities/learning-debt.entity.js';
 import { ILearningDebtRepository } from '../../domain/repositories/repository-interfaces.js';
 
+function toPrismaCreate(entity: LearningDebt): Record<string, unknown> {
+  return {
+    id: entity.id,
+    childId: entity.childId,
+    topicId: entity.topicId,
+    modality: entity.modality ?? null,
+    debtType: entity.debtType,
+    severity: entity.severity,
+    description: entity.description,
+    createdAt: entity.createdAt,
+    resolvedAt: entity.resolvedAt ?? null,
+    resolved: entity.resolved,
+  };
+}
+
+function toPrismaUpdate(entity: LearningDebt): Record<string, unknown> {
+  return {
+    topicId: entity.topicId,
+    modality: entity.modality ?? null,
+    debtType: entity.debtType,
+    severity: entity.severity,
+    description: entity.description,
+    resolvedAt: entity.resolvedAt ?? null,
+    resolved: entity.resolved,
+  };
+}
+
 function mapToEntity(data: any): LearningDebt {
   return new LearningDebt({
     id: data.id,
@@ -20,7 +47,7 @@ function mapToEntity(data: any): LearningDebt {
 export class LearningDebtRepository implements ILearningDebtRepository {
   async create(debt: LearningDebt): Promise<LearningDebt> {
     const created = await prisma.learningDebt.create({
-      data: debt.toPrismaCreate(),
+      data: toPrismaCreate(debt) as any,
     });
     return mapToEntity(created);
   }
@@ -65,7 +92,7 @@ export class LearningDebtRepository implements ILearningDebtRepository {
   async update(debt: LearningDebt): Promise<LearningDebt> {
     const updated = await prisma.learningDebt.update({
       where: { id: debt.id },
-      data: debt.toPrismaUpdate(),
+      data: toPrismaUpdate(debt) as any,
     });
     return mapToEntity(updated);
   }

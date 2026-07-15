@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { activitiesService } from './activities.service.js';
 import { createActivitySchema, updateActivitySchema } from './activities.validator.js';
 import { ValidationError } from '../../utils/errors.js';
+import { logger } from '../../utils/logger.js';
 
 export class ActivitiesController {
   async getAll(req: Request, res: Response, next: NextFunction) {
@@ -20,7 +21,7 @@ export class ActivitiesController {
   async getById(req: Request, res: Response, next: NextFunction) {
     try {
       const { id } = req.params;
-      console.log(`Activity selected: ${id}`);
+      logger.info({ activityId: id }, 'activity selected');
       const activity = await activitiesService.getActivityById(id);
       if (!activity) {
         return res.status(404).json({

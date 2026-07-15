@@ -18,7 +18,7 @@ export const errorHandler = (
     });
 
     // Handle ValidationErrors which might have detailed validation objects
-    const validationErrors = (err as any).errors;
+    const validationErrors = 'errors' in err ? (err as Record<string, unknown>).errors : undefined;
 
     return res.status(err.statusCode).json({
       success: false,

@@ -1,10 +1,11 @@
 import { DynamicRoadmap } from '../../domain/entities/dynamic-roadmap.entity.js';
 import { RecoveryModeStatus } from '../../domain/value-objects/planning-types.js';
+import { flattenRoadmapItems } from '../../../../shared/roadmap-utils.js';
 
 export class RecommendationEngine {
   async getNextActivity(childId: string, roadmap: DynamicRoadmap, currentSessionProgress: number): Promise<any> {
-    const roadmapData = roadmap.roadmapJson as any;
-    const items = this.flattenRoadmapItems(roadmapData);
+    const roadmapData = roadmap.roadmapJson as Record<string, unknown>;
+    const items = flattenRoadmapItems(roadmapData, { sortByOrder: true });
     
     // Find next incomplete item
     const nextItem = items.find(item => !item.completed);
@@ -31,8 +32,8 @@ export class RecommendationEngine {
   }
 
   async getNextTopic(childId: string, roadmap: DynamicRoadmap): Promise<any> {
-    const roadmapData = roadmap.roadmapJson as any;
-    const items = this.flattenRoadmapItems(roadmapData);
+    const roadmapData = roadmap.roadmapJson as Record<string, unknown>;
+    const items = flattenRoadmapItems(roadmapData, { sortByOrder: true });
     
     const nextLearningItem = items.find(item => 
       item.sectionType === 'NEW_LEARNING' && !item.completed
@@ -57,16 +58,16 @@ export class RecommendationEngine {
 
   // Returns next practice item from already-generated roadmap
   async getPracticeRecommendation(childId: string, roadmap: DynamicRoadmap): Promise<any> {
-    const roadmapData = roadmap.roadmapJson as any;
-    const items = this.flattenRoadmapItems(roadmapData);
+    const roadmapData = roadmap.roadmapJson as Record<string, unknown>;
+    const items = flattenRoadmapItems(roadmapData, { sortByOrder: true });
     
     // Find first incomplete practice item in priority order
     const sectionPriority = ['RECOVERY', 'DAILY_PRACTICE', 'MASTERY_PRACTICE', 'REINFORCEMENT'];
     
     for (const sectionType of sectionPriority) {
-      const section = (roadmapData.sections || []).find((s: any) => s.type === sectionType);
+      const section = ((roadmapData.sections as any[]) || []).find((s: any) => s.type === sectionType);
       if (section) {
-        const nextItem = (section.items || []).find((item: any) => !item.completed);
+        const nextItem = ((section as any).items || []).find((item: any) => !item.completed);
         if (nextItem) {
           return {
             action: 'NEXT_PRACTICE',
@@ -136,19 +137,6 @@ export class RecommendationEngine {
         { type: 'REWARD', topicId: null, duration: 2 },
       ],
     };
-  }
-
-  private flattenRoadmapItems(roadmapData: any): any[] {
-    const items: any[] = [];
-    for (const section of roadmapData.sections || []) {
-      for (const item of section.items || []) {
-        items.push({
-          ...item,
-          sectionType: section.type,
-        });
-      }
-    }
-    return items.sort((a, b) => a.order - b.order);
   }
 
   private getActivityReason(item: any): string {

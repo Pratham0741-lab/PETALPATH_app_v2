@@ -51,25 +51,4 @@ export class DynamicRoadmap {
     return new Date() < this.props.validUntil;
   }
 
-  toPrismaCreate(): any {
-    return {
-      id: this.props.id,
-      childId: this.props.childId,
-      roadmapJson: JSON.stringify(this.props.roadmapJson),
-      version: this.props.version,
-      generatedAt: this.props.generatedAt,
-      validUntil: this.props.validUntil ?? null,
-      createdAt: this.props.createdAt,
-      updatedAt: this.props.updatedAt,
-    };
-  }
-
-  toPrismaUpdate(): any {
-    return {
-      roadmapJson: JSON.stringify(this.props.roadmapJson),
-      version: this.props.version,
-      validUntil: this.props.validUntil ?? null,
-      updatedAt: this.props.updatedAt,
-    };
-  }
 }

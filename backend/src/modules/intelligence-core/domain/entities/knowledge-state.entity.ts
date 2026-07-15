@@ -83,19 +83,4 @@ export class KnowledgeState {
     });
   }
 
-  toPrismaCreate(): any {
-    return {
-      id: this.props.id,
-      childId: this.props.childId,
-      topicId: this.props.topicId,
-      state: this.props.state,
-      confidence: this.props.confidence,
-      modalityCoverage: JSON.stringify(this.props.modalityCoverage),
-      enteredAt: this.props.enteredAt,
-      lastTransitionAt: this.props.lastTransitionAt,
-      transitionReason: this.props.transitionReason ?? null,
-      createdAt: this.props.createdAt,
-      updatedAt: this.props.updatedAt,
-    };
-  }
 }
