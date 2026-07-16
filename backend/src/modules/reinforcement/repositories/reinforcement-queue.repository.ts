@@ -1,5 +1,6 @@
 import { prisma } from '../../../config/database.js';
 import { MasteryState } from '../../../shared/enums.js';
+import { Prisma } from '@prisma/client';
 
 export class ReinforcementQueueRepository {
   async upsert(
@@ -11,9 +12,11 @@ export class ReinforcementQueueRepository {
       reason: string;
       nextReviewDate: Date;
       isCompleted?: boolean;
-    }
+    },
+    tx?: Prisma.TransactionClient,
   ) {
-    return prisma.reinforcementQueue.upsert({
+    const client = tx ?? prisma;
+    return client.reinforcementQueue.upsert({
       where: {
         childId_skillId: { childId, skillId },
       },
@@ -29,7 +32,6 @@ export class ReinforcementQueueRepository {
         skillId,
         ...data,
       },
-      include: { skill: true },
     });
   }
 
@@ -53,17 +55,18 @@ export class ReinforcementQueueRepository {
     });
   }
 
-  async findByChildAndSkill(childId: string, skillId: string) {
-    return prisma.reinforcementQueue.findUnique({
+  async findByChildAndSkill(childId: string, skillId: string, tx?: Prisma.TransactionClient) {
+    const client = tx ?? prisma;
+    return client.reinforcementQueue.findUnique({
       where: {
         childId_skillId: { childId, skillId },
       },
-      include: { skill: true },
     });
   }
 
-  async markCompleted(childId: string, skillId: string) {
-    return prisma.reinforcementQueue.update({
+  async markCompleted(childId: string, skillId: string, tx?: Prisma.TransactionClient) {
+    const client = tx ?? prisma;
+    return client.reinforcementQueue.update({
       where: {
         childId_skillId: { childId, skillId },
       },
@@ -71,8 +74,9 @@ export class ReinforcementQueueRepository {
     }).catch(() => null);
   }
 
-  async removeByChildAndSkill(childId: string, skillId: string) {
-    return prisma.reinforcementQueue.delete({
+  async removeByChildAndSkill(childId: string, skillId: string, tx?: Prisma.TransactionClient) {
+    const client = tx ?? prisma;
+    return client.reinforcementQueue.delete({
       where: {
         childId_skillId: { childId, skillId },
       },

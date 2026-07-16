@@ -29,13 +29,18 @@ import { notificationsRoutes } from '../modules/notifications/notifications.rout
 import { getLearningEventRoutes } from '../modules/adaptive-learning/index.js';
 import { getIntelligenceCoreRoutes } from '../modules/intelligence-core/index.js';
 import { getAdaptivePlanningRoutes } from '../modules/adaptive-planning/index.js';
+import { sessionPlannerRoutes } from '../modules/session-planner/session-planner.routes.js';
+import {
+  adaptiveCurriculumPublicRoutes,
+  adaptiveCurriculumAdminRoutes,
+} from '../modules/adaptive-curriculum/adaptive-curriculum.routes.js';
+import { placementRoutes } from '../modules/placement/placement.routes.js';
+import { skillRoadmapRoutes } from '../modules/skill-roadmap/skill-roadmap.routes.js';
+import masteryEngineRoutes from '../modules/mastery-engine/mastery-engine.routes.js';
+import aiTutorRoutes from '../modules/ai-tutor/ai-tutor.routes.js';
+import { adaptationRoutes } from '../modules/adaptation/adaptation.routes.js';
 
 const router = Router();
-
-// Health Check Endpoint
-router.get('/health', (req, res) => {
-  res.status(200).json({ status: 'ok' });
-});
 
 // Mounted API Routes
 router.use('/auth', authRoutes);
@@ -87,6 +92,19 @@ router.use('/v1/intelligence-core', getIntelligenceCoreRoutes());
 
 // Adaptive Learning Engine — Phase 3 (Adaptive Planning)
 router.use('/v1/adaptive-planning', getAdaptivePlanningRoutes());
+router.use('/session-planner', sessionPlannerRoutes);
+router.use('/adaptive-curriculum', adaptiveCurriculumPublicRoutes);
+router.use('/admin/adaptive-curriculum', adaptiveCurriculumAdminRoutes);
+router.use('/placement', placementRoutes);
+router.use('/adaptive-roadmap', skillRoadmapRoutes);
+router.use('/mastery-engine', masteryEngineRoutes);
+router.use('/v1/mastery-engine', masteryEngineRoutes);
+
+router.use('/ai-tutor', aiTutorRoutes);
+router.use('/v1/ai-tutor', aiTutorRoutes);
+
+router.use('/adaptation', adaptationRoutes);
+router.use('/v1/adaptation', adaptationRoutes);
 
 export { router as rootRouter };
 

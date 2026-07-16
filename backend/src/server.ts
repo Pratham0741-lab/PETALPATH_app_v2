@@ -2,6 +2,8 @@ import app from './app.js';
 import { env } from './config/env.js';
 import { prisma } from './config/database.js';
 import { logger } from './utils/logger.js';
+import { setupGracefulShutdown } from './utils/shutdown.js';
+import { startJobs } from './jobs/index.js';
 
 const startServer = async () => {
   try {
@@ -13,19 +15,8 @@ const startServer = async () => {
       logger.info(`Server listening on port ${env.PORT} in ${env.NODE_ENV} mode.`);
     });
 
-    const shutdown = async (signal: string) => {
-      logger.info(`Received ${signal}. Shutting down gracefully...`);
-      server.close(async () => {
-        logger.info('HTTP server closed.');
-        await prisma.$disconnect();
-        logger.info('Database disconnected.');
-        process.exit(0);
-      });
-    };
-
-    process.on('SIGTERM', () => shutdown('SIGTERM'));
-    process.on('SIGINT', () => shutdown('SIGINT'));
-
+    setupGracefulShutdown(server);
+    startJobs();
   } catch (error) {
     logger.error(error as Error, 'Startup failed');
     process.exit(1);

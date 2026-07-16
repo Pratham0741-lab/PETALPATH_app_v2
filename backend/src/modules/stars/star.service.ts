@@ -16,12 +16,15 @@ export class StarService {
   }
 
   async updateTotalStars(childId: string): Promise<number> {
-    // Sum total stars of completed lesson progress records
     const lessonsProgress = await prisma.lessonProgress.findMany({
       where: { childId },
     });
+    const storyProgress = await prisma.storyProgress.findMany({
+      where: { childId },
+    });
 
-    const totalStars = lessonsProgress.reduce((sum, lp) => sum + lp.totalStars, 0);
+    const totalStars = lessonsProgress.reduce((sum, lp) => sum + lp.totalStars, 0)
+      + storyProgress.reduce((sum, sp) => sum + sp.starsEarned, 0);
 
     // Upsert the child's Stars record
     await prisma.stars.upsert({

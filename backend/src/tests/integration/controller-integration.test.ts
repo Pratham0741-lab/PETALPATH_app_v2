@@ -20,8 +20,8 @@ const request = supertest(app);
 
 describe('Controller Integration — HTTP → Controller → Application → Repository → Database → Response', () => {
   describe('1. Health Check (no auth)', () => {
-    it('GET /api/health returns 200 { status: ok }', async () => {
-      const res = await request.get('/api/health');
+    it('GET /health returns 200 with health data', async () => {
+      const res = await request.get('/health');
 
       expect(res.status).toBe(200);
       expect(res.body.status).toBe('ok');

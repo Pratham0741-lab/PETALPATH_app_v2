@@ -6,6 +6,7 @@ import { reinforcementEventRepository } from './repositories/reinforcement-event
 import { skillHealthRepository } from '../mastery/repositories/skill-health.repository.js';
 import { learningProfileRepository } from '../adaptive/repositories/learning-profile.repository.js';
 import { logger } from '../../utils/logger.js';
+import { Prisma } from '@prisma/client';
 
 /**
  * Modality rotation sequence. The engine cycles through these to avoid
@@ -91,7 +92,8 @@ export class ReinforcementEngineService {
       retentionScore: number;
       confidenceScore: number;
       masteryState: MasteryState;
-    }
+    },
+    tx?: Prisma.TransactionClient,
   ) {
     const priority = this.calculatePriority(
       health.masteryScore,
@@ -100,14 +102,14 @@ export class ReinforcementEngineService {
     );
     const nextReviewDate = this.calculateNextReviewDate(health.masteryState);
 
-    const existing = await reinforcementQueueRepository.findByChildAndSkill(childId, skillId);
+    const existing = await reinforcementQueueRepository.findByChildAndSkill(childId, skillId, tx);
 
     const entry = await reinforcementQueueRepository.upsert(childId, skillId, {
       priority,
       masteryState: health.masteryState,
       reason: `Mastery score ${health.masteryScore.toFixed(1)} is below 85% reinforcement threshold.`,
       nextReviewDate,
-    });
+    }, tx);
 
     // Only fire event if this is a new queue entry
     if (!existing || existing.isCompleted) {
@@ -120,7 +122,7 @@ export class ReinforcementEngineService {
           masteryScore: health.masteryScore,
           nextReviewDate: nextReviewDate.toISOString(),
         },
-      });
+      }, tx);
     }
 
     return entry;
@@ -171,8 +173,8 @@ export class ReinforcementEngineService {
   /**
    * Marks a skill as completed and removes it from the active queue.
    */
-  async removeCompletedSkill(childId: string, skillId: string) {
-    await reinforcementQueueRepository.removeByChildAndSkill(childId, skillId);
+  async removeCompletedSkill(childId: string, skillId: string, tx?: Prisma.TransactionClient) {
+    await reinforcementQueueRepository.markCompleted(childId, skillId, tx);
   }
 
   // ──────────────────────────────────────────────

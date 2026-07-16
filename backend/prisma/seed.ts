@@ -702,6 +702,34 @@ async function main() {
     }
   }
 
+  // Seed stories
+  await prisma.story.deleteMany({});
+  const stories = [
+    { title: 'The Brave Little Seed', description: 'A story about a seed that learns to grow', category: 'FICTION', difficulty: 'EASY', readingLevel: 1, estimatedDuration: 3 },
+    { title: 'Colors of the Rainbow', description: 'Learn about colors through a fun adventure', category: 'EDUCATIONAL', difficulty: 'EASY', readingLevel: 1, estimatedDuration: 4 },
+    { title: 'Numbers Around Us', description: 'Discover numbers in everyday life', category: 'EDUCATIONAL', difficulty: 'EASY', readingLevel: 1, estimatedDuration: 4 },
+    { title: 'The Kindness Monster', description: 'A friendly monster teaches kindness', category: 'FICTION', difficulty: 'MEDIUM', readingLevel: 2, estimatedDuration: 5 },
+    { title: 'Alphabet Adventure', description: 'Explore the alphabet from A to Z', category: 'EDUCATIONAL', difficulty: 'EASY', readingLevel: 1, estimatedDuration: 5 },
+    { title: 'The Moonlight Garden', description: 'Magical garden adventures under the moonlight', category: 'FICTION', difficulty: 'MEDIUM', readingLevel: 2, estimatedDuration: 6 },
+    { title: 'Weather Wonders', description: 'Learn about sunny, rainy, and snowy days', category: 'EDUCATIONAL', difficulty: 'MEDIUM', readingLevel: 2, estimatedDuration: 5 },
+    { title: 'The Flying Turtle', description: 'A turtle who dreams of flying', category: 'FICTION', difficulty: 'HARD', readingLevel: 3, estimatedDuration: 7 },
+  ];
+
+  for (const storyData of stories) {
+    const story = await prisma.story.create({ data: storyData });
+
+    const pages = [];
+    for (let i = 0; i < 3; i++) {
+      pages.push({
+        storyId: story.id,
+        pageNumber: i,
+        content: `Page ${i + 1} of ${storyData.title}. This is a story about ${storyData.description.toLowerCase()}.`,
+      });
+    }
+    await prisma.storyPage.createMany({ data: pages });
+  }
+
+  console.log('Stories seeded.');
   console.log('Seeding complete.');
 }
 

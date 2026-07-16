@@ -19,6 +19,9 @@ import SpeakScreen from '../screens/speak';
 import WriteScreen from '../screens/write';
 import ProgressScreen from '../screens/progress';
 import StoriesScreen from '../screens/stories';
+import StoryDetailScreen from '../screens/stories/StoryDetailScreen';
+import StoryReaderScreen from '../screens/stories/StoryReaderScreen';
+import StoryCompletionScreen from '../screens/stories/StoryCompletionScreen';
 import { useChildStore } from '../store/childStore';
 import ChildSelectionScreen from '../screens/profile/ChildSelectionScreen';
 import AddEditChildScreen from '../screens/profile/AddEditChildScreen';
@@ -127,6 +130,9 @@ export const RootNavigator = () => {
         <Stack.Screen name="CategoryComplete" component={CategoryCompleteScreen} />
         <Stack.Screen name="Progress" component={ProgressScreen} />
         <Stack.Screen name="Stories" component={StoriesScreen} />
+        <Stack.Screen name="StoryDetail" component={StoryDetailScreen} />
+        <Stack.Screen name="StoryReader" component={StoryReaderScreen} />
+        <Stack.Screen name="StoryCompletion" component={StoryCompletionScreen} />
         <Stack.Screen name="ChildSelection" component={ChildSelectionScreen} />
         <Stack.Screen name="AddChild" component={AddEditChildScreen} />
         <Stack.Screen name="MentorSelection" component={MentorSelectionScreen} />
@@ -168,6 +174,9 @@ export const RootNavigator = () => {
           <Stack.Screen name="CategoryComplete" component={CategoryCompleteScreen} />
           <Stack.Screen name="Progress" component={ProgressScreen} />
           <Stack.Screen name="Stories" component={StoriesScreen} />
+          <Stack.Screen name="StoryDetail" component={StoryDetailScreen} />
+          <Stack.Screen name="StoryReader" component={StoryReaderScreen} />
+          <Stack.Screen name="StoryCompletion" component={StoryCompletionScreen} />
           <Stack.Screen name="ChildSelection" component={ChildSelectionScreen} />
           <Stack.Screen name="AddChild" component={AddEditChildScreen} />
           <Stack.Screen name="MentorSelection" component={MentorSelectionScreen} />

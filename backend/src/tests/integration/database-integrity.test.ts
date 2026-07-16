@@ -19,7 +19,7 @@ describe('Database Integrity', () => {
     it('should reject Skill creation with non-existent subjectId (FK violation)', async () => {
       await expect(
         prisma.skill.create({
-          data: { subjectId: 'non-existent-subject', name: 'FK Violation Skill ' + Date.now() },
+          data: { subjectId: 'non-existent-subject', name: 'FK Violation Skill ' + Date.now(), skillCode: 'FK_VIOLATION_' + Date.now() },
         })
       ).rejects.toThrow();
     });
@@ -200,7 +200,7 @@ describe('Database Integrity', () => {
       const subject = await createTestSubject();
       const skill = await createTestSkill(subject.id);
       await expect(
-        prisma.skill.create({ data: { subjectId: subject.id, name: skill.name } })
+        prisma.skill.create({ data: { subjectId: subject.id, name: skill.name, skillCode: 'DUP_NAME_' + Date.now() } })
       ).rejects.toThrow();
     });
 

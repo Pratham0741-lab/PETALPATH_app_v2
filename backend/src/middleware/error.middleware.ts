@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { AppError } from '../utils/errors.js';
 import { logger } from '../utils/logger.js';
+import { env } from '../config/env.js';
 
 export const errorHandler = (
   err: Error,
@@ -9,34 +10,36 @@ export const errorHandler = (
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   next: NextFunction
 ) => {
-  if (err instanceof AppError) {
-    logger.warn({
-      message: err.message,
-      statusCode: err.statusCode,
-      url: req.originalUrl,
-      method: req.method,
-    });
+  const requestId = (req as any).requestId || (req as any).id || 'unknown';
 
-    // Handle ValidationErrors which might have detailed validation objects
+  const logPayload: Record<string, unknown> = {
+    requestId,
+    message: err.message,
+    url: req.originalUrl,
+    method: req.method,
+  };
+
+  if (err instanceof AppError) {
+    logger.warn({ ...logPayload, statusCode: err.statusCode });
+
     const validationErrors = 'errors' in err ? (err as Record<string, unknown>).errors : undefined;
 
     return res.status(err.statusCode).json({
       success: false,
       message: err.message,
+      requestId,
       ...(validationErrors ? { errors: validationErrors } : {}),
     });
   }
 
-  // Unhandled internal errors
   logger.error({
-    message: err.message,
-    stack: err.stack,
-    url: req.originalUrl,
-    method: req.method,
+    ...logPayload,
+    stack: env.NODE_ENV === 'production' ? undefined : err.stack,
   });
 
   return res.status(500).json({
     success: false,
     message: 'Internal server error',
+    requestId,
   });
 };

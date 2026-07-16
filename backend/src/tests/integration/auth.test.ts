@@ -343,9 +343,9 @@ describe('Auth Integration', () => {
   });
 
   describe('Unauthorized access', () => {
-    it('GET /api/health should return 200 without authentication', async () => {
-      const res = await request.get('/api/health');
+    it('GET /health should return 200 without authentication', async () => {
 
+      const res = await request.get('/health');
       expect(res.status).toBe(200);
       expect(res.body.status).toBe('ok');
     });

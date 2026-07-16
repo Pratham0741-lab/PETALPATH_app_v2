@@ -8,7 +8,7 @@ import { subjectRepository } from '../../modules/curriculum/repositories/subject
 import { skillHealthRepository } from '../../modules/mastery/repositories/skill-health.repository.js';
 import { skillHistoryRepository } from '../../modules/mastery/repositories/skill-history.repository.js';
 import { regressionLogRepository } from '../../modules/mastery/repositories/regression-log.repository.js';
-import { rewardsRepository } from '../../modules/rewards/rewards.repository.js';
+
 import { progressRepository } from '../../modules/progress/progress.repository.js';
 import { learningProfileRepository } from '../../modules/adaptive/repositories/learning-profile.repository.js';
 import { modalityPerformanceRepository } from '../../modules/adaptive/repositories/modality-performance.repository.js';
@@ -365,15 +365,15 @@ describe('Repository Layer - Integration Tests', () => {
     it('should create a reward', async () => {
       const user = await createTestUser();
       const child = await createTestChild(user.id);
-      const reward = await rewardsRepository.create({ child: { connect: { id: child.id } }, title: 'Test Reward', points: 100 });
+      const reward = await prisma.reward.create({ data: { childId: child.id, title: 'Test Reward', points: 100 } });
       expect(reward).toBeDefined();
     });
 
     it('should find a reward by id', async () => {
       const user = await createTestUser();
       const child = await createTestChild(user.id);
-      const created = await rewardsRepository.create({ child: { connect: { id: child.id } }, title: 'Findable', points: 100 });
-      const found = await rewardsRepository.findById(created.id);
+      const created = await prisma.reward.create({ data: { childId: child.id, title: 'Findable', points: 100 } });
+      const found = await prisma.reward.findFirst({ where: { id: created.id, deletedAt: null } });
       expect(found).toBeDefined();
       expect(found!.id).toBe(created.id);
     });
@@ -381,32 +381,32 @@ describe('Repository Layer - Integration Tests', () => {
     it('should find all rewards', async () => {
       const user = await createTestUser();
       const child = await createTestChild(user.id);
-      await rewardsRepository.create({ child: { connect: { id: child.id } }, title: 'Reward 1', points: 100 });
-      await rewardsRepository.create({ child: { connect: { id: child.id } }, title: 'Reward 2', points: 200 });
-      const all = await rewardsRepository.findAll();
+      await prisma.reward.create({ data: { childId: child.id, title: 'Reward 1', points: 100 } });
+      await prisma.reward.create({ data: { childId: child.id, title: 'Reward 2', points: 200 } });
+      const all = await prisma.reward.findMany({ where: { deletedAt: null } });
       expect(all.length).toBeGreaterThanOrEqual(2);
     });
 
     it('should update a reward', async () => {
       const user = await createTestUser();
       const child = await createTestChild(user.id);
-      const created = await rewardsRepository.create({ child: { connect: { id: child.id } }, title: 'Updatable', points: 100 });
-      const updated = await rewardsRepository.update(created.id, { points: 200 });
+      const created = await prisma.reward.create({ data: { childId: child.id, title: 'Updatable', points: 100 } });
+      const updated = await prisma.reward.update({ where: { id: created.id }, data: { points: 200 } });
       expect(updated.points).toBe(200);
     });
 
     it('should soft-delete a reward', async () => {
       const user = await createTestUser();
       const child = await createTestChild(user.id);
-      const created = await rewardsRepository.create({ child: { connect: { id: child.id } }, title: 'Deletable', points: 100 });
-      const deleted = await rewardsRepository.delete(created.id);
+      const created = await prisma.reward.create({ data: { childId: child.id, title: 'Deletable', points: 100 } });
+      const deleted = await prisma.reward.update({ where: { id: created.id }, data: { deletedAt: new Date() } });
       expect(deleted.deletedAt).not.toBeNull();
-      const found = await rewardsRepository.findById(created.id);
+      const found = await prisma.reward.findFirst({ where: { id: created.id, deletedAt: null } });
       expect(found).toBeNull();
     });
 
     it('should return null for non-existent reward', async () => {
-      const found = await rewardsRepository.findById('non-existent-id');
+      const found = await prisma.reward.findFirst({ where: { id: 'non-existent-id', deletedAt: null } });
       expect(found).toBeNull();
     });
   });

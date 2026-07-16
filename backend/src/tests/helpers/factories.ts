@@ -93,16 +93,23 @@ export function createTestSubjectData(overrides: Partial<{
 
 export function createTestSkillData(subjectId: string, overrides: Partial<{
   name: string;
+  skillCode: string;
   difficulty: number;
+  displayOrder: number;
+  estimatedDuration: number;
+  isCoreSkill: boolean;
+  isOptionalSkill: boolean;
   isRootSkill: boolean;
 }> = {}) {
   const suffix = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  const name = `Test Skill ${suffix}`;
   return {
     subjectId,
-    name: `Test Skill ${suffix}`,
+    name,
     description: 'Test skill description',
     difficulty: 1,
     isRootSkill: true,
+    skillCode: `TEST_${suffix}`,
     ...overrides,
   };
 }
@@ -185,7 +192,12 @@ export async function createTestSubject(overrides: Partial<{
 
 export async function createTestSkill(subjectId: string, overrides: Partial<{
   name: string;
+  skillCode: string;
   difficulty: number;
+  displayOrder: number;
+  estimatedDuration: number;
+  isCoreSkill: boolean;
+  isOptionalSkill: boolean;
   isRootSkill: boolean;
 }> = {}) {
   const data = createTestSkillData(subjectId, overrides);
@@ -299,6 +311,68 @@ export async function createTestSkillHealth(childId: string, skillId: string, ov
   });
 }
 
+export function createTestStoryData(overrides: Partial<{
+  title: string;
+  description: string;
+  category: string;
+  difficulty: string;
+  readingLevel: number;
+}> = {}) {
+  const suffix = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  return {
+    title: `Test Story ${suffix}`,
+    description: 'A test story for integration testing',
+    category: 'FICTION',
+    difficulty: 'EASY',
+    readingLevel: 1,
+    ...overrides,
+  };
+}
+
+export function createTestStoryPageData(storyId: string, pageNumber: number, overrides: Partial<{
+  content: string;
+}> = {}) {
+  return {
+    storyId,
+    pageNumber,
+    content: `This is page ${pageNumber} content.`,
+    ...overrides,
+  };
+}
+
+export async function createTestStory(overrides: Partial<{
+  title: string;
+  description: string;
+  category: string;
+  difficulty: string;
+  readingLevel: number;
+}> = {}) {
+  const data = createTestStoryData(overrides);
+  return prisma.story.create({ data });
+}
+
+export async function createTestStoryPage(storyId: string, pageNumber: number, overrides: Partial<{
+  content: string;
+}> = {}) {
+  const data = createTestStoryPageData(storyId, pageNumber, overrides);
+  return prisma.storyPage.create({ data });
+}
+
+export async function createTestStoryWithPages(pageCount: number = 3, overrides: Partial<{
+  title: string;
+}> = {}) {
+  const story = await createTestStory(overrides);
+  for (let i = 0; i < pageCount; i++) {
+    await createTestStoryPage(story.id, i);
+  }
+  return prisma.story.findUnique({
+    where: { id: story.id },
+    include: {
+      pages: { orderBy: { pageNumber: 'asc' } },
+    },
+  }) as Promise<any>;
+}
+
 export async function cleanDatabase() {
   const tables: string[] = [
     'session_events', 'session_blocks', 'session_plans', 'session_templates',
@@ -318,6 +392,9 @@ export async function cleanDatabase() {
     'notifications',
     'video_progress', 'videos', 'audios',
     'refresh_tokens',
+    'story_progress', 'story_pages', 'story_vocabulary', 'stories',
+    'skill_tags', 'skill_activities', 'skill_assessments',
+    'curriculum_grades', 'curriculum_domains',
   ];
 
   for (const table of tables) {

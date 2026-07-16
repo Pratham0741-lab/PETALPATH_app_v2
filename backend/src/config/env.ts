@@ -35,6 +35,17 @@ const envSchema = z.object({
 
   // CDN
   CDN_BASE_URL: z.string().default('https://dy3um9dzarz6y.cloudfront.net'),
+
+  // Rate limiting overrides
+  RATE_LIMIT_GLOBAL_MAX: z.coerce.number().default(100),
+  RATE_LIMIT_AUTH_MAX: z.coerce.number().default(20),
+  RATE_LIMIT_STRICT_MAX: z.coerce.number().default(10),
+  RATE_LIMIT_MODERATE_MAX: z.coerce.number().default(50),
+
+  // Jobs
+  JOBS_CLEANUP_INTERVAL_MINUTES: z.coerce.number().default(60),
+  NOTIFICATION_RETENTION_DAYS: z.coerce.number().default(30),
+  SESSION_RETENTION_DAYS: z.coerce.number().default(90),
 });
 
 const parsed = envSchema.safeParse(process.env);

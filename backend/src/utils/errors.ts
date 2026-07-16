@@ -43,3 +43,9 @@ export class ConflictError extends AppError {
     super(message, 409);
   }
 }
+
+export function getErrorStatusCode(error: unknown): number {
+  if (error instanceof AppError) return error.statusCode;
+  if (error && typeof error === 'object' && 'status' in error) return (error as Record<string, unknown>).status as number;
+  return 500;
+}

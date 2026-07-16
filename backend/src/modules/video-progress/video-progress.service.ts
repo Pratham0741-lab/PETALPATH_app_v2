@@ -1,7 +1,7 @@
 import { videoProgressRepository } from './video-progress.repository.js';
 import { videosRepository } from '../videos/videos.repository.js';
 import { activitiesRepository } from '../activities/activities.repository.js';
-import { progressRepository } from '../progress/progress.repository.js';
+import { progressService } from '../progress/progress.service.js';
 import { NotFoundError } from '../../utils/errors.js';
 
 export class VideoProgressService {
@@ -36,7 +36,7 @@ export class VideoProgressService {
     if (isCompleted) {
       const activity = await activitiesRepository.findById(video.activityId);
       if (activity) {
-        await progressRepository.updateActivityCompletion(childId, activity.lessonId, 'video', 1);
+        await progressService.updateActivityCompletion(childId, activity.lessonId, 'video', 1);
       }
     }
 
@@ -53,7 +53,7 @@ export class VideoProgressService {
 
     const activity = await activitiesRepository.findById(video.activityId);
     if (activity) {
-      await progressRepository.updateActivityCompletion(childId, activity.lessonId, 'video', 1);
+      await progressService.updateActivityCompletion(childId, activity.lessonId, 'video', 1);
     }
 
     return progress;

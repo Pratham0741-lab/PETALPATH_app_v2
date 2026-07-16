@@ -5,11 +5,15 @@ import rateLimit from 'express-rate-limit';
 import compression from 'compression';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { requestIdMiddleware } from './middleware/request-id.middleware.js';
 import { loggerMiddleware } from './middleware/logger.middleware.js';
 import { errorHandler } from './middleware/error.middleware.js';
 import { rootRouter } from './routes/index.js';
+import { healthRoutes } from './modules/health/health.routes.js';
 import { NotFoundError } from './utils/errors.js';
 import { env } from './config/env.js';
+import { metricsService } from './modules/metrics/metrics.service.js';
+import { authLimiter, moderateLimiter } from './middleware/rate-limit.middleware.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -20,7 +24,6 @@ const app = express();
 app.disable('x-powered-by');
 app.use(
   helmet({
-    // Content Security Policy
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
@@ -36,15 +39,10 @@ app.use(
         formAction: ["'self'"],
       },
     },
-    // Prevent clickjacking — DENY since this is a pure API
     frameguard: { action: 'deny' },
-    // Prevent MIME-type sniffing
     xContentTypeOptions: true,
-    // Control referrer information
     referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
-    // Allow cross-origin resource fetching (mobile app needs /storage assets)
     crossOriginResourcePolicy: false,
-    // hidePoweredBy is redundant with app.disable() above but belt-and-suspenders
     hidePoweredBy: true,
   })
 );
@@ -52,25 +50,51 @@ app.use(
 // Gzip compression
 app.use(compression());
 
-// Standard middlewares
+// CORS
 const allowedOrigins = env.CORS_ORIGINS.split(',').map(s => s.trim()).filter(Boolean);
 if (env.NODE_ENV === 'development') {
   allowedOrigins.push('http://localhost:8081', 'http://localhost:19006');
 }
 app.use(cors({
   origin: allowedOrigins,
-  credentials: true
+  credentials: true,
 }));
+
+// Request ID — must run before logger and routes
+app.use(requestIdMiddleware);
+
+// Body parser
 app.use(express.json());
+
+// Structured HTTP logging
 app.use(loggerMiddleware);
 
-// Serve static storage files (videos and thumbnails)
+// Metrics — track every request
+app.use((req, res, next) => {
+  metricsService.increment('request.total');
+  if ((req as any).user?.userId) {
+    metricsService.trackActiveUser((req as any).user.userId);
+  }
+  const start = Date.now();
+  res.on('finish', () => {
+    metricsService.recordResponseTime(Date.now() - start);
+    if (res.statusCode >= 400) {
+      metricsService.increment('request.error');
+    }
+  });
+  next();
+});
+
+// Serve static storage files
 app.use('/storage', express.static(path.join(__dirname, '../storage')));
 
-// Rate limiting — applied only to /api
+// Health routes — no rate limiting (monitoring must always be accessible)
+app.use('/health', healthRoutes);
+
+// Rate limiting — applied to /api routes
 const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  limit: 100,
+  windowMs: 15 * 60 * 1000,
+  limit: env.RATE_LIMIT_GLOBAL_MAX,
   standardHeaders: 'draft-7',
   legacyHeaders: false,
   message: {
@@ -79,10 +103,18 @@ const apiLimiter = rateLimit({
   },
 });
 
+// Per-endpoint rate limiters (applied before the global limiter)
+app.use('/api/auth/login', authLimiter);
+app.use('/api/auth/register', authLimiter);
+app.use('/api/session-planner/generate', moderateLimiter);
+app.use('/api/stories', moderateLimiter);
+app.use('/api/assessments', moderateLimiter);
+app.use('/api/notifications', moderateLimiter);
+
 // Mount API routes
 app.use('/api', apiLimiter, rootRouter);
 
-// Catch-all 404 Route handler
+// Catch-all 404
 app.use((req, res, next) => {
   next(new NotFoundError(`Cannot ${req.method} ${req.originalUrl}`));
 });

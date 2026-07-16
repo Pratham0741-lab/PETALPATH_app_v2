@@ -1,7 +1,7 @@
 import { Response, NextFunction } from 'express';
 import { prisma } from '../../config/database.js';
 import { AuthenticatedRequest } from '../../middleware/auth.middleware.js';
-import { progressRepository } from './progress.repository.js';
+import { progressService } from './progress.service.js';
 import { moduleProgressService } from './module-progress.service.js';
 import { categoryProgressService } from './category-progress.service.js';
 import { UnauthorizedError, ValidationError } from '../../utils/errors.js';
@@ -20,7 +20,7 @@ export class ProgressController {
         throw new UnauthorizedError('Active child profile is not selected');
       }
 
-      const progress = await progressRepository.findByChildId(childId);
+      const progress = await progressService.getByChildId(childId);
       return res.status(200).json({
         success: true,
         data: progress,
@@ -42,7 +42,7 @@ export class ProgressController {
         throw new ValidationError('Validation failed', parsed.error.format());
       }
 
-      const progress = await progressRepository.findByChildAndLesson(childId, parsed.data.lessonId);
+      const progress = await progressService.getByChildAndLesson(childId, parsed.data.lessonId);
       return res.status(200).json({
         success: true,
         data: progress,
@@ -171,7 +171,7 @@ export class ProgressController {
         throw new ValidationError('Validation failed', parsed.error.format());
       }
 
-      const progress = await progressRepository.forceCompleteLesson(childId, parsed.data.lessonId);
+      const progress = await progressService.forceCompleteLesson(childId, parsed.data.lessonId);
       return res.status(200).json({
         success: true,
         data: progress,
@@ -232,7 +232,7 @@ export class ProgressController {
         throw new UnauthorizedError('Active child profile is not selected');
       }
 
-      await progressRepository.resetAllProgress(childId);
+      await progressService.resetAllProgress(childId);
       return res.status(200).json({
         success: true,
         message: 'All learning progress has been successfully reset',

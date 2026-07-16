@@ -1,0 +1,1617 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id                   String    @id @default(uuid())
+  email                String    @unique
+  name                 String
+  provider             String    @default("email") // google, email
+  googleId             String?   @map("google_id")
+  profilePicture       String?   @map("profile_picture")
+  passwordHash         String?   @map("password_hash")
+  resetPasswordToken   String?   @map("reset_password_token")
+  resetPasswordExpires DateTime? @map("reset_password_expires")
+  role                 String    @default("PARENT") // PARENT, ADMIN, MENTOR
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+  deletedAt            DateTime? @map("deleted_at")
+
+  children      Child[]
+  refreshTokens RefreshToken[]
+  notifications Notification[]
+
+  @@map("users")
+}
+
+model Child {
+  id        String    @id @default(uuid())
+  userId    String    @map("user_id")
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  age       Int
+  ageGroup  String    @map("age_group")
+  avatar    String
+  mentorId  String?   @map("mentor_id")
+  mentor    Mentor?   @relation(fields: [mentorId], references: [id], onDelete: SetNull)
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  lessonProgress   LessonProgress[]
+  rewards          Reward[]
+  questionnaires   Questionnaire[]
+  videoProgress    VideoProgress[]
+  listenProgress   ListenProgress[]
+  speakProgress    SpeakProgress[]
+  writeProgress    WriteProgress[]
+  stars            Stars?
+  childStickers    ChildSticker[]
+  childBadges      ChildBadge[]
+  moduleProgress   ModuleProgress[]
+  categoryProgress CategoryProgress[]
+  skillHealths        SkillHealth[]
+  skillHistories      SkillHistory[]
+  regressionLogs      RegressionLog[]
+  reinforcementQueues    ReinforcementQueue[]
+  reinforcementHistories ReinforcementHistory[]
+  reinforcementEvents    ReinforcementEvent[]
+  childSkillCurriculums  ChildSkillCurriculum[]
+  learningProfile        LearningProfile?
+  modalityPerformances   ModalityPerformance[]
+  adaptationEvents       AdaptationEvent[]
+  learningEvents         LearningEvent[]
+  learningEvidence       LearningEvidence[]
+  sessionPlans           SessionPlan[]
+  analyticsSnapshot      AnalyticsSnapshot?
+  analyticsHistories     AnalyticsHistory[]
+  trendEvents            TrendEvent[]
+  subjectAnalytics       SubjectAnalytics[]
+  learnerState           LearnerState?
+  metricSnapshots        MetricSnapshot[]
+  topicStates            TopicState[]
+  knowledgeStates        KnowledgeState[]
+  learningDebts          LearningDebt[]
+  topicReinforcementQueues TopicReinforcementQueue[]
+  dynamicRoadmaps        DynamicRoadmap[]
+  recoveryMode           RecoveryMode?
+  practices              Practice[]
+  assessmentAttempts     AssessmentAttempt[]
+  storyProgress           StoryProgress[]
+  notifications           Notification[]
+
+  @@map("children")
+}
+
+model Mentor {
+  id            String    @id @default(uuid())
+  name          String
+  characterType String    @map("character_type")
+  personality   String
+  voiceStyle    String    @map("voice_style")
+  description   String
+  iconKey       String    @map("image_path")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  deletedAt     DateTime? @map("deleted_at")
+
+  children Child[]
+
+  @@map("mentors")
+}
+
+model Category {
+  id           String    @id @default(uuid())
+  title        String    @unique
+  description  String?
+  displayOrder Int       @default(0) @map("display_order")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  deletedAt    DateTime? @map("deleted_at")
+
+  modules          Module[]
+  categoryProgress CategoryProgress[]
+
+  @@map("categories")
+}
+
+model Module {
+  id           String    @id @default(uuid())
+  categoryId   String    @map("category_id")
+  category     Category  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  title        String
+  description  String?
+  displayOrder Int       @default(0) @map("display_order")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  deletedAt    DateTime? @map("deleted_at")
+
+  lessons        Lesson[]
+  moduleProgress ModuleProgress[]
+
+  @@map("modules")
+}
+
+model Lesson {
+  id           String    @id @default(uuid())
+  moduleId     String    @map("module_id")
+  module       Module    @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  title        String
+  description  String?
+  displayOrder Int       @default(0) @map("display_order")
+  difficulty   String    @default("EASY")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  deletedAt    DateTime? @map("deleted_at")
+
+  activities     Activity[]
+  lessonProgress LessonProgress[]
+
+  @@map("lessons")
+}
+
+model Activity {
+  id           String    @id @default(uuid())
+  lessonId     String    @map("lesson_id")
+  lesson       Lesson    @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  title        String
+  activityType String    @map("activity_type")
+  contentUrl   String?
+  displayOrder Int       @default(0) @map("display_order")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  deletedAt    DateTime? @map("deleted_at")
+
+  video          Video?
+  audio          Audio?
+  listenProgress ListenProgress[]
+  speakProgress  SpeakProgress[]
+  writeProgress  WriteProgress[]
+
+  @@map("activities")
+}
+
+model Video {
+  id           String          @id @default(uuid())
+  activityId   String          @unique @map("activity_id")
+  activity     Activity        @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  title        String
+  videoKey     String          @map("filename")
+  thumbnailKey String?         @map("thumbnail")
+  duration     Int             @default(0)
+  createdAt    DateTime        @default(now()) @map("created_at")
+  updatedAt    DateTime        @updatedAt @map("updated_at")
+  progressions VideoProgress[]
+
+  @@map("videos")
+}
+
+model VideoProgress {
+  id            String   @id @default(uuid())
+  childId       String   @map("child_id")
+  child         Child    @relation(fields: [childId], references: [id], onDelete: Cascade)
+  videoId       String   @map("video_id")
+  video         Video    @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  watchPosition Int      @default(0) @map("watch_position")
+  isCompleted   Boolean  @default(false) @map("is_completed")
+  lastWatchedAt DateTime @default(now()) @map("last_watched_at")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  @@unique([childId, videoId])
+  @@map("video_progress")
+}
+
+model LessonProgress {
+  id              String    @id @default(uuid())
+  childId         String
+  child           Child     @relation(fields: [childId], references: [id], onDelete: Cascade)
+  lessonId        String
+  lesson          Lesson    @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  status          String    @default("NOT_STARTED") // NOT_STARTED, IN_PROGRESS, COMPLETED
+  videoCompleted  Boolean   @default(false) @map("video_completed")
+  listenCompleted Boolean   @default(false) @map("listen_completed")
+  speakCompleted  Boolean   @default(false) @map("speak_completed")
+  writeCompleted  Boolean   @default(false) @map("write_completed")
+  videoStars      Int       @default(0) @map("video_stars")
+  listenStars     Int       @default(0) @map("listen_stars")
+  speakStars      Int       @default(0) @map("speak_stars")
+  writeStars      Int       @default(0) @map("write_stars")
+  totalStars      Int       @default(0) @map("total_stars")
+  completedAt     DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime?
+
+  @@unique([childId, lessonId])
+}
+
+model Reward {
+  id          String    @id @default(uuid())
+  childId     String
+  child       Child     @relation(fields: [childId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  points      Int       @default(0)
+  earnedAt    DateTime  @default(now())
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+}
+
+model Story {
+  id              String          @id @default(uuid())
+  title           String
+  description     String?
+  coverImageKey   String?         @map("cover_image_key")
+  category        String?         @default("FICTION")
+  difficulty      String?         @default("EASY")
+  readingLevel    Int?            @default(1)
+  estimatedDuration Int?          @default(5) @map("estimated_duration")
+  isActive        Boolean         @default(true) @map("is_active")
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+  deletedAt       DateTime?       @map("deleted_at")
+
+  pages            StoryPage[]
+  vocabulary       StoryVocabulary[]
+  progress         StoryProgress[]
+
+  @@map("stories")
+}
+
+model StoryPage {
+  id           String   @id @default(uuid())
+  storyId      String   @map("story_id")
+  story        Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  pageNumber   Int      @map("page_number")
+  content      String
+  imageKey     String?  @map("image_key")
+  narrationKey String?  @map("narration_key")
+  hint         String?
+
+  @@unique([storyId, pageNumber])
+  @@map("story_pages")
+}
+
+model StoryVocabulary {
+  id         String   @id @default(uuid())
+  storyId    String   @map("story_id")
+  story      Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  word       String
+  definition String?
+  imageKey   String?  @map("image_key")
+
+  @@map("story_vocabulary")
+}
+
+model StoryProgress {
+  id              String    @id @default(uuid())
+  childId         String    @map("child_id")
+  child           Child     @relation(fields: [childId], references: [id], onDelete: Cascade)
+  storyId         String    @map("story_id")
+  story           Story     @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  currentPage     Int       @default(0) @map("current_page")
+  totalPages      Int       @default(0) @map("total_pages")
+  completionPercent Float   @default(0) @map("completion_percent")
+  readingTime     Int       @default(0) @map("reading_time")
+  status          String    @default("AVAILABLE")
+  starsEarned     Int       @default(0) @map("stars_earned")
+  startedAt       DateTime? @map("started_at")
+  completedAt     DateTime? @map("completed_at")
+  lastReadAt      DateTime? @map("last_read_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  @@unique([childId, storyId])
+  @@map("story_progress")
+}
+
+model Questionnaire {
+  id        String    @id @default(uuid())
+  childId   String
+  child     Child     @relation(fields: [childId], references: [id], onDelete: Cascade)
+  responses Json
+  score     Int?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("refresh_tokens")
+}
+
+model Audio {
+  id         String   @id @default(uuid())
+  activityId String   @unique @map("activity_id")
+  activity   Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  title      String
+  audioKey   String   @map("filename")
+  duration   Int      @default(0)
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@map("audios")
+}
+
+model ListenProgress {
+  id           String   @id @default(uuid())
+  childId      String   @map("child_id")
+  child        Child    @relation(fields: [childId], references: [id], onDelete: Cascade)
+  activityId   String   @map("activity_id")
+  activity     Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  isCompleted  Boolean  @default(false) @map("is_completed")
+  attemptCount Int      @default(0) @map("attempt_count")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@unique([childId, activityId])
+  @@map("listen_progress")
+}
+
+model SpeakProgress {
+  id           String   @id @default(uuid())
+  childId      String   @map("child_id")
+  child        Child    @relation(fields: [childId], references: [id], onDelete: Cascade)
+  activityId   String   @map("activity_id")
+  activity     Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  isCompleted  Boolean  @default(false) @map("is_completed")
+  attemptCount Int      @default(0) @map("attempt_count")
+  bestScore    Float    @default(0.0) @map("best_score")
+  averageScore Float    @default(0.0) @map("average_score")
+  bestStars    Int      @default(0) @map("best_stars")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@unique([childId, activityId])
+  @@map("speak_progress")
+}
+
+model WriteProgress {
+  id           String   @id @default(uuid())
+  childId      String   @map("child_id")
+  child        Child    @relation(fields: [childId], references: [id], onDelete: Cascade)
+  activityId   String   @map("activity_id")
+  activity     Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  isCompleted  Boolean  @default(false) @map("is_completed")
+  attemptCount Int      @default(0) @map("attempt_count")
+  bestScore    Float    @default(0.0) @map("best_score")
+  averageScore Float    @default(0.0) @map("average_score")
+  bestStars    Int      @default(0) @map("best_stars")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@unique([childId, activityId])
+  @@map("write_progress")
+}
+
+model Stars {
+  id         String   @id @default(uuid())
+  childId    String   @unique @map("child_id")
+  child      Child    @relation(fields: [childId], references: [id], onDelete: Cascade)
+  totalStars Int      @default(0) @map("total_stars")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@map("stars")
+}
+
+model Sticker {
+  id            String         @id @default(uuid())
+  name          String
+  description   String?
+  iconKey       String         @map("image_path")
+  requiredStars Int            @map("required_stars")
+  childStickers ChildSticker[]
+
+  @@map("stickers")
+}
+
+model ChildSticker {
+  id         String   @id @default(uuid())
+  childId    String   @map("child_id")
+  child      Child    @relation(fields: [childId], references: [id], onDelete: Cascade)
+  stickerId  String   @map("sticker_id")
+  sticker    Sticker  @relation(fields: [stickerId], references: [id], onDelete: Cascade)
+  unlockedAt DateTime @default(now()) @map("unlocked_at")
+
+  @@unique([childId, stickerId])
+  @@map("child_stickers")
+}
+
+model Badge {
+  id          String       @id @default(uuid())
+  name        String
+  description String?
+  iconKey     String       @map("image_path")
+  childBadges ChildBadge[]
+
+  @@map("badges")
+}
+
+model ChildBadge {
+  id       String   @id @default(uuid())
+  childId  String   @map("child_id")
+  child    Child    @relation(fields: [childId], references: [id], onDelete: Cascade)
+  badgeId  String   @map("badge_id")
+  badge    Badge    @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+  earnedAt DateTime @default(now()) @map("earned_at")
+
+  @@unique([childId, badgeId])
+  @@map("child_badges")
+}
+
+model ModuleProgress {
+  id               String    @id @default(uuid())
+  childId          String    @map("child_id")
+  child            Child     @relation(fields: [childId], references: [id], onDelete: Cascade)
+  moduleId         String    @map("module_id")
+  module           Module    @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  completedLessons Int       @default(0) @map("completed_lessons")
+  isCompleted      Boolean   @default(false) @map("is_completed")
+  completedAt      DateTime? @map("completed_at")
+
+  @@unique([childId, moduleId])
+  @@map("module_progress")
+}
+
+model CategoryProgress {
+  id               String    @id @default(uuid())
+  childId          String    @map("child_id")
+  child            Child     @relation(fields: [childId], references: [id], onDelete: Cascade)
+  categoryId       String    @map("category_id")
+  category         Category  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  completedModules Int       @default(0) @map("completed_modules")
+  isCompleted      Boolean   @default(false) @map("is_completed")
+  completedAt      DateTime? @map("completed_at")
+
+  @@unique([childId, categoryId])
+  @@map("category_progress")
+}
+
+enum MasteryState {
+  NEW
+  LEARNING
+  WEAK
+  STRONG
+  MASTERED
+}
+
+model Skill {
+  id                       String               @id @default(uuid())
+  subjectId                String               @map("subject_id")
+  subject                  Subject              @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  domainId                 String?              @map("domain_id")
+  domain                   CurriculumDomain?    @relation(fields: [domainId], references: [id], onDelete: SetNull)
+  name                     String               @unique
+  description              String?
+  difficulty               Int                  @default(1)
+  estimatedAge             Int?                 @map("estimated_age")
+  isRootSkill              Boolean              @default(false) @map("is_root_skill")
+  bloomLevel               String               @default("REMEMBER") @map("bloom_level")
+  masteryThreshold         Float                @default(80.0) @map("mastery_threshold")
+  estimatedDuration        Int                  @default(10) @map("estimated_duration")
+  recommendedActivityType  String?              @map("recommended_activity_type")
+  recommendedAssessmentType String?             @map("recommended_assessment_type")
+  revisionInterval         Int                  @default(7) @map("revision_interval")
+  originalGrade            Int?                 @map("original_grade")
+  originalMonth            Int?                 @map("original_month")
+  displayOrder             Int                  @default(0) @map("display_order")
+  isCoreSkill              Boolean              @default(false) @map("is_core_skill")
+  isOptionalSkill          Boolean              @default(false) @map("is_optional_skill")
+  learningObjective        String?              @map("learning_objective")
+  createdAt                DateTime             @default(now()) @map("created_at")
+  updatedAt                DateTime             @updatedAt @map("updated_at")
+  skillHealths             SkillHealth[]
+  skillHistories           SkillHistory[]
+  parentDependencies       SkillDependency[]    @relation("ParentSkill")
+  childDependencies        SkillDependency[]    @relation("ChildSkill")
+  regressionLogs           RegressionLog[]
+  reinforcementQueues         ReinforcementQueue[]
+  reinforcementHistories     ReinforcementHistory[]
+  reinforcementEvents         ReinforcementEvent[]
+  childSkillCurriculums       ChildSkillCurriculum[]
+  sessionBlocks               SessionBlock[]
+  skillTags                   SkillTag[]
+  skillActivities             SkillActivity[]
+  skillAssessments            SkillAssessment[]
+
+  @@index([domainId])
+  @@index([subjectId])
+  @@index([originalGrade])
+  @@index([originalMonth])
+  @@index([isCoreSkill])
+  @@map("skills")
+}
+
+model SkillDependency {
+  id            String   @id @default(uuid())
+  parentSkillId String   @map("parent_skill_id")
+  childSkillId  String   @map("child_skill_id")
+  weight        Float
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  parentSkill Skill @relation("ParentSkill", fields: [parentSkillId], references: [id], onDelete: Cascade)
+  childSkill  Skill @relation("ChildSkill", fields: [childSkillId], references: [id], onDelete: Cascade)
+
+  @@unique([parentSkillId, childSkillId])
+  @@map("skill_dependencies")
+}
+
+model SkillHealth {
+  id               String       @id @default(uuid())
+  childId          String       @map("child_id")
+  child            Child        @relation(fields: [childId], references: [id], onDelete: Cascade)
+  skillId          String       @map("skill_id")
+  skill            Skill        @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  masteryState     MasteryState @map("mastery_state")
+  knowledgeScore   Float        @map("knowledge_score")
+  confidenceScore  Float        @map("confidence_score")
+  retentionScore   Float        @map("retention_score")
+  engagementScore  Float        @map("engagement_score")
+  consistencyScore Float        @map("consistency_score")
+  masteryScore     Float        @map("mastery_score")
+  lastPracticed    DateTime     @map("last_practiced")
+  nextReviewDate   DateTime     @map("next_review_date")
+  reviewCount      Int          @map("review_count")
+  attemptCount     Int          @map("attempt_count")
+  retryCount       Int          @map("retry_count")
+  decayFactor      Float        @map("decay_factor")
+  frequencyDays    Int          @map("frequency_days")
+  createdAt        DateTime     @default(now()) @map("created_at")
+  updatedAt        DateTime     @updatedAt @map("updated_at")
+
+  @@unique([childId, skillId])
+  @@map("skill_health")
+}
+
+model SkillHistory {
+  id               String       @id @default(uuid())
+  childId          String       @map("child_id")
+  child            Child        @relation(fields: [childId], references: [id], onDelete: Cascade)
+  skillId          String       @map("skill_id")
+  skill            Skill        @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  knowledgeScore   Float        @map("knowledge_score")
+  confidenceScore  Float        @map("confidence_score")
+  retentionScore   Float        @map("retention_score")
+  engagementScore  Float        @map("engagement_score")
+  consistencyScore Float        @map("consistency_score")
+  masteryScore     Float        @map("mastery_score")
+  masteryState     MasteryState @map("mastery_state")
+  timestamp        DateTime     @default(now())
+
+  @@map("skill_history")
+}
+
+model RegressionLog {
+  id            String       @id @default(uuid())
+  childId       String       @map("child_id")
+  child         Child        @relation(fields: [childId], references: [id], onDelete: Cascade)
+  skillId       String       @map("skill_id")
+  skill         Skill        @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  previousScore Float        @map("previous_score")
+  currentScore  Float        @map("current_score")
+  difference    Float        @default(0.0) @map("difference")
+  previousState MasteryState @map("previous_state")
+  currentState  MasteryState @map("current_state")
+  timestamp     DateTime     @default(now())
+
+  @@map("regression_logs")
+}
+
+model ReinforcementQueue {
+  id             String       @id @default(uuid())
+  childId        String       @map("child_id")
+  child          Child        @relation(fields: [childId], references: [id], onDelete: Cascade)
+  skillId        String       @map("skill_id")
+  skill          Skill        @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  priority       Float
+  masteryState   MasteryState @default(LEARNING) @map("mastery_state")
+  reason         String
+  isCompleted    Boolean      @default(false) @map("is_completed")
+  nextReviewDate DateTime     @map("next_review_date")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+
+  @@unique([childId, skillId])
+  @@index([childId])
+  @@index([childId, isCompleted])
+  @@index([nextReviewDate])
+  @@index([priority])
+  @@map("reinforcement_queue")
+}
+
+enum CurriculumState {
+  LOCKED
+  AVAILABLE
+  ACTIVE
+  COMPLETED
+}
+
+model Subject {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  icon        String?
+  color       String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  skills      Skill[]
+  curriculumDomains CurriculumDomain[]
+  sessionBlocks SessionBlock[]
+  subjectAnalytics SubjectAnalytics[]
+
+  @@map("subjects")
+}
+
+model CurriculumGrade {
+  id          String   @id @default(uuid())
+  gradeNumber Int      @unique @map("grade_number")
+  title       String
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("curriculum_grades")
+}
+
+model CurriculumDomain {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  subjectId   String   @map("subject_id")
+  subject     Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  displayOrder Int     @default(0) @map("display_order")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  skills      Skill[]
+
+  @@unique([name, subjectId])
+  @@index([subjectId])
+  @@map("curriculum_domains")
+}
+
+model SkillTag {
+  id        String   @id @default(uuid())
+  skillId   String   @map("skill_id")
+  skill     Skill    @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  tag       String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([skillId, tag])
+  @@index([tag])
+  @@map("skill_tags")
+}
+
+model SkillActivity {
+  id           String   @id @default(uuid())
+  skillId      String   @map("skill_id")
+  skill        Skill    @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  title        String
+  activityType String   @map("activity_type")
+  contentUrl   String?
+  description  String?
+  displayOrder Int      @default(0) @map("display_order")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@index([skillId])
+  @@map("skill_activities")
+}
+
+model SkillAssessment {
+  id             String   @id @default(uuid())
+  skillId        String   @map("skill_id")
+  skill          Skill    @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  title          String
+  assessmentType String   @map("assessment_type")
+  description    String?
+  maxScore       Float    @default(100) @map("max_score")
+  passingScore   Float    @default(80) @map("passing_score")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@index([skillId])
+  @@map("skill_assessments")
+}
+
+model ChildSkillCurriculum {
+  id          String          @id @default(uuid())
+  childId     String          @map("child_id")
+  child       Child           @relation(fields: [childId], references: [id], onDelete: Cascade)
+  skillId     String          @map("skill_id")
+  skill       Skill           @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  state       CurriculumState @map("state")
+  unlockRatio Float           @map("unlock_ratio")
+  priority    Float           @map("priority")
+  activatedAt DateTime?       @map("activated_at")
+  completedAt DateTime?       @map("completed_at")
+  createdAt   DateTime        @default(now()) @map("created_at")
+  updatedAt   DateTime        @updatedAt @map("updated_at")
+
+  @@unique([childId, skillId])
+  @@map("child_skill_curriculum")
+}
+
+enum ActivityType {
+  VIDEO
+  LISTENING
+  SPEAKING
+  GAME
+  WRITING
+  STORY
+  MOTOR
+  CREATIVE
+  WARMUP
+  REWARD
+}
+
+enum ReinforcementEventType {
+  REVIEW_TRIGGERED
+  REVIEW_COMPLETED
+  RETENTION_DROP
+  REINFORCEMENT_SUCCESS
+  REINFORCEMENT_FAILED
+}
+
+enum AdaptationEventType {
+  MODALITY_CHANGE
+  SESSION_SHORTENED
+  SESSION_EXTENDED
+  WEAKNESS_DETECTED
+  STRENGTH_DETECTED
+  REINFORCEMENT_ADDED
+  REGRESSION_DETECTED
+  CONFIDENCE_DROP
+  CONFIDENCE_IMPROVEMENT
+  ENGAGEMENT_DROP
+  ENGAGEMENT_IMPROVEMENT
+}
+
+model LearningProfile {
+  id                     String       @id @default(uuid())
+  childId                String       @unique @map("child_id")
+  child                  Child        @relation(fields: [childId], references: [id], onDelete: Cascade)
+  averageAccuracy        Float        @map("average_accuracy")
+  averageEngagement      Float        @map("average_engagement")
+  averageConfidence      Float        @map("average_confidence")
+  optimalSessionDuration Int          @map("optimal_session_duration")
+  preferredModality      ActivityType @map("preferred_modality")
+  learningVelocity       Float        @map("learning_velocity")
+  createdAt              DateTime     @default(now()) @map("created_at")
+  updatedAt              DateTime     @updatedAt @map("updated_at")
+
+  @@map("learning_profiles")
+}
+
+model ModalityPerformance {
+  id                String       @id @default(uuid())
+  childId           String       @map("child_id")
+  child             Child        @relation(fields: [childId], references: [id], onDelete: Cascade)
+  activityType      ActivityType @map("activity_type")
+  attempts          Int          @map("attempts")
+  averageAccuracy   Float        @map("average_accuracy")
+  averageEngagement Float        @map("average_engagement")
+  averageConfidence Float        @map("average_confidence")
+  lastUsedAt        DateTime     @map("last_used_at")
+  createdAt         DateTime     @default(now()) @map("created_at")
+  updatedAt         DateTime     @updatedAt @map("updated_at")
+
+  @@unique([childId, activityType])
+  @@index([childId])
+  @@map("modality_performances")
+}
+
+model AdaptationEvent {
+  id        String              @id @default(uuid())
+  childId   String              @map("child_id")
+  child     Child               @relation(fields: [childId], references: [id], onDelete: Cascade)
+  eventType AdaptationEventType @map("event_type")
+  reason    String              @map("reason")
+  metadata  Json?               @map("metadata")
+  createdAt DateTime            @default(now()) @map("created_at")
+
+  @@index([childId])
+  @@index([childId, eventType])
+  @@map("adaptation_events")
+}
+
+enum LearningEventType {
+  SESSION_STARTED
+  SESSION_PAUSED
+  SESSION_RESUMED
+  SESSION_COMPLETED
+  SESSION_CANCELLED
+  TOPIC_STARTED
+  TOPIC_COMPLETED
+  TOPIC_SKIPPED
+  ACTIVITY_STARTED
+  ACTIVITY_COMPLETED
+  ACTIVITY_SKIPPED
+  ACTIVITY_FAILED
+  VIDEO_COMPLETED
+  AUDIO_COMPLETED
+  SPEECH_COMPLETED
+  WRITING_COMPLETED
+  RECOVERY_STARTED
+  RECOVERY_COMPLETED
+  DAILY_PRACTICE_COMPLETED
+  MASTERY_PRACTICE_COMPLETED
+  REINFORCEMENT_COMPLETED
+}
+
+enum Modality {
+  VIDEO
+  AUDIO
+  SPEECH
+  WRITING
+  GAME
+  STORY
+  MOTOR
+  CREATIVE
+  WARMUP
+  REWARD
+}
+
+enum EvidenceType {
+  ATTEMPTS
+  RETRIES
+  ACCURACY
+  COMPLETION
+  DURATION
+  HINT_USAGE
+  HELP_REQUESTS
+  ENGAGEMENT
+  CONFIDENCE
+}
+
+enum TopicStateType {
+  NEW
+  LEARNING
+  NEEDS_PRACTICE
+  STABLE
+  REINFORCEMENT
+  MASTERED
+}
+
+enum ModalityStateType {
+  NEW
+  LEARNING
+  NEEDS_PRACTICE
+  STABLE
+  REINFORCEMENT
+  MASTERED
+}
+
+enum KnowledgeStateType {
+  NEW
+  LEARNING
+  NEEDS_PRACTICE
+  STABLE
+  REINFORCEMENT
+  MASTERED
+}
+
+enum MetricCategory {
+  PERFORMANCE
+  MODALITY
+  TOPIC
+  SESSION
+  RETENTION
+}
+
+model LearningEvent {
+  id            String           @id @default(uuid())
+  eventId       String           @unique @map("event_id")
+  eventType     LearningEventType @map("event_type")
+  eventVersion  Int              @default(1) @map("event_version")
+  childId       String           @map("child_id")
+  child         Child            @relation(fields: [childId], references: [id], onDelete: Cascade)
+  sessionId     String           @map("session_id")
+  curriculumId  String?          @map("curriculum_id")
+  subjectId     String?          @map("subject_id")
+  moduleId      String?          @map("module_id")
+  topicId       String?          @map("topic_id")
+  conceptId     String?          @map("concept_id")
+  activityId    String?          @map("activity_id")
+  modality      Modality?
+  timestamp     DateTime         @default(now())
+  duration      Int?             @map("duration_ms")
+  payload       Json?            @map("payload")
+  idempotencyKey String          @unique @map("idempotency_key")
+  learningEvidences LearningEvidence[]
+
+  @@index([childId])
+  @@index([childId, eventType])
+  @@index([sessionId])
+  @@index([activityId])
+  @@index([topicId])
+  @@index([timestamp])
+  @@map("learning_events")
+}
+
+model LearningEvidence {
+  id            String       @id @default(uuid())
+  eventId       String       @map("event_id")
+  event         LearningEvent @relation(fields: [eventId], references: [eventId], onDelete: Cascade)
+  childId       String       @map("child_id")
+  child         Child        @relation(fields: [childId], references: [id], onDelete: Cascade)
+  sessionId     String       @map("session_id")
+  activityId    String?      @map("activity_id")
+  topicId       String?      @map("topic_id")
+  modality      Modality?
+  evidenceType  EvidenceType @map("evidence_type")
+  observation   Json         @map("observation")
+  createdAt     DateTime     @default(now()) @map("created_at")
+
+  @@index([childId])
+  @@index([sessionId])
+  @@index([activityId])
+  @@index([topicId])
+  @@index([createdAt])
+  @@unique([eventId, evidenceType])
+  @@map("learning_evidence")
+}
+
+model ReinforcementHistory {
+  id              String       @id @default(uuid())
+  childId         String       @map("child_id")
+  child           Child        @relation(fields: [childId], references: [id], onDelete: Cascade)
+  skillId         String       @map("skill_id")
+  skill           Skill        @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  activityType    ActivityType @map("activity_type")
+  beforeScore     Float        @map("before_score")
+  afterScore      Float        @map("after_score")
+  scoreDifference Float        @map("score_difference")
+  success         Boolean
+  createdAt       DateTime     @default(now()) @map("created_at")
+
+  @@index([childId])
+  @@index([childId, skillId])
+  @@map("reinforcement_history")
+}
+
+model ReinforcementEvent {
+  id        String                   @id @default(uuid())
+  childId   String                   @map("child_id")
+  child     Child                    @relation(fields: [childId], references: [id], onDelete: Cascade)
+  skillId   String                   @map("skill_id")
+  skill     Skill                    @relation(fields: [skillId], references: [id], onDelete: Cascade)
+  eventType ReinforcementEventType   @map("event_type")
+  metadata  Json?                    @map("metadata")
+  createdAt DateTime                 @default(now()) @map("created_at")
+
+  @@index([childId])
+  @@index([childId, skillId])
+  @@index([childId, eventType])
+  @@map("reinforcement_events")
+}
+
+enum SessionStatus {
+  GENERATED
+  STARTED
+  PAUSED
+  COMPLETED
+  ABANDONED
+}
+
+enum SessionBlockStatus {
+  PENDING
+  STARTED
+  COMPLETED
+  SKIPPED
+}
+
+enum SessionEventType {
+  GENERATED
+  STARTED
+  PAUSED
+  RESUMED
+  BLOCK_COMPLETED
+  BLOCK_SKIPPED
+  COMPLETED
+  ABANDONED
+}
+
+enum DifficultyLevel {
+  EASY
+  MEDIUM
+  HARD
+}
+
+model SessionTemplate {
+  id              String   @id @default(uuid())
+  name            String
+  durationMinutes Int      @map("duration_minutes")
+  blockSequence   Json     @map("block_sequence") // stores array of objects: { activityType: string, estimatedMinutes: number }
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@map("session_templates")
+}
+
+model SessionPlan {
+  id              String         @id @default(uuid())
+  childId         String         @map("child_id")
+  child           Child          @relation(fields: [childId], references: [id], onDelete: Cascade)
+  durationMinutes Int            @map("duration_minutes")
+  status          SessionStatus  @default(GENERATED)
+  roadmapId       String?        @map("roadmap_id")
+  startedAt       DateTime?      @map("started_at")
+  completedAt     DateTime?      @map("completed_at")
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+  sessionBlocks   SessionBlock[]
+  sessionEvents   SessionEvent[]
+
+  @@index([childId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("session_plans")
+}
+
+model SessionBlock {
+  id               String             @id @default(uuid())
+  sessionPlanId    String             @map("session_plan_id")
+  sessionPlan      SessionPlan        @relation(fields: [sessionPlanId], references: [id], onDelete: Cascade)
+  skillId          String?            @map("skill_id")
+  skill            Skill?             @relation(fields: [skillId], references: [id], onDelete: SetNull)
+  subjectId        String?            @map("subject_id")
+  subject          Subject?           @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+  activityType     ActivityType       @map("activity_type")
+  difficulty       DifficultyLevel
+  estimatedMinutes Int                @map("estimated_minutes")
+  position         Int
+  status           SessionBlockStatus @default(PENDING)
+  isReinforcement Boolean            @default(false) @map("is_reinforcement")
+  metadata         String?            @map("metadata")
+  completedAt      DateTime?          @map("completed_at")
+  createdAt        DateTime           @default(now()) @map("created_at")
+
+  @@index([sessionPlanId])
+  @@index([position])
+  @@index([skillId])
+  @@map("session_blocks")
+}
+
+model SessionEvent {
+  id            String           @id @default(uuid())
+  sessionPlanId String           @map("session_plan_id")
+  sessionPlan   SessionPlan      @relation(fields: [sessionPlanId], references: [id], onDelete: Cascade)
+  eventType     SessionEventType @map("event_type")
+  metadata      Json?            @map("metadata")
+  createdAt     DateTime         @default(now()) @map("created_at")
+
+  @@index([sessionPlanId])
+  @@index([eventType])
+  @@map("session_events")
+}
+
+enum AnalyticsMetricType {
+  ACCURACY
+  CONFIDENCE
+  RETENTION
+  ENGAGEMENT
+  LEARNING_VELOCITY
+  SESSION_COMPLETION
+  REINFORCEMENT_SUCCESS
+}
+
+enum TrendEventType {
+  CONFIDENCE_IMPROVING
+  CONFIDENCE_DECLINING
+  RETENTION_IMPROVING
+  RETENTION_DECLINING
+  ENGAGEMENT_IMPROVING
+  ENGAGEMENT_DECLINING
+  LEARNING_ACCELERATING
+  LEARNING_SLOWING
+  SESSION_ABANDONMENT
+  REGRESSION_DETECTED
+}
+
+model AnalyticsSnapshot {
+  id                         String   @id @default(uuid())
+  childId                    String   @unique @map("child_id")
+  child                      Child    @relation(fields: [childId], references: [id], onDelete: Cascade)
+  accuracy                   Float
+  confidence                 Float
+  retention                  Float
+  engagement                 Float
+  learningVelocity           Float    @map("learning_velocity")
+  sessionCompletionRate      Float    @map("session_completion_rate")
+  reinforcementSuccessRate   Float    @map("reinforcement_success_rate")
+  createdAt                  DateTime @default(now()) @map("created_at")
+  updatedAt                  DateTime @updatedAt @map("updated_at")
+
+  @@index([childId])
+  @@map("analytics_snapshots")
+}
+
+model AnalyticsHistory {
+  id         String              @id @default(uuid())
+  childId    String              @map("child_id")
+  child      Child               @relation(fields: [childId], references: [id], onDelete: Cascade)
+  metricType AnalyticsMetricType @map("metric_type")
+  value      Float
+  timestamp  DateTime            @default(now())
+
+  @@unique([childId, metricType, timestamp])
+  @@index([childId])
+  @@index([metricType])
+  @@index([timestamp])
+  @@map("analytics_histories")
+}
+
+model TrendEvent {
+  id        String         @id @default(uuid())
+  childId   String         @map("child_id")
+  child     Child          @relation(fields: [childId], references: [id], onDelete: Cascade)
+  eventType TrendEventType @map("event_type")
+  metadata  Json?
+  createdAt DateTime       @default(now()) @map("created_at")
+
+  @@index([childId])
+  @@index([eventType])
+  @@map("trend_events")
+}
+
+model SubjectAnalytics {
+  id               String   @id @default(uuid())
+  childId          String   @map("child_id")
+  child            Child    @relation(fields: [childId], references: [id], onDelete: Cascade)
+  subjectId        String   @map("subject_id")
+  subject          Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  accuracy         Float
+  confidence       Float
+  retention        Float
+  progress         Float
+  learningVelocity Float    @map("learning_velocity")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  @@unique([childId, subjectId])
+  @@index([childId])
+  @@index([subjectId])
+  @@map("subject_analytics")
+}
+
+
+
+
+// ===========================================================================
+// Adaptive Learning Engine — Phase 1 (Foundation)
+// See docs/adaptive-engine/design-spec.md §2.1
+// ===========================================================================
+
+enum RecommendationKind {
+  NEW_SKILL
+  REVIEW
+  PRACTICE
+  CHALLENGE
+  MIXED_PRACTICE
+  REST
+}
+
+// LearnerState is a materialized read-model aggregating the six adaptive
+// engines (mastery, adaptive, reinforcement, curriculum, session, analytics)
+// into a single row per child.
+//
+// Purpose: sub-100ms answers to "what is the current state of this learner"
+// without joining across 6+ tables on every request. Consumed by:
+//   - GET /v1/learner/:childId/state
+//   - GET /v1/learner/:childId/recommendation
+//   - AI Mentor context queries (Phase 2)
+//   - Parent Dashboard analytics (Phase 2)
+//
+// Consistency model: rebuilt by LearnerStateBuilder on demand and after every
+// performance event. Derived state — safe to drop and reconstruct from
+// SkillHealth + ReinforcementQueue + LearningProfile + SessionPlan.
+//
+// NOT added to Child.learnerState relation in Phase 1 to avoid touching the
+// existing Child model relations block. The FK + @@index gives an equivalent
+// lookup path; the Prisma relation can be introduced in Phase 2 alongside
+// the recordPerformance transaction.
+model LearnerState {
+  id                        String   @id @default(uuid())
+  childId                   String   @unique @map("child_id")
+  child                     Child    @relation(fields: [childId], references: [id], onDelete: Cascade)
+
+  // Aggregate mastery
+  overallMasteryScore       Float    @default(0)  @map("overall_mastery_score")
+  masteredSkillCount        Int      @default(0)  @map("mastered_skill_count")
+  strongSkillCount          Int      @default(0)  @map("strong_skill_count")
+  weakSkillCount            Int      @default(0)  @map("weak_skill_count")
+  totalSkillCount           Int      @default(0)  @map("total_skill_count")
+
+  // Denormalized top-N skill lists (arrays of skill ids)
+  topWeakSkillIds           Json     @default("[]") @map("top_weak_skill_ids")
+  topStrongSkillIds         Json     @default("[]") @map("top_strong_skill_ids")
+  reviewsDueCount           Int      @default(0)   @map("reviews_due_count")
+  reviewsDueSkillIds        Json     @default("[]") @map("reviews_due_skill_ids")
+
+  // Session
+  activeSessionPlanId       String?  @map("active_session_plan_id")
+  lastCompletedSessionAt    DateTime? @map("last_completed_session_at")
+
+  // Streak / engagement (Phase 1 leaves streak at 0; Streak model arrives in Phase 2)
+  streakDays                Int      @default(0)  @map("streak_days")
+  longestStreakDays         Int      @default(0)  @map("longest_streak_days")
+  engagementScore           Float    @default(0)  @map("engagement_score")
+
+  // Snapshot of LearningProfile preferences (denormalized)
+  preferredModality         ActivityType? @map("preferred_modality")
+  optimalSessionDurationMin Int      @default(15) @map("optimal_session_duration_min")
+
+  // Last recommendation (denormalized for TTL caching)
+  lastRecommendationKind    RecommendationKind? @map("last_recommendation_kind")
+  lastRecommendationSkillId String?             @map("last_recommendation_skill_id")
+  lastRecommendationAt      DateTime?           @map("last_recommendation_at")
+  lastRecommendationTTLSec  Int      @default(60) @map("last_recommendation_ttl_sec")
+
+  // Adaptive constraints (per-learner configuration)
+  adaptiveConstraints       Json     @default("[]") @map("adaptive_constraints")
+
+  // Cache metadata
+  updatedAt                 DateTime @updatedAt  @map("updated_at")
+  version                   Int      @default(1)  // incremented per rebuild
+
+  @@index([childId])
+  @@index([updatedAt])
+  @@map("learner_state")
+}
+
+// =============================================================================
+// Phase 2 — Intelligence Core
+// =============================================================================
+
+model MetricSnapshot {
+  id                String       @id @default(uuid())
+  childId           String       @map("child_id")
+  child             Child        @relation(fields: [childId], references: [id], onDelete: Cascade)
+  category          MetricCategory
+  metrics           Json         // Aggregated metric values
+  calculationVersion String      @map("calculation_version")
+  windowStart       DateTime     @map("window_start")
+  windowEnd         DateTime     @map("window_end")
+  createdAt         DateTime     @default(now()) @map("created_at")
+
+  @@index([childId])
+  @@index([childId, category])
+  @@index([createdAt])
+  @@map("metric_snapshots")
+}
+
+model TopicState {
+  id                String        @id @default(uuid())
+  childId           String        @map("child_id")
+  child             Child         @relation(fields: [childId], references: [id], onDelete: Cascade)
+  topicId           String        @map("topic_id")
+  state             TopicStateType @default(NEW)
+  modalityStates    Json          @default("{}") @map("modality_states") // Map of modality -> ModalityStateType
+  enteredAt         DateTime      @default(now()) @map("entered_at")
+  lastTransitionAt  DateTime      @map("last_transition_at")
+  transitionReason  String?       @map("transition_reason")
+  evidenceSummary   Json?         @map("evidence_summary") // Summary of evidence supporting this state
+  createdAt         DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @updatedAt @map("updated_at")
+
+  @@unique([childId, topicId])
+  @@index([childId])
+  @@index([childId, state])
+  @@map("topic_states")
+}
+
+model KnowledgeState {
+  id                  String           @id @default(uuid())
+  childId             String           @map("child_id")
+  child               Child            @relation(fields: [childId], references: [id], onDelete: Cascade)
+  topicId             String           @map("topic_id")
+  state               KnowledgeStateType @default(NEW)
+  confidence          Float            @default(0) // 0-1 confidence in classification
+  modalityCoverage    Json             @default("{}") @map("modality_coverage") // Required modalities and their states
+  enteredAt           DateTime         @default(now()) @map("entered_at")
+  lastTransitionAt    DateTime         @map("last_transition_at")
+  transitionReason    String?          @map("transition_reason")
+  createdAt           DateTime         @default(now()) @map("created_at")
+  updatedAt           DateTime         @updatedAt @map("updated_at")
+
+  // Phase 4.1 — Learning State Engine fields
+  mastery             Float            @default(0)
+  stability           Float            @default(0.5)
+  forgettingRate      Float            @default(0.1)  @map("forgetting_rate")
+  reviewIntervalDays  Int              @default(0)    @map("review_interval_days")
+  lastReviewedAt      DateTime?        @map("last_reviewed_at")
+  lastPracticedAt     DateTime?        @map("last_practiced_at")
+  correctAttempts     Int              @default(0)    @map("correct_attempts")
+  incorrectAttempts   Int              @default(0)    @map("incorrect_attempts")
+  streak              Int              @default(0)
+  totalAttempts       Int              @default(0)    @map("total_attempts")
+  averageResponseTimeMs Float          @default(0)    @map("average_response_time_ms")
+  hintUsage           Int              @default(0)    @map("hint_usage")
+  retryCount          Int              @default(0)    @map("retry_count")
+  currentDifficulty   String           @default("MEDIUM") @map("current_difficulty")
+  currentModality     Modality?
+
+  @@unique([childId, topicId])
+  @@index([childId])
+  @@index([childId, state])
+  @@map("knowledge_states")
+}
+
+// =============================================================================
+// Phase 3 — Adaptive Planning Models
+// =============================================================================
+
+model LearningDebt {
+  id                String           @id @default(uuid())
+  childId           String           @map("child_id")
+  child             Child            @relation(fields: [childId], references: [id], onDelete: Cascade)
+  topicId           String           @map("topic_id")
+  modality          Modality?
+  debtType          LearningDebtType @map("debt_type")
+  severity          Float            @default(1) // 0-1 scale
+  description       String
+  createdAt         DateTime         @default(now()) @map("created_at")
+  resolvedAt        DateTime?        @map("resolved_at")
+  resolved          Boolean          @default(false)
+  practices         Practice[]       // linked mastery practices
+
+  @@index([childId])
+  @@index([childId, topicId])
+  @@index([childId, resolved])
+  @@map("learning_debts")
+}
+
+model TopicReinforcementQueue {
+  id                String   @id @default(uuid())
+  childId           String   @map("child_id")
+  child             Child    @relation(fields: [childId], references: [id], onDelete: Cascade)
+  topicId           String   @map("topic_id")
+  modality          Modality?
+  startedAt         DateTime @map("started_at")
+  nextReviewAt      DateTime @map("next_review_at")
+  reviewFrequency   Int      @map("review_frequency")
+  reviewCount       Int      @default(0) @map("review_count")
+  successfulReviews Int      @default(0) @map("successful_reviews")
+  status            String   @default("ACTIVE")
+  priority          Int      @default(0)
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  @@unique([childId, topicId, modality])
+  @@index([childId])
+  @@index([childId, status])
+  @@index([nextReviewAt])
+  @@map("topic_reinforcement_queues")
+}
+
+model DynamicRoadmap {
+  id                String   @id @default(uuid())
+  childId           String   @unique @map("child_id")
+  child             Child    @relation(fields: [childId], references: [id], onDelete: Cascade)
+  roadmapJson       Json     @map("roadmap_json")
+  version           Int      @default(1)
+  generatedAt       DateTime @default(now()) @map("generated_at")
+  validUntil        DateTime? @map("valid_until")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  @@index([childId])
+  @@map("dynamic_roadmaps")
+}
+
+model Practice {
+  id                String        @id @default(uuid())
+  childId           String        @map("child_id")
+  child             Child         @relation(fields: [childId], references: [id], onDelete: Cascade)
+  topicId           String        @map("topic_id")
+  modality          Modality?
+  type              PracticeType  // DAILY, MASTERY, REINFORCEMENT
+  debtId            String?       @map("debt_id") // only for MASTERY
+  debt              LearningDebt? @relation(fields: [debtId], references: [id], onDelete: SetNull)
+  scheduledFor      DateTime      @map("scheduled_for")
+  completedAt       DateTime?     @map("completed_at")
+  completed         Boolean       @default(false)
+  createdAt         DateTime      @default(now()) @map("created_at")
+
+  @@index([childId])
+  @@index([childId, type])
+  @@index([childId, scheduledFor])
+  @@index([childId, completed])
+  @@index([debtId])
+  @@map("practices")
+}
+
+model RecoveryMode {
+  id                String             @id @default(uuid())
+  childId           String             @unique @map("child_id")
+  child             Child              @relation(fields: [childId], references: [id], onDelete: Cascade)
+  status            RecoveryModeStatus  @default(ACTIVE)
+  triggerReason     String             @map("trigger_reason")
+  enteredAt         DateTime           @default(now()) @map("entered_at")
+  resolvedAt        DateTime?          @map("resolved_at")
+  effortTierDrop    Int                @default(2) @map("effort_tier_drop")
+  minTopicsAtTier   Int                @default(2) @map("min_topics_at_tier")
+  currentTier       Int                @default(1) @map("current_tier")
+  createdAt         DateTime           @default(now()) @map("created_at")
+  updatedAt         DateTime           @updatedAt @map("updated_at")
+
+  @@index([childId])
+  @@index([childId, status])
+  @@map("recovery_modes")
+}
+
+// =============================================================================
+// Phase 3 — Adaptive Planning Enums
+// =============================================================================
+
+enum LearningDebtType {
+  MASTERY_GAP
+  SKILL_DECAY
+  PREREQUISITE_MISSING
+  MODALITY_IMBALANCE
+  PACING_ISSUE
+  ENGAGEMENT_DROP
+  PRACTICE
+}
+
+enum PracticeType {
+  DAILY
+  MASTERY
+  REINFORCEMENT
+}
+
+enum RoadmapSectionType {
+  NEW_LEARNING
+  REVIEW
+  REINFORCEMENT
+  MASTERY_PRACTICE
+  DAILY_PRACTICE
+  RECOVERY
+  ASSESSMENT
+}
+
+enum SessionBlockType {
+  WARMUP
+  NEW_LEARNING
+  REVIEW
+  PRACTICE
+  MASTERY
+  CHALLENGE
+  MIXED_PRACTICE
+  REST
+}
+
+enum RecoveryModeStatus {
+  ACTIVE
+  RESOLVED
+  ESCALATED
+}
+
+// =============================================================================
+// Phase 3.2 — Notifications
+// =============================================================================
+
+enum NotificationType {
+  SYSTEM
+  LEARNING
+  REWARD
+  REMINDER
+  SECURITY
+}
+
+enum NotificationPriority {
+  LOW
+  NORMAL
+  HIGH
+}
+
+model Notification {
+  id        String             @id @default(uuid())
+  userId    String             @map("user_id")
+  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  childId   String?            @map("child_id")
+  child     Child?             @relation(fields: [childId], references: [id], onDelete: Cascade)
+  title     String
+  message   String
+  type      NotificationType
+  priority  NotificationPriority @default(NORMAL)
+  metadata  Json?
+  isRead    Boolean            @default(false) @map("is_read")
+  readAt    DateTime?          @map("read_at")
+  createdAt DateTime           @default(now()) @map("created_at")
+  updatedAt DateTime           @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@index([userId, isRead])
+  @@index([userId, type])
+  @@map("notifications")
+}
+
+// =============================================================================
+// Phase 3.1 — Assessment Center
+// =============================================================================
+
+enum AssessmentQuestionType {
+  MULTIPLE_CHOICE
+  SCALE
+  TEXT
+  BOOLEAN
+}
+
+enum AssessmentAttemptStatus {
+  IN_PROGRESS
+  COMPLETED
+  ABANDONED
+}
+
+model Assessment {
+  id               String   @id @default(uuid())
+  title            String
+  description      String?
+  ageGroup         String?  @map("age_group")
+  estimatedMinutes Int      @default(10) @map("estimated_minutes")
+  thumbnail        String?
+  isActive         Boolean  @default(true) @map("is_active")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+  deletedAt        DateTime? @map("deleted_at")
+
+  questions AssessmentQuestion[]
+  attempts  AssessmentAttempt[]
+
+  @@map("assessments")
+}
+
+model AssessmentQuestion {
+  id            String                  @id @default(uuid())
+  assessmentId  String                  @map("assessment_id")
+  assessment    Assessment              @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  prompt        String
+  questionType  AssessmentQuestionType @map("question_type")
+  options       Json?                  // array of { label: string, value: string }
+  order         Int                    @default(0)
+  maxScore      Float                  @default(1) @map("max_score")
+  correctAnswer String?                @map("correct_answer")
+
+  @@index([assessmentId])
+  @@map("assessment_questions")
+}
+
+model AssessmentAttempt {
+  id           String                  @id @default(uuid())
+  childId      String                  @map("child_id")
+  child        Child                   @relation(fields: [childId], references: [id], onDelete: Cascade)
+  assessmentId String                  @map("assessment_id")
+  assessment   Assessment              @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  status       AssessmentAttemptStatus @default(IN_PROGRESS)
+  startedAt    DateTime                @default(now()) @map("started_at")
+  completedAt  DateTime?               @map("completed_at")
+  rawResponses Json?                   @map("raw_responses") // array of { questionId: string, answer: string }
+  score        Float?                  @map("score")
+  maxScore     Float?                  @map("max_score")
+  percentage   Float?                  @map("percentage")
+  createdAt    DateTime                @default(now()) @map("created_at")
+  updatedAt    DateTime                @updatedAt @map("updated_at")
+  deletedAt    DateTime?               @map("deleted_at")
+
+  @@index([childId])
+  @@index([childId, assessmentId])
+  @@index([assessmentId])
+  @@map("assessment_attempts")
+}
+
+
+

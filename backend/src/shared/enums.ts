@@ -10,6 +10,7 @@
 export {
   ActivityType,
   AdaptationEventType,
+  AssessmentAttemptStatus,
   MasteryState,
   CurriculumState,
   ReinforcementEventType,

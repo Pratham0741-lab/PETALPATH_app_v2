@@ -3,13 +3,17 @@ import { ReinforcementEventType } from '../../../shared/enums.js';
 import { Prisma } from '@prisma/client';
 
 export class ReinforcementEventRepository {
-  async create(data: {
-    childId: string;
-    skillId: string;
-    eventType: ReinforcementEventType;
-    metadata?: Prisma.InputJsonValue;
-  }) {
-    return prisma.reinforcementEvent.create({ data });
+  async create(
+    data: {
+      childId: string;
+      skillId: string;
+      eventType: ReinforcementEventType;
+      metadata?: Prisma.InputJsonValue;
+    },
+    tx?: Prisma.TransactionClient,
+  ) {
+    const client = tx ?? prisma;
+    return client.reinforcementEvent.create({ data });
   }
 
   async findByChild(childId: string, limit = 50) {

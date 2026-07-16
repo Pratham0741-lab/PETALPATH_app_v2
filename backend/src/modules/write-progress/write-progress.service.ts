@@ -1,6 +1,6 @@
 import { writeProgressRepository } from './write-progress.repository.js';
 import { activitiesRepository } from '../activities/activities.repository.js';
-import { progressRepository } from '../progress/progress.repository.js';
+import { progressService } from '../progress/progress.service.js';
 import { starService } from '../stars/star.service.js';
 import { NotFoundError } from '../../utils/errors.js';
 
@@ -30,7 +30,7 @@ export class WriteProgressService {
     if (isCompleted) {
       const finalScore = score !== undefined ? score : progress.bestScore;
       const stars = starService.calculateWriteStars(finalScore);
-      await progressRepository.updateActivityCompletion(childId, activity.lessonId, 'write', stars);
+      await progressService.updateActivityCompletion(childId, activity.lessonId, 'write', stars);
     }
 
     return progress;
@@ -45,7 +45,7 @@ export class WriteProgressService {
     const progress = await writeProgressRepository.completeWrite(childId, activityId, score);
     const finalScore = score !== undefined ? score : progress.bestScore;
     const stars = starService.calculateWriteStars(finalScore);
-    await progressRepository.updateActivityCompletion(childId, activity.lessonId, 'write', stars);
+    await progressService.updateActivityCompletion(childId, activity.lessonId, 'write', stars);
 
     return progress;
   }

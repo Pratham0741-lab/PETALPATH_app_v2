@@ -1,0 +1,480 @@
+$yaml = @'
+openapi: 3.1.0
+info:
+  title: PetalPath Backend API
+  description: >
+    Adaptive learning platform API for children's educational journey.
+    Authentication via JWT bearer token. All protected endpoints require
+    the `Authorization: Bearer <token>` header.
+  version: 2.0.0
+  contact:
+    name: PetalPath Team
+
+servers:
+  - url: http://localhost:3000/api
+    description: Local development server
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    ApiResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          description: Response payload
+        message:
+          type: string
+      required:
+        - success
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          enum: [false]
+        message:
+          type: string
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+        role:
+          type: string
+          enum: [PARENT, ADMIN]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    Child:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        dateOfBirth:
+          type: string
+          format: date
+        avatar:
+          type: string
+        grade:
+          type: string
+        parentId:
+          type: string
+          format: uuid
+        createdAt:
+          type: string
+          format: date-time
+    Category:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        icon:
+          type: string
+        order:
+          type: integer
+    Module:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        categoryId:
+          type: string
+          format: uuid
+        order:
+          type: integer
+    Lesson:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        moduleId:
+          type: string
+          format: uuid
+        order:
+          type: integer
+        content:
+          type: object
+    Activity:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        lessonId:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: [VIDEO, LISTEN, SPEAK, WRITE, QUIZ, GAME]
+        order:
+          type: integer
+        content:
+          type: object
+    Video:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        description:
+          type: string
+        url:
+          type: string
+          format: uri
+        thumbnail:
+          type: string
+        duration:
+          type: integer
+    Audio:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        url:
+          type: string
+          format: uri
+        duration:
+          type: integer
+    Mentor:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        avatar:
+          type: string
+        expertise:
+          type: array
+          items:
+            type: string
+    Progress:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        childId:
+          type: string
+          format: uuid
+        lessonId:
+          type: string
+          format: uuid
+        completed:
+          type: boolean
+        score:
+          type: number
+        timeSpent:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+    Session:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        childId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [PENDING, ACTIVE, PAUSED, COMPLETED, ABANDONED]
+        type:
+          type: string
+        blocks:
+          type: array
+          items:
+            type: object
+        startedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+    Reward:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        type:
+          type: string
+          enum: [STICKER, BADGE, TROPHY]
+        icon:
+          type: string
+        description:
+          type: string
+    Story:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        content:
+          type: object
+        pages:
+          type: integer
+        category:
+          type: string
+    Assessment:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        description:
+          type: string
+        questions:
+          type: array
+          items:
+            type: object
+        skillId:
+          type: string
+          format: uuid
+    Attempt:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        childId:
+          type: string
+          format: uuid
+        assessmentId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [PENDING, IN_PROGRESS, COMPLETED]
+        score:
+          type: number
+        answers:
+          type: array
+          items:
+            type: object
+        startedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+    Notification:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        userId:
+          type: string
+          format: uuid
+        title:
+          type: string
+        body:
+          type: string
+        read:
+          type: boolean
+        type:
+          type: string
+        data:
+          type: object
+        createdAt:
+          type: string
+          format: date-time
+  responses:
+    Success:
+      description: Successful operation
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                enum: [true]
+              message:
+                type: string
+    Created:
+      description: Resource created successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              success:
+                type: boolean
+                enum: [true]
+              data:
+                type: object
+              message:
+                type: string
+    BadRequest:
+      description: Bad request / validation error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Unauthorized:
+      description: Unauthorized (missing or invalid token)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Forbidden:
+      description: Forbidden (insufficient permissions)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Conflict:
+      description: Resource conflict (e.g. duplicate)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+tags:
+  - name: Authentication
+    description: Authentication endpoints (Google OAuth, email/password, JWT)
+  - name: Users
+    description: User management CRUD
+  - name: Children
+    description: Child profile management (authMiddleware)
+  - name: Categories
+    description: Content category CRUD
+  - name: Modules
+    description: Learning module CRUD
+  - name: Lessons
+    description: Lesson CRUD
+  - name: Activities
+    description: Activity CRUD
+  - name: Videos
+    description: Video resource CRUD
+  - name: Audio
+    description: Audio resource list (authMiddleware)
+  - name: Mentors
+    description: Mentor profiles (authMiddleware)
+  - name: Progress
+    description: Lesson/module/category progress tracking (authMiddleware)
+  - name: VideoProgress
+    description: Video watch progress (authMiddleware)
+  - name: ListenProgress
+    description: Listen activity progress (authMiddleware)
+  - name: SpeakProgress
+    description: Speak activity progress (authMiddleware)
+  - name: WriteProgress
+    description: Write activity progress (authMiddleware)
+  - name: Rewards
+    description: Reward catalog (stickers, badges) (authMiddleware)
+  - name: Stories
+    description: Interactive stories with page tracking (authMiddleware)
+  - name: Assessments
+    description: Assessment catalog and child attempt management (authMiddleware + child ownership)
+  - name: Mastery
+    description: Skill mastery tracking and health metrics (authMiddleware)
+  - name: Curriculum
+    description: Personalized curriculum generation and management (authMiddleware)
+  - name: Adaptive
+    description: Adaptive learning engine - performance processing, profiling, recommendations (authMiddleware)
+  - name: Reinforcement
+    description: Reinforcement learning queue and history (authMiddleware)
+  - name: Session
+    description: Learning session lifecycle management (authMiddleware)
+  - name: Analytics
+    description: Aggregated learning analytics and insights (authMiddleware)
+  - name: Notifications
+    description: Push notification management (authMiddleware)
+  - name: Learner
+    description: Learner state facade (authMiddleware + child ownership)
+  - name: LearningEvents
+    description: Learning event and evidence tracking (authMiddleware)
+  - name: IntelligenceCore
+    description: Observation, evidence processing, and classification engine (authMiddleware)
+  - name: AdaptivePlanning
+    description: Dynamic roadmap, learning debts, recovery, session plans, recommendations (authMiddleware)
+  - name: AdaptiveCurriculum
+    description: Public read-only curriculum catalog (skills, grades, domains) (authMiddleware)
+  - name: AdaptiveCurriculumAdmin
+    description: Admin curriculum CRUD operations (authMiddleware + adminMiddleware)
+  - name: Placement
+    description: Placement test questionnaire and assessment (authMiddleware + child ownership)
+  - name: SkillRoadmap
+    description: Adaptive skill roadmap with section, unlock, daily queue (authMiddleware + child ownership)
+  - name: MasteryEngine
+    description: Mastery evaluation, recalculation, skill history, revision queue (authMiddleware + child ownership)
+  - name: AITutor
+    description: AI-powered tutoring sessions (authMiddleware + child ownership)
+  - name: Adaptation
+    description: Child learning analysis and profile (authMiddleware + child ownership)
+  - name: Health
+    description: Health check endpoints (no auth)
+  - name: SessionPlanner
+    description: Session planning and generation (authMiddleware)
+  - name: Roadmap
+    description: Simple roadmap endpoint (authMiddleware)
+'@
+
+$yaml | Set-Content -Path "D:\petalpath\PETALPATH_app_v2.0\backend\docs\openapi.yaml" -Encoding UTF8
+Write-Host "Base file written successfully"

@@ -33,7 +33,7 @@ export class SessionPlanRepository {
     });
   }
 
-  async findByChild(childId: string) {
+  async findByChild(childId: string, take?: number) {
     return prisma.sessionPlan.findMany({
       where: { childId },
       include: {
@@ -42,6 +42,7 @@ export class SessionPlanRepository {
         },
       },
       orderBy: { createdAt: 'desc' },
+      ...(take ? { take } : {}),
     });
   }
 
@@ -81,6 +82,28 @@ export class SessionPlanRepository {
       include: {
         sessionBlocks: true,
       },
+    });
+  }
+
+  async findSessions(childId: string, take?: number) {
+    return prisma.sessionPlan.findMany({
+      where: {
+        childId,
+        status: {
+          not: SessionStatus.GENERATED,
+        },
+      },
+      include: {
+        sessionBlocks: {
+          orderBy: { position: 'asc' },
+          include: {
+            skill: true,
+            subject: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      ...(take ? { take } : {}),
     });
   }
 

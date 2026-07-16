@@ -13,44 +13,27 @@
  */
 
 import { ActivityType } from '../enums.js';
+import { masteryConstants } from '../../config/mastery.constants.js';
 
 export const engineConfig = {
   /**
    * Mastery engine — mastery.service.ts
+   * Derived from mastery.constants.ts (single source of truth)
    */
   mastery: {
-    weights: {
-      knowledge: 0.35,
-      retention: 0.25,
-      confidence: 0.2,
-      engagement: 0.1,
-      consistency: 0.1,
-    },
-    stateThresholds: {
-      learning: 40,
-      weak: 60,
-      strong: 85,
-    },
+    weights: { ...masteryConstants.weights },
+    stateThresholds: { ...masteryConstants.stateThresholds },
     reviewCadenceDays: {
-      learning: 2,
-      weak: 1,
-      strong: 7,
-      mastered: 30,
+      learning: masteryConstants.reviewCadenceDays.learning,
+      weak: masteryConstants.reviewCadenceDays.weak,
+      strong: masteryConstants.reviewCadenceDays.strong,
+      mastered: masteryConstants.reviewCadenceDays.mastered,
     },
-    retention: {
-      decayFactor: 0.995,
-      initialRetention: 100.0,
-      successAccuracyThreshold: 80,
-      successBoost: 30,
-      failurePenalty: 10,
-    },
-    regressionDropThreshold: 20,
-    confidence: {
-      retryNormalizationCeiling: 5,
-      helpNormalizationCeiling: 5,
-    },
-    consistencyWindowSize: 5,
-    defaultFrequencyDays: 2,
+    retention: { ...masteryConstants.retention },
+    regressionDropThreshold: masteryConstants.regressionDropThreshold,
+    confidence: { ...masteryConstants.confidence },
+    consistencyWindowSize: masteryConstants.consistencyWindowSize,
+    defaultFrequencyDays: masteryConstants.reviewCadenceDays.default,
   },
 
   adaptive: {

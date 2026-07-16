@@ -1,6 +1,6 @@
 import { listenProgressRepository } from './listen-progress.repository.js';
 import { activitiesRepository } from '../activities/activities.repository.js';
-import { progressRepository } from '../progress/progress.repository.js';
+import { progressService } from '../progress/progress.service.js';
 import { NotFoundError } from '../../utils/errors.js';
 
 export class ListenProgressService {
@@ -26,7 +26,7 @@ export class ListenProgressService {
     const progress = await listenProgressRepository.upsertProgress(childId, activityId, { isCompleted });
 
     if (isCompleted) {
-      await progressRepository.updateActivityCompletion(childId, activity.lessonId, 'listen', 1);
+      await progressService.updateActivityCompletion(childId, activity.lessonId, 'listen', 1);
     }
 
     return progress;
@@ -39,7 +39,7 @@ export class ListenProgressService {
     }
 
     const progress = await listenProgressRepository.completeListen(childId, activityId);
-    await progressRepository.updateActivityCompletion(childId, activity.lessonId, 'listen', 1);
+    await progressService.updateActivityCompletion(childId, activity.lessonId, 'listen', 1);
 
     return progress;
   }

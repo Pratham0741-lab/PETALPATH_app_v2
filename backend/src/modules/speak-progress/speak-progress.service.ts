@@ -1,6 +1,6 @@
 import { speakProgressRepository } from './speak-progress.repository.js';
 import { activitiesRepository } from '../activities/activities.repository.js';
-import { progressRepository } from '../progress/progress.repository.js';
+import { progressService } from '../progress/progress.service.js';
 import { starService } from '../stars/star.service.js';
 import { NotFoundError } from '../../utils/errors.js';
 
@@ -30,7 +30,7 @@ export class SpeakProgressService {
     if (isCompleted) {
       const finalScore = score !== undefined ? score : progress.bestScore;
       const stars = starService.calculateSpeakStars(finalScore);
-      await progressRepository.updateActivityCompletion(childId, activity.lessonId, 'speak', stars);
+      await progressService.updateActivityCompletion(childId, activity.lessonId, 'speak', stars);
     }
 
     return progress;
@@ -45,7 +45,7 @@ export class SpeakProgressService {
     const progress = await speakProgressRepository.completeSpeak(childId, activityId, score);
     const finalScore = score !== undefined ? score : progress.bestScore;
     const stars = starService.calculateSpeakStars(finalScore);
-    await progressRepository.updateActivityCompletion(childId, activity.lessonId, 'speak', stars);
+    await progressService.updateActivityCompletion(childId, activity.lessonId, 'speak', stars);
 
     return progress;
   }
