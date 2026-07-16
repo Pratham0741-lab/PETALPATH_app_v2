@@ -1,6 +1,7 @@
 ﻿import { create } from 'zustand';
 import { api } from '../api/client';
 import { useRoadmapStore } from './roadmapStore';
+import type { Category, Module, Lesson } from './roadmapStore';
 
 export interface AudioItem {
   id: string;
@@ -31,9 +32,9 @@ interface ListenState {
 
 // Helper to generate multiple-choice options locally based on activity title and Roadmap tree
 function generateOptionsForActivity(activityId: string, title: string): { options: string[]; correct: string } {
-  let targetCategory: any = null;
-  let targetModule: any = null;
-  let targetLesson: any = null;
+  let targetCategory: Category | null = null;
+  let targetModule: Module | null = null;
+  let targetLesson: Lesson | null = null;
 
   try {
     const categories = useRoadmapStore.getState().categories;
@@ -59,7 +60,7 @@ function generateOptionsForActivity(activityId: string, title: string): { option
 
   if (targetLesson && targetModule) {
     // 1. Collect all lesson titles from the same module
-    let optionCandidates = targetModule.lessons.map((l: any) => l.title);
+    let optionCandidates = targetModule.lessons.map((l: Lesson) => l.title);
     optionCandidates = Array.from(new Set(optionCandidates));
 
     // 2. If fewer than 3, fill from parent category
@@ -206,8 +207,8 @@ export const useListenStore = create<ListenState>((set, get) => {
           correctAnswer: correct,
           isComingSoon,
         });
-      } catch (err: any) {
-        set({ error: err.message || 'Failed to load audio' });
+    } catch (err: unknown) {
+            set({ error: err instanceof Error ? err.message : 'Failed to load audio' });
       } finally {
         set({ loading: false });
       }

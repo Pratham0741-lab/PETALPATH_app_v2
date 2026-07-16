@@ -1,0 +1,73 @@
+import React, { useEffect, useRef } from 'react';
+import { View, StyleSheet, Animated } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { colors, typography } from '../../../theme';
+
+interface FlameAnimationProps {
+  active: boolean;
+  size?: number;
+}
+
+const FlameAnimation: React.FC<FlameAnimationProps> = ({ active, size = 48 }) => {
+  const scale = useRef(new Animated.Value(1)).current;
+  const opacity = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    if (!active) {
+      scale.setValue(1);
+      opacity.setValue(1);
+      return;
+    }
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.parallel([
+          Animated.timing(scale, {
+            toValue: 1.25,
+            duration: 500,
+            useNativeDriver: true,
+          }),
+          Animated.timing(opacity, {
+            toValue: 0.7,
+            duration: 500,
+            useNativeDriver: true,
+          }),
+        ]),
+        Animated.parallel([
+          Animated.timing(scale, {
+            toValue: 1,
+            duration: 500,
+            useNativeDriver: true,
+          }),
+          Animated.timing(opacity, {
+            toValue: 1,
+            duration: 500,
+            useNativeDriver: true,
+          }),
+        ]),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [active, scale, opacity]);
+
+  return (
+    <View style={[styles.container, { width: size, height: size }]}>
+      <Animated.View style={{ transform: [{ scale }], opacity }}>
+        <Ionicons
+          name="flame"
+          size={size}
+          color={active ? colors.warning : colors.textMuted}
+        />
+      </Animated.View>
+    </View>
+  );
+};
+
+const styles = StyleSheet.create({
+  container: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+});
+
+export default FlameAnimation;

@@ -1,9 +1,5 @@
 import { api } from './client';
 
-export function generateSession() {
-  return api.post('/session/generate');
-}
-
 export function getTodaySession() {
   return api.get('/session/today');
 }
@@ -30,10 +26,6 @@ export function resumeSession(id: string) {
 
 export function completeSession(id: string) {
   return api.post(`/session/${id}/complete`);
-}
-
-export function abandonSession(id: string) {
-  return api.post(`/session/${id}/abandon`);
 }
 
 export function completeBlock(sessionId: string, blockId: string) {

@@ -6,10 +6,6 @@
 
 import { api } from './client';
 
-export function getRewardsOverview() {
-  return api.get('/rewards');
-}
-
 export function getStickers() {
   return api.get('/rewards/stickers');
 }

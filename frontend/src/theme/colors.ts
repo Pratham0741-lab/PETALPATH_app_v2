@@ -1,29 +1,101 @@
-export const colors = {
-  background: '#FFF9F3',           // Cozy soft cream background (#FFF9F3)
-  backgroundSecondary: '#FFF9F3',  // Cozy soft cream background (#FFF9F3)
-  surface: '#FFFFFF',              // Soft surface white
-  card: '#FFFFFF',                 // Large white lesson card surface
-  sidebar: '#8C79C7',              // Soft sidebar purple
-  sidebarDark: '#7C68B8',          // Darker sidebar purple
-  primary: '#8B78D8',              // Primary storybook purple
-  purple: '#8B78D8',
-  blue: '#5D8FD7',                 // Cozy primary blue
-  skyBlue: '#8EB7E8',              // Soft sky blue
-  green: '#8DBB75',                // Sage green accent
-  leafGreen: '#7CA767',            // Soft leaf green
-  yellow: '#F7C94B',               // Warm yellow stars
-  orange: '#F2A15F',               // Soft orange
-  coral: '#F29A8F',                // Coral pink
-  peach: '#F6B99A',                // Peach accent
-  pink: '#F6B5C5',                 // Pastel pink
-  lavender: '#B89DE8',             // Lavender accent
-  brown: '#59473B',                // Primary dark accent / text details
-  text: '#3B342F',                 // Storybook dark brown text
-  textPrimary: '#3B342F',          // Storybook dark brown text
-  textSecondary: '#7A726C',        // Muted gray-brown secondary text
-  textMuted: '#7A726C',
-  border: '#F1E4D3',               // Light cream border
+export const lightColors = {
+  primary: '#8B78D8',
+  primaryLight: '#A99BE8',
+  primaryDark: '#6B5ABF',
+  secondary: '#5D8FD7',
+  secondaryLight: '#8EB7E8',
+  accent: '#F7C94B',
+  success: '#8DBB75',
+  successLight: '#B5D9A5',
+  warning: '#F2A15F',
+  warningLight: '#F7C99E',
+  error: '#E57373',
+  errorLight: '#F0A5A5',
+  background: '#FFF9F3',
+  backgroundSecondary: '#FFF9F3',
+  surface: '#FFFFFF',
+  surfaceSecondary: '#FBF5EE',
+  card: '#FFFFFF',
+  border: '#F1E4D3',
+  borderLight: '#F8F0E8',
+  divider: '#EDE4D9',
+  text: '#3B342F',
+  textPrimary: '#3B342F',
+  textSecondary: '#7A726C',
+  textMuted: '#A09A95',
+  textInverse: '#FFFFFF',
+  textLink: '#5D8FD7',
+  overlay: 'rgba(0,0,0,0.4)',
+  shadow: 'rgba(0,0,0,0.1)',
+  transparent: 'transparent',
   white: '#FFFFFF',
   black: '#000000',
-  transparent: 'transparent',
+  skeleton: '#E8E0D8',
+  skeletonHighlight: '#F5F0EA',
+  sidebar: '#8C79C7',
+  sidebarDark: '#7C68B8',
+  purple: '#8B78D8',
+  blue: '#5D8FD7',
+  skyBlue: '#8EB7E8',
+  green: '#8DBB75',
+  leafGreen: '#7CA767',
+  yellow: '#F7C94B',
+  orange: '#F2A15F',
+  coral: '#F29A8F',
+  peach: '#F6B99A',
+  pink: '#F6B5C5',
+  lavender: '#B89DE8',
+  brown: '#59473B',
 };
+
+export const darkColors = {
+  primary: '#A99BE8',
+  primaryLight: '#C4B8F0',
+  primaryDark: '#8B78D8',
+  secondary: '#8EB7E8',
+  secondaryLight: '#B0D0F0',
+  accent: '#F7C94B',
+  success: '#8DBB75',
+  successLight: '#A8D094',
+  warning: '#F2A15F',
+  warningLight: '#F5BA85',
+  error: '#E57373',
+  errorLight: '#D99696',
+  background: '#1A1A2E',
+  backgroundSecondary: '#1A1A2E',
+  surface: '#252540',
+  surfaceSecondary: '#2E2E4A',
+  card: '#2E2E4A',
+  border: '#3D3D5C',
+  borderLight: '#48486A',
+  divider: '#3D3D5C',
+  text: '#F0EDE8',
+  textPrimary: '#F0EDE8',
+  textSecondary: '#B8B5B0',
+  textMuted: '#8A8782',
+  textInverse: '#1A1A2E',
+  textLink: '#8EB7E8',
+  overlay: 'rgba(0,0,0,0.6)',
+  shadow: 'rgba(0,0,0,0.3)',
+  transparent: 'transparent',
+  white: '#FFFFFF',
+  black: '#000000',
+  skeleton: '#3A3A58',
+  skeletonHighlight: '#48486A',
+  sidebar: '#3D3D5C',
+  sidebarDark: '#2E2E4A',
+  purple: '#A99BE8',
+  blue: '#8EB7E8',
+  skyBlue: '#B0D0F0',
+  green: '#8DBB75',
+  leafGreen: '#7CA767',
+  yellow: '#F7C94B',
+  orange: '#F2A15F',
+  coral: '#F29A8F',
+  peach: '#F6B99A',
+  pink: '#F6B5C5',
+  lavender: '#C4B8F0',
+  brown: '#59473B',
+};
+
+export const colors = lightColors;

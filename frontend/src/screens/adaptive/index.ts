@@ -1,0 +1,1 @@
+export { AdaptiveProfileScreen } from './AdaptiveProfileScreen';

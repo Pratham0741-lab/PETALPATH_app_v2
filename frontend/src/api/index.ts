@@ -14,7 +14,6 @@ export * as childrenApi from './children';
 export * as roadmapApi from './roadmap';
 export * as progressApi from './progress';
 export * as rewardsApi from './rewards';
-export * as mentorsApi from './mentors';
 export * as mediaApi from './media';
 export * as analyticsApi from './analytics';
 export * as sessionsApi from './sessions';

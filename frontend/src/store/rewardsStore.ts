@@ -49,8 +49,8 @@ export const useRewardsStore = create<RewardsState>((set) => ({
         stickers: resStickers.data ?? [],
         badges: resBadges.data ?? [],
       });
-    } catch (err: any) {
-      set({ error: err.message || 'Failed to refresh rewards' });
+    } catch (err: unknown) {
+          set({ error: err instanceof Error ? err.message : 'Failed to refresh rewards' });
     } finally {
       set({ loading: false });
     }

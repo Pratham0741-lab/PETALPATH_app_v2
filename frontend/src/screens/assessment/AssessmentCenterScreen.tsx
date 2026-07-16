@@ -1,31 +1,30 @@
 import React, { useCallback, useState } from 'react';
-import { StyleSheet, View, Text, ScrollView, RefreshControl } from 'react-native';
+import { StyleSheet, View, Text, SectionList, RefreshControl } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 
 import { ScreenContainer } from '../../components/common/ScreenContainer';
-import { AppCard } from '../../components/cards/AppCard';
-import { AppButton } from '../../components/buttons/AppButton';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
-import { EmptyState } from '../../components/common/EmptyState';
 import { ErrorState } from '../../components/common/ErrorState';
+import { EmptyState } from '../../components/common/EmptyState';
+import { AssessmentCard } from '../../components/assessment/AssessmentCard';
 import { useChildStore } from '../../store/childStore';
 import { useAssessmentsList, useCreateAttempt } from '../../hooks/useAssessments';
 import { toUserMessage } from '../../api/errors';
-import { colors, spacing, typography, radius } from '../../theme';
+import { colors, spacing, typography } from '../../theme';
 
-type Status = 'available' | 'in_progress' | 'completed';
+type Status = 'not_started' | 'in_progress' | 'completed';
 
 function getAssessmentStatus(
   assessmentId: string,
   attempts: Array<{ assessmentId: string; status: string }> | undefined,
 ): Status {
-  if (!attempts) return 'available';
+  if (!attempts) return 'not_started';
   const match = attempts.find((a) => a.assessmentId === assessmentId);
-  if (!match) return 'available';
+  if (!match) return 'not_started';
   if (match.status === 'COMPLETED') return 'completed';
   if (match.status === 'IN_PROGRESS') return 'in_progress';
-  return 'available';
+  return 'not_started';
 }
 
 function findAttemptId(
@@ -44,6 +43,17 @@ function findCompletedAttemptId(
   if (!attempts) return undefined;
   const match = attempts.find((a) => a.assessmentId === assessmentId && a.status === 'COMPLETED');
   return match?.id;
+}
+
+interface SectionItem {
+  assessment: Record<string, any>;
+  status: Status;
+  attemptId?: string;
+}
+
+interface Section {
+  title: string;
+  data: SectionItem[];
 }
 
 export const AssessmentCenterScreen: React.FC = () => {
@@ -96,6 +106,19 @@ export const AssessmentCenterScreen: React.FC = () => {
     [navigation],
   );
 
+  const handleAssessmentPress = useCallback(
+    (assessment: Record<string, any>, status: Status, attemptId?: string) => {
+      if (status === 'completed' && attemptId) {
+        handleViewResults(attemptId);
+      } else if (status === 'in_progress' && attemptId) {
+        handleResume(assessment.id, attemptId);
+      } else {
+        handleStart(assessment.id);
+      }
+    },
+    [handleStart, handleResume, handleViewResults],
+  );
+
   if (!activeChild) {
     return (
       <ScreenContainer>
@@ -137,128 +160,85 @@ export const AssessmentCenterScreen: React.FC = () => {
   if (assessmentList.length === 0) {
     return (
       <ScreenContainer>
-        <ScrollView
-          contentContainerStyle={styles.scrollContainer}
-          refreshControl={<RefreshControl refreshing={assessments.isFetching} onRefresh={onRefresh} tintColor={colors.purple} />}
-        >
-          <View style={styles.header}>
-            <View style={styles.headerIconWrap}>
-              <Ionicons name="clipboard" size={26} color={colors.purple} />
-            </View>
-            <Text style={styles.headerTitle}>Assessment Center</Text>
-            <Text style={styles.headerSubtitle}>
-              Check your child's skills with fun assessments.
-            </Text>
-          </View>
+        <View style={styles.center}>
           <EmptyState
             icon="📋"
-            title="No assessments yet"
+            title="No assessments available"
             message="There are no assessments available right now. Check back later!"
           />
-        </ScrollView>
+        </View>
       </ScreenContainer>
     );
   }
 
+  const sectionsMap: Record<string, SectionItem[]> = {
+    'Available': [],
+    'In Progress': [],
+    'Completed': [],
+  };
+
+  assessmentList.forEach((assessment: Record<string, any>) => {
+    const status = getAssessmentStatus(assessment.id, attemptList);
+    const attemptId = status === 'completed'
+      ? findCompletedAttemptId(assessment.id, attemptList)
+      : findAttemptId(assessment.id, attemptList);
+    const sectionKey = status === 'not_started' ? 'Available' : status === 'in_progress' ? 'In Progress' : 'Completed';
+    sectionsMap[sectionKey].push({ assessment, status, attemptId });
+  });
+
+  const sections: Section[] = Object.entries(sectionsMap)
+    .filter(([, data]) => data.length > 0)
+    .map(([title, data]) => ({ title, data }));
+
   return (
     <ScreenContainer>
-      <ScrollView
+      <SectionList
+        sections={sections}
         contentContainerStyle={styles.scrollContainer}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={assessments.isFetching || attempts.isFetching} onRefresh={onRefresh} tintColor={colors.purple} />
+          <RefreshControl
+            refreshing={assessments.isFetching || attempts.isFetching}
+            onRefresh={onRefresh}
+            tintColor={colors.purple}
+          />
         }
-      >
-        <View style={styles.header}>
-          <View style={styles.headerIconWrap}>
-            <Ionicons name="clipboard" size={26} color={colors.purple} />
-          </View>
-          <Text style={styles.headerTitle}>Assessment Center</Text>
-          <Text style={styles.headerSubtitle}>
-            Check how {activeChild.name} is progressing.
-          </Text>
-        </View>
-
-        {createError ? (
-          <AppCard style={styles.errorCard}>
-            <View style={styles.errorRow}>
-              <Ionicons name="alert-circle" size={20} color={colors.coral} />
-              <Text style={styles.errorText}>{createError}</Text>
+        ListHeaderComponent={
+          <>
+            <View style={styles.header}>
+              <View style={styles.headerIconWrap}>
+                <Ionicons name="clipboard" size={26} color={colors.purple} />
+              </View>
+              <Text style={styles.headerTitle}>Assessment Center</Text>
+              <Text style={styles.headerSubtitle}>
+                Check how {activeChild.name} is progressing.
+              </Text>
             </View>
-          </AppCard>
-        ) : null}
-
-        {assessmentList.map((assessment: any) => {
-          const status = getAssessmentStatus(assessment.id, attemptList);
-          const inProgressAttemptId = findAttemptId(assessment.id, attemptList);
-          const completedAttemptId = findCompletedAttemptId(assessment.id, attemptList);
-          const questionCount = assessment.questions?.length ?? 0;
-
-          return (
-            <AppCard key={assessment.id} style={styles.assessmentCard}>
-              <View style={styles.cardHeader}>
-                <View style={styles.cardIconWrap}>
-                  <Ionicons name="document-text" size={22} color={colors.purple} />
-                </View>
-                <View style={styles.cardTitleArea}>
-                  <Text style={styles.cardTitle}>{assessment.title}</Text>
-                  {assessment.description ? (
-                    <Text style={styles.cardDescription}>{assessment.description}</Text>
-                  ) : null}
+            {createError ? (
+              <View style={styles.errorCard}>
+                <View style={styles.errorRow}>
+                  <Ionicons name="alert-circle" size={20} color={colors.coral} />
+                  <Text style={styles.errorText}>{createError}</Text>
                 </View>
               </View>
-
-              <View style={styles.metaRow}>
-                <View style={styles.metaItem}>
-                  <Ionicons name="time-outline" size={16} color={colors.textMuted} />
-                  <Text style={styles.metaText}>
-                    {assessment.estimatedMinutes ?? 10} min
-                  </Text>
-                </View>
-                <View style={styles.metaItem}>
-                  <Ionicons name="list-outline" size={16} color={colors.textMuted} />
-                  <Text style={styles.metaText}>{questionCount} questions</Text>
-                </View>
-                <View style={styles.statusBadge}>
-                  <Text style={styles.statusText}>
-                    {status === 'completed'
-                      ? 'Completed'
-                      : status === 'in_progress'
-                        ? 'In Progress'
-                        : 'Available'}
-                  </Text>
-                </View>
-              </View>
-
-              <View style={styles.cardActions}>
-                {status === 'completed' && completedAttemptId ? (
-                  <AppButton
-                    label="View Results"
-                    onPress={() => handleViewResults(completedAttemptId)}
-                    variant="primary"
-                    style={styles.actionBtn}
-                  />
-                ) : status === 'in_progress' && inProgressAttemptId ? (
-                  <AppButton
-                    label="Resume"
-                    onPress={() => handleResume(assessment.id, inProgressAttemptId)}
-                    variant="secondary"
-                    style={styles.actionBtn}
-                  />
-                ) : (
-                  <AppButton
-                    label="Start Assessment"
-                    onPress={() => handleStart(assessment.id)}
-                    variant="primary"
-                    loading={createAttempt.isPending && createAttempt.variables === assessment.id}
-                    style={styles.actionBtn}
-                  />
-                )}
-              </View>
-            </AppCard>
-          );
-        })}
-      </ScrollView>
+            ) : null}
+          </>
+        }
+        renderSectionHeader={({ section }) => (
+          <Text style={styles.sectionTitle}>{section.title}</Text>
+        )}
+        renderItem={({ item: { assessment, status, attemptId } }) => (
+          <AssessmentCard
+            title={assessment.title}
+            description={assessment.description}
+            estimatedMinutes={assessment.estimatedMinutes ?? 10}
+            questionCount={assessment.questions?.length ?? 0}
+            status={status}
+            onPress={() => handleAssessmentPress(assessment, status, attemptId)}
+          />
+        )}
+        keyExtractor={(item) => item.assessment.id}
+      />
     </ScreenContainer>
   );
 };
@@ -281,7 +261,7 @@ const styles = StyleSheet.create({
   headerIconWrap: {
     width: 48,
     height: 48,
-    borderRadius: radius.full,
+    borderRadius: 24,
     backgroundColor: colors.background,
     justifyContent: 'center',
     alignItems: 'center',
@@ -297,77 +277,22 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     marginTop: spacing.xs,
   },
-  assessmentCard: {
-    marginBottom: spacing.md,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: spacing.md,
-  },
-  cardIconWrap: {
-    width: 42,
-    height: 42,
-    borderRadius: radius.full,
-    backgroundColor: colors.background,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: spacing.md,
-  },
-  cardTitleArea: {
-    flex: 1,
-  },
-  cardTitle: {
+  sectionTitle: {
     fontSize: typography.sizes.md,
     fontWeight: typography.weights.bold,
     color: colors.text,
-  },
-  cardDescription: {
-    fontSize: typography.sizes.sm,
-    color: colors.textMuted,
-    marginTop: spacing.xs,
-    lineHeight: 20,
-  },
-  metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: spacing.md,
-    marginBottom: spacing.md,
-  },
-  metaItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  metaText: {
-    fontSize: typography.sizes.sm,
-    color: colors.textMuted,
-  },
-  statusBadge: {
-    backgroundColor: colors.background,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: radius.chip,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  statusText: {
-    fontSize: typography.sizes.xs,
-    fontWeight: typography.weights.bold,
-    color: colors.purple,
-  },
-  cardActions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-  },
-  actionBtn: {
-    minWidth: 140,
+    marginBottom: spacing.sm,
+    marginTop: spacing.md,
   },
   errorCard: {
-    marginBottom: spacing.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: spacing.md,
     backgroundColor: `${colors.coral}15`,
+    borderRadius: 12,
+    borderWidth: 1,
     borderColor: colors.coral,
+    marginBottom: spacing.md,
   },
   errorRow: {
     flexDirection: 'row',

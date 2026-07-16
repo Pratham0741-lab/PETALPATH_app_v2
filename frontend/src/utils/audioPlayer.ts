@@ -1,13 +1,15 @@
 import { Platform } from 'react-native';
 
+const IS_DEV = typeof __DEV__ !== 'undefined' ? __DEV__ : false;
+
 let createAudioPlayer: any = null;
 if (Platform.OS !== 'web') {
   try {
     // Avoid importing expo-audio on web to prevent bundling/web-platform check errors
     createAudioPlayer = require('expo-audio').createAudioPlayer;
-  } catch (e) {
-    console.warn('Failed to load expo-audio createAudioPlayer:', e);
-  }
+    } catch (e) {
+      if (IS_DEV) console.warn('Failed to load expo-audio createAudioPlayer:', e);
+    }
 }
 
 export class UniversalAudioPlayer {
@@ -65,8 +67,6 @@ export class UniversalAudioPlayer {
       }
     }
 
-    console.log('[UniversalAudioPlayer] Resolved URL:', cleanUrl);
-
     if (Platform.OS === 'web') {
       this.webAudio = new window.Audio(cleanUrl);
       this.webAudio.addEventListener('ended', () => {
@@ -89,7 +89,7 @@ export class UniversalAudioPlayer {
             }
           });
         } catch (err: any) {
-          console.warn('Failed to create native sound with expo-audio:', err);
+          if (IS_DEV) console.warn('Failed to create native sound with expo-audio:', err);
         }
       }
     }
@@ -98,7 +98,7 @@ export class UniversalAudioPlayer {
   play() {
     if (Platform.OS === 'web' && this.webAudio) {
       this.webAudio.play().catch(err => {
-        console.warn('Web audio play blocked or failed:', err);
+        if (IS_DEV) console.warn('Web audio play blocked or failed:', err);
       });
       this.startPolling();
     } else if (this.nativeSound) {
@@ -106,7 +106,7 @@ export class UniversalAudioPlayer {
         this.nativeSound.play();
         this.startPolling();
       } catch (err: any) {
-        console.warn('Native sound play failed:', err);
+        if (IS_DEV) console.warn('Native sound play failed:', err);
       }
     }
   }
@@ -119,7 +119,7 @@ export class UniversalAudioPlayer {
       try {
         this.nativeSound.pause();
       } catch (err: any) {
-        console.warn('Native sound pause failed:', err);
+        if (IS_DEV) console.warn('Native sound pause failed:', err);
       }
       this.stopPolling();
     }
@@ -136,7 +136,7 @@ export class UniversalAudioPlayer {
         this.nativeSound.pause();
         this.nativeSound.seekTo(0);
       } catch (err: any) {
-        console.warn('Native sound stop failed:', err);
+        if (IS_DEV) console.warn('Native sound stop failed:', err);
       }
       this.stopPolling();
     }
@@ -152,7 +152,7 @@ export class UniversalAudioPlayer {
       try {
         this.subscription.remove();
       } catch (err) {
-        console.warn('Failed to remove audio listener:', err);
+        if (IS_DEV) console.warn('Failed to remove audio listener:', err);
       }
       this.subscription = null;
     }
@@ -161,7 +161,7 @@ export class UniversalAudioPlayer {
         // expo-audio v56 AudioPlayer uses .remove() to free resources, not .release()
         this.nativeSound.remove();
       } catch (err: any) {
-        console.warn('Failed to remove expo-audio native player:', err);
+        if (IS_DEV) console.warn('Failed to remove expo-audio native player:', err);
       }
       this.nativeSound = null;
     }

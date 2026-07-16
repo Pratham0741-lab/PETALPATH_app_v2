@@ -4,6 +4,9 @@ export const radius = {
   sm: 8,
   md: 12,
   lg: 16,
+  xl: 24,
+  xxl: 32,
+  full: 9999,
   progress: 16,
   input: 20,
   chip: 20,
@@ -11,7 +14,4 @@ export const radius = {
   card: 28,
   bottomNav: 30,
   illustrationCard: 32,
-  xl: 24,
-  xxl: 32,
-  full: 9999,
 };

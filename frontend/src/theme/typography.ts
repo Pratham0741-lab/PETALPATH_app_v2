@@ -16,6 +16,8 @@ export const typography = {
     cardTitle: 20,
     sectionTitle: 24,
     largeTitle: 34,
+    display: 48,
+    button: 16,
     xs: 12,
     sm: 14,
     md: 16,

@@ -1,13 +1,13 @@
-/**
- * Application-level Error Boundary
- *
- * Catches React render errors anywhere below it and shows a friendly,
- * child-safe fallback. In development it also surfaces the component stack
- * to help debugging; in production it shows only safe messaging.
- */
 import React from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
-import { colors } from '../../theme';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  ScrollView,
+  StyleSheet,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { colors, typography, spacing, radius, shadows } from '../../theme';
 
 interface ErrorBoundaryProps {
   children: React.ReactNode;
@@ -32,7 +32,6 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo): void {
-    // In a real deployment this would be reported to an error tracker.
     if (IS_DEV) {
       console.error('[ErrorBoundary]', error, errorInfo.componentStack);
     }
@@ -51,29 +50,52 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
       return this.props.fallback;
     }
 
+    const { error } = this.state;
+
     return (
-      <View style={styles.container}>
-        <Text style={styles.emoji}>🌸</Text>
+      <View
+        style={styles.container}
+        accessibilityRole="alert"
+        accessibilityLiveRegion="assertive"
+        accessibilityLabel="An unexpected error occurred"
+      >
+        <View style={styles.iconContainer}>
+          <Ionicons name="sad-outline" size={48} color={colors.error} />
+        </View>
         <Text style={styles.title}>Something went wrong</Text>
         <Text style={styles.message}>
           PetalPath hit an unexpected problem. Please try again.
         </Text>
 
-        {IS_DEV && this.state.error ? (
-          <ScrollView style={styles.stackContainer} contentContainerStyle={styles.stackContent}>
-            <Text selectable style={styles.stackText}>
-              {this.state.error.name}: {this.state.error.message}
+        {IS_DEV && error ? (
+          <ScrollView
+            style={styles.stackContainer}
+            contentContainerStyle={styles.stackContent}
+            accessibilityLabel="Error details"
+          >
+            <Text selectable style={styles.stackLabel}>
+              {error.name}
             </Text>
-            {this.state.error.stack ? (
-              <Text selectable style={styles.stackText}>
-                {this.state.error.stack}
+            <Text selectable style={styles.stackMessage}>
+              {error.message}
+            </Text>
+            {error.stack ? (
+              <Text selectable style={styles.stackTrace}>
+                {error.stack}
               </Text>
             ) : null}
           </ScrollView>
         ) : null}
 
-        <TouchableOpacity style={styles.retryButton} onPress={this.handleReset}>
-          <Text style={styles.retryText}>Try Again</Text>
+        <TouchableOpacity
+          style={styles.resetButton}
+          onPress={this.handleReset}
+          accessibilityRole="button"
+          accessibilityLabel="Try Again"
+          accessibilityHint="Resets the application state and retries"
+        >
+          <Ionicons name="refresh" size={20} color={colors.white} style={styles.resetIcon} />
+          <Text style={styles.resetText}>Try Again</Text>
         </TouchableOpacity>
       </View>
     );
@@ -86,49 +108,80 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: colors.background,
-    padding: 32,
+    padding: spacing.xxl,
   },
-  emoji: {
-    fontSize: 48,
-    marginBottom: 16,
+  iconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: colors.errorLight,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: spacing.xl,
   },
   title: {
-    fontSize: 22,
-    fontWeight: '700',
+    fontSize: typography.sizes.xxl,
+    fontWeight: typography.weights.bold,
     color: colors.text,
-    marginBottom: 12,
+    fontFamily: typography.families.rounded,
+    marginBottom: spacing.sm,
+    textAlign: 'center',
   },
   message: {
-    fontSize: 16,
+    fontSize: typography.sizes.sm,
     color: colors.textSecondary,
+    fontFamily: typography.families.rounded,
     textAlign: 'center',
-    lineHeight: 24,
-    marginBottom: 24,
+    lineHeight: typography.lineHeights.sm,
+    marginBottom: spacing.xl,
+    maxWidth: 320,
   },
   stackContainer: {
     maxHeight: 200,
     width: '100%',
-    marginBottom: 24,
+    marginBottom: spacing.xl,
   },
   stackContent: {
-    backgroundColor: '#FBEAEA',
-    padding: 12,
-    borderRadius: 8,
+    backgroundColor: colors.surfaceSecondary,
+    padding: spacing.md,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-  stackText: {
-    fontSize: 11,
-    color: '#9B2C2C',
+  stackLabel: {
+    fontSize: typography.sizes.xs,
+    color: colors.error,
+    fontFamily: 'monospace',
+    fontWeight: typography.weights.bold,
+    marginBottom: spacing.xs,
+  },
+  stackMessage: {
+    fontSize: typography.sizes.xs,
+    color: colors.textSecondary,
+    fontFamily: 'monospace',
+    marginBottom: spacing.xs,
+  },
+  stackTrace: {
+    fontSize: typography.sizes.caption,
+    color: colors.textMuted,
     fontFamily: 'monospace',
   },
-  retryButton: {
+  resetButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: colors.primary,
-    paddingHorizontal: 32,
-    paddingVertical: 14,
-    borderRadius: 12,
+    paddingHorizontal: spacing.xxl,
+    paddingVertical: spacing.md,
+    borderRadius: radius.button,
+    ...shadows.md,
   },
-  retryText: {
+  resetIcon: {
+    marginRight: spacing.sm,
+  },
+  resetText: {
     color: colors.white,
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: typography.sizes.button,
+    fontWeight: typography.weights.bold,
+    fontFamily: typography.families.rounded,
   },
 });

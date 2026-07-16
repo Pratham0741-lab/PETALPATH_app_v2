@@ -29,7 +29,7 @@ interface VideoState {
 }
 
 export const useVideoStore = create<VideoState>((set, get) => {
-  let saveTimeout: any = null;
+  let saveTimeout: ReturnType<typeof setTimeout> | null = null;
 
   return {
     currentVideo: null,
@@ -70,8 +70,8 @@ export const useVideoStore = create<VideoState>((set, get) => {
           currentPosition: watchPosition,
           isCompleted,
         });
-      } catch (err: any) {
-        set({ error: err.message || 'Failed to load video' });
+    } catch (err: unknown) {
+            set({ error: err instanceof Error ? err.message : 'Failed to load video' });
       } finally {
         set({ loading: false });
       }

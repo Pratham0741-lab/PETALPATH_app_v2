@@ -44,12 +44,15 @@ export async function checkServerHealth(): Promise<HealthResponse> {
       errorDetails: `HTTP Status Code: ${response.status}`,
       requestedUrl: url 
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     let errorDetails = 'Unknown network error';
     if (error) {
-      errorDetails = error.message || String(error);
-      if (error.code) {
-        errorDetails += ` (code: ${error.code})`;
+      errorDetails = error instanceof Error ? error.message : String(error);
+      if (error instanceof Error && 'code' in error) {
+        const code = (error as { code?: string }).code;
+        if (code) {
+          errorDetails += ` (code: ${code})`;
+        }
       }
     }
 

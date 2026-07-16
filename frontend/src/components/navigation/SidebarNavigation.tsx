@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { navigationRef } from '../../navigation/navigationRef';
 import { useChildStore } from '../../store/childStore';
 import { enhanceMentor } from '../../constants/mentors';
+import type { RootStackParamList } from '../../types/navigation';
 
 interface SidebarNavigationProps {
   deviceType: 'tablet' | 'desktop';
@@ -35,11 +36,11 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ deviceType
   const activeMentor = activeChild?.mentor ? enhanceMentor(activeChild.mentor) : null;
 
   const tabs = [
-    { name: 'Home', label: 'Roadmap', icon: 'map' },
-    { name: 'Journey', label: 'Explore', icon: 'compass' },
-    { name: 'Mentor', label: 'Garden', icon: 'flower' },
-    { name: 'Rewards', label: 'Progress', icon: 'stats-chart' },
-    { name: 'Profile', label: 'Profile', icon: 'person' },
+    { name: 'Home' as const, label: 'Roadmap', icon: 'map' },
+    { name: 'Journey' as const, label: 'Explore', icon: 'compass' },
+    { name: 'Mentor' as const, label: 'Garden', icon: 'flower' },
+    { name: 'Rewards' as const, label: 'Progress', icon: 'stats-chart' },
+    { name: 'Profile' as const, label: 'Profile', icon: 'person' },
   ];
 
   const isDesktop = deviceType === 'desktop';

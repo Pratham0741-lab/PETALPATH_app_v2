@@ -1,18 +1,29 @@
-import React, { useEffect, useState } from 'react';
-import { StyleSheet, View, Text, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import React, { useCallback, useState } from 'react';
+import {
+  StyleSheet,
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  RefreshControl,
+  Animated,
+} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { ScreenContainer } from '../../components/common/ScreenContainer';
-import { AppCard } from '../../components/cards/AppCard';
-import { AppButton } from '../../components/buttons/AppButton';
-import { useChildStore, Child } from '../../store/childStore';
-import { useDeviceType } from '../../hooks/useDeviceType';
-import { colors, spacing, typography, radius, shadows } from '../../theme';
 import { Ionicons } from '@expo/vector-icons';
-import { getMentorColor } from '../../constants/mentors';
-
+import { Screen } from '../../components/layout/Screen';
+import { Card } from '../../components/ui/Card';
+import { Button } from '../../components/ui/Button';
+import { Skeleton } from '../../components/ui/Skeleton';
+import { useChildStore, type Child } from '../../store/childStore';
+import { useDeviceType } from '../../hooks/useDeviceType';
+import { useApiQuery, useApiMutation } from '../../hooks/useReactQuery';
+import { queryKeys } from '../../utils/queryKeys';
+import { apiClient } from '../../services/api/apiClient';
+import { storageService, StorageKeys } from '../../services/storage';
+import { colors, spacing, typography, radius, shadows } from '../../theme';
+import type { ApiResponse } from '../../types/api';
 import { customAlert } from '../../utils/alert';
 
-// Predefined static avatar IDs mapped to visual indicators
 export const AVATAR_ASSETS = [
   { id: 'avatar_panda', label: 'Panda', icon: '🐼', color: '#F3F4F6' },
   { id: 'avatar_bunny', label: 'Bunny', icon: '🐰', color: '#FEF3C7' },
@@ -35,23 +46,49 @@ export const getAvatarBgColor = (avatarId: string): string => {
 export const ChildSelectionScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const deviceType = useDeviceType();
-  
-  const { childrenList, loading, refreshChildren, setActiveChild, removeChild, activeChild } = useChildStore();
+  const { activeChild, setActiveChild, removeChild, refreshChildren } = useChildStore();
   const [selectedChildId, setSelectedChildId] = useState<string | null>(null);
+  const [switchAnim] = useState(() => new Animated.Value(1));
 
-  useEffect(() => {
-    refreshChildren();
-  }, []);
+  const {
+    data: childrenResponse,
+    isLoading,
+    isRefetching,
+    refetch,
+  } = useApiQuery(
+    queryKeys.children.all,
+    () => apiClient.get<ApiResponse<Child[]>>('/children'),
+  );
 
-  useEffect(() => {
-    // Default select first child in local detail panel
+  const childrenList = childrenResponse?.data ?? [];
+
+  React.useEffect(() => {
     if (childrenList.length > 0 && !selectedChildId) {
       setSelectedChildId(childrenList[0].id);
     }
-  }, [childrenList]);
+  }, [childrenList, selectedChildId]);
 
-  const handleSelectChild = async (child: Child) => {
+  const selectChildMutation = useApiMutation(
+    async (child: Child) => {
+      const response = await apiClient.post<ApiResponse<{ accessToken: string }>>('/auth/select-child', { childId: child.id });
+      return response;
+    },
+  );
+
+  const handleSelectChild = useCallback(async (child: Child) => {
+    Animated.sequence([
+      Animated.timing(switchAnim, { toValue: 0.95, duration: 100, useNativeDriver: true }),
+      Animated.timing(switchAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
+    ]).start();
+
+    try {
+      await selectChildMutation.mutateAsync(child);
+    } catch {
+      // selection API failure is non-blocking
+    }
     await setActiveChild(child);
+    await storageService.setItem(StorageKeys.ACTIVE_CHILD, child);
+
     customAlert('Active Child Set', `Welcome back, ${child.name}!`, [
       {
         text: 'OK',
@@ -61,19 +98,19 @@ export const ChildSelectionScreen: React.FC = () => {
           } else {
             navigation.navigate('Home');
           }
-        }
-      }
+        },
+      },
     ]);
-  };
+  }, [deviceType, navigation, selectChildMutation, setActiveChild, switchAnim]);
 
-  const handleDeleteChild = (id: string, name: string) => {
+  const handleDeleteChild = useCallback((id: string, name: string) => {
     customAlert(
       'Delete Profile',
       `Are you sure you want to delete ${name}'s profile?`,
       [
         { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Delete', 
+        {
+          text: 'Delete',
           style: 'destructive',
           onPress: async () => {
             try {
@@ -82,14 +119,34 @@ export const ChildSelectionScreen: React.FC = () => {
                 setSelectedChildId(childrenList[0]?.id || null);
               }
               customAlert('Success', 'Profile deleted successfully');
-            } catch (err: any) {
-              customAlert('Error', err.message || 'Failed to delete child');
+            } catch (err: unknown) {
+              const message = err instanceof Error ? err.message : 'Failed to delete child';
+              customAlert('Error', message);
             }
-          }
-        }
-      ]
+          },
+        },
+      ],
     );
-  };
+  }, [removeChild, selectedChildId, childrenList]);
+
+  const onRefresh = useCallback(() => {
+    refreshChildren();
+    refetch();
+  }, [refreshChildren, refetch]);
+
+  const renderSkeletons = (count: number) => (
+    <View style={styles.listContainer}>
+      {Array.from({ length: count }, (_, i) => (
+        <View key={i} style={styles.skeletonRow}>
+          <Skeleton variant="circle" width={48} height={48} />
+          <View style={styles.skeletonTextGroup}>
+            <Skeleton width="60%" height={16} />
+            <Skeleton width="40%" height={12} style={{ marginTop: spacing.xs }} />
+          </View>
+        </View>
+      ))}
+    </View>
+  );
 
   const renderChildItem = (child: Child, isSelectedDetail: boolean) => {
     const isCurrentlyActive = activeChild?.id === child.id;
@@ -108,6 +165,8 @@ export const ChildSelectionScreen: React.FC = () => {
           isSelectedDetail && styles.childItemDetailSelected,
           isCurrentlyActive && styles.childItemActive,
         ]}
+        accessibilityRole="button"
+        accessibilityLabel={`${child.name}, age ${child.age}`}
       >
         <View style={[styles.avatarCircle, { backgroundColor: getAvatarBgColor(child.avatar) }]}>
           <Text style={styles.avatarEmoji}>{getAvatarEmoji(child.avatar)}</Text>
@@ -126,128 +185,169 @@ export const ChildSelectionScreen: React.FC = () => {
     );
   };
 
-  // 1. Mobile Layout (Single Column)
-  const renderMobile = () => {
-    return (
-      <ScrollView contentContainerStyle={styles.scrollContainer}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Who is learning today? 🌸</Text>
-          <Text style={styles.subtitle}>Select a child profile to get started</Text>
-        </View>
+  const renderEmptyState = () => (
+    <View style={styles.emptyContainer}>
+      <Ionicons name="people-outline" size={64} color={colors.textMuted} />
+      <Text style={styles.emptyTitle}>No Child Profiles Yet</Text>
+      <Text style={styles.emptyText}>
+        Create a profile for your child to start their learning journey!
+      </Text>
+      <Button
+        label="Add Your First Child"
+        onPress={() => navigation.navigate('AddChild')}
+        variant="primary"
+        style={styles.emptyBtn}
+      />
+    </View>
+  );
 
-        {loading && childrenList.length === 0 ? (
-          <ActivityIndicator size="large" color={colors.purple} style={styles.loader} />
-        ) : childrenList.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No child profiles found yet.</Text>
-            <AppButton
-              label="Add Your First Child"
-              onPress={() => navigation.navigate('AddChild')}
-              variant="accent"
-              style={styles.emptyBtn}
-            />
+  const renderMobile = () => {
+    if (isLoading) {
+      return (
+        <Screen scroll padded>
+          <View style={styles.header}>
+            <Skeleton width="70%" height={24} />
+            <Skeleton width="50%" height={14} style={{ marginTop: spacing.sm }} />
           </View>
-        ) : (
-          <View style={styles.listContainer}>
-            {childrenList.map((child) => renderChildItem(child, false))}
-            
-            <AppButton
-              label="Add Another Child"
-              onPress={() => navigation.navigate('AddChild')}
-              variant="secondary"
-              style={styles.addBtn}
-            />
+          {renderSkeletons(3)}
+        </Screen>
+      );
+    }
+
+    return (
+      <Screen
+        scroll
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefetching}
+            onRefresh={onRefresh}
+            colors={[colors.purple]}
+            tintColor={colors.purple}
+          />
+        }
+      >
+        <View style={styles.scrollContainer}>
+          <View style={styles.header}>
+            <Text style={styles.title}>Who is learning today? 🌸</Text>
+            <Text style={styles.subtitle}>Select a child profile to get started</Text>
           </View>
-        )}
-      </ScrollView>
+
+          {childrenList.length === 0 ? renderEmptyState() : (
+            <View style={styles.listContainer}>
+              {childrenList.map((child) => renderChildItem(child, false))}
+              <Button
+                label="Add Another Child"
+                onPress={() => navigation.navigate('AddChild')}
+                variant="outline"
+                style={styles.addBtn}
+              />
+            </View>
+          )}
+        </View>
+      </Screen>
     );
   };
 
-  // 2. Tablet Layout (Two Column)
   const renderTablet = () => {
     const selectedChild = childrenList.find((c) => c.id === selectedChildId);
+
     return (
       <View style={styles.splitWrapper}>
-        {/* Left Column: Children list */}
         <View style={styles.splitLeft}>
           <Text style={styles.sectionHeader}>Child Profiles</Text>
-          {loading && childrenList.length === 0 ? (
-            <ActivityIndicator size="large" color={colors.purple} style={styles.loader} />
+          {isLoading ? (
+            renderSkeletons(3)
           ) : childrenList.length === 0 ? (
             <View style={styles.emptyContainer}>
+              <Ionicons name="people-outline" size={48} color={colors.textMuted} />
               <Text style={styles.emptyText}>No profiles found.</Text>
-              <AppButton
+              <Button
                 label="Create Profile"
                 onPress={() => navigation.navigate('AddChild')}
-                variant="accent"
+                variant="primary"
+                size="sm"
+                style={{ marginTop: spacing.md }}
               />
             </View>
           ) : (
-            <ScrollView showsVerticalScrollIndicator={false}>
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              refreshControl={
+                <RefreshControl
+                  refreshing={isRefetching}
+                  onRefresh={onRefresh}
+                  colors={[colors.purple]}
+                  tintColor={colors.purple}
+                />
+              }
+            >
               {childrenList.map((child) => renderChildItem(child, child.id === selectedChildId))}
-              <AppButton
+              <Button
                 label="Add Profile"
                 onPress={() => navigation.navigate('AddChild')}
-                variant="secondary"
+                variant="outline"
                 style={styles.addBtn}
               />
             </ScrollView>
           )}
         </View>
 
-        {/* Right Column: Profile Details & Actions */}
         <View style={styles.splitRight}>
           {selectedChild ? (
-            <View style={styles.detailsContainer}>
-              <View style={styles.detailsHeader}>
-                <View style={[styles.largeAvatarCircle, { backgroundColor: getAvatarBgColor(selectedChild.avatar) }]}>
-                  <Text style={styles.largeAvatarEmoji}>{getAvatarEmoji(selectedChild.avatar)}</Text>
-                </View>
-                <Text style={styles.detailName}>{selectedChild.name}</Text>
-                <Text style={styles.detailAge}>{selectedChild.ageGroup} ({selectedChild.age} years old)</Text>
-              </View>
-
-              <AppCard style={styles.mentorDetailCard} outlined>
-                <Text style={styles.detailCardLabel}>Active Companion</Text>
-                {selectedChild.mentor ? (
-                  <View style={styles.mentorBriefRow}>
-                    <View style={[styles.smallIconCircle, { backgroundColor: getMentorColor(selectedChild.mentor.characterType) }]}>
-                      <Ionicons name="paw" size={18} color={colors.white} />
-                    </View>
-                    <View style={styles.mentorBriefInfo}>
-                      <Text style={styles.mentorBriefName}>{selectedChild.mentor.name}</Text>
-                      <Text style={styles.mentorBriefDesc}>{selectedChild.mentor.description}</Text>
-                    </View>
+            <Animated.View style={{ transform: [{ scale: switchAnim }] }}>
+              <View style={styles.detailsContainer}>
+                <View style={styles.detailsHeader}>
+                  <View style={[styles.largeAvatarCircle, { backgroundColor: getAvatarBgColor(selectedChild.avatar) }]}>
+                    <Text style={styles.largeAvatarEmoji}>{getAvatarEmoji(selectedChild.avatar)}</Text>
                   </View>
-                ) : (
-                  <Text style={styles.noMentorText}>No companion selected yet.</Text>
-                )}
-              </AppCard>
+                  <Text style={styles.detailName}>{selectedChild.name}</Text>
+                  <Text style={styles.detailAge}>{selectedChild.ageGroup} ({selectedChild.age} years old)</Text>
+                </View>
 
-              <View style={styles.actionsGroup}>
-                <AppButton
-                  label="Select Profile & Start Learning"
-                  onPress={() => handleSelectChild(selectedChild)}
-                  variant="primary"
-                />
-                <View style={styles.row}>
-                  <AppButton
-                    label="Edit Profile"
-                    onPress={() => navigation.navigate('AddChild', { childId: selectedChild.id })}
-                    variant="secondary"
-                    style={{ flex: 1 }}
+                <Card variant="outlined" style={styles.mentorDetailCard}>
+                  <Text style={styles.detailCardLabel}>Active Companion</Text>
+                  {selectedChild.mentor ? (
+                    <View style={styles.mentorBriefRow}>
+                      <View style={[styles.smallIconCircle, { backgroundColor: colors.purple }]}>
+                        <Ionicons name="paw" size={18} color={colors.white} />
+                      </View>
+                      <View style={styles.mentorBriefInfo}>
+                        <Text style={styles.mentorBriefName}>{selectedChild.mentor.name}</Text>
+                        <Text style={styles.mentorBriefDesc}>{selectedChild.mentor.description}</Text>
+                      </View>
+                    </View>
+                  ) : (
+                    <Text style={styles.noMentorText}>No companion selected yet.</Text>
+                  )}
+                </Card>
+
+                <View style={styles.actionsGroup}>
+                  <Button
+                    label="Select Profile & Start Learning"
+                    onPress={() => handleSelectChild(selectedChild)}
+                    variant="primary"
+                    fullWidth
                   />
-                  <AppButton
-                    label="Delete Profile"
-                    onPress={() => handleDeleteChild(selectedChild.id, selectedChild.name)}
-                    variant="secondary"
-                    style={{ flex: 1, backgroundColor: '#EF4444' }}
-                  />
+                  <View style={styles.row}>
+                    <Button
+                      label="Edit Profile"
+                      onPress={() => navigation.navigate('AddChild', { childId: selectedChild.id })}
+                      variant="outline"
+                      style={{ flex: 1 }}
+                    />
+                    <Button
+                      label="Delete Profile"
+                      onPress={() => handleDeleteChild(selectedChild.id, selectedChild.name)}
+                      variant="danger"
+                      style={{ flex: 1 }}
+                    />
+                  </View>
                 </View>
               </View>
-            </View>
+            </Animated.View>
           ) : (
             <View style={styles.noSelectionContainer}>
+              <Ionicons name={"child-outline" as any} size={48} color={colors.textMuted} />
               <Text style={styles.noSelectionText}>Select a child profile to view details</Text>
             </View>
           )}
@@ -256,10 +356,7 @@ export const ChildSelectionScreen: React.FC = () => {
     );
   };
 
-  // 3. Desktop Layout (Three Panel)
-  const renderDesktop = () => {
-    return renderTablet(); // Shares the robust split view on desktop viewport
-  };
+  const renderDesktop = () => renderTablet();
 
   const renderLayout = () => {
     switch (deviceType) {
@@ -269,7 +366,7 @@ export const ChildSelectionScreen: React.FC = () => {
     }
   };
 
-  return <ScreenContainer>{renderLayout()}</ScreenContainer>;
+  return renderLayout();
 };
 
 const styles = StyleSheet.create({
@@ -293,9 +390,6 @@ const styles = StyleSheet.create({
     color: colors.textMuted,
     textAlign: 'center',
   },
-  loader: {
-    marginTop: spacing.xxl,
-  },
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -304,10 +398,19 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     ...shadows.sm,
   },
+  emptyTitle: {
+    fontSize: typography.sizes.lg,
+    fontWeight: typography.weights.bold,
+    color: colors.text,
+    marginTop: spacing.md,
+    marginBottom: spacing.xs,
+  },
   emptyText: {
     color: colors.textMuted,
     fontSize: typography.sizes.sm,
+    textAlign: 'center',
     marginBottom: spacing.md,
+    lineHeight: typography.lineHeights.sm,
   },
   emptyBtn: {
     width: '100%',
@@ -315,6 +418,16 @@ const styles = StyleSheet.create({
   },
   listContainer: {
     gap: spacing.md,
+  },
+  skeletonRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: spacing.md,
+    gap: spacing.md,
+  },
+  skeletonTextGroup: {
+    flex: 1,
+    gap: spacing.xs,
   },
   childItem: {
     flexDirection: 'row',
@@ -401,6 +514,7 @@ const styles = StyleSheet.create({
   noSelectionContainer: {
     alignItems: 'center',
     justifyContent: 'center',
+    gap: spacing.md,
   },
   noSelectionText: {
     color: colors.textMuted,

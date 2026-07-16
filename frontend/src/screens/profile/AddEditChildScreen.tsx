@@ -1,303 +1,363 @@
-import React, { useEffect, useState } from 'react';
-import { StyleSheet, View, Text, TextInput, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
-import { useNavigation, useRoute } from '@react-navigation/native';
-import { ScreenContainer } from '../../components/common/ScreenContainer';
-import { AppButton } from '../../components/buttons/AppButton';
-import { AppCard } from '../../components/cards/AppCard';
-import { useChildStore } from '../../store/childStore';
-import { useMentorStore } from '../../store/mentorStore';
-import { useDeviceType } from '../../hooks/useDeviceType';
-import { colors, spacing, typography, radius, shadows } from '../../theme';
+import React, { useEffect, useMemo } from 'react';
+import {
+  StyleSheet,
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  ActivityIndicator,
+} from 'react-native';
+import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
+import { useForm, Controller } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { Ionicons } from '@expo/vector-icons';
-import { AVATAR_ASSETS, getAvatarEmoji, getAvatarBgColor } from './ChildSelectionScreen';
-import { customAlert } from '../../utils/alert';
+import { Screen } from '../../components/layout/Screen';
+import { Card } from '../../components/ui/Card';
+import { Button } from '../../components/ui/Button';
+import { FormInput } from '../../components/forms/FormInput';
+import { useChildStore } from '../../store/childStore';
+import { useDeviceType } from '../../hooks/useDeviceType';
+import { apiClient } from '../../services/api/apiClient';
+import { useApiMutation } from '../../hooks/useReactQuery';
+import { queryKeys } from '../../utils/queryKeys';
+import { childFormSchema } from '../../utils/validation';
+import { colors, spacing, typography, radius, shadows } from '../../theme';
+import type { ApiResponse } from '../../types/api';
+import type { Child, ChildFormData } from '../../types/child';
+import type { OnboardingStackParamList } from '../../types/navigation';
+
+type ChildFormValues = z.infer<typeof childFormSchema>;
+
+export const AVATAR_ASSETS = [
+  { id: 'avatar_panda', label: 'Panda', icon: '🐼', color: '#F3F4F6' },
+  { id: 'avatar_bunny', label: 'Bunny', icon: '🐰', color: '#FEF3C7' },
+  { id: 'avatar_cat', label: 'Cat', icon: '🐱', color: '#FCE7F3' },
+  { id: 'avatar_fox', label: 'Fox', icon: '🦊', color: '#FFEDD5' },
+  { id: 'avatar_tiger', label: 'Tiger', icon: '🐯', color: '#FFE4E6' },
+  { id: 'avatar_bear', label: 'Bear', icon: '🐻', color: '#EED5C5' },
+];
+
+export const getAvatarEmoji = (avatarId: string): string => {
+  const av = AVATAR_ASSETS.find((a) => a.id === avatarId);
+  return av ? av.icon : '👶';
+};
+
+export const getAvatarBgColor = (avatarId: string): string => {
+  const av = AVATAR_ASSETS.find((a) => a.id === avatarId);
+  return av ? av.color : '#E5E7EB';
+};
+
+const AGE_OPTIONS = [2, 3, 4, 5, 6];
 
 export const AddEditChildScreen: React.FC = () => {
   const navigation = useNavigation<any>();
-  const route = useRoute<any>();
+  const route = useRoute<RouteProp<OnboardingStackParamList, 'AddChild'>>();
   const deviceType = useDeviceType();
+  const { childrenList } = useChildStore();
 
   const childId = route.params?.childId;
   const isEditMode = !!childId;
 
-  const { addChild, updateChild, setActiveChild, childrenList, loading: storeLoading } = useChildStore();
-  const { mentorList, refreshMentors, loading: mentorsLoading } = useMentorStore();
-
-  const [name, setName] = useState('');
-  const [age, setAge] = useState<number>(3);
-  const [selectedAvatarId, setSelectedAvatarId] = useState<string>('avatar_panda');
-  const [selectedMentorId, setSelectedMentorId] = useState<string | null>(null);
-
-  useEffect(() => {
-    refreshMentors();
-  }, []);
-
-  // Pre-fill profile data if in Edit Mode
-  useEffect(() => {
-    if (isEditMode) {
-      const child = childrenList.find((c) => c.id === childId);
-      if (child) {
-        setName(child.name);
-        setAge(child.age);
-        setSelectedAvatarId(child.avatar);
-        setSelectedMentorId(child.mentorId);
-      }
-    }
+  const existingChild = useMemo(() => {
+    if (!isEditMode) return null;
+    return childrenList.find((c) => c.id === childId) ?? null;
   }, [childId, childrenList, isEditMode]);
 
-  // Monitor returned params from MentorSelection screen
+  const {
+    control,
+    handleSubmit,
+    watch,
+    setValue,
+    formState: { errors, isSubmitting },
+  } = useForm<ChildFormValues>({
+    resolver: zodResolver(childFormSchema),
+    defaultValues: {
+      name: '',
+      age: 3,
+      avatar: 'avatar_panda',
+      mentorId: null,
+    },
+  });
+
+  useEffect(() => {
+    if (existingChild) {
+      setValue('name', existingChild.name);
+      setValue('age', existingChild.age);
+      setValue('avatar', existingChild.avatar);
+      setValue('mentorId', existingChild.mentorId);
+    }
+  }, [existingChild, setValue]);
+
   useEffect(() => {
     if (route.params?.selectedMentorId !== undefined) {
-      setSelectedMentorId(route.params.selectedMentorId);
+      setValue('mentorId', route.params.selectedMentorId);
     }
-  }, [route.params?.selectedMentorId]);
+  }, [route.params?.selectedMentorId, setValue]);
 
-  const handleSave = async () => {
-    if (!name.trim()) {
-      customAlert('Validation Error', 'Please enter a name');
-      return;
-    }
-    if (name.length > 30) {
-      customAlert('Validation Error', 'Name cannot exceed 30 characters');
-      return;
-    }
-    if (age < 2 || age > 6) {
-      customAlert('Validation Error', 'Age must be between 2 and 6 years');
-      return;
-    }
+  const formValues = watch();
+  const selectedAvatar = formValues.avatar || 'avatar_panda';
 
-    try {
-      if (isEditMode) {
-        await updateChild(childId, {
-          name: name.trim(),
-          age,
-          avatar: selectedAvatarId,
-          mentorId: selectedMentorId,
-        });
-        customAlert('Success', 'Profile updated successfully', [
-          { text: 'OK', onPress: () => navigation.goBack() }
-        ]);
-      } else {
-        const newChild = await addChild({
-          name: name.trim(),
-          age,
-          avatar: selectedAvatarId,
-          mentorId: selectedMentorId,
-        });
-        await setActiveChild(newChild);
-        customAlert('Success', 'Profile created successfully', [
-          {
-            text: 'OK',
-            onPress: () => {
-              if (deviceType === 'mobile') {
-                navigation.navigate('MainTabs');
-              } else {
-                navigation.navigate('Home');
-              }
-            }
-          }
-        ]);
+  const createMutation = useApiMutation<Child, ChildFormData>(
+    async (data) => apiClient.post<ApiResponse<Child>>('/children', data),
+    {
+      onSuccess: async () => {
+        await useChildStore.getState().refreshChildren();
+        if (deviceType === 'mobile') {
+          navigation.navigate('MainTabs');
+        } else {
+          navigation.navigate('Home');
+        }
+      },
+    },
+  );
+
+  const updateMutation = useApiMutation<Child, { id: string; data: Partial<ChildFormData> }>(
+    async ({ id, data }) => apiClient.put<ApiResponse<Child>>(`/children/${id}`, data),
+    {
+      onSuccess: async () => {
+        await useChildStore.getState().refreshChildren();
+        navigation.goBack();
+      },
+    },
+  );
+
+  const onSubmit = async (values: ChildFormValues) => {
+    const payload: ChildFormData = {
+      name: values.name.trim(),
+      age: values.age,
+      avatar: values.avatar,
+      mentorId: values.mentorId || null,
+    };
+
+    if (isEditMode) {
+      await updateMutation.mutateAsync({ id: childId!, data: payload });
+    } else {
+      await createMutation.mutateAsync(payload);
+      const { childrenList: updatedList } = useChildStore.getState();
+      const newChild = updatedList.find((c) => c.name === payload.name && c.age === payload.age);
+      if (newChild) {
+        await useChildStore.getState().setActiveChild(newChild);
       }
-    } catch (err: any) {
-      customAlert('Save Failed', err.message || 'An error occurred while saving.');
     }
   };
+
+  const isLoading = isSubmitting || createMutation.isPending || updateMutation.isPending;
 
   const handlePickMentor = () => {
     navigation.navigate('MentorSelection', {
-      selectedMentorId,
-      returnScreen: 'AddChild', // Route name to navigate back to
+      selectedMentorId: formValues.mentorId,
+      returnScreen: 'AddChild',
     });
   };
 
-  const selectedMentor = mentorList.find((m) => m.id === selectedMentorId);
+  const mentorDisplayName = formValues.mentorId ? (existingChild?.mentor?.name ?? 'Selected') : null;
 
-  const renderFormFields = () => {
-    return (
-      <View style={styles.formGroup}>
-        {/* Name Input */}
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Child's Name</Text>
-          <TextInput
-            value={name}
-            onChangeText={setName}
-            placeholder="Explorer Name"
-            placeholderTextColor={colors.textMuted}
-            style={styles.textInput}
-            maxLength={30}
-          />
-          <Text style={styles.charCount}>{name.length}/30</Text>
-        </View>
+  const renderFormFields = () => (
+    <View style={styles.formGroup}>
+      <FormInput
+        name="name"
+        control={control as any}
+        label="Child's Name"
+        placeholder="Explorer Name"
+        autoCapitalize="words"
+        returnKeyType="next"
+      />
 
-        {/* Age Selector */}
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Child's Age (2–6 years)</Text>
-          <View style={styles.ageButtonGroup}>
-            {[2, 3, 4, 5, 6].map((num) => (
-              <TouchableOpacity
-                key={num}
-                onPress={() => setAge(num)}
-                style={[
-                  styles.ageButton,
-                  age === num && styles.ageButtonSelected,
-                ]}
-              >
-                <Text style={[styles.ageButtonText, age === num && styles.ageButtonTextSelected]}>
-                  {num}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
-        {/* Avatar Selector Grid */}
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Choose Avatar Icon</Text>
-          <View style={styles.avatarGrid}>
-            {AVATAR_ASSETS.map((av) => {
-              const isSelected = selectedAvatarId === av.id;
-              return (
+      <View style={styles.inputContainer}>
+        <Text style={styles.label}>Child's Age (2–6 years)</Text>
+        <Controller
+          control={control}
+          name="age"
+          render={({ field: { onChange, value } }) => (
+            <View style={styles.ageButtonGroup}>
+              {AGE_OPTIONS.map((num) => (
                 <TouchableOpacity
-                  key={av.id}
-                  onPress={() => setSelectedAvatarId(av.id)}
+                  key={num}
+                  onPress={() => onChange(num)}
                   style={[
-                    styles.avatarGridItem,
-                    { backgroundColor: av.color },
-                    isSelected && styles.avatarGridItemSelected,
+                    styles.ageButton,
+                    value === num && styles.ageButtonSelected,
                   ]}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected: value === num }}
+                  accessibilityLabel={`Age ${num}`}
                 >
-                  <Text style={styles.gridAvatarEmoji}>{av.icon}</Text>
-                  {isSelected && (
-                    <View style={styles.checkBadge}>
-                      <Ionicons name="checkmark-circle" size={16} color={colors.purple} />
-                    </View>
-                  )}
+                  <Text style={[styles.ageButtonText, value === num && styles.ageButtonTextSelected]}>
+                    {num}
+                  </Text>
                 </TouchableOpacity>
-              );
-            })}
-          </View>
-        </View>
+              ))}
+            </View>
+          )}
+        />
       </View>
-    );
-  };
 
-  // 1. Mobile Layout (Single Column)
-  const renderMobile = () => {
-    return (
-      <ScrollView contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled">
-        <View style={styles.header}>
-          <Text style={styles.title}>{isEditMode ? 'Edit Profile' : 'Create Child Profile'}</Text>
-          <Text style={styles.subtitle}>Personalize your child's learning journey</Text>
-        </View>
+      <View style={styles.inputContainer}>
+        <Text style={styles.label}>Choose Avatar Icon</Text>
+        <Controller
+          control={control}
+          name="avatar"
+          render={({ field: { onChange, value } }) => (
+            <View style={styles.avatarGrid}>
+              {AVATAR_ASSETS.map((av) => {
+                const isSelected = value === av.id;
+                return (
+                  <TouchableOpacity
+                    key={av.id}
+                    onPress={() => onChange(av.id)}
+                    style={[
+                      styles.avatarGridItem,
+                      { backgroundColor: av.color },
+                      isSelected && styles.avatarGridItemSelected,
+                    ]}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected: isSelected }}
+                    accessibilityLabel={`Avatar ${av.label}`}
+                  >
+                    <Text style={styles.gridAvatarEmoji}>{av.icon}</Text>
+                    {isSelected && (
+                      <View style={styles.checkBadge}>
+                        <Ionicons name="checkmark-circle" size={16} color={colors.purple} />
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          )}
+        />
+      </View>
 
-        {renderFormFields()}
-
-        {/* Companion Picker */}
-        <View style={styles.inputContainer}>
-          <Text style={styles.label}>Learning Companion</Text>
-          <AppCard onPress={handlePickMentor} style={styles.mentorCard} outlined={!!selectedMentor}>
-            {selectedMentor ? (
-              <View style={styles.mentorRow}>
-                <View style={[styles.mentorIconCircle, { backgroundColor: selectedMentor.color }]}>
-                  <Ionicons name={selectedMentor.iconName as any} size={24} color={colors.white} />
-                </View>
-                <View style={styles.mentorInfo}>
-                  <Text style={styles.mentorName}>{selectedMentor.name}</Text>
-                  <Text style={styles.mentorDesc}>{selectedMentor.description}</Text>
-                </View>
-                <Ionicons name="swap-horizontal-outline" size={20} color={colors.purple} />
+      <View style={styles.inputContainer}>
+        <Text style={styles.label}>Learning Companion</Text>
+        <Card onPress={handlePickMentor} style={styles.mentorCard} variant="outlined">
+          {formValues.mentorId ? (
+            <View style={styles.mentorRow}>
+              <View style={[styles.mentorIconCircle, { backgroundColor: colors.purple }]}>
+                <Ionicons name="paw" size={24} color={colors.white} />
               </View>
-            ) : (
-              <View style={styles.mentorPlaceholderRow}>
-                <Ionicons name="paw-outline" size={24} color={colors.textMuted} style={{ marginRight: spacing.md }} />
-                <Text style={styles.mentorPlaceholderText}>Tap to choose a learning companion</Text>
-                <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+              <View style={styles.mentorInfo}>
+                <Text style={styles.mentorName}>{mentorDisplayName}</Text>
+                <Text style={styles.mentorDesc}>Companion selected</Text>
               </View>
-            )}
-          </AppCard>
-        </View>
+              <Ionicons name="swap-horizontal-outline" size={20} color={colors.purple} />
+            </View>
+          ) : (
+            <View style={styles.mentorPlaceholderRow}>
+              <Ionicons name="paw-outline" size={24} color={colors.textMuted} style={{ marginRight: spacing.md }} />
+              <Text style={styles.mentorPlaceholderText}>Tap to choose a learning companion</Text>
+              <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+            </View>
+          )}
+        </Card>
+      </View>
+    </View>
+  );
 
-        {/* Actions */}
-        <View style={styles.actionsContainer}>
-          <AppButton
-            label={storeLoading ? 'Saving...' : 'Save Profile'}
-            onPress={handleSave}
-            variant="primary"
-            disabled={storeLoading}
-          />
-          <AppButton
-            label="Cancel"
-            onPress={() => navigation.goBack()}
-            variant="secondary"
+  const renderPreview = () => (
+    <View style={styles.previewContainer}>
+      <Text style={styles.previewTitle}>Live Preview</Text>
+      <Card style={styles.previewCard} variant="elevated">
+        <View style={[styles.previewAvatarCircle, { backgroundColor: getAvatarBgColor(selectedAvatar) }]}>
+          <Text style={styles.previewAvatarEmoji}>{getAvatarEmoji(selectedAvatar)}</Text>
+        </View>
+        <Text style={styles.previewName}>{formValues.name.trim() || 'Explorer Name'}</Text>
+        <Text style={styles.previewAgeGroup}>
+          Age {formValues.age} • Group {formValues.age === 2 ? '2–3' : formValues.age === 3 ? '3–4' : formValues.age === 4 ? '4–5' : '5–6'} years
+        </Text>
+        <View style={styles.previewMentorSection}>
+          <Text style={styles.previewMentorLabel}>COMPANION</Text>
+          {formValues.mentorId ? (
+            <View style={styles.previewMentorRow}>
+              <View style={[styles.previewMentorIcon, { backgroundColor: colors.purple }]}>
+                <Ionicons name="paw" size={20} color={colors.white} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.previewMentorName}>{mentorDisplayName}</Text>
+              </View>
+            </View>
+          ) : (
+            <Text style={styles.previewNoMentor}>No companion selected.</Text>
+          )}
+          <Button
+            label="Choose Companion"
+            onPress={handlePickMentor}
+            variant="outline"
+            size="sm"
+            style={styles.chooseMentorBtn}
           />
         </View>
-      </ScrollView>
-    );
-  };
+      </Card>
+      <View style={styles.splitActions}>
+        <Button
+          label={isLoading ? 'Saving...' : (isEditMode ? 'Update Profile' : 'Save Profile')}
+          onPress={handleSubmit(onSubmit)}
+          variant="primary"
+          loading={isLoading}
+          disabled={isLoading}
+          fullWidth
+        />
+        <Button
+          label="Cancel"
+          onPress={() => navigation.goBack()}
+          variant="ghost"
+          fullWidth
+        />
+      </View>
+    </View>
+  );
 
-  // 2. Tablet Layout (Two Column)
-  const renderTablet = () => {
-    return (
+  const renderMobile = () => (
+    <Screen scroll padded keyboardAvoid>
+      <View style={styles.header}>
+        <Text style={styles.title}>{isEditMode ? 'Edit Profile' : 'Create Child Profile'}</Text>
+        <Text style={styles.subtitle}>Personalize your child's learning journey</Text>
+      </View>
+
+      {renderFormFields()}
+
+      <Card style={styles.mobilePreviewCard} variant="outlined">
+        <View style={[styles.mobilePreviewAvatar, { backgroundColor: getAvatarBgColor(selectedAvatar) }]}>
+          <Text style={styles.mobilePreviewEmoji}>{getAvatarEmoji(selectedAvatar)}</Text>
+        </View>
+        <Text style={styles.mobilePreviewName}>{formValues.name.trim() || 'Explorer Name'}</Text>
+        <Text style={styles.mobilePreviewAge}>Age {formValues.age}</Text>
+      </Card>
+
+      <View style={styles.actionsContainer}>
+        <Button
+          label={isLoading ? 'Saving...' : (isEditMode ? 'Update Profile' : 'Save Profile')}
+          onPress={handleSubmit(onSubmit)}
+          variant="primary"
+          loading={isLoading}
+          disabled={isLoading}
+          fullWidth
+        />
+        <Button
+          label="Cancel"
+          onPress={() => navigation.goBack()}
+          variant="ghost"
+          fullWidth
+        />
+      </View>
+    </Screen>
+  );
+
+  const renderTablet = () => (
+    <Screen keyboardAvoid>
       <View style={styles.splitWrapper}>
-        <ScrollView style={styles.splitLeft} keyboardShouldPersistTaps="handled">
+        <ScrollView style={styles.splitLeft} contentContainerStyle={styles.splitLeftContent} keyboardShouldPersistTaps="handled">
           <Text style={styles.sectionHeader}>{isEditMode ? 'Modify Explorer Profile' : 'New Explorer Profile'}</Text>
           {renderFormFields()}
         </ScrollView>
 
         <View style={styles.splitRight}>
-          <View style={styles.previewContainer}>
-            <Text style={styles.previewTitle}>Live Preview</Text>
-            
-            <View style={styles.previewCard}>
-              <View style={[styles.previewAvatarCircle, { backgroundColor: getAvatarBgColor(selectedAvatarId) }]}>
-                <Text style={styles.previewAvatarEmoji}>{getAvatarEmoji(selectedAvatarId)}</Text>
-              </View>
-              <Text style={styles.previewName}>{name.trim() || 'Explorer Name'}</Text>
-              <Text style={styles.previewAgeGroup}>Age {age} • Group {age === 2 ? '2–3' : age === 3 ? '3–4' : age === 4 ? '4–5' : '5–6'} years</Text>
-
-              {/* Mentor selection detail */}
-              <View style={styles.previewMentorSection}>
-                <Text style={styles.previewMentorLabel}>COMPANION</Text>
-                {selectedMentor ? (
-                  <View style={styles.previewMentorRow}>
-                    <View style={[styles.previewMentorIcon, { backgroundColor: selectedMentor.color }]}>
-                      <Ionicons name={selectedMentor.iconName as any} size={20} color={colors.white} />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.previewMentorName}>{selectedMentor.name}</Text>
-                      <Text style={styles.previewMentorDesc} numberOfLines={1}>{selectedMentor.description}</Text>
-                    </View>
-                  </View>
-                ) : (
-                  <Text style={styles.previewNoMentor}>No companion selected.</Text>
-                )}
-                <AppButton
-                  label="Choose Companion"
-                  onPress={handlePickMentor}
-                  variant="secondary"
-                  style={styles.chooseMentorBtn}
-                />
-              </View>
-            </View>
-
-            <View style={styles.splitActions}>
-              <AppButton
-                label={storeLoading ? 'Saving...' : 'Save Profile'}
-                onPress={handleSave}
-                variant="primary"
-                disabled={storeLoading}
-              />
-              <AppButton
-                label="Cancel"
-                onPress={() => navigation.goBack()}
-                variant="secondary"
-              />
-            </View>
-          </View>
+          {renderPreview()}
         </View>
       </View>
-    );
-  };
+    </Screen>
+  );
 
   const renderLayout = () => {
     switch (deviceType) {
@@ -307,17 +367,14 @@ export const AddEditChildScreen: React.FC = () => {
     }
   };
 
-  return <ScreenContainer>{renderLayout()}</ScreenContainer>;
+  return renderLayout();
 };
 
 const styles = StyleSheet.create({
-  scrollContainer: {
-    padding: spacing.lg,
-    paddingBottom: spacing.xxl,
-  },
   header: {
     alignItems: 'center',
     marginBottom: spacing.xl,
+    paddingTop: spacing.md,
   },
   title: {
     fontSize: typography.sizes.xl,
@@ -332,7 +389,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   formGroup: {
-    gap: spacing.md,
+    gap: spacing.none,
   },
   inputContainer: {
     marginBottom: spacing.md,
@@ -342,22 +399,6 @@ const styles = StyleSheet.create({
     fontWeight: typography.weights.bold,
     color: colors.text,
     marginBottom: spacing.sm,
-  },
-  textInput: {
-    backgroundColor: colors.backgroundSecondary,
-    borderColor: colors.border,
-    borderWidth: 1,
-    borderRadius: radius.md,
-    color: colors.text,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    fontSize: typography.sizes.sm,
-  },
-  charCount: {
-    fontSize: 10,
-    color: colors.textMuted,
-    textAlign: 'right',
-    marginTop: spacing.xs,
   },
   ageButtonGroup: {
     flexDirection: 'row',
@@ -457,6 +498,34 @@ const styles = StyleSheet.create({
   actionsContainer: {
     marginTop: spacing.xl,
     gap: spacing.md,
+    paddingBottom: spacing.xxl,
+  },
+  mobilePreviewCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: spacing.md,
+    marginTop: spacing.lg,
+    gap: spacing.md,
+  },
+  mobilePreviewAvatar: {
+    width: 48,
+    height: 48,
+    borderRadius: radius.full,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  mobilePreviewEmoji: {
+    fontSize: 24,
+  },
+  mobilePreviewName: {
+    fontSize: typography.sizes.md,
+    fontWeight: typography.weights.bold,
+    color: colors.text,
+    flex: 1,
+  },
+  mobilePreviewAge: {
+    fontSize: typography.sizes.sm,
+    color: colors.textMuted,
   },
   splitWrapper: {
     flex: 1,
@@ -467,8 +536,10 @@ const styles = StyleSheet.create({
     flex: 1.2,
     borderRightWidth: 1,
     borderRightColor: colors.border,
-    padding: spacing.xl,
     backgroundColor: colors.background,
+  },
+  splitLeftContent: {
+    padding: spacing.xl,
   },
   sectionHeader: {
     fontSize: typography.sizes.lg,
@@ -495,13 +566,8 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   previewCard: {
-    backgroundColor: colors.background,
-    borderRadius: radius.lg,
     padding: spacing.xl,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
-    ...shadows.md,
   },
   previewAvatarCircle: {
     width: 80,
@@ -556,11 +622,6 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.sm,
     fontWeight: typography.weights.bold,
     color: colors.text,
-  },
-  previewMentorDesc: {
-    fontSize: typography.sizes.xs,
-    color: colors.textMuted,
-    marginTop: 2,
   },
   previewNoMentor: {
     fontSize: typography.sizes.xs,

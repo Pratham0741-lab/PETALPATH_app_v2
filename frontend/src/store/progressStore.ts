@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { api } from '../api/client';
 import { useRewardsStore } from './rewardsStore';
+import type { Badge, Sticker } from './rewardsStore';
 
 export interface ContinueLearningTarget {
   category: { id: string; title: string };
@@ -14,8 +15,8 @@ interface ProgressState {
   totalLessonsCount: number;
   continueLearning: ContinueLearningTarget | null;
   recentAchievements: {
-    badges: any[];
-    stickers: any[];
+    badges: Badge[];
+    stickers: Sticker[];
   };
   loading: boolean;
   error: string | null;
@@ -56,8 +57,8 @@ export const useProgressStore = create<ProgressState>((set) => ({
           recentAchievements: response.data.recentAchievements ?? { badges: [], stickers: [] },
         });
       }
-    } catch (err: any) {
-      set({ error: err.message || 'Failed to fetch progress overview' });
+    } catch (err: unknown) {
+      set({ error: err instanceof Error ? err.message : 'Failed to fetch progress overview' });
     } finally {
       set({ loading: false });
     }
@@ -79,8 +80,8 @@ export const useProgressStore = create<ProgressState>((set) => ({
         };
       }
       throw new Error(response.message || 'Failed to complete lesson');
-    } catch (err: any) {
-      set({ error: err.message || 'Failed to complete lesson' });
+    } catch (err: unknown) {
+      set({ error: err instanceof Error ? err.message : 'Failed to complete lesson' });
       return {
         success: false,
         becameCompleted: false,

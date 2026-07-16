@@ -44,7 +44,6 @@ export const playGuide = (
 
   const url = getGuideUrl(characterType, guideKey);
   if (!url) {
-    console.log(`[AudioGuide] No audio file for ${guideKey} (placeholder)`);
     // Still invoke callback so tutorial flow continues
     onFinished?.();
     return false;
@@ -63,7 +62,6 @@ export const playGuide = (
       },
     );
     currentPlayer.play();
-    console.log(`[AudioGuide] Playing: ${guideKey} for ${characterType}`);
     return true;
   } catch (err) {
     console.warn('[AudioGuide] playGuide error:', err);
@@ -78,7 +76,6 @@ export const playGuide = (
  */
 export const replayGuide = (onFinished?: () => void): boolean => {
   if (!currentCharacterType || !currentGuideKey) {
-    console.log('[AudioGuide] Nothing to replay');
     return false;
   }
   return playGuide(currentCharacterType, currentGuideKey, onFinished);

@@ -71,8 +71,8 @@ export const useSpeakStore = create<SpeakState>((set, get) => {
           confidence,
           stars: starsCount,
         });
-      } catch (err: any) {
-        set({ error: err.message || 'Failed to load speak activity' });
+    } catch (err: unknown) {
+            set({ error: err instanceof Error ? err.message : 'Failed to load speak activity' });
       } finally {
         set({ loading: false });
       }
@@ -104,7 +104,7 @@ export const useSpeakStore = create<SpeakState>((set, get) => {
         return false;
       }
 
-      // Calculate score based on similarity or mock confidence
+      // Calculate score based on similarity or reported confidence
       let calculatedScore = confidenceScore > 0 ? confidenceScore : 0.9;
       if (calculatedScore > 1) calculatedScore = calculatedScore / 100.0; // standardise to 0-1 scale
 

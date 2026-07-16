@@ -1,174 +1,278 @@
-import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, TextInput, Alert, ScrollView } from 'react-native';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
+import {
+  StyleSheet,
+  View,
+  Text,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+  Animated,
+} from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { ScreenContainer } from '../../components/common/ScreenContainer';
-import { AppButton } from '../../components/buttons/AppButton';
-import { colors, spacing, typography, radius, shadows } from '../../theme';
-import { api } from '../../api/client';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../../theme/ThemeContext';
+import { spacing } from '../../theme/spacing';
+import { radius } from '../../theme/radius';
+import { typography } from '../../theme/typography';
+import { shadows } from '../../theme/shadows';
+import { resetPasswordSchema } from '../../utils/validation';
+import { FormInput } from '../../components/forms/FormInput';
+import { FormPasswordInput } from '../../components/forms/FormPasswordInput';
+import { Button } from '../../components/ui/Button';
+import { AuthHeader } from '../../components/common/AuthHeader';
+import { AuthFooter } from '../../components/common/AuthFooter';
+import { AuthBackground } from '../../components/common/AuthBackground';
+import { Screen } from '../../components/layout/Screen';
+import { apiClient } from '../../services/api/apiClient';
+import { ApiError } from '../../api/errors';
+import { toUserMessage } from '../../api/errors';
+import type { AuthStackParamList } from '../../types/navigation';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { RouteProp } from '@react-navigation/native';
+import type { z } from 'zod';
+import type { ApiResponse } from '../../types/api';
+
+type ResetPasswordFormData = z.infer<typeof resetPasswordSchema>;
+type NavigationProp = NativeStackNavigationProp<AuthStackParamList, 'ResetPassword'>;
+type RouteType = RouteProp<AuthStackParamList, 'ResetPassword'>;
 
 export const ResetPasswordScreen: React.FC = () => {
-  const navigation = useNavigation<any>();
-  const route = useRoute<any>();
+  const navigation = useNavigation<NavigationProp>();
+  const route = useRoute<RouteType>();
+  const { theme } = useTheme();
+  const { colors } = theme;
 
-  const [token, setToken] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [formError, setFormError] = useState('');
+  const [isSuccess, setIsSuccess] = useState(false);
+  const checkmarkScale = useRef(new Animated.Value(0)).current;
+
+  const {
+    control,
+    handleSubmit,
+    setValue,
+    formState: { isSubmitting },
+  } = useForm<ResetPasswordFormData>({
+    resolver: zodResolver(resetPasswordSchema),
+    defaultValues: {
+      token: '',
+      password: '',
+      confirmPassword: '',
+    },
+  });
 
   useEffect(() => {
     if (route.params?.token) {
-      setToken(route.params.token);
+      setValue('token', route.params.token);
     }
-  }, [route.params?.token]);
+  }, [route.params?.token, setValue]);
 
-  const handleResetPassword = async () => {
-    if (!token || !newPassword) {
-      setError('Please fill in both fields.');
-      return;
+  useEffect(() => {
+    if (isSuccess) {
+      Animated.spring(checkmarkScale, {
+        toValue: 1,
+        friction: 4,
+        tension: 40,
+        useNativeDriver: true,
+      }).start();
+
+      const timer = setTimeout(() => {
+        navigation.navigate('Login');
+      }, 3000);
+
+      return () => clearTimeout(timer);
     }
+  }, [isSuccess, checkmarkScale, navigation]);
 
-    if (newPassword.length < 8) {
-      setError('Password must be at least 8 characters long.');
-      return;
-    }
-
-    setLoading(true);
-    setError('');
+  const onSubmit = useCallback(async (data: ResetPasswordFormData) => {
+    setFormError('');
 
     try {
-      await api.post('/auth/reset-password', { token, newPassword });
-      Alert.alert('Success', 'Password has been reset successfully. Please log in.');
-      navigation.navigate('Login');
-    } catch (err: any) {
-      setError(err.message || 'Failed to reset password.');
-    } finally {
-      setLoading(false);
+      await apiClient.post<ApiResponse<null>>('/auth/reset-password', {
+        token: data.token.trim(),
+        newPassword: data.password,
+      });
+      setIsSuccess(true);
+    } catch (error: unknown) {
+      const message = error instanceof ApiError ? error.userMessage : toUserMessage(error);
+      setFormError(message);
     }
-  };
+  }, []);
+
+  const isLoading = isSubmitting;
+
+  if (isSuccess) {
+    return (
+      <Screen padded>
+        <View style={[styles.successContainer, { backgroundColor: colors.background }]}>
+          <Animated.View
+            style={[
+              styles.checkmarkWrapper,
+              { transform: [{ scale: checkmarkScale }] },
+            ]}
+          >
+            <View style={[styles.checkmarkCircle, { backgroundColor: colors.success }]}>
+              <Ionicons name="checkmark" size={48} color={colors.textInverse} />
+            </View>
+          </Animated.View>
+          <Text
+            style={[styles.successTitle, { color: colors.text }]}
+            accessibilityRole="alert"
+          >
+            Password Reset Successful!
+          </Text>
+          <Text style={[styles.successMessage, { color: colors.textSecondary }]}>
+            Your password has been updated. Redirecting to login...
+          </Text>
+        </View>
+      </Screen>
+    );
+  }
 
   return (
-    <ScreenContainer>
-      <ScrollView contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled">
-        <View style={styles.header}>
-          <Text style={styles.title}>Reset Password 🔒</Text>
-          <Text style={styles.subtitle}>Enter your security token and choose a new password.</Text>
-        </View>
-
-        <View style={styles.form}>
-          {error ? <Text style={styles.errorText}>{error}</Text> : null}
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Reset Code/Token</Text>
-            <TextInput
-              value={token}
-              onChangeText={setToken}
-              placeholder="Enter reset token"
-              placeholderTextColor={colors.textMuted}
-              style={styles.input}
-              autoCapitalize="none"
-              autoCorrect={false}
+    <Screen scroll keyboardAvoid padded>
+      <AuthBackground>
+        <ScrollView
+          contentContainerStyle={styles.scrollContainer}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            style={styles.flex}
+          >
+            <AuthHeader
+              title="Reset Password"
+              subtitle="Enter your security token and choose a new password."
             />
-          </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>New Password</Text>
-            <TextInput
-              value={newPassword}
-              onChangeText={setNewPassword}
-              placeholder="Min. 8 characters"
-              placeholderTextColor={colors.textMuted}
-              secureTextEntry
-              autoCapitalize="none"
-              autoCorrect={false}
-              style={styles.input}
-            />
-          </View>
-
-          <AppButton
-            label={loading ? 'Resetting...' : 'Update Password'}
-            onPress={handleResetPassword}
-            variant="accent"
-            style={styles.resetBtn}
-          />
-
-          <View style={styles.links}>
-            <Text 
-              style={styles.linkText} 
-              onPress={() => navigation.navigate('Login')}
+            <View
+              style={[
+                styles.form,
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: colors.border,
+                },
+                shadows.md,
+              ]}
             >
-              Back to Login
-            </Text>
-          </View>
-        </View>
-      </ScrollView>
-    </ScreenContainer>
+              {formError ? (
+                <Text
+                  style={[styles.errorText, { color: colors.error }]}
+                  accessibilityRole="alert"
+                  accessibilityLabel={formError}
+                >
+                  {formError}
+                </Text>
+              ) : null}
+
+              {!route.params?.token ? (
+                <FormInput
+                  name="token"
+                  control={control as any}
+                  label="Reset Code / Token"
+                  placeholder="Enter reset token"
+                  autoCapitalize="none"
+                  disabled={isLoading}
+                  returnKeyType="next"
+                />
+              ) : null}
+
+              <FormPasswordInput
+                name="password"
+                control={control as any}
+                label="New Password"
+                placeholder="Min. 8 characters, 1 letter & 1 number"
+                disabled={isLoading}
+                returnKeyType="next"
+              />
+
+              <FormPasswordInput
+                name="confirmPassword"
+                control={control as any}
+                label="Confirm New Password"
+                placeholder="Re-enter your new password"
+                disabled={isLoading}
+                returnKeyType="done"
+              />
+
+              <Button
+                title={isLoading ? 'Resetting...' : 'Update Password'}
+                onPress={handleSubmit(onSubmit)}
+                disabled={isLoading}
+                loading={isSubmitting}
+                variant="primary"
+                size="lg"
+                fullWidth
+                accessibilityLabel="Update password button"
+                style={styles.resetBtn}
+              />
+            </View>
+
+            <AuthFooter
+              links={[
+                {
+                  label: 'Back to Login',
+                  onPress: () => navigation.navigate('Login'),
+                },
+              ]}
+            />
+          </KeyboardAvoidingView>
+        </ScrollView>
+      </AuthBackground>
+    </Screen>
   );
 };
 
 const styles = StyleSheet.create({
+  flex: {
+    flex: 1,
+  },
   scrollContainer: {
     flexGrow: 1,
     justifyContent: 'center',
     padding: spacing.xl,
   },
-  header: {
-    alignItems: 'center',
-    marginBottom: spacing.xxl,
-  },
-  title: {
-    fontSize: typography.sizes.xxl,
-    fontWeight: typography.weights.bold,
-    color: colors.text,
-    marginBottom: spacing.xs,
-  },
-  subtitle: {
-    fontSize: typography.sizes.sm,
-    color: colors.textMuted,
-    textAlign: 'center',
-  },
   form: {
-    backgroundColor: colors.backgroundSecondary,
     borderRadius: radius.lg,
     padding: spacing.lg,
-    ...shadows.md,
+    borderWidth: 1,
   },
   errorText: {
-    color: '#EF4444',
     fontSize: typography.sizes.sm,
     marginBottom: spacing.md,
     textAlign: 'center',
   },
-  label: {
-    color: colors.text,
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.bold,
-    marginBottom: spacing.xs,
-  },
-  input: {
-    backgroundColor: colors.background,
-    borderColor: colors.border,
-    borderWidth: 1,
-    borderRadius: radius.md,
-    color: colors.text,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    fontSize: typography.sizes.sm,
-    marginBottom: spacing.md,
-  },
-  inputGroup: {
-    marginBottom: spacing.xs,
-  },
   resetBtn: {
-    marginTop: spacing.md,
+    marginTop: spacing.sm,
   },
-  links: {
-    marginTop: spacing.lg,
+  successContainer: {
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
+    padding: spacing.xxl,
   },
-  linkText: {
-    color: colors.purple,
+  checkmarkWrapper: {
+    marginBottom: spacing.xl,
+  },
+  checkmarkCircle: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  successTitle: {
+    fontSize: typography.sizes.xl,
+    fontWeight: typography.weights.bold,
+    marginBottom: spacing.sm,
+    textAlign: 'center',
+  },
+  successMessage: {
     fontSize: typography.sizes.sm,
-    textDecorationLine: 'underline',
+    textAlign: 'center',
+    lineHeight: 20,
   },
 });
 

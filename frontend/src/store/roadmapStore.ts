@@ -208,8 +208,8 @@ export const useRoadmapStore = create<RoadmapState>((set, get) => ({
           await get().loadActivities(currentLesson.id);
         }
       }
-    } catch (err: any) {
-      set({ error: err.message || 'Failed to load learning roadmap' });
+    } catch (err: unknown) {
+      set({ error: err instanceof Error ? err.message : 'Failed to load learning roadmap' });
     } finally {
       set({ loading: false });
     }
@@ -261,8 +261,8 @@ export const useRoadmapStore = create<RoadmapState>((set, get) => ({
         (a: Activity, b: Activity) => a.displayOrder - b.displayOrder
       );
       set({ activities: activitiesList });
-    } catch (err: any) {
-      set({ error: err.message || 'Failed to load activities' });
+    } catch (err: unknown) {
+      set({ error: err instanceof Error ? err.message : 'Failed to load activities' });
     } finally {
       set({ loading: false });
     }
@@ -438,8 +438,8 @@ export const useRoadmapStore = create<RoadmapState>((set, get) => ({
       const { useRewardsStore } = await import('./rewardsStore');
       await useProgressStore.getState().refreshProgress();
       await useRewardsStore.getState().refreshRewards();
-    } catch (err: any) {
-      set({ error: err.message || 'Failed to reset progress' });
+    } catch (err: unknown) {
+      set({ error: err instanceof Error ? err.message : 'Failed to reset progress' });
       throw err;
     } finally {
       set({ loading: false });

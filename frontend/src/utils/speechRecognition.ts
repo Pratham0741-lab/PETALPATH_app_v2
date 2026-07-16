@@ -1,11 +1,13 @@
 import { Platform } from 'react-native';
 
+const IS_DEV = typeof __DEV__ !== 'undefined' ? __DEV__ : false;
+
 let ExpoSR: any = null;
 if (Platform.OS !== 'web') {
   try {
     ExpoSR = require('expo-speech-recognition');
   } catch (e) {
-    console.warn('Failed to load expo-speech-recognition module:', e);
+    if (IS_DEV) console.warn('Failed to load expo-speech-recognition module:', e);
   }
 }
 

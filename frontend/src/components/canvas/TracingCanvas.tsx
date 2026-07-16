@@ -4,6 +4,8 @@ import { colors, radius, spacing } from '../../theme';
 import { Point } from '../../store/writeStore';
 import { Ionicons } from '@expo/vector-icons';
 
+const IS_DEV = typeof __DEV__ !== 'undefined' ? __DEV__ : false;
+
 // We import react-native-svg dynamically or capture require to prevent web bundling crashes
 let Svg: any = null;
 let Path: any = null;
@@ -13,7 +15,7 @@ if (Platform.OS !== 'web') {
     Svg = SvgLib.default || SvgLib.Svg;
     Path = SvgLib.Path;
   } catch (e) {
-    console.warn('react-native-svg not available on native:', e);
+    if (IS_DEV) console.warn('react-native-svg not available on native:', e);
   }
 }
 

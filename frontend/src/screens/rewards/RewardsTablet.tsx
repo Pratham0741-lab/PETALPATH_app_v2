@@ -3,14 +3,23 @@ import { StyleSheet, View, ScrollView, Text, Pressable, ActivityIndicator } from
 import { ScreenContainer } from '../../components/common/ScreenContainer';
 import { SectionHeader, Card } from '../../components/ui';
 import { RewardCard } from '../../components/cards/RewardCard';
-import { spacing, colors, typography, radius, shadows } from '../../theme';
+import XPCard from '../../components/gamification/xp/XPCard';
+import { CoinCard } from '../../components/gamification/coins/CoinCard';
+import StreakCard from '../../components/gamification/streaks/StreakCard';
 import { useRewardsStore } from '../../store/rewardsStore';
 import { useChildStore } from '../../store/childStore';
+import { useXP, useCoins, useDailyStreak } from '../../hooks/useRewards';
+import { useNavigation } from '@react-navigation/native';
+import { spacing, colors, typography, radius, shadows } from '../../theme';
 import { Ionicons } from '@expo/vector-icons';
 
 export const RewardsTablet: React.FC = () => {
+  const navigation = useNavigation() as any;
   const activeChild = useChildStore((state) => state.activeChild);
   const { totalStars, stickers, badges, loading, error, refreshRewards } = useRewardsStore();
+  const xp = useXP();
+  const coins = useCoins();
+  const streak = useDailyStreak();
   const [activeTab, setActiveTab] = useState<'stickers' | 'badges'>('stickers');
 
   useEffect(() => {
@@ -26,6 +35,44 @@ export const RewardsTablet: React.FC = () => {
       <View style={styles.layout}>
         {/* Left Side: Badges & Stickers Grid */}
         <ScrollView style={styles.mainContent} contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
+          <View style={styles.progressRow}>
+            <View style={styles.progressHalf}>
+              <XPCard
+                xp={xp.data?.xp ?? 0}
+                level={xp.data?.level ?? 1}
+                progressToNext={xp.data?.progressToNext ?? 0}
+                nextLevelXP={xp.data?.nextLevelXP ?? 100}
+              />
+            </View>
+            <View style={styles.progressHalf}>
+              <CoinCard balance={coins.data ?? 0} />
+            </View>
+          </View>
+
+          <StreakCard
+            currentStreak={streak.data?.currentStreak ?? 0}
+            longestStreak={streak.data?.longestStreak ?? 0}
+          />
+
+          <View style={styles.quickNav}>
+            <Pressable style={styles.quickNavItem} onPress={() => navigation.navigate('BadgeGallery')}>
+              <Ionicons name="ribbon" size={22} color={colors.purple} />
+              <Text style={styles.quickNavText}>Badges</Text>
+            </Pressable>
+            <Pressable style={styles.quickNavItem} onPress={() => navigation.navigate('Achievements')}>
+              <Ionicons name="trophy" size={22} color={colors.orange} />
+              <Text style={styles.quickNavText}>Achievements</Text>
+            </Pressable>
+            <Pressable style={styles.quickNavItem} onPress={() => navigation.navigate('DailyChallenges')}>
+              <Ionicons name="flag" size={22} color={colors.green} />
+              <Text style={styles.quickNavText}>Challenges</Text>
+            </Pressable>
+            <Pressable style={styles.quickNavItem} onPress={() => navigation.navigate('NotificationPreferences')}>
+              <Ionicons name="notifications" size={22} color={colors.blue} />
+              <Text style={styles.quickNavText}>Notifications</Text>
+            </Pressable>
+          </View>
+
           <SectionHeader
             title="Earned Trophies"
             subtitle="Complete tasks and play learning activities to unlock rewards!"
@@ -118,6 +165,38 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     backgroundColor: colors.background,
+  },
+  progressRow: {
+    flexDirection: 'row',
+    gap: spacing.md,
+    marginTop: spacing.md,
+    marginHorizontal: spacing.lg,
+  },
+  progressHalf: {
+    flex: 1,
+  },
+  quickNav: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginTop: spacing.md,
+    marginHorizontal: spacing.lg,
+  },
+  quickNavItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+    backgroundColor: colors.surface,
+    borderRadius: radius.button,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    ...shadows.sm,
+  },
+  quickNavText: {
+    color: colors.text,
+    fontSize: typography.sizes.small,
+    fontWeight: typography.weights.bold,
+    fontFamily: typography.families.rounded,
   },
   mainContent: {
     flex: 1.2,

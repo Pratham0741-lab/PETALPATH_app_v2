@@ -144,7 +144,7 @@ export const ProgressScreen: React.FC = () => {
             <View key={bucket.key} style={styles.bucketCol}>
               <Text style={styles.bucketValue}>{bucket.total}</Text>
               <View style={styles.barWrapper}>
-                <View style={[styles.bar, { height: `${Math.max(height, 2)}%` as any }]} />
+                <View style={[styles.bar, { height: `${Math.max(height, 2)}%` }]} />
               </View>
               <Text style={styles.bucketLabel}>{bucket.label}</Text>
             </View>
@@ -260,7 +260,7 @@ export const ProgressScreen: React.FC = () => {
                         return (
                           <View key={i} style={styles.trendCol}>
                             <View style={styles.trendBarWrapper}>
-                              <View style={[styles.trendBar, { height: `${Math.max(barH, 4)}%` as any }]} />
+                              <View style={[styles.trendBar, { height: `${Math.max(barH, 4)}%` }]} />
                             </View>
                             <Text style={styles.trendLabel}>
                               {new Date(point.date).getDate()}

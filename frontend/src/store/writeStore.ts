@@ -68,8 +68,8 @@ export const useWriteStore = create<WriteState>((set, get) => {
           guideName: guide,
           isCompleted,
         });
-      } catch (err: any) {
-        set({ error: err.message || 'Failed to load write activity' });
+    } catch (err: unknown) {
+            set({ error: err instanceof Error ? err.message : 'Failed to load write activity' });
       } finally {
         set({ loading: false });
       }

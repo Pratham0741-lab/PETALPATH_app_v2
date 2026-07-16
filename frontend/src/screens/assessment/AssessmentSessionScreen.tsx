@@ -1,24 +1,18 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import {
-  StyleSheet,
-  View,
-  Text,
-  ScrollView,
-  Pressable,
-  TextInput,
-} from 'react-native';
+import { StyleSheet, View, Text, ScrollView } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import { Ionicons } from '@expo/vector-icons';
 
 import { ScreenContainer } from '../../components/common/ScreenContainer';
 import { AppCard } from '../../components/cards/AppCard';
-import { AppButton } from '../../components/buttons/AppButton';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { ErrorState } from '../../components/common/ErrorState';
-import { ProgressBar } from '../../components/ui';
+import { AssessmentProgressBar } from '../../components/assessment/AssessmentProgressBar';
+import { QuestionHeader } from '../../components/assessment/QuestionHeader';
+import { AssessmentQuestion } from '../../components/assessment/AssessmentQuestion';
+import { QuestionFooter } from '../../components/assessment/QuestionFooter';
 import { useAttemptDetail, useCreateAttempt, useSubmitAttempt } from '../../hooks/useAssessments';
 import { toUserMessage } from '../../api/errors';
-import { colors, spacing, typography, radius } from '../../theme';
+import { colors, spacing, typography } from '../../theme';
 
 type SessionRouteParams = {
   AssessmentSession: {
@@ -49,6 +43,8 @@ export const AssessmentSessionScreen: React.FC = () => {
   const progress = totalQuestions > 0 ? ((currentIndex + 1) / totalQuestions) * 100 : 0;
   const isSubmitting = submitAttempt.isPending;
   const isStarting = createAttempt.isPending;
+
+  const answeredCount = sortedQuestions.filter((q: any) => answers[q.id] != null && answers[q.id] !== '').length;
 
   useEffect(() => {
     if (!localAttemptId && !createAttempt.isPending && !createAttempt.isError) {
@@ -100,7 +96,12 @@ export const AssessmentSessionScreen: React.FC = () => {
     }
   }, [localAttemptId, sortedQuestions, answers, submitAttempt, navigation]);
 
-  const allAnswered = sortedQuestions.every((q: any) => answers[q.id] != null && answers[q.id] !== '');
+  const handleSubmitPress = useCallback(() => {
+    handleConfirmSubmit();
+  }, [handleConfirmSubmit]);
+
+  const isAnswered = currentQuestion ? answers[currentQuestion.id] != null && answers[currentQuestion.id] !== '' : false;
+  const isLastQuestion = currentIndex === totalQuestions - 1;
 
   if (isStarting || (attemptLoading && localAttemptId)) {
     return (
@@ -136,135 +137,46 @@ export const AssessmentSessionScreen: React.FC = () => {
     );
   }
 
-  const renderQuestionInput = (question: any) => {
-    const selected = answers[question.id] ?? '';
-
-    switch (question.questionType) {
-      case 'MULTIPLE_CHOICE':
-      case 'BOOLEAN': {
-        const options = question.options ?? (question.questionType === 'BOOLEAN'
-          ? [{ label: 'True', value: 'true' }, { label: 'False', value: 'false' }]
-          : []);
-        return (
-          <View style={styles.optionsContainer}>
-            {options.map((opt: any) => {
-              const isSelected = selected === opt.value;
-              return (
-                <Pressable
-                  key={opt.value}
-                  onPress={() => handleSelectOption(question.id, opt.value)}
-                  style={({ pressed }) => [
-                    styles.optionItem,
-                    isSelected && styles.optionSelected,
-                    { transform: [{ scale: pressed ? 0.97 : 1 }] },
-                  ]}
-                >
-                  <View style={[styles.radio, isSelected && styles.radioSelected]}>
-                    {isSelected && <View style={styles.radioInner} />}
-                  </View>
-                  <Text style={[styles.optionLabel, isSelected && styles.optionLabelSelected]}>
-                    {opt.label}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-        );
-      }
-      case 'SCALE': {
-        const maxScore = question.maxScore ?? 5;
-        const scaleOptions = Array.from({ length: maxScore + 1 }, (_, i) => i);
-        return (
-          <View style={styles.scaleContainer}>
-            {scaleOptions.map((val) => {
-              const isSelected = selected === String(val);
-              return (
-                <Pressable
-                  key={val}
-                  onPress={() => handleSelectOption(question.id, String(val))}
-                  style={({ pressed }) => [
-                    styles.scaleItem,
-                    isSelected && styles.scaleItemSelected,
-                    { transform: [{ scale: pressed ? 0.9 : 1 }] },
-                  ]}
-                >
-                  <Text style={[styles.scaleValue, isSelected && styles.scaleValueSelected]}>
-                    {val}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-        );
-      }
-      case 'TEXT': {
-        return (
-          <TextInput
-            style={styles.textInput}
-            value={selected}
-            onChangeText={(val) => handleSelectOption(question.id, val)}
-            placeholder="Type your answer here…"
-            placeholderTextColor={colors.textMuted}
-            multiline
-            numberOfLines={3}
-          />
-        );
-      }
-      default:
-        return <Text style={styles.unsupported}>Unsupported question type.</Text>;
-    }
-  };
-
-  const isLastQuestion = currentIndex === totalQuestions - 1;
-
   return (
     <ScreenContainer>
       <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
-        <View style={styles.topBar}>
-          <Pressable onPress={() => navigation.goBack()} style={styles.backBtn}>
-            <Ionicons name="arrow-back" size={24} color={colors.text} />
-          </Pressable>
-          <Text style={styles.topBarTitle}>
-            Question {currentIndex + 1} of {totalQuestions}
-          </Text>
-          <View style={styles.backBtn} />
-        </View>
+        <AssessmentProgressBar
+          progress={progress}
+          answeredCount={answeredCount}
+          totalCount={totalQuestions}
+          color={colors.purple}
+        />
 
-        <ProgressBar progress={progress} color={colors.purple} style={styles.progressBar} />
+        <QuestionHeader
+          questionNumber={currentIndex + 1}
+          totalQuestions={totalQuestions}
+          prompt={currentQuestion.prompt}
+        />
 
-        <AppCard style={styles.questionCard}>
-          <Text style={styles.questionPrompt}>{currentQuestion.prompt}</Text>
+        <AssessmentQuestion
+          question={{
+            id: currentQuestion.id,
+            prompt: currentQuestion.prompt,
+            questionType: currentQuestion.questionType,
+            options: currentQuestion.options ?? null,
+            maxScore: currentQuestion.maxScore ?? 5,
+          }}
+          answer={answers[currentQuestion.id] ?? ''}
+          onAnswer={handleSelectOption}
+        />
 
-          {renderQuestionInput(currentQuestion)}
-        </AppCard>
-
-        <View style={styles.navRow}>
-          <AppButton
-            label="Previous"
-            onPress={handlePrev}
-            variant="secondary"
-            disabled={currentIndex === 0}
-            style={styles.navBtn}
-          />
-          {isLastQuestion ? (
-            <AppButton
-              label={showConfirm ? 'Confirm Submit' : 'Submit'}
-              onPress={showConfirm ? handleSubmit : handleConfirmSubmit}
-              variant="success"
-              disabled={!allAnswered}
-              loading={isSubmitting}
-              style={styles.navBtn}
-            />
-          ) : (
-            <AppButton
-              label="Next"
-              onPress={handleNext}
-              variant="primary"
-              disabled={!answers[currentQuestion?.id]}
-              style={styles.navBtn}
-            />
-          )}
-        </View>
+        <QuestionFooter
+          currentIndex={currentIndex}
+          totalQuestions={totalQuestions}
+          isAnswered={isAnswered}
+          isLastQuestion={isLastQuestion}
+          showConfirm={showConfirm}
+          isSubmitting={isSubmitting}
+          onPrev={handlePrev}
+          onNext={handleNext}
+          onSubmit={handleSubmitPress}
+          onConfirmSubmit={handleSubmit}
+        />
 
         {showConfirm && !isSubmitting && (
           <AppCard style={styles.confirmCard}>
@@ -288,132 +200,6 @@ const styles = StyleSheet.create({
   scrollContainer: {
     padding: spacing.lg,
     paddingBottom: spacing.xxl,
-  },
-  topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: spacing.md,
-  },
-  backBtn: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  topBarTitle: {
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.bold,
-    color: colors.textMuted,
-  },
-  progressBar: {
-    marginBottom: spacing.lg,
-  },
-  questionCard: {
-    marginBottom: spacing.lg,
-  },
-  questionPrompt: {
-    fontSize: typography.sizes.md,
-    fontWeight: typography.weights.bold,
-    color: colors.text,
-    lineHeight: 24,
-    marginBottom: spacing.lg,
-  },
-  optionsContainer: {
-    gap: spacing.sm,
-  },
-  optionItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: spacing.md,
-    borderRadius: radius.md,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-  },
-  optionSelected: {
-    borderColor: colors.purple,
-    backgroundColor: `${colors.purple}10`,
-  },
-  radio: {
-    width: 22,
-    height: 22,
-    borderRadius: radius.full,
-    borderWidth: 2,
-    borderColor: colors.border,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: spacing.md,
-  },
-  radioSelected: {
-    borderColor: colors.purple,
-  },
-  radioInner: {
-    width: 12,
-    height: 12,
-    borderRadius: radius.full,
-    backgroundColor: colors.purple,
-  },
-  optionLabel: {
-    fontSize: typography.sizes.body,
-    color: colors.text,
-    flex: 1,
-  },
-  optionLabelSelected: {
-    fontWeight: typography.weights.medium,
-  },
-  scaleContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-    justifyContent: 'center',
-  },
-  scaleItem: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.full,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: colors.surface,
-  },
-  scaleItemSelected: {
-    borderColor: colors.purple,
-    backgroundColor: colors.purple,
-  },
-  scaleValue: {
-    fontSize: typography.sizes.md,
-    fontWeight: typography.weights.bold,
-    color: colors.text,
-  },
-  scaleValueSelected: {
-    color: '#FFF8ED',
-  },
-  textInput: {
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    fontSize: typography.sizes.body,
-    color: colors.text,
-    backgroundColor: colors.surface,
-    minHeight: 80,
-    textAlignVertical: 'top',
-    lineHeight: 22,
-  },
-  unsupported: {
-    fontSize: typography.sizes.sm,
-    color: colors.textMuted,
-    fontStyle: 'italic',
-  },
-  navRow: {
-    flexDirection: 'row',
-    gap: spacing.md,
-    marginBottom: spacing.md,
-  },
-  navBtn: {
-    flex: 1,
   },
   confirmCard: {
     backgroundColor: `${colors.yellow}20`,

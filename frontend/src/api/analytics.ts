@@ -30,7 +30,3 @@ export function getAnalyticsTimeline(page = 1, limit = 20, childId?: string) {
 export function getAnalyticsSubjects() {
   return api.get('/analytics/subjects');
 }
-
-export function getAnalyticsReport(window: 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'LIFETIME') {
-  return api.get(`/analytics/report?window=${window}`);
-}

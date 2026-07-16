@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, View, Text, Pressable, TextInput, Image, ViewStyle, TextStyle, ImageStyle, Platform } from 'react-native';
+import { StyleSheet, View, Text, Pressable, TextInput, Image, ViewStyle, TextStyle, ImageStyle, StyleProp, Platform } from 'react-native';
 import { colors, radius, typography, spacing, shadows } from '../../theme';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -19,7 +19,7 @@ export const Button: React.FC<{
   label: string;
   variant?: 'primary' | 'secondary' | 'success' | 'reward' | 'danger';
   onPress?: () => void;
-  style?: any;
+  style?: StyleProp<ViewStyle>;
   textStyle?: TextStyle;
   disabled?: boolean;
 }> = ({ label, variant = 'primary', onPress, style, textStyle, disabled = false }) => {
@@ -62,7 +62,7 @@ export const Chip: React.FC<{
   label: string;
   active?: boolean;
   onPress?: () => void;
-  style?: any;
+  style?: StyleProp<ViewStyle>;
 }> = ({ label, active = false, onPress, style }) => (
   <Pressable
     onPress={onPress}
@@ -85,7 +85,7 @@ export const Chip: React.FC<{
 export const Avatar: React.FC<{
   source?: string;
   size?: number;
-  style?: any;
+  style?: StyleProp<ViewStyle>;
 }> = ({ source, size = 56, style }) => (
   <View style={[styles.avatarContainer, { width: size, height: size, borderRadius: size / 2 }]}>
     {source ? (
@@ -102,7 +102,7 @@ export const Avatar: React.FC<{
 export const ProgressBar: React.FC<{
   progress: number; // 0 to 100
   color?: string;
-  style?: any;
+  style?: StyleProp<ViewStyle>;
 }> = ({ progress, color = colors.blue, style }) => (
   <View style={[styles.progressTrack, style]}>
     <View style={[styles.progressFill, { width: `${Math.max(0, Math.min(100, progress))}%`, backgroundColor: color }]} />
@@ -115,7 +115,7 @@ export const ProgressBar: React.FC<{
 export const Badge: React.FC<{
   label: string;
   color?: string;
-  style?: any;
+  style?: StyleProp<ViewStyle>;
 }> = ({ label, color = colors.purple, style }) => (
   <View style={[styles.badge, { backgroundColor: color }, style]}>
     <Text style={[styles.badgeText, { fontFamily: typography.families.rounded }]}>{label}</Text>
@@ -130,7 +130,7 @@ export const StatCard: React.FC<{
   value: string | number;
   icon: string;
   iconColor?: string;
-  style?: any;
+  style?: StyleProp<ViewStyle>;
 }> = ({ title, value, icon, iconColor = colors.purple, style }) => (
   <Card style={[styles.statCard, style]}>
     <View style={[styles.statIconContainer, { backgroundColor: `${iconColor}20` }]}>
@@ -150,7 +150,7 @@ export const IllustrationCard: React.FC<{
   source?: string;
   title: string;
   subtitle?: string;
-  style?: any;
+  style?: StyleProp<ViewStyle>;
 }> = ({ source, title, subtitle, style }) => (
   <Card style={[styles.illustrationCard, style]}>
     <View style={styles.illPhotoContainer}>
@@ -173,7 +173,7 @@ export const IllustrationCard: React.FC<{
 export const SectionHeader: React.FC<{
   title: string;
   subtitle?: string;
-  style?: any;
+  style?: StyleProp<ViewStyle>;
 }> = ({ title, subtitle, style }) => (
   <View style={[styles.sectionHeader, style]}>
     <Text style={[styles.sectionTitle, { fontFamily: typography.families.rounded }]}>{title}</Text>
@@ -188,7 +188,7 @@ export const SearchBar: React.FC<{
   value: string;
   onChangeText: (text: string) => void;
   placeholder?: string;
-  style?: any;
+  style?: StyleProp<ViewStyle>;
 }> = ({ value, onChangeText, placeholder = 'Search...', style }) => (
   <View style={[styles.searchBar, style]}>
     <Ionicons name="search" size={20} color={colors.textSecondary} style={styles.searchIcon} />
@@ -211,7 +211,7 @@ export const EmotionCard: React.FC<{
   color?: string;
   selected?: boolean;
   onPress?: () => void;
-  style?: any;
+  style?: StyleProp<ViewStyle>;
 }> = ({ emoji, label, color = colors.peach, selected = false, onPress, style }) => (
   <Pressable
     onPress={onPress}

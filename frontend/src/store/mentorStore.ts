@@ -38,8 +38,8 @@ export const useMentorStore = create<MentorState>((set) => ({
       const enhancedMentors = mentors.map((m: any) => enhanceMentor(m)).filter(Boolean) as Mentor[];
       
       set({ mentorList: enhancedMentors });
-    } catch (err: any) {
-      set({ error: err.message || 'Failed to fetch mentors' });
+    } catch (err: unknown) {
+          set({ error: err instanceof Error ? err.message : 'Failed to fetch mentors' });
     } finally {
       set({ loading: false });
     }

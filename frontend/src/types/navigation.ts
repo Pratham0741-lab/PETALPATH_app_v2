@@ -1,0 +1,103 @@
+import type { NavigatorScreenParams } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+
+export type AuthStackParamList = {
+  Login: undefined;
+  Register: undefined;
+  ForgotPassword: undefined;
+  ResetPassword: { token?: string } | undefined;
+  ParentProfile: undefined;
+};
+
+export type OnboardingStackParamList = {
+  ChildSelection: undefined;
+  AddChild: { childId?: string; selectedMentorId?: string } | undefined;
+  MentorSelection: { selectedMentorId?: string; returnScreen?: string } | undefined;
+  NotificationPermission: undefined;
+  Tutorial: undefined;
+};
+
+export type MainTabParamList = {
+  Home: undefined;
+  Journey: undefined;
+  Mentor: undefined;
+  Rewards: undefined;
+  Profile: undefined;
+};
+
+export type RootStackParamList = {
+  MainTabs: NavigatorScreenParams<MainTabParamList>;
+  Login: undefined;
+  Register: undefined;
+  ForgotPassword: undefined;
+  ResetPassword: { token?: string } | undefined;
+  ParentProfile: undefined;
+  ChildSelection: undefined;
+  AddChild: { childId?: string; selectedMentorId?: string } | undefined;
+  MentorSelection: { selectedMentorId?: string; returnScreen?: string } | undefined;
+  NotificationPermission: undefined;
+  Tutorial: undefined;
+  Home: undefined;
+  Journey: undefined;
+  Mentor: undefined;
+  Rewards: undefined;
+  Profile: undefined;
+  LessonOverview: { lessonId: string };
+  Lesson: { lessonId: string };
+  Module: { moduleId: string };
+  Roadmap: undefined;
+  Video: undefined;
+  VideoCompleted: undefined;
+  Listen: undefined;
+  Speak: undefined;
+  Write: undefined;
+  LessonComplete: undefined;
+  ModuleComplete: { moduleTitle?: string; nextModuleTitle?: string } | undefined;
+  CategoryComplete: { categoryTitle?: string; badgeName?: string } | undefined;
+  Progress: undefined;
+  Stories: undefined;
+  StoryDetail: { storyId: string };
+  StoryReader: { storyId: string; progressId?: string };
+  StoryCompletion: { storyId: string };
+  Recommendations: undefined;
+  AssessmentCenter: undefined;
+  AssessmentSession: { assessmentId: string; attemptId?: string };
+  AssessmentResult: { attemptId: string };
+  PlacementAssessmentIntro: undefined;
+  PlacementAssessmentSession: { attemptId: string };
+  PlacementAssessmentQuestion: { questionId: string; attemptId: string };
+  PlacementAssessmentLoading: { attemptId: string };
+  PlacementAssessmentResult: { attemptId: string };
+  RewardsDashboard: undefined;
+  BadgeGallery: undefined;
+  BadgeDetail: { badgeId: string };
+  Achievements: undefined;
+  AchievementDetail: { achievementId: string };
+  DailyChallenges: undefined;
+  NotificationPreferences: undefined;
+  NotificationCenter: undefined;
+  CurriculumExplorer: undefined;
+  SkillDetail: { skillId: string };
+  Quiz: { activityId: string };
+  Game: { activityId: string };
+  AITutor: { activityId: string };
+  AITutorSession: { sessionId: string; activityId: string };
+  AITutorHome: undefined;
+  AITutorChat: { sessionId: string };
+  AITutorHistory: undefined;
+  AdaptiveProfile: undefined;
+  Mastery: undefined;
+  ReinforcementQueue: undefined;
+  Reading: { activityId: string };
+  ParentDashboard: undefined;
+  Analytics: undefined;
+  SkillMastery: undefined;
+  CurriculumInsights: undefined;
+  LearningHistory: undefined;
+  WeeklyReport: undefined;
+  MonthlyReport: undefined;
+};
+
+export type AppNavigationProp = NativeStackNavigationProp<RootStackParamList>;
+export type AppTabNavigationProp = BottomTabNavigationProp<MainTabParamList>;

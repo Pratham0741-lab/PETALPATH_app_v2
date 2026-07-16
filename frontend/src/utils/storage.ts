@@ -1,19 +1,21 @@
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+const IS_DEV = typeof __DEV__ !== 'undefined' ? __DEV__ : false;
+
 export const storage = {
   getItem: async (key: string): Promise<string | null> => {
     if (Platform.OS === 'web') {
       try {
         return window.localStorage.getItem(key);
       } catch (e) {
-        console.warn('Failed to read from localStorage', e);
+        if (IS_DEV) console.warn('Failed to read from localStorage', e);
       }
     } else {
       try {
         return await AsyncStorage.getItem(key);
       } catch (e) {
-        console.warn('Failed to read from AsyncStorage', e);
+        if (IS_DEV) console.warn('Failed to read from AsyncStorage', e);
       }
     }
     return null;
@@ -23,13 +25,13 @@ export const storage = {
       try {
         window.localStorage.setItem(key, value);
       } catch (e) {
-        console.warn('Failed to write to localStorage', e);
+        if (IS_DEV) console.warn('Failed to write to localStorage', e);
       }
     } else {
       try {
         await AsyncStorage.setItem(key, value);
       } catch (e) {
-        console.warn('Failed to write to AsyncStorage', e);
+        if (IS_DEV) console.warn('Failed to write to AsyncStorage', e);
       }
     }
   },
@@ -38,13 +40,13 @@ export const storage = {
       try {
         window.localStorage.removeItem(key);
       } catch (e) {
-        console.warn('Failed to remove from localStorage', e);
+        if (IS_DEV) console.warn('Failed to remove from localStorage', e);
       }
     } else {
       try {
         await AsyncStorage.removeItem(key);
       } catch (e) {
-        console.warn('Failed to remove from AsyncStorage', e);
+        if (IS_DEV) console.warn('Failed to remove from AsyncStorage', e);
       }
     }
   },

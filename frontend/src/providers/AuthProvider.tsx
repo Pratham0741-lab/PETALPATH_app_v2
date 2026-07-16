@@ -1,26 +1,8 @@
-/**
- * Auth Provider
- *
- * Thin React context over the existing zustand auth store (appStore).
- * It does not duplicate token storage — that lives in appStore + AsyncStorage.
- * It simply exposes auth state to the component tree and guarantees the
- * persisted session is hydrated on app launch.
- *
- * Feature code should prefer the `useAuth` hook (src/hooks/useAuth) which
- * reads from this context.
- */
 import React, { createContext, useContext, useEffect, useMemo } from 'react';
-import { useAppStore } from '../store/appStore';
-
-interface AppUser {
-  id: string;
-  email: string;
-  name: string;
-  role: string;
-}
+import { useAuthStore } from '../store/authStore';
 
 interface AuthContextValue {
-  user: AppUser | null;
+  user: { id: string; email: string; name: string; role: string } | null;
   token: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
@@ -30,28 +12,25 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const user = useAppStore((s) => s.user);
-  const token = useAppStore((s) => s.token);
-  const loadingSession = useAppStore((s) => s.loadingSession);
-  const loadSession = useAppStore((s) => s.loadSession);
-  const clearSession = useAppStore((s) => s.clearSession);
+  const user = useAuthStore((s) => s.user);
+  const token = useAuthStore((s) => s.token);
+  const isLoading = useAuthStore((s) => s.isLoading);
+  const hydrateSession = useAuthStore((s) => s.hydrateSession);
+  const clearSession = useAuthStore((s) => s.clearSession);
 
-  // Hydrate persisted session once on mount.
   useEffect(() => {
-    if (loadingSession) {
-      loadSession();
-    }
-  }, [loadingSession, loadSession]);
+    hydrateSession();
+  }, [hydrateSession]);
 
   const value = useMemo<AuthContextValue>(
     () => ({
       user,
       token,
       isAuthenticated: !!token,
-      isLoading: loadingSession,
+      isLoading,
       logout: clearSession,
     }),
-    [user, token, loadingSession, clearSession],
+    [user, token, isLoading, clearSession],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

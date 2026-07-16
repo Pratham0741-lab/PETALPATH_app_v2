@@ -14,10 +14,6 @@ export function register(name: string, email: string, password: string) {
   return api.post('/auth/register', { name, email, password });
 }
 
-export function loginWithGoogle(idToken: string) {
-  return api.post('/auth/google', { idToken });
-}
-
 export function forgotPassword(email: string) {
   return api.post('/auth/forgot-password', { email });
 }

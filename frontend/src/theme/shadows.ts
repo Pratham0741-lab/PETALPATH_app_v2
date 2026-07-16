@@ -1,4 +1,4 @@
-import { colors } from './colors';
+import { lightColors as colors } from './colors';
 
 export const shadows = {
   sm: {
@@ -21,5 +21,12 @@ export const shadows = {
     shadowOpacity: 0.12,
     shadowRadius: 16,
     elevation: 6,
+  },
+  xl: {
+    shadowColor: colors.black,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.15,
+    shadowRadius: 24,
+    elevation: 8,
   },
 };
