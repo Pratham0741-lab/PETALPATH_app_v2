@@ -27,14 +27,14 @@ export const createAssessmentSchema = z.object({
 });
 
 export const startAttemptSchema = z.object({
-  assessmentId: z.string().uuid(),
+  assessmentId: z.string().min(1, 'assessmentId is required'),
 });
 
 export const submitAttemptSchema = z.object({
   responses: z
     .array(
       z.object({
-        questionId: z.string().uuid(),
+        questionId: z.string().min(1, 'questionId is required'),
         answer: z.string(),
       })
     )

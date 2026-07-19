@@ -9,6 +9,64 @@ import { Ionicons } from '@expo/vector-icons';
 import { UniversalAudioPlayer } from '../../utils/audioPlayer';
 import { getNextActivity, navigateToActivity } from '../../utils/navigationFlow';
 import { NavigationGuide } from '../../components/tutorial/NavigationGuide';
+import { Card, Button } from '../../components/ui';
+
+const ListenComingSoonMobile: React.FC<{
+  audio: any;
+  navigation: any;
+}> = ({ audio, navigation }) => {
+  const { completeActivity } = useListenStore();
+  const [isCompleting, setIsCompleting] = useState(false);
+
+  const handleProceed = async () => {
+    setIsCompleting(true);
+    try {
+      await completeActivity();
+      const next = getNextActivity(audio.activityId);
+      if (next) {
+        await navigateToActivity(navigation, next);
+        return;
+      }
+      navigation.navigate('LessonOverview');
+    } catch (err) {
+      if (__DEV__) console.warn('Failed to complete and proceed:', err);
+      navigation.navigate('LessonOverview');
+    } finally {
+      setIsCompleting(false);
+    }
+  };
+
+  return (
+    <ScreenContainer style={styles.container}>
+      <TopBar title={audio.title || 'Audio Guide'} showBack />
+
+      {/* Main Coming Soon Area */}
+      <View style={styles.comingSoonPanel}>
+        <Card style={styles.comingSoonCard}>
+          <Ionicons name="volume-high-outline" size={56} color={colors.yellow} style={styles.comingSoonIcon} />
+          <Text style={[styles.comingSoonTitle, { fontFamily: typography.families.rounded }]}>Audio Coming Soon! 🌟</Text>
+          <Text style={[styles.comingSoonSubtitle, { fontFamily: typography.families.rounded }]}>
+            Our team is preparing a magical audio guide for this lesson.
+          </Text>
+          <Text style={[styles.comingSoonDetails, { fontFamily: typography.families.rounded }]}>
+            You don't have to wait! Tap the button below to proceed to the learning activities.
+          </Text>
+        </Card>
+      </View>
+
+      {/* Bottom Area */}
+      <View style={styles.bottomPanel}>
+        <Button
+          label="Proceed to Next Activity"
+          variant="primary"
+          onPress={handleProceed}
+          disabled={isCompleting}
+          style={styles.proceedBtn}
+        />
+      </View>
+    </ScreenContainer>
+  );
+};
 
 export const ListenMobile: React.FC = () => {
   const navigation = useNavigation<any>();
@@ -141,6 +199,19 @@ export const ListenMobile: React.FC = () => {
       <View style={[styles.container, styles.center]}>
         <ActivityIndicator size="large" color={colors.purple} />
         <Text style={styles.statusText}>Loading audio guide...</Text>
+      </View>
+    );
+  }
+
+  if (isComingSoon && currentAudio) {
+    return (
+      <View style={{ flex: 1 }}>
+        <ListenComingSoonMobile audio={currentAudio} navigation={navigation} />
+        <NavigationGuide
+          screenKey="listen"
+          guideKey="listen"
+          message="Listen carefully!"
+        />
       </View>
     );
   }
@@ -601,6 +672,52 @@ const styles = StyleSheet.create({
   },
   retryBtn: {
     backgroundColor: colors.purple,
+  },
+  comingSoonPanel: {
+    flex: 0.6,
+    backgroundColor: colors.background,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.md,
+  },
+  comingSoonCard: {
+    alignItems: 'center',
+    width: '90%',
+    maxWidth: 400,
+  },
+  comingSoonIcon: {
+    marginBottom: spacing.md,
+  },
+  comingSoonTitle: {
+    fontSize: typography.sizes.body,
+    fontWeight: typography.weights.black,
+    color: colors.textPrimary,
+    textAlign: 'center',
+    marginBottom: spacing.xs,
+  },
+  comingSoonSubtitle: {
+    fontSize: typography.sizes.small,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: spacing.md,
+    lineHeight: 18,
+  },
+  comingSoonDetails: {
+    fontSize: typography.sizes.caption,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 16,
+    opacity: 0.8,
+  },
+  proceedBtn: {
+    width: '100%',
+    maxWidth: 300,
+    height: 50,
+  },
+  bottomPanel: {
+    padding: spacing.lg,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
 export default ListenMobile;

@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { StyleSheet, ScrollView, View, Text, ActivityIndicator, Pressable, Alert } from 'react-native';
 import { ScreenContainer } from '../../components/common/ScreenContainer';
 import { TopBar } from '../../components/navigation/TopBar';
@@ -10,6 +10,7 @@ import { useRoadmapStore } from '../../store/roadmapStore';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '../../api/client';
 import { navigateToActivity } from '../../utils/navigationFlow';
+import { normalizeActivityType } from '../../utils/activityNormalization';
 
 export const LessonOverviewMobile: React.FC = () => {
   const { navigateToTab, navigation } = useAppNavigation();
@@ -35,10 +36,11 @@ export const LessonOverviewMobile: React.FC = () => {
     const progress = selectedLesson?.progress;
     if (!progress) return false;
     
-    if (prevAct.activityType === 'video') return progress.videoCompleted;
-    if (prevAct.activityType === 'listen') return progress.listenCompleted;
-    if (prevAct.activityType === 'speak') return progress.speakCompleted;
-    if (prevAct.activityType === 'write') return progress.writeCompleted;
+    const prevType = normalizeActivityType(prevAct.activityType);
+    if (prevType === 'video') return progress.videoCompleted;
+    if (prevType === 'listen') return progress.listenCompleted;
+    if (prevType === 'speak') return progress.speakCompleted;
+    if (prevType === 'write') return progress.writeCompleted;
     
     return false;
   };

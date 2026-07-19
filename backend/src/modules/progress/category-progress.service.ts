@@ -2,18 +2,19 @@ import { prisma } from '../../config/database.js';
 import { logger } from '../../utils/logger.js';
 
 export class CategoryProgressService {
-  async completeCategory(childId: string, categoryId: string): Promise<boolean> {
+  async completeCategory(childId: string, categoryId: string, tx?: any): Promise<boolean> {
+    const client = tx || prisma;
     // Check if all modules in the category are completed
-    const modules = await prisma.module.findMany({
+    const modules = await client.module.findMany({
       where: { categoryId, deletedAt: null },
     });
 
     if (modules.length === 0) return false;
 
-    const moduleProgresses = await prisma.moduleProgress.findMany({
+    const moduleProgresses = await client.moduleProgress.findMany({
       where: {
         childId,
-        moduleId: { in: modules.map((m) => m.id) },
+        moduleId: { in: modules.map((m: any) => m.id) },
         isCompleted: true,
       },
     });
@@ -22,7 +23,7 @@ export class CategoryProgressService {
     if (!isAllCompleted) return false;
 
     // Check if already completed
-    const existing = await prisma.categoryProgress.findUnique({
+    const existing = await client.categoryProgress.findUnique({
       where: {
         childId_categoryId: { childId, categoryId },
       },
@@ -30,7 +31,7 @@ export class CategoryProgressService {
 
     if (existing?.isCompleted) return false;
 
-    await prisma.categoryProgress.upsert({
+    await client.categoryProgress.upsert({
       where: {
         childId_categoryId: { childId, categoryId },
       },

@@ -36,10 +36,10 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ deviceType
   const activeMentor = activeChild?.mentor ? enhanceMentor(activeChild.mentor) : null;
 
   const tabs = [
-    { name: 'Home' as const, label: 'Roadmap', icon: 'map' },
+    { name: 'Home' as const, label: 'Home', icon: 'home' },
     { name: 'Journey' as const, label: 'Explore', icon: 'compass' },
-    { name: 'Mentor' as const, label: 'Garden', icon: 'flower' },
-    { name: 'Rewards' as const, label: 'Progress', icon: 'stats-chart' },
+    { name: 'Mentor' as const, label: 'Mentors', icon: 'flower' },
+    { name: 'Rewards' as const, label: 'Rewards', icon: 'stats-chart' },
     { name: 'Profile' as const, label: 'Profile', icon: 'person' },
   ];
 

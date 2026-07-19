@@ -5,6 +5,7 @@
   "type": "module",
   "main": "dist/server.js",
   "scripts": {
+    "predev": "node scripts/kill-port.js",
     "dev": "nodemon",
     "build": "tsc",
     "start": "node dist/server.js",

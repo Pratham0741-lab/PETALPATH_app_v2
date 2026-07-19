@@ -81,7 +81,7 @@ export const RegisterScreen: React.FC = () => {
   const isLoading = isSubmitting;
 
   return (
-    <Screen scroll keyboardAvoid padded>
+    <Screen keyboardAvoid>
       <AuthBackground>
         <ScrollView
           contentContainerStyle={styles.scrollContainer}
@@ -92,98 +92,100 @@ export const RegisterScreen: React.FC = () => {
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             style={styles.flex}
           >
-            <AuthHeader
-              title="Join PetalPath"
-              subtitle="Create an account to track your journey!"
-            />
-
-            <View
-              style={[
-                styles.form,
-                {
-                  backgroundColor: colors.surface,
-                  borderColor: colors.border,
-                },
-                shadows.md,
-              ]}
-            >
-              {formError ? (
-                <Text
-                  style={[styles.errorText, { color: colors.error }]}
-                  accessibilityRole="alert"
-                  accessibilityLabel={formError}
-                >
-                  {formError}
-                </Text>
-              ) : null}
-
-              <FormInput
-                name="name"
-                control={control as any}
-                label="Full Name"
-                placeholder="Little Explorer"
-                autoCapitalize="words"
-                disabled={isLoading}
-                returnKeyType="next"
+            <View style={styles.authCardWrapper}>
+              <AuthHeader
+                title="Join PetalPath"
+                subtitle="Create an account to track your journey!"
               />
 
-              <FormInput
-                name="email"
-                control={control as any}
-                label="Email Address"
-                placeholder="explorer@petalpath.com"
-                keyboardType="email-address"
-                autoCapitalize="none"
-                disabled={isLoading}
-                returnKeyType="next"
-              />
+              <View
+                style={[
+                  styles.form,
+                  {
+                    backgroundColor: colors.surface,
+                    borderColor: colors.border,
+                  },
+                  shadows.md,
+                ]}
+              >
+                {formError ? (
+                  <Text
+                    style={[styles.errorText, { color: colors.error }]}
+                    accessibilityRole="alert"
+                    accessibilityLabel={formError}
+                  >
+                    {formError}
+                  </Text>
+                ) : null}
 
-              <FormPasswordInput
-                name="password"
-                control={control as any}
-                label="Password"
-                placeholder="Min. 8 characters, 1 letter & 1 number"
-                disabled={isLoading}
-                returnKeyType="next"
-              />
+                <FormInput
+                  name="name"
+                  control={control as any}
+                  label="Full Name"
+                  placeholder="Little Explorer"
+                  autoCapitalize="words"
+                  disabled={isLoading}
+                  returnKeyType="next"
+                />
 
-              <FormPasswordInput
-                name="confirmPassword"
-                control={control as any}
-                label="Confirm Password"
-                placeholder="Re-enter your password"
-                disabled={isLoading}
-                returnKeyType="done"
-              />
+                <FormInput
+                  name="email"
+                  control={control as any}
+                  label="Email Address"
+                  placeholder="explorer@petalpath.com"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  disabled={isLoading}
+                  returnKeyType="next"
+                />
 
-              <FormCheckbox
-                name="acceptTerms"
-                control={control as any}
-                label="I accept the Terms and Conditions"
-                disabled={isLoading}
-              />
+                <FormPasswordInput
+                  name="password"
+                  control={control as any}
+                  label="Password"
+                  placeholder="Min. 8 characters, 1 letter & 1 number"
+                  disabled={isLoading}
+                  returnKeyType="next"
+                />
 
-              <Button
-                title={isLoading ? 'Creating Account...' : 'Sign Up'}
-                onPress={handleSubmit(onSubmit)}
-                disabled={isLoading}
-                loading={isSubmitting}
-                variant="primary"
-                size="lg"
-                fullWidth
-                accessibilityLabel="Sign up button"
-                style={styles.signUpBtn}
+                <FormPasswordInput
+                  name="confirmPassword"
+                  control={control as any}
+                  label="Confirm Password"
+                  placeholder="Re-enter your password"
+                  disabled={isLoading}
+                  returnKeyType="done"
+                />
+
+                <FormCheckbox
+                  name="acceptTerms"
+                  control={control as any}
+                  label="I accept the Terms and Conditions"
+                  disabled={isLoading}
+                />
+
+                <Button
+                  title={isLoading ? 'Creating Account...' : 'Sign Up'}
+                  onPress={handleSubmit(onSubmit)}
+                  disabled={isLoading}
+                  loading={isSubmitting}
+                  variant="primary"
+                  size="lg"
+                  fullWidth
+                  accessibilityLabel="Sign up button"
+                  style={styles.signUpBtn}
+                />
+              </View>
+
+              <AuthFooter
+                links={[
+                  {
+                    label: 'Already have an account? Login',
+                    onPress: () => { if (!isLoading) navigation.navigate('Login'); },
+                  },
+                ]}
               />
             </View>
-
-            <AuthFooter
-              links={[
-                {
-                  label: 'Already have an account? Login',
-                  onPress: () => { if (!isLoading) navigation.navigate('Login'); },
-                },
-              ]}
-            />
           </KeyboardAvoidingView>
         </ScrollView>
       </AuthBackground>
@@ -212,6 +214,11 @@ const styles = StyleSheet.create({
   },
   signUpBtn: {
     marginTop: spacing.sm,
+  },
+  authCardWrapper: {
+    width: '100%',
+    maxWidth: 450,
+    alignSelf: 'center',
   },
 });
 

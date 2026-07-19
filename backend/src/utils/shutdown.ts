@@ -14,6 +14,10 @@ export function setupGracefulShutdown(server: Server): void {
 
     stopJobs();
 
+    if (typeof server.closeAllConnections === 'function') {
+      server.closeAllConnections();
+    }
+
     server.close(async () => {
       logger.info('HTTP server closed.');
       await prisma.$disconnect();
@@ -29,4 +33,5 @@ export function setupGracefulShutdown(server: Server): void {
 
   process.on('SIGTERM', () => shutdown('SIGTERM'));
   process.on('SIGINT', () => shutdown('SIGINT'));
+  process.on('SIGUSR2', () => shutdown('SIGUSR2'));
 }

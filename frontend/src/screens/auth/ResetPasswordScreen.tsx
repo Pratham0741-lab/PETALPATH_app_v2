@@ -131,7 +131,7 @@ export const ResetPasswordScreen: React.FC = () => {
   }
 
   return (
-    <Screen scroll keyboardAvoid padded>
+    <Screen keyboardAvoid>
       <AuthBackground>
         <ScrollView
           contentContainerStyle={styles.scrollContainer}

@@ -25,6 +25,7 @@ model User {
   children      Child[]
   refreshTokens RefreshToken[]
   notifications Notification[]
+  classrooms    Classroom[]
 
   @@map("users")
 }
@@ -84,6 +85,7 @@ model Child {
   assessmentAttempts     AssessmentAttempt[]
   storyProgress           StoryProgress[]
   notifications           Notification[]
+  classrooms              ClassroomLearner[]
 
   @@map("children")
 }
@@ -1599,7 +1601,7 @@ model AssessmentAttempt {
   childId      String                  @map("child_id")
   child        Child                   @relation(fields: [childId], references: [id], onDelete: Cascade)
   assessmentId String                  @map("assessment_id")
-  assessment   Assessment              @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  assessment   Assessment?             @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
   status       AssessmentAttemptStatus @default(IN_PROGRESS)
   startedAt    DateTime                @default(now()) @map("started_at")
   completedAt  DateTime?               @map("completed_at")
@@ -1615,6 +1617,32 @@ model AssessmentAttempt {
   @@index([childId, assessmentId])
   @@index([assessmentId])
   @@map("assessment_attempts")
+}
+
+model Classroom {
+  id        String   @id @default(uuid())
+  name      String
+  code      String   @unique
+  teacherId String   @map("teacher_id")
+  teacher   User     @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  learners  ClassroomLearner[]
+
+  @@map("classrooms")
+}
+
+model ClassroomLearner {
+  id          String    @id @default(uuid())
+  classroomId String    @map("classroom_id")
+  classroom   Classroom @relation(fields: [classroomId], references: [id], onDelete: Cascade)
+  childId     String    @map("child_id")
+  child       Child     @relation(fields: [childId], references: [id], onDelete: Cascade)
+  joinedAt    DateTime  @default(now()) @map("joined_at")
+
+  @@unique([classroomId, childId])
+  @@map("classroom_learners")
 }
 
 

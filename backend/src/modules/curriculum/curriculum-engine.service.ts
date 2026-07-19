@@ -7,6 +7,8 @@ import { skillRepository } from './repositories/skill.repository.js';
 import { skillDependencyRepository } from './repositories/skill-dependency.repository.js';
 import { skillHealthRepository } from '../mastery/repositories/skill-health.repository.js';
 import { NotFoundError } from '../../utils/errors.js';
+import { CurriculumNode } from './curriculum.types.js';
+import { ACTIVITY_STARS_CONFIG, GRADE_AGE_GROUP_MAP } from './curriculum.config.js';
 
 export interface CurriculumRecommendationDto {
   subjectId: string;
@@ -295,6 +297,224 @@ export class CurriculumEngineService {
   async recommendNextSkills(childId: string, limit = 3): Promise<CurriculumRecommendationDto[]> {
     const recs = await this.generateRecommendations(childId);
     return recs.slice(0, limit);
+  }
+
+  /**
+   * Helper to check if a specific prerequisite lesson has status 'COMPLETED'
+   */
+  public isPrerequisiteCompleted(
+    prereqId: string,
+    progressList: { lessonId: string; status: string }[]
+  ): boolean {
+    const progress = progressList.find((p) => p.lessonId === prereqId);
+    return progress?.status === 'COMPLETED';
+  }
+
+  /**
+   * Helper to check if a specific lesson ID's mastery score meets the threshold required by the node.
+   */
+  public isMasteryRequirementSatisfied(
+    lessonId: string,
+    requiredScore: number,
+    knowledgeState?: { mastery: number }
+  ): boolean {
+    if (!knowledgeState) {
+      return requiredScore <= 0;
+    }
+    return knowledgeState.mastery >= requiredScore;
+  }
+
+  /**
+   * Decides if a lesson is unlocked for a child based on prerequisites, completion state, and mastery.
+   */
+  public isLessonUnlocked(
+    lessonId: string,
+    gradeLessons: readonly CurriculumNode[],
+    progressList: { lessonId: string; status: string }[],
+    knowledgeStates: { topicId: string; mastery: number }[]
+  ): boolean {
+    const index = gradeLessons.findIndex((n) => n.id === lessonId);
+    if (index === -1) {
+      return false;
+    }
+
+    const node = gradeLessons[index];
+
+    // First node in the grade is unlocked by default
+    if (index === 0) {
+      return true;
+    }
+
+    // Evaluate prerequisites if defined and non-empty
+    if (node.prerequisites && node.prerequisites.length > 0) {
+      const progressMap = new Map(progressList.map((p) => [p.lessonId, p]));
+      const knowledgeMap = new Map(knowledgeStates.map((k) => [k.topicId, k]));
+
+      for (const prereqId of node.prerequisites) {
+        const prereqProgress = progressMap.get(prereqId);
+        const prereqCompleted = prereqProgress?.status === 'COMPLETED';
+        if (!prereqCompleted) {
+          return false;
+        }
+
+        if (node.mastery) {
+          const prereqKnowledge = knowledgeMap.get(prereqId);
+          const prereqMastery = prereqKnowledge?.mastery ?? 0.0;
+          if (prereqMastery < node.mastery.required_score) {
+            return false;
+          }
+        }
+      }
+      return true;
+    }
+
+    // Fallback: previous node in grade curriculum completed
+    const prevNode = gradeLessons[index - 1];
+    return this.isPrerequisiteCompleted(prevNode.id, progressList);
+  }
+
+  /**
+   * Scans lessons in curriculum order to find the first unlocked, uncompleted lesson.
+   */
+  public determineNextAvailableLesson(
+    gradeLessons: readonly CurriculumNode[],
+    progressList: { lessonId: string; status: string }[],
+    knowledgeStates: { topicId: string; mastery: number }[]
+  ): string | null {
+    const completedSet = new Set(
+      progressList.filter((p) => p.status === 'COMPLETED').map((p) => p.lessonId)
+    );
+
+    for (const node of gradeLessons) {
+      if (!completedSet.has(node.id)) {
+        if (this.isLessonUnlocked(node.id, gradeLessons, progressList, knowledgeStates)) {
+          return node.id;
+        }
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Checks if all lessons in a theme/module are completed.
+   */
+  public isThemeCompleted(
+    themeId: string,
+    themeNodes: readonly CurriculumNode[],
+    progressList: { lessonId: string; status: string }[]
+  ): boolean {
+    if (themeNodes.length === 0) {
+      return false;
+    }
+
+    const completedSet = new Set(
+      progressList.filter((p) => p.status === 'COMPLETED').map((p) => p.lessonId)
+    );
+
+    return themeNodes.every((node) => completedSet.has(node.id));
+  }
+
+  /**
+   * Evaluates grade completion.
+   */
+  public isGradeCompleted(
+    gradeLessons: readonly CurriculumNode[],
+    progressList: { lessonId: string; status: string }[],
+    completedLessonId?: string
+  ): boolean {
+    if (gradeLessons.length === 0) {
+      return false;
+    }
+
+    const lastNode = gradeLessons[gradeLessons.length - 1];
+
+    // 1. Check if the completed lesson is the last node
+    const isLastNode = completedLessonId === lastNode?.id;
+
+    // 2. Check if the completed lesson has a graduation title
+    const completedNode = completedLessonId
+      ? gradeLessons.find((n) => n.id === completedLessonId)
+      : undefined;
+    const isGraduationNode = completedNode
+      ? completedNode.title?.toLowerCase().includes('unlock') ||
+        completedNode.title?.toLowerCase().includes('graduation')
+      : false;
+
+    if (isLastNode || isGraduationNode) {
+      return true;
+    }
+
+    // 3. Check if all nodes are completed
+    const completedSet = new Set(
+      progressList.filter((p) => p.status === 'COMPLETED').map((p) => p.lessonId)
+    );
+
+    return gradeLessons.every((node) => completedSet.has(node.id));
+  }
+
+  /**
+   * Evaluates all requirements for lesson completion.
+   */
+  public canCompleteLesson(
+    node: CurriculumNode,
+    progress: {
+      videoCompleted: boolean;
+      listenCompleted: boolean;
+      speakCompleted: boolean;
+      writeCompleted: boolean;
+    },
+    knowledgeState?: { mastery: number }
+  ): boolean {
+    // 1. Verify all activities defined in node are completed
+    const requiredTypes = node.activities.map((a) => a.type);
+    const hasVideo = requiredTypes.includes('video');
+    const hasListen = requiredTypes.includes('listen');
+    const hasSpeak = requiredTypes.includes('speak');
+    const hasWrite = requiredTypes.includes('write');
+
+    if (hasVideo && !progress.videoCompleted) return false;
+    if (hasListen && !progress.listenCompleted) return false;
+    if (hasSpeak && !progress.speakCompleted) return false;
+    if (hasWrite && !progress.writeCompleted) return false;
+
+    // 2. Verify mastery requirement is satisfied
+    if (node.mastery) {
+      if (!knowledgeState) {
+        return false;
+      }
+      if (knowledgeState.mastery < node.mastery.required_score) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  /**
+   * Returns default stars configured for an activity type
+   */
+  public getActivityDefaultStars(activityType: string): number {
+    return ACTIVITY_STARS_CONFIG[activityType] ?? 0;
+  }
+
+  /**
+   * Resolves the label for the next grade.
+   */
+  public getNextGradeLabel(currentGradeId: string): string | null {
+    const nextGradeMap: Record<string, string | null> = {
+      prenursery: 'nursery',
+      nursery: 'lkg',
+      lkg: 'ukg',
+      ukg: null,
+    };
+
+    const nextGrade = nextGradeMap[currentGradeId];
+    if (!nextGrade) {
+      return null;
+    }
+
+    return GRADE_AGE_GROUP_MAP[nextGrade] || null;
   }
 }
 

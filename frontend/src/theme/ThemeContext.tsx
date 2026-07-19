@@ -21,7 +21,7 @@ const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const systemScheme = useColorScheme();
   const [reducedMotionEnabled, setReducedMotionEnabled] = useState(false);
-  const [mode, setModeState] = useState<ThemeMode>('system');
+  const [mode, setModeState] = useState<ThemeMode>('light');
 
   useEffect(() => {
     storage.getItem(STORAGE_KEY).then((saved) => {
@@ -47,10 +47,10 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const resolvedMode = useMemo<'light' | 'dark'>(() => {
     if (mode === 'system') {
-      return systemScheme === 'dark' ? 'dark' : 'light';
+      return 'light';
     }
     return mode;
-  }, [mode, systemScheme]);
+  }, [mode]);
 
   const isDark = resolvedMode === 'dark';
 

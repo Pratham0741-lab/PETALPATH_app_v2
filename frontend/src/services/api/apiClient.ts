@@ -2,6 +2,7 @@ import axios, { type AxiosInstance, type AxiosError, type AxiosResponse } from '
 import { API_URL, IS_DEV } from '../../config/api';
 import { ApiError } from '../../api/errors';
 import { useAuthStore } from '../../store/authStore';
+import { useAppStore } from '../../store/appStore';
 import { useChildStore } from '../../store/childStore';
 import type { ApiResponse } from '../../types/api';
 import type { User } from '../../types/auth';
@@ -68,6 +69,9 @@ export class ApiClient {
         return response;
       },
       async (error: AxiosError) => {
+        if (IS_DEV) {
+          console.error('[API Error]', error.message, 'code:', error.code, 'url:', error.config?.url);
+        }
         const config = error.config as ExtendedRequestConfig | undefined;
         if (!config) return Promise.reject(this.parseError(error));
 
@@ -136,6 +140,7 @@ export class ApiClient {
     const refreshToken = useAuthStore.getState().refreshToken;
     if (!refreshToken) {
       useAuthStore.getState().clearSession();
+      useAppStore.getState().clearSession();
       return false;
     }
 
@@ -149,6 +154,7 @@ export class ApiClient {
       const json = response.data as ApiResponse<{ accessToken: string; refreshToken: string; user: User }>;
       if (response.status === 200 && json.success && json.data) {
         await useAuthStore.getState().setSession(json.data);
+        await useAppStore.getState().setSession(json.data);
         return true;
       }
     } catch (error) {
@@ -156,6 +162,7 @@ export class ApiClient {
     }
 
     useAuthStore.getState().clearSession();
+    useAppStore.getState().clearSession();
     return false;
   }
 

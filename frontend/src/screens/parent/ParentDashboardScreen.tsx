@@ -45,11 +45,11 @@ interface QuickLink {
 
 const QUICK_LINKS: QuickLink[] = [
   { key: 'analytics', label: 'Analytics', icon: 'bar-chart', screen: 'Analytics' },
-  { key: 'skillMastery', label: 'Skill Mastery', icon: 'school', screen: 'Mastery' },
+  { key: 'skillMastery', label: 'Skill Mastery', icon: 'school', screen: 'SkillMastery' },
   { key: 'learningHistory', label: 'Learning History', icon: 'time', screen: 'LearningHistory' },
   { key: 'weeklyReport', label: 'Weekly Report', icon: 'calendar', screen: 'WeeklyReport' },
   { key: 'monthlyReport', label: 'Monthly Report', icon: 'calendar', screen: 'MonthlyReport' },
-  { key: 'curriculum', label: 'Curriculum Insights', icon: 'book', screen: 'CurriculumExplorer' },
+  { key: 'curriculum', label: 'Curriculum Insights', icon: 'book', screen: 'CurriculumInsights' },
 ];
 
 export const ParentDashboardScreen: React.FC = () => {

@@ -116,7 +116,7 @@ export const ParentProfileScreen: React.FC = () => {
   const isLoading = isSubmitting || isUpdating;
 
   return (
-    <Screen scroll keyboardAvoid padded>
+    <Screen keyboardAvoid>
       <AuthBackground>
         <ScrollView
           contentContainerStyle={styles.scrollContainer}
@@ -127,81 +127,83 @@ export const ParentProfileScreen: React.FC = () => {
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             style={styles.flex}
           >
-            <AuthHeader
-              title="Your Profile"
-              subtitle="Let us know a bit about you!"
-              showLogo
-            />
-
-            <View
-              style={[
-                styles.form,
-                {
-                  backgroundColor: colors.surface,
-                  borderColor: colors.border,
-                },
-                shadows.md,
-              ]}
-            >
-              {formError ? (
-                <Text
-                  style={[styles.errorText, { color: colors.error }]}
-                  accessibilityRole="alert"
-                  accessibilityLabel={formError}
-                >
-                  {formError}
-                </Text>
-              ) : null}
-
-              {skipUpdate ? (
-                <View style={styles.skipBanner}>
-                  <Text style={[styles.skipText, { color: colors.textSecondary }]}>
-                    Profile update is not available yet. You can update your name later in Settings.
-                  </Text>
-                </View>
-              ) : null}
-
-              <FormInput
-                name="name"
-                control={control as any}
-                label="Your Name"
-                placeholder="Enter your name"
-                autoCapitalize="words"
-                disabled={isLoading || skipUpdate}
-                returnKeyType="done"
+            <View style={styles.authCardWrapper}>
+              <AuthHeader
+                title="Your Profile"
+                subtitle="Let us know a bit about you!"
+                showLogo
               />
 
               <View
-                style={[styles.infoCard, { backgroundColor: colors.surfaceSecondary, borderColor: colors.borderLight }]}
+                style={[
+                  styles.form,
+                  {
+                    backgroundColor: colors.surface,
+                    borderColor: colors.border,
+                  },
+                  shadows.md,
+                ]}
               >
-                <Text style={[styles.infoTitle, { color: colors.text }]}>
-                  Welcome to PetalPath!
-                </Text>
-                <Text style={[styles.infoText, { color: colors.textSecondary }]}>
-                  Next, you will set up a profile for your child to begin their language learning journey.
-                </Text>
+                {formError ? (
+                  <Text
+                    style={[styles.errorText, { color: colors.error }]}
+                    accessibilityRole="alert"
+                    accessibilityLabel={formError}
+                  >
+                    {formError}
+                  </Text>
+                ) : null}
+
+                {skipUpdate ? (
+                  <View style={styles.skipBanner}>
+                    <Text style={[styles.skipText, { color: colors.textSecondary }]}>
+                      Profile update is not available yet. You can update your name later in Settings.
+                    </Text>
+                  </View>
+                ) : null}
+
+                <FormInput
+                  name="name"
+                  control={control as any}
+                  label="Your Name"
+                  placeholder="Enter your name"
+                  autoCapitalize="words"
+                  disabled={isLoading || skipUpdate}
+                  returnKeyType="done"
+                />
+
+                <View
+                  style={[styles.infoCard, { backgroundColor: colors.surfaceSecondary, borderColor: colors.borderLight }]}
+                >
+                  <Text style={[styles.infoTitle, { color: colors.text }]}>
+                    Welcome to PetalPath!
+                  </Text>
+                  <Text style={[styles.infoText, { color: colors.textSecondary }]}>
+                    Next, you will set up a profile for your child to begin their language learning journey.
+                  </Text>
+                </View>
+
+                <Button
+                  title={isLoading ? 'Saving...' : 'Save & Continue'}
+                  onPress={handleSubmit(onSubmit)}
+                  disabled={isLoading || skipUpdate}
+                  loading={isSubmitting}
+                  variant="primary"
+                  size="lg"
+                  fullWidth
+                  accessibilityLabel="Save profile and continue"
+                  style={styles.saveBtn}
+                />
+
+                <Button
+                  title="Skip for now"
+                  onPress={handleSkip}
+                  disabled={isLoading}
+                  variant="ghost"
+                  fullWidth
+                  accessibilityLabel="Skip profile setup"
+                />
               </View>
-
-              <Button
-                title={isLoading ? 'Saving...' : 'Save & Continue'}
-                onPress={handleSubmit(onSubmit)}
-                disabled={isLoading || skipUpdate}
-                loading={isSubmitting}
-                variant="primary"
-                size="lg"
-                fullWidth
-                accessibilityLabel="Save profile and continue"
-                style={styles.saveBtn}
-              />
-
-              <Button
-                title="Skip for now"
-                onPress={handleSkip}
-                disabled={isLoading}
-                variant="ghost"
-                fullWidth
-                accessibilityLabel="Skip profile setup"
-              />
             </View>
           </KeyboardAvoidingView>
         </ScrollView>
@@ -257,6 +259,11 @@ const styles = StyleSheet.create({
   infoText: {
     fontSize: typography.sizes.sm,
     lineHeight: 20,
+  },
+  authCardWrapper: {
+    width: '100%',
+    maxWidth: 450,
+    alignSelf: 'center',
   },
 });
 

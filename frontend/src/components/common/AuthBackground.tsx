@@ -13,17 +13,6 @@ export const AuthBackground: React.FC<AuthBackgroundProps> = ({ children }) => {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <View
-        style={[
-          styles.decorativeElement,
-          {
-            backgroundColor: colors.primaryLight,
-            opacity: 0.15,
-          },
-        ]}
-        accessibilityElementsHidden
-        importantForAccessibility="no"
-      />
       {children}
     </View>
   );

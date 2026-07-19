@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, Text, Pressable, ActivityIndicator, Platform, DimensionValue } from 'react-native';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { useEventListener } from 'expo';
@@ -249,7 +249,7 @@ const VideoPlayerDesktop: React.FC<{
             <View style={styles.completedRow}>
               <Ionicons name="checkmark-circle" size={32} color={colors.green} />
               <View style={styles.completedTextContainer}>
-                <Text style={[styles.completedTitle, { fontFamily: typography.families.rounded }]}>Video Completed! ðŸŽ‰</Text>
+                <Text style={[styles.completedTitle, { fontFamily: typography.families.rounded }]}>Video Completed! 🎉</Text>
                 <Text style={[styles.completedSubtitle, { fontFamily: typography.families.rounded }]}>You're ready to proceed to the next activity.</Text>
               </View>
             </View>
@@ -310,7 +310,7 @@ const VideoComingSoonDesktop: React.FC<{
       <View style={styles.comingSoonPanel}>
         <Card style={styles.comingSoonCard}>
           <Ionicons name="film-outline" size={72} color={colors.yellow} style={styles.comingSoonIcon} />
-          <Text style={[styles.comingSoonTitle, { fontFamily: typography.families.rounded }]}>Video Coming Soon! ðŸŒŸ</Text>
+          <Text style={[styles.comingSoonTitle, { fontFamily: typography.families.rounded }]}>Video Coming Soon! 🌟</Text>
           <Text style={[styles.comingSoonSubtitle, { fontFamily: typography.families.rounded }]}>
             Our team is preparing a magical video demonstration for this lesson.
           </Text>

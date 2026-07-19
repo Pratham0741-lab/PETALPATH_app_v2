@@ -90,6 +90,10 @@ app.use('/storage', express.static(path.join(__dirname, '../storage')));
 
 // Health routes — no rate limiting (monitoring must always be accessible)
 app.use('/health', healthRoutes);
+app.use('/api/health', healthRoutes);
+
+
+const isProduction = env.NODE_ENV === 'production';
 
 // Rate limiting — applied to /api routes
 const apiLimiter = rateLimit({
@@ -103,16 +107,18 @@ const apiLimiter = rateLimit({
   },
 });
 
-// Per-endpoint rate limiters (applied before the global limiter)
-app.use('/api/auth/login', authLimiter);
-app.use('/api/auth/register', authLimiter);
-app.use('/api/session-planner/generate', moderateLimiter);
-app.use('/api/stories', moderateLimiter);
-app.use('/api/assessments', moderateLimiter);
-app.use('/api/notifications', moderateLimiter);
+if (isProduction) {
+  // Per-endpoint rate limiters (applied before the global limiter)
+  app.use('/api/auth/login', authLimiter);
+  app.use('/api/auth/register', authLimiter);
+  app.use('/api/session-planner/generate', moderateLimiter);
+  app.use('/api/stories', moderateLimiter);
+  app.use('/api/assessments', moderateLimiter);
+  app.use('/api/notifications', moderateLimiter);
+}
 
 // Mount API routes
-app.use('/api', apiLimiter, rootRouter);
+app.use('/api', isProduction ? apiLimiter : (req, res, next) => next(), rootRouter);
 
 // Catch-all 404
 app.use((req, res, next) => {

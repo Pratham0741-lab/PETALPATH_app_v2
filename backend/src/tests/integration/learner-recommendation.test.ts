@@ -6,10 +6,13 @@
  * plus the auth/ownership/validation edge cases.
  */
 
+import { jest } from '@jest/globals';
 import '../helpers/setup.js';
 import app from '../../app.js';
 import supertest from 'supertest';
+import { randomUUID } from 'crypto';
 import { prisma } from '../../config/database.js';
+import { curriculumService } from '../../modules/curriculum/index.js';
 import { MasteryState } from '@prisma/client';
 import {
   createTestCategory,
@@ -25,14 +28,26 @@ import { createAuthenticatedContext, getAuthToken } from '../helpers/auth.js';
 
 const request = supertest(app);
 
-async function seedCurriculum() {
+async function seedCurriculum(lessonId?: string) {
   const category = await createTestCategory();
   const module = await createTestModule(category.id);
-  const lesson = await createTestLesson(module.id);
+  const lesson = await prisma.lesson.create({
+    data: {
+      id: lessonId || randomUUID(),
+      moduleId: module.id,
+      title: 'Test Lesson',
+      displayOrder: 1,
+      difficulty: 'EASY',
+    },
+  });
   return { category, module, lesson };
 }
 
 describe('Phase 3.4 — Recommendation Engine', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   describe('Priority branches', () => {
     it('1. returns CONTINUE_LESSON for an in-progress lesson', async () => {
       const { child, accessToken } = await createAuthenticatedContext();
@@ -95,7 +110,7 @@ describe('Phase 3.4 — Recommendation Engine', () => {
 
     it('4. returns ROADMAP for the next unlocked lesson', async () => {
       const { child, accessToken } = await createAuthenticatedContext();
-      await seedCurriculum();
+      await seedCurriculum('n_cap_a');
 
       const res = await request
         .get(`/api/v1/learner/${child.id}/recommendation`)
@@ -106,6 +121,7 @@ describe('Phase 3.4 — Recommendation Engine', () => {
     });
 
     it('5. returns REWARD for a close reward opportunity', async () => {
+      jest.spyOn(curriculumService, 'getLessonsInCurriculumOrder').mockReturnValue([]);
       const { child, accessToken } = await createAuthenticatedContext();
       await prisma.stars.create({ data: { childId: child.id, totalStars: 5 } });
       await createTestSticker({ name: 'Star Sticker', requiredStars: 10 });
@@ -121,12 +137,36 @@ describe('Phase 3.4 — Recommendation Engine', () => {
     });
 
     it('6. returns REVIEW for a long-completed lesson', async () => {
+      const mockLesson = {
+        id: 'some-lesson-id',
+        title: 'Review Lesson',
+        order: 1,
+        difficulty: 1,
+        estimated_minutes: 7,
+        prerequisites: [],
+        activities: [],
+        reward: { xp: 10, coins: 5 },
+        mastery: { required_score: 80, attempts: 3 },
+        curriculum: { subject: 'English', month: 'April', learning_outcome: '', original_topic: '' }
+      } as any;
+      jest.spyOn(curriculumService, 'getLessonsInCurriculumOrder').mockReturnValue([mockLesson]);
+      jest.spyOn(curriculumService, 'getLessonById').mockReturnValue(mockLesson);
+
       const { child, accessToken } = await createAuthenticatedContext();
-      const { lesson } = await seedCurriculum();
+      await prisma.category.create({
+        data: { id: 'some-cat-id', title: 'Test Category', description: 'desc', displayOrder: 1 }
+      });
+      await prisma.module.create({
+        data: { id: 'some-mod-id', categoryId: 'some-cat-id', title: 'Test Module', description: 'desc', displayOrder: 1 }
+      });
+      await prisma.lesson.create({
+        data: { id: 'some-lesson-id', moduleId: 'some-mod-id', title: 'Review Lesson', displayOrder: 1, difficulty: 'EASY' }
+      });
+
       await prisma.lessonProgress.create({
         data: {
           childId: child.id,
-          lessonId: lesson.id,
+          lessonId: 'some-lesson-id',
           status: 'COMPLETED',
           completedAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
         },
@@ -141,6 +181,7 @@ describe('Phase 3.4 — Recommendation Engine', () => {
     });
 
     it('7. returns no recommendation (data: null) when nothing is actionable', async () => {
+      jest.spyOn(curriculumService, 'getLessonsInCurriculumOrder').mockReturnValue([]);
       const { child, accessToken } = await createAuthenticatedContext();
 
       const res = await request

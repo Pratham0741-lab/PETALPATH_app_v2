@@ -15,19 +15,20 @@ export class StarService {
     return 3;
   }
 
-  async updateTotalStars(childId: string): Promise<number> {
-    const lessonsProgress = await prisma.lessonProgress.findMany({
+  async updateTotalStars(childId: string, tx?: any): Promise<number> {
+    const client = tx || prisma;
+    const lessonsProgress = await client.lessonProgress.findMany({
       where: { childId },
     });
-    const storyProgress = await prisma.storyProgress.findMany({
+    const storyProgress = await client.storyProgress.findMany({
       where: { childId },
     });
 
-    const totalStars = lessonsProgress.reduce((sum, lp) => sum + lp.totalStars, 0)
-      + storyProgress.reduce((sum, sp) => sum + sp.starsEarned, 0);
+    const totalStars = lessonsProgress.reduce((sum: number, lp: any) => sum + lp.totalStars, 0)
+      + storyProgress.reduce((sum: number, sp: any) => sum + sp.starsEarned, 0);
 
     // Upsert the child's Stars record
-    await prisma.stars.upsert({
+    await client.stars.upsert({
       where: { childId },
       update: { totalStars },
       create: { childId, totalStars },

@@ -9,7 +9,6 @@ import {
   Platform,
   useWindowDimensions,
   Animated,
-  FlatList,
   RefreshControl,
 } from 'react-native';
 import { ScreenContainer } from '../../components/common/ScreenContainer';
@@ -17,16 +16,26 @@ import { ErrorState } from '../../components/common/ErrorState';
 import { EmptyState } from '../../components/common/EmptyState';
 import { toUserMessage } from '../../api/errors';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import { useRoadmapStore, Lesson } from '../../store/roadmapStore';
 import { useChildStore } from '../../store/childStore';
-import { useRewardsStore } from '../../store/rewardsStore';
+import { useRoadmapStore, Lesson, Module } from '../../store/roadmapStore';
 import { colors, spacing, radius, typography, shadows } from '../../theme';
 import { navigateToActivity } from '../../utils/navigationFlow';
 import Svg, { Path, Circle, Rect } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
+import {
+  useRoadmap,
+  useDashboardOverview,
+  useRewardsOverview,
+  useRecommendation,
+} from '../../hooks/useLearningQueries';
+import { useDailyStreak } from '../../hooks/useRewards';
+import { useChildSwitch } from '../../hooks/useChildSwitch';
+import { deriveXPState } from '../../services/gamification/derivations';
+import { getAvatarEmoji, getAvatarBgColor } from '../profile/ChildSelectionScreen';
+import { ProgressBar } from '../../components/ui/ProgressBar';
 
 // -------------------------------------------------------------
-// DECORATIVE BACKGROUND COMPONENTS
+// DECORATIVE BACKGROUND COMPONENTS (DESKTOP SCALE)
 // -------------------------------------------------------------
 
 const LeftHill = React.memo(({ top, width }: { top: number; width: number }) => (
@@ -137,10 +146,10 @@ const FloatingPetal = React.memo(({ top, left, delay = 0 }: { top: number; left:
 });
 
 // -------------------------------------------------------------
-// FLOWER NODE ANIMATION WRAPPERS
+// FLOWER NODE ANIMATION WRAPPERS (DESKTOP SCALE)
 // -------------------------------------------------------------
 
-const CurrentFlowerNode = ({ size, children }: { size: number; children: React.ReactNode }) => {
+const CurrentFlowerNode = ({ size, style, children }: { size: number; style?: any; children: React.ReactNode }) => {
   const breatheAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -171,7 +180,7 @@ const CurrentFlowerNode = ({ size, children }: { size: number; children: React.R
   });
 
   return (
-    <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+    <View style={[{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }, style]}>
       <Animated.View
         style={{
           position: 'absolute',
@@ -243,598 +252,703 @@ const CompletedFlowerNode = React.memo(({ size, children, onPress }: { size: num
 });
 
 // -------------------------------------------------------------
-// MAIN HOME DESKTOP SCREEN
+// MAIN PORTAL IMPLEMENTATION
 // -------------------------------------------------------------
 
-interface PathNode {
-  type: 'lesson' | 'milestone' | 'reward';
+interface RoadmapItem {
+  type: 'module' | 'lesson' | 'module-gate' | 'flag';
   id: string;
-  title: string;
-  status: 'completed' | 'current' | 'locked';
+  module?: Module;
   lesson?: Lesson;
-  moduleTitle?: string;
-  categoryTitle?: string;
+  title?: string;
+  status: 'completed' | 'current' | 'locked';
+  indexInModule?: number;
+  totalInModule?: number;
+  parentModuleId?: string;
+  displayOrder?: number;
+  isQuiz?: boolean;
 }
 
 export const HomeDesktop: React.FC = () => {
   const navigation = useNavigation<any>();
   const activeChild = useChildStore((state) => state.activeChild);
-  const flatListRef = useRef<FlatList>(null);
+  const childrenList = useChildStore((state) => state.childrenList);
+  const selectLesson = useRoadmapStore((state) => state.selectLesson);
 
+  const scrollViewRef = useRef<ScrollView>(null);
+  const hasAutoScrolled = useRef(false);
+
+  // States
+  const [showChildDropdown, setShowChildDropdown] = useState(false);
+  const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
+  const [showFloatingResume, setShowFloatingResume] = useState(false);
+  const [activeLessonY, setActiveLessonY] = useState(0);
+
+  // React Query Hooks
   const {
-    categories,
-    currentLesson,
-    loading: roadmapLoading,
+    data: rawRoadmap,
+    isLoading: roadmapLoading,
     error: roadmapError,
-    loadRoadmap,
-    selectLesson,
-    isLessonUnlocked,
-  } = useRoadmapStore();
+    refetch: refetchRoadmap,
+  } = useRoadmap();
 
   const {
-    totalStars,
-    refreshRewards,
-  } = useRewardsStore();
+    data: rawDashboard,
+    isLoading: dashboardLoading,
+    refetch: refetchDashboard,
+  } = useDashboardOverview();
 
-  useEffect(() => {
-    loadRoadmap();
-    refreshRewards();
-  }, []);
+  const {
+    data: rawRewards,
+    refetch: refetchRewards,
+  } = useRewardsOverview();
 
-  const [refreshing, setRefreshing] = useState(false);
+  const {
+    data: rawStreak,
+    refetch: refetchStreak,
+  } = useDailyStreak();
 
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    await Promise.all([loadRoadmap(), refreshRewards()]);
-    setRefreshing(false);
-  }, [loadRoadmap, refreshRewards]);
+  const {
+    data: rawRecommendation,
+  } = useRecommendation();
 
+  const { switchChild } = useChildSwitch();
+
+  // Automatically refresh queries on screen focus to ensure lesson unlocks update instantly in UI
   useFocusEffect(
     useCallback(() => {
-      loadRoadmap();
-    }, [loadRoadmap]),
+      refetchRoadmap();
+      refetchDashboard();
+      refetchRewards();
+      refetchStreak();
+    }, [refetchRoadmap, refetchDashboard, refetchRewards, refetchStreak])
   );
 
-  // 1. Flatten path items
-  const pathNodes = useMemo<PathNode[]>(() => {
-    const nodes: PathNode[] = [];
-    if (!categories || categories.length === 0) return nodes;
+  // Parsing Data
+  const roadmapData = (rawRoadmap as any)?.data;
+  const grade = roadmapData?.grade || '';
+  const themes = (roadmapData?.themes ?? []) as any[];
+  const nodes = (roadmapData?.nodes ?? []) as any[];
+  const currentLesson = (roadmapData?.currentNode ?? null) as any;
 
-    categories.forEach((cat) => {
-      cat.modules.forEach((mod) => {
-        mod.lessons.forEach((les) => {
-          let status: 'completed' | 'current' | 'locked' = 'locked';
-          if (les.isCompleted) {
-            status = 'completed';
-          } else if (currentLesson && les.id === currentLesson.id) {
-            status = 'current';
-          } else if (les.isUnlocked) {
-            status = les.id === currentLesson?.id ? 'current' : 'locked';
-          }
-          nodes.push({
+  const dashboardOverview = ((rawDashboard as any)?.data ?? {}) as any;
+  const rewardsOverview = ((rawRewards as any)?.data ?? {}) as any;
+  const streak = (rawStreak as any)?.data?.currentStreak ?? dashboardOverview.streak ?? 0;
+  const xpState = deriveXPState(rewardsOverview.totalStars ?? 0);
+
+  const recommendation = (rawRecommendation as any)?.data ?? null;
+
+  // Refresh handler
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await Promise.all([
+      refetchRoadmap(),
+      refetchDashboard(),
+      refetchRewards(),
+      refetchStreak(),
+    ]);
+    setRefreshing(false);
+  }, [refetchRoadmap, refetchDashboard, refetchRewards, refetchStreak]);
+
+  // Handle Child Switch
+  const handleChildSelect = async (childId: string) => {
+    setShowChildDropdown(false);
+    hasAutoScrolled.current = false;
+    setActiveLessonY(0);
+    await switchChild(childId);
+  };
+
+  // Build the unified timeline array
+  const roadmapItems = useMemo<RoadmapItem[]>(() => {
+    const list: RoadmapItem[] = [];
+    if (!themes || themes.length === 0 || !nodes || nodes.length === 0) return list;
+
+    // Find current theme index
+    const currentThemeId = currentLesson?.themeId || themes[0].id;
+    const currentThemeIdx = themes.findIndex((t) => t.id === currentThemeId);
+
+    themes.forEach((theme, tIdx) => {
+      if (tIdx < currentThemeIdx) {
+        // Collapsed previous theme
+        list.push({
+          type: 'module-gate',
+          id: `theme-gate-${theme.id}`,
+          title: theme.title,
+          status: 'completed',
+        });
+      } else if (tIdx === currentThemeIdx) {
+        // Current theme (expanded)
+        list.push({
+          type: 'module',
+          id: `theme-header-${theme.id}`,
+          title: theme.title,
+          status: 'completed',
+        });
+
+        // Add all nodes for this theme
+        const themeNodes = nodes.filter((n) => n.themeId === theme.id);
+        themeNodes.forEach((node, nIdx) => {
+          list.push({
             type: 'lesson',
-            id: les.id,
-            title: les.title,
-            status,
-            lesson: les,
+            id: node.id,
+            lesson: node,
+            status: node.isCompleted ? 'completed' : (currentLesson && node.id === currentLesson.id ? 'current' : 'locked'),
+            displayOrder: nIdx + 1,
+            isQuiz: node.title.toLowerCase().includes('quiz') || node.title.toLowerCase().includes('test'),
           });
         });
-
-        // Milestone
-        const isModCompleted = mod.lessons.every((l) => l.isCompleted);
-        const isModUnlocked = mod.lessons.some((l) => l.isUnlocked || l.isCompleted);
-        nodes.push({
-          type: 'milestone',
-          id: `milestone-${mod.id}`,
-          title: `${mod.title} Milestone`,
-          status: isModCompleted ? 'completed' : (isModUnlocked && !isModCompleted ? 'current' : 'locked'),
-          moduleTitle: mod.title,
+      } else {
+        // Collapsed future theme
+        list.push({
+          type: 'module-gate',
+          id: `theme-gate-${theme.id}`,
+          title: theme.title,
+          status: 'locked',
         });
-      });
-
-      // Reward
-      const isCatCompleted = cat.isCompleted;
-      const isCatUnlocked = cat.isUnlocked;
-      nodes.push({
-        type: 'reward',
-        id: `reward-${cat.id}`,
-        title: `${cat.title} Reward`,
-        status: isCatCompleted ? 'completed' : (isCatUnlocked && !isCatCompleted ? 'current' : 'locked'),
-        categoryTitle: cat.title,
-      });
-    });
-
-    return nodes;
-  }, [categories, currentLesson]);
-
-  // Dimensions
-  const { width: windowWidth } = useWindowDimensions();
-  const screenWidth = Math.min(windowWidth, 768); // Center with max width on large screens
-  const leftOffset = (windowWidth - screenWidth) / 2;
-
-  // 2. Pre-calculate horizontal offsets and heights of nodes
-  const nodeLayouts = useMemo(() => {
-    return pathNodes.map((item, index) => {
-      const isHero = item.status === 'current' && item.type === 'lesson';
-      const height = isHero ? 190 : 120;
-      const x = Math.sin(index * 1.25) * 25; // sine curve offset
-      return { x, height };
-    });
-  }, [pathNodes]);
-
-  // Center path in the middle of the viewport width
-  const pathCenterX = screenWidth * 0.5;
-
-  // 3. Auto-scroll to center current active lesson index
-  useEffect(() => {
-    if (currentLesson && pathNodes.length > 0) {
-      const currentIndex = pathNodes.findIndex((n) => n.type === 'lesson' && n.id === currentLesson.id);
-      if (currentIndex !== -1) {
-        const timer = setTimeout(() => {
-          flatListRef.current?.scrollToIndex({
-            index: currentIndex,
-            animated: true,
-            viewPosition: 0.5,
-          });
-        }, 300);
-        return () => clearTimeout(timer);
       }
-    }
-  }, [currentLesson, pathNodes]);
+    });
 
-  const handlePlayContinue = async () => {
+    // Add flag at the end of the timeline
+    list.push({
+      type: 'flag',
+      id: 'timeline-end-flag',
+      status: 'locked',
+    });
+
+    return list;
+  }, [themes, nodes, currentLesson]);
+
+  // Layout node measurements for drawing paths
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const screenWidth = Math.min(windowWidth - 240, 800); // Sidebar is wider on desktops
+  const leftOffset = (windowWidth - screenWidth) / 2;
+  const pathCenterX = screenWidth * 0.32;
+
+  const nodeLayouts = useMemo(() => {
+    return roadmapItems.map((item, idx) => {
+      // Wavy sine oscillation
+      const x = Math.sin(idx * 1.2) * 28 - (screenWidth * 0.15);
+      return { x, height: 100 };
+    });
+  }, [roadmapItems, screenWidth]);
+
+  // One-time auto-scroll to current lesson
+  useEffect(() => {
+    if (activeLessonY > 0 && !hasAutoScrolled.current && roadmapItems.length > 5) {
+      const scrollPosition = activeLessonY - windowHeight * 0.25;
+      scrollViewRef.current?.scrollTo({ y: Math.max(0, scrollPosition), animated: true });
+      hasAutoScrolled.current = true;
+    }
+  }, [activeLessonY, roadmapItems, windowHeight]);
+
+  // Handle Scroll to toggle Floating Resume Button
+  const handleScroll = (event: any) => {
+    const y = event.nativeEvent.contentOffset.y;
+    const threshold = windowHeight * 0.35; // 35% of screen height
+    if (y > threshold) {
+      if (!showFloatingResume) setShowFloatingResume(true);
+    } else {
+      if (showFloatingResume) setShowFloatingResume(false);
+    }
+  };
+
+  // Find dynamic next activity completion targets
+  const getNextIncompleteActivity = useCallback((lesson: Lesson) => {
+    const progress = lesson.progress;
+    if (!progress) {
+      return lesson.activities[0] || null;
+    }
+    for (const act of lesson.activities) {
+      if (act.activityType === 'video' && !progress.videoCompleted) return act;
+      if (act.activityType === 'listen' && !progress.listenCompleted) return act;
+      if (act.activityType === 'speak' && !progress.speakCompleted) return act;
+      if (act.activityType === 'write' && !progress.writeCompleted) return act;
+    }
+    return lesson.activities[0] || null;
+  }, []);
+
+  // Compute remaining activities
+  const getRemainingActivitiesCount = useCallback((lesson: Lesson) => {
+    const progress = lesson.progress;
+    if (!progress) return lesson.activities.length;
+    let completed = 0;
+    if (progress.videoCompleted) completed++;
+    if (progress.listenCompleted) completed++;
+    if (progress.speakCompleted) completed++;
+    if (progress.writeCompleted) completed++;
+    return Math.max(0, lesson.activities.length - completed);
+  }, []);
+
+  // Resume button click handler
+  const handleResume = async () => {
     if (!currentLesson) return;
     await selectLesson(currentLesson);
-    
-    const progress = currentLesson.progress;
-    let targetAct = null;
-    if (progress) {
-      if (!progress.videoCompleted) {
-        targetAct = currentLesson.activities.find(a => a.activityType === 'video');
-      } else if (!progress.listenCompleted) {
-        targetAct = currentLesson.activities.find(a => a.activityType === 'listen');
-      } else if (!progress.speakCompleted) {
-        targetAct = currentLesson.activities.find(a => a.activityType === 'speak');
-      } else if (!progress.writeCompleted) {
-        targetAct = currentLesson.activities.find(a => a.activityType === 'write');
-      }
-    }
-    
-    if (!targetAct && currentLesson.activities.length > 0) {
-      targetAct = currentLesson.activities[0];
-    }
-
-    if (targetAct) {
-      await navigateToActivity(navigation, targetAct);
+    const targetActivity = getNextIncompleteActivity(currentLesson);
+    if (targetActivity) {
+      await navigateToActivity(navigation, targetActivity);
     } else {
-      navigation.navigate('LessonOverview');
+      navigation.navigate('LessonOverview', { lessonId: currentLesson.id });
     }
   };
 
   const handleLessonClick = async (lesson: Lesson) => {
-    if (isLessonUnlocked(lesson.id)) {
+    if (lesson.isUnlocked || lesson.isCompleted) {
       await selectLesson(lesson);
-      navigation.navigate('LessonOverview');
+      navigation.navigate('LessonOverview', { lessonId: lesson.id });
     }
   };
 
-  const getItemLayout = (data: any, index: number) => {
-    let offset = 0;
-    for (let i = 0; i < index; i++) {
-      const item = data[i];
-      const isHero = item.status === 'current' && item.type === 'lesson';
-      offset += isHero ? 190 : 120;
+  // Calculate unlock countdown timer
+  const hoursUntilMidnight = useMemo(() => {
+    return Math.max(1, 24 - new Date().getHours());
+  }, [refreshing]);
+
+  // Today's Goal Metrics
+  const dailyGoal = useMemo(() => {
+    if (dashboardOverview.dailyGoal && dashboardOverview.dailyGoal > 0) {
+      return dashboardOverview.dailyGoal;
     }
-    const item = data[index];
-    const isHero = item?.status === 'current' && item?.type === 'lesson';
-    const length = isHero ? 190 : 120;
-    return { length, offset, index };
+    return currentLesson?.activities.length ?? 4;
+  }, [dashboardOverview, currentLesson]);
+
+  const completedActivitiesToday = useMemo(() => {
+    if (!currentLesson || !currentLesson.progress) return 0;
+    let count = 0;
+    const p = currentLesson.progress;
+    if (p.videoCompleted) count++;
+    if (p.listenCompleted) count++;
+    if (p.speakCompleted) count++;
+    if (p.writeCompleted) count++;
+    return count;
+  }, [currentLesson]);
+
+  const isTodayComplete = completedActivitiesToday >= dailyGoal || (nodes.length > 0 && nodes.every((n: any) => n.isCompleted));
+  const goalPercentage = Math.min(100, Math.round((completedActivitiesToday / dailyGoal) * 100));
+
+  // Latest Unlocks list
+  const latestUnlocks = useMemo(() => {
+    const list: any[] = [];
+    const achievements = dashboardOverview.recentAchievements;
+    if (achievements) {
+      if (achievements.badges) {
+        achievements.badges.forEach((b: any) => {
+          list.push({ id: `b-${b.id}`, title: b.name, type: 'Badge', icon: '🏅', color: '#FFF3D6', desc: 'New Badge Unlocked!' });
+        });
+      }
+      if (achievements.stickers) {
+        achievements.stickers.forEach((s: any) => {
+          list.push({ id: `s-${s.id}`, title: s.name, type: 'Sticker', icon: '🎉', color: '#FFF2F5', desc: 'Sticker Earned!' });
+        });
+      }
+    }
+    return list;
+  }, [dashboardOverview]);
+
+  // Calculate difficulty stars
+  const getModuleStars = (lessons: Lesson[]) => {
+    if (lessons.length === 0) return '★★★☆☆';
+    const difficulties = lessons.map((l) => l.difficulty);
+    if (difficulties.includes('HARD')) return '★★★★★';
+    if (difficulties.includes('MEDIUM')) return '★★★★☆';
+    return '★★☆☆☆';
   };
 
-  const childName = activeChild?.name || 'Explorer';
-
-  const renderItem = ({ item, index }: { item: PathNode; index: number }) => {
-    const layout = nodeLayouts[index];
-    const nextLayout = nodeLayouts[index + 1];
-    if (!layout) return null;
-
-    const isHero = item.status === 'current' && item.type === 'lesson';
-    const flowerSize = isHero ? 90 : (item.type === 'milestone' ? 80 : (item.type === 'reward' ? 72 : 56));
-    const cardMarginLeft = 12;
-    const flowerLeft = pathCenterX + layout.x - flowerSize / 2;
-    const rowHeight = layout.height;
-
-    // Render path segment connecting this row center to next row center
-    let pathSegment = null;
-    if (index < pathNodes.length - 1 && nextLayout) {
-      const segmentHeight = rowHeight / 2 + nextLayout.height / 2;
-      const startX = pathCenterX + layout.x;
-      const endX = pathCenterX + nextLayout.x;
-      const midY = segmentHeight / 2;
-      const d = `M ${startX} 0 C ${startX} ${midY}, ${endX} ${midY}, ${endX} ${segmentHeight}`;
-
-      pathSegment = (
-        <View
-          style={{
-            position: 'absolute',
-            top: rowHeight / 2,
-            left: 0,
-            width: screenWidth,
-            height: segmentHeight,
-            zIndex: -1,
-          }}
-          pointerEvents="none"
-        >
-          <Svg width={screenWidth} height={segmentHeight}>
-            <Path
-              d={d}
-              stroke="#FFE5D9"
-              strokeWidth={28}
-              fill="none"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              opacity={0.9}
-            />
-            <Path
-              d={d}
-              stroke="#D6BCFA"
-              strokeWidth={3}
-              strokeDasharray="6, 8"
-              fill="none"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </Svg>
-        </View>
-      );
-    }
-
-    // Render intro straight path segment (only for the very first item)
-    let introSegment = null;
-    if (index === 0) {
-      introSegment = (
-        <View
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            width: screenWidth,
-            height: rowHeight / 2,
-            zIndex: -1,
-          }}
-          pointerEvents="none"
-        >
-          <Svg width={screenWidth} height={rowHeight / 2}>
-            <Path
-              d={`M ${pathCenterX + layout.x} 0 L ${pathCenterX + layout.x} ${rowHeight / 2}`}
-              stroke="#FFE5D9"
-              strokeWidth={28}
-              fill="none"
-              strokeLinecap="round"
-              opacity={0.9}
-            />
-            <Path
-              d={`M ${pathCenterX + layout.x} 0 L ${pathCenterX + layout.x} ${rowHeight / 2}`}
-              stroke="#D6BCFA"
-              strokeWidth={3}
-              strokeDasharray="6, 8"
-              fill="none"
-              strokeLinecap="round"
-            />
-          </Svg>
-        </View>
-      );
-    }
-
-    // Render outro straight path segment (only for the very last item)
-    let outroSegment = null;
-    if (index === pathNodes.length - 1) {
-      outroSegment = (
-        <View
-          style={{
-            position: 'absolute',
-            top: rowHeight / 2,
-            left: 0,
-            width: screenWidth,
-            height: 100,
-            zIndex: -1,
-          }}
-          pointerEvents="none"
-        >
-          <Svg width={screenWidth} height={100}>
-            <Path
-              d={`M ${pathCenterX + layout.x} 0 L ${pathCenterX + layout.x} 100`}
-              stroke="#FFE5D9"
-              strokeWidth={28}
-              fill="none"
-              strokeLinecap="round"
-              opacity={0.9}
-            />
-            <Path
-              d={`M ${pathCenterX + layout.x} 0 L ${pathCenterX + layout.x} 100`}
-              stroke="#D6BCFA"
-              strokeWidth={3}
-              strokeDasharray="6, 8"
-              fill="none"
-              strokeLinecap="round"
-            />
-          </Svg>
-        </View>
-      );
-    }
-
-    // Render background landscapes matching index (decided deterministically)
-    let rowDecoration = null;
-    const hillTop = -20;
-    if (index % 3 === 0) {
-      rowDecoration = (
-        <>
-          <LeftHill top={hillTop} width={screenWidth} />
-          <GardenTree top={hillTop + 40} left={25} />
-          <TinyFlower top={hillTop + 120} left={70} color="#F6B5C5" />
-          <TinyFlower top={hillTop + 140} left={95} color="#B89DE8" />
-          <FloatingPetal top={hillTop + 20} left={pathCenterX + 30} delay={index * 300} />
-        </>
-      );
-    } else if (index % 3 === 1) {
-      rowDecoration = (
-        <>
-          <RightHill top={hillTop} width={screenWidth} />
-          <GardenBush top={hillTop + 55} left={screenWidth - 85} />
-          <TinyFlower top={hillTop + 110} left={screenWidth - 105} color="#F29A8F" />
-          <FloatingPetal top={hillTop + 160} left={pathCenterX - 45} delay={index * 300} />
-        </>
-      );
-    } else {
-      rowDecoration = (
-        <>
-          <FloatingPetal top={hillTop + 50} left={pathCenterX + 40} delay={index * 200} />
-        </>
-      );
-    }
-
+  if (roadmapLoading && nodes.length === 0) {
     return (
-      <View style={{ height: rowHeight, position: 'relative', width: screenWidth }}>
-        {/* virtualized background hill elements */}
-        {rowDecoration}
-
-        {/* virtualized connecting SVGs */}
-        {introSegment}
-        {pathSegment}
-        {outroSegment}
-
-        {/* virtualized node element */}
-        <View style={[styles.nodeRow, { position: 'relative', height: rowHeight, width: screenWidth }]}>
-          <View style={{ width: flowerLeft }} />
-
-          <View style={{ width: flowerSize, height: flowerSize, alignItems: 'center', justifyContent: 'center' }}>
-            {item.type === 'lesson' && item.status === 'completed' && (
-              <CompletedFlowerNode size={flowerSize} onPress={() => item.lesson && handleLessonClick(item.lesson)}>
-                <Svg viewBox="0 0 100 100" width="100%" height="100%">
-                  <Path d="M50 70 L50 95" stroke="#7CA767" strokeWidth="6" strokeLinecap="round" />
-                  <Path d="M50 80 Q35 75 40 70" stroke="#7CA767" strokeWidth="5" strokeLinecap="round" fill="none" />
-                  <Path d="M50 85 Q65 80 60 75" stroke="#7CA767" strokeWidth="5" strokeLinecap="round" fill="none" />
-                  <Circle cx="50" cy="30" r="16" fill="#F6B5C5" />
-                  <Circle cx="30" cy="45" r="16" fill="#F6B5C5" />
-                  <Circle cx="70" cy="45" r="16" fill="#F6B5C5" />
-                  <Circle cx="38" cy="65" r="16" fill="#F6B5C5" />
-                  <Circle cx="62" cy="65" r="16" fill="#F6B5C5" />
-                  <Circle cx="50" cy="50" r="18" fill="#FFF" />
-                  <Circle cx="50" cy="50" r="14" fill="#8DBB75" />
-                  <Path d="M43 50 L48 55 L58 45" stroke="#FFF" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-                </Svg>
-              </CompletedFlowerNode>
-            )}
-
-            {item.type === 'lesson' && item.status === 'current' && (
-              <CurrentFlowerNode size={flowerSize}>
-                <Pressable onPress={handlePlayContinue} style={{ width: '100%', height: '100%' }}>
-                  <Svg viewBox="0 0 100 100" width="100%" height="100%">
-                    <Path d="M50 70 L50 95" stroke="#7CA767" strokeWidth="8" strokeLinecap="round" />
-                    <Path d="M50 80 Q30 75 35 68" stroke="#7CA767" strokeWidth="6" strokeLinecap="round" fill="none" />
-                    <Path d="M50 85 Q70 80 65 73" stroke="#7CA767" strokeWidth="6" strokeLinecap="round" fill="none" />
-                    <Circle cx="50" cy="26" r="20" fill="#8B78D8" />
-                    <Circle cx="26" cy="44" r="20" fill="#8B78D8" />
-                    <Circle cx="74" cy="44" r="20" fill="#8B78D8" />
-                    <Circle cx="35" cy="68" r="20" fill="#8B78D8" />
-                    <Circle cx="65" cy="68" r="20" fill="#8B78D8" />
-                    <Circle cx="50" cy="50" r="22" fill="#F7C94B" />
-                    <Circle cx="50" cy="50" r="16" fill="#FAD875" />
-                  </Svg>
-                </Pressable>
-              </CurrentFlowerNode>
-            )}
-
-            {item.type === 'lesson' && item.status === 'locked' && (
-              <View style={{ width: flowerSize, height: flowerSize, opacity: 0.7 }}>
-                <Svg viewBox="0 0 100 100" width="100%" height="100%">
-                  <Path d="M50 70 L50 95" stroke="#C7C7CC" strokeWidth="6" strokeLinecap="round" />
-                  <Circle cx="50" cy="30" r="16" fill="#E5E5EA" />
-                  <Circle cx="34" cy="46" r="16" fill="#E5E5EA" />
-                  <Circle cx="66" cy="46" r="16" fill="#E5E5EA" />
-                  <Circle cx="40" cy="66" r="16" fill="#E5E5EA" />
-                  <Circle cx="60" cy="66" r="16" fill="#E5E5EA" />
-                  <Circle cx="50" cy="50" r="18" fill="#D1D1D6" />
-                  <Rect x="42" y="48" width="16" height="12" rx="2" fill="#8E8E93" />
-                  <Path d="M46 48 V43 A4 4 0 0 1 54 43 V48" stroke="#8E8E93" strokeWidth="2.5" fill="none" />
-                </Svg>
-              </View>
-            )}
-
-            {item.type === 'milestone' && (
-              <Pressable
-                onPress={() => item.status !== 'locked' && navigation.navigate('Rewards')}
-                style={{ width: flowerSize, height: flowerSize, opacity: item.status === 'locked' ? 0.6 : 1 }}
-              >
-                <Svg viewBox="0 0 100 100" width="100%" height="100%">
-                  <Path d="M50 70 L50 95" stroke={item.status === 'locked' ? '#C7C7CC' : '#7CA767'} strokeWidth="7" strokeLinecap="round" />
-                  <Circle cx="50" cy="48" r="30" fill={item.status === 'locked' ? '#E5E5EA' : '#FFF3D6'} stroke={item.status === 'locked' ? '#F7C94B' : '#F7C94B'} strokeWidth="2" />
-                  <Path d="M50 28 L55 39 L67 41 L58 49 L61 61 L50 55 L39 61 L42 49 L33 41 L45 39 Z" fill={item.status === 'locked' ? '#8E8E93' : '#F7C94B'} />
-                </Svg>
-              </Pressable>
-            )}
-
-            {item.type === 'reward' && (
-              <Pressable
-                onPress={() => item.status !== 'locked' && navigation.navigate('Rewards')}
-                style={{ width: flowerSize, height: flowerSize, opacity: item.status === 'locked' ? 0.6 : 1 }}
-              >
-                <Svg viewBox="0 0 100 100" width="100%" height="100%">
-                  <Path d="M50 70 L50 95" stroke={item.status === 'locked' ? '#C7C7CC' : '#7CA767'} strokeWidth="6" strokeLinecap="round" />
-                  <Circle cx="50" cy="48" r="28" fill={item.status === 'locked' ? '#E5E5EA' : '#FFF2F5'} stroke={item.status === 'locked' ? '#D1D1D6' : '#F6B5C5'} strokeWidth="2.5" />
-                  <Rect x="36" y="38" width="28" height="24" rx="2" fill={item.status === 'locked' ? '#8E8E93' : '#F6B5C5'} />
-                  <Rect x="34" y="34" width="32" height="6" rx="1" fill={item.status === 'locked' ? '#AEAEB2' : '#F29A8F'} />
-                  <Rect x="47" y="34" width="6" height="28" fill="#FFF" />
-                </Svg>
-              </Pressable>
-            )}
-          </View>
-
-          <View style={[styles.cardWrapper, { marginLeft: cardMarginLeft }]}>
-            {isHero ? (
-              <Pressable
-                onPress={handlePlayContinue}
-                style={[
-                  styles.currentLessonCard,
-                  { borderColor: colors.purple, borderWidth: 2 },
-                ]}
-              >
-                <View style={styles.currentCardContent}>
-                  <Text style={[styles.cardTitle, styles.boldText]} numberOfLines={1}>
-                    {item.title}
-                  </Text>
-                  <Text style={[styles.currentCardSubtext, { fontFamily: typography.families.rounded }]}>
-                    Current Lesson
-                  </Text>
-                </View>
-                
-                <View style={styles.continueButton}>
-                  <Ionicons name="arrow-forward" size={20} color="#FFF" />
-                </View>
-              </Pressable>
-            ) : (
-              <Pressable
-                onPress={() => item.type === 'lesson' && item.lesson && handleLessonClick(item.lesson)}
-                disabled={item.status === 'locked'}
-                style={[
-                  styles.normalLessonCard,
-                  { opacity: item.status === 'locked' ? 0.75 : 1 },
-                ]}
-              >
-                <View style={styles.normalCardContent}>
-                  <Text style={[styles.cardTitle, { color: item.status === 'locked' ? '#8F8A82' : colors.textPrimary }]} numberOfLines={1}>
-                    {item.title}
-                  </Text>
-                  
-                  {item.status === 'completed' && (
-                    <View style={styles.completedBadgeRow}>
-                      <Text style={[styles.completedBadgeText, { fontFamily: typography.families.rounded }]}>
-                        Completed
-                      </Text>
-                      <Text style={styles.starText}>⭐</Text>
-                    </View>
-                  )}
-
-                  {item.status === 'locked' && (
-                    <Text style={[styles.lockedCardSubtext, { fontFamily: typography.families.rounded }]}>
-                      Locked
-                    </Text>
-                  )}
-
-                  {item.type === 'milestone' && (
-                    <Text style={[styles.milestoneSubtext, { fontFamily: typography.families.rounded, color: item.status === 'locked' ? '#8F8A82' : colors.purple }]}>
-                      {item.status === 'completed' ? 'Milestone Complete!' : 'Milestone'}
-                    </Text>
-                  )}
-
-                  {item.type === 'reward' && (
-                    <Text style={[styles.rewardSubtext, { fontFamily: typography.families.rounded, color: item.status === 'locked' ? '#8F8A82' : colors.coral }]}>
-                      {item.status === 'completed' ? 'Reward Claimed!' : 'Special Reward!'}
-                    </Text>
-                  )}
-                </View>
-              </Pressable>
-            )}
-          </View>
+      <ScreenContainer>
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color={colors.purple} />
+          <Text style={{ marginTop: spacing.md, color: colors.textMuted }}>Loading your learning path...</Text>
         </View>
-      </View>
+      </ScreenContainer>
     );
-  };
+  }
+
+  if (roadmapError && nodes.length === 0) {
+    return (
+      <ScreenContainer>
+        <View style={styles.center}>
+          <ErrorState
+            title="Couldn't load roadmap"
+            message={toUserMessage(roadmapError)}
+            onRetry={refetchRoadmap}
+          />
+        </View>
+      </ScreenContainer>
+    );
+  }
+
+  if (nodes.length === 0) {
+    return (
+      <ScreenContainer>
+        <View style={styles.center}>
+          <EmptyState
+            icon="🌱"
+            title="No roadmap available"
+            message="Your companion will prepare your learning path shortly!"
+          />
+        </View>
+      </ScreenContainer>
+    );
+  }
 
   return (
     <ScreenContainer>
       <View style={styles.root}>
-        {/* CUSTOM TOP BAR (Centered on Desktop View) */}
+        {/* TOP HEADER & CHILD SWITCHER DROPDOWN */}
         <View style={styles.topBar}>
-          <View style={[styles.topBarCentered, { width: screenWidth }]}>
-            <View style={styles.logoContainer}>
-              <Text style={styles.logoText}>
-                <Text style={{ color: '#F6B5C5' }}>🌸 </Text>
-                <Text style={{ color: '#855CF8' }}>PetalPath</Text>
-              </Text>
-            </View>
+          <View style={styles.topBarContent}>
+            <Text style={styles.logoText}>
+              <Text style={{ color: '#F6B5C5' }}>🌸 </Text>
+              <Text style={{ color: '#855CF8' }}>PetalPath</Text>
+            </Text>
 
-            <View style={styles.headerRow}>
-              <View style={styles.greetingSection}>
-                <Text style={[styles.greetingText, { fontFamily: typography.families.rounded }]}>
-                  Hi {childName} 🌸
-                </Text>
-                <Text style={[styles.greetingSubtext, { fontFamily: typography.families.rounded }]}>
-                  Let's keep growing today!
-                </Text>
+            {/* STREAK & XP & PROFILE ROW */}
+            <View style={styles.headerStatsRow}>
+              {/* Day Streak */}
+              <View style={styles.headerStatItem}>
+                <View style={styles.headerStatValueRow}>
+                  <Text style={styles.headerStatIcon}>🔥</Text>
+                  <Text style={styles.headerStatValue}>{streak}</Text>
+                </View>
+                <Text style={styles.headerStatLabel}>Day streak</Text>
               </View>
-              
-              <View style={styles.starPill}>
-                <Text style={[styles.starPillText, { fontFamily: typography.families.rounded }]}>
-                  {totalStars} ⭐
-                </Text>
+
+              {/* XP */}
+              <View style={styles.headerStatItem}>
+                <View style={styles.headerStatValueRow}>
+                  <Text style={styles.headerStatIcon}>⭐</Text>
+                  <Text style={styles.headerStatValue}>{xpState.xp}</Text>
+                </View>
+                <Text style={styles.headerStatLabel}>XP</Text>
               </View>
+
+              {/* Child Trigger */}
+              <Pressable
+                style={styles.childTrigger}
+                onPress={() => setShowChildDropdown(!showChildDropdown)}
+                accessibilityRole="button"
+                accessibilityLabel="Switch profile"
+              >
+                <View style={[styles.avatarCircle, { backgroundColor: getAvatarBgColor(activeChild?.avatar ?? '') }]}>
+                  <Text style={styles.avatarEmoji}>{getAvatarEmoji(activeChild?.avatar ?? '')}</Text>
+                </View>
+                <Ionicons name={showChildDropdown ? 'chevron-up' : 'chevron-down'} size={14} color={colors.textMuted} />
+              </Pressable>
             </View>
           </View>
+
+          {showChildDropdown && (
+            <View style={styles.dropdown}>
+              {childrenList
+                .filter((c: any) => c.id !== activeChild?.id)
+                .map((child) => (
+                  <Pressable
+                    key={child.id}
+                    style={styles.dropdownItem}
+                    onPress={() => handleChildSelect(child.id)}
+                  >
+                    <View style={[styles.avatarCircleMini, { backgroundColor: getAvatarBgColor(child.avatar) }]}>
+                      <Text style={styles.avatarEmojiMini}>{getAvatarEmoji(child.avatar)}</Text>
+                    </View>
+                    <Text style={styles.dropdownItemText}>{child.name}</Text>
+                  </Pressable>
+                ))}
+              {childrenList.filter((c: any) => c.id !== activeChild?.id).length === 0 && (
+                <Text style={styles.dropdownEmptyText}>No other profiles</Text>
+              )}
+              <View style={styles.dropdownDivider} />
+              <Pressable
+                style={styles.dropdownItem}
+                onPress={() => {
+                  setShowChildDropdown(false);
+                  navigation.navigate('ChildSelection');
+                }}
+              >
+                <View style={[styles.avatarCircleMini, { backgroundColor: '#F3E8FF' }]}>
+                  <Ionicons name="people" size={16} color={colors.purple} />
+                </View>
+                <Text style={[styles.dropdownItemText, { color: colors.purple }]}>Manage Profiles</Text>
+              </Pressable>
+            </View>
+          )}
         </View>
 
-        {roadmapError && categories.length === 0 ? (
-          <View style={styles.centerLoader}>
-            <ErrorState
-              title="Couldn't load roadmap"
-              message={toUserMessage(roadmapError)}
-              onRetry={loadRoadmap}
-            />
-          </View>
-        ) : !roadmapLoading && !roadmapError && categories.length === 0 ? (
-          <View style={styles.centerLoader}>
-            <EmptyState
-              icon="🌱"
-              title="No learning path yet"
-              message="New lessons will appear here soon!"
-            />
-          </View>
-        ) : roadmapLoading && pathNodes.length === 0 ? (
-          <View style={styles.centerLoader}>
-            <ActivityIndicator size="large" color={colors.purple} />
-          </View>
-        ) : (
-          <View style={{ flex: 1 }}>
-            <View style={[styles.centeredContainer, { width: screenWidth }]}>
-              <FlatList
-                ref={flatListRef}
-                data={pathNodes}
-                renderItem={renderItem}
-                keyExtractor={(item) => item.id}
-                getItemLayout={getItemLayout}
-                contentContainerStyle={{ paddingBottom: 100 }}
-                showsVerticalScrollIndicator={false}
-                refreshControl={
-                  <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.purple} />
+        <ScrollView
+          ref={scrollViewRef}
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
+          showsVerticalScrollIndicator={false}
+          style={styles.scrollView}
+          contentContainerStyle={[styles.scrollContent, { width: screenWidth, alignSelf: 'center' }]}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.purple} />
+          }
+        >
+          {/* PERSISTENT CONTINUE LEARNING CARD */}
+          {currentLesson && (
+            <Pressable style={styles.continueCard} onPress={handleResume}>
+              <View style={styles.continueCardLeft}>
+                <Text style={styles.continueCardLabel}>CONTINUE LEARNING</Text>
+                <Text style={styles.continueTopic}>
+                  {themes.find((t: any) => t.id === currentLesson.themeId)?.title || 'Active Topic'}
+                </Text>
+                <Text style={styles.continueLesson}>{currentLesson.title}</Text>
+                <Text style={styles.continueRemaining}>
+                  {getRemainingActivitiesCount(currentLesson)} activities left
+                </Text>
+                <Pressable style={styles.resumeBtn} onPress={handleResume}>
+                  <Text style={styles.resumeBtnText}>Resume</Text>
+                  <Ionicons name="play" size={14} color={colors.purple} style={{ marginLeft: 6 }} />
+                </Pressable>
+              </View>
+
+              {/* Illustration on the right */}
+              <View style={styles.continueCardRight}>
+                <View style={styles.plantIllustrationBg}>
+                  <Text style={styles.plantIllustrationEmoji}>🌱</Text>
+                </View>
+              </View>
+            </Pressable>
+          )}
+
+          {/* INTERACTIVE ROADMAP CONNECTING PATHS & TIMELINE */}
+          <View style={styles.roadmapBox}>
+
+
+            {(() => {
+              let nodeCount = 0;
+              const computedRoadmapItems = roadmapItems.map((item) => {
+                if (item.type === 'module') {
+                  return { item, layout: null };
                 }
-                removeClippedSubviews={Platform.OS === 'android'}
-                maxToRenderPerBatch={6}
-                windowSize={5}
-                initialNumToRender={8}
-              />
-            </View>
+                const x = Math.sin(nodeCount * 1.2) * 28 - (screenWidth * 0.15);
+                nodeCount++;
+                return { item, layout: { x, height: 100 } };
+              });
+
+              return computedRoadmapItems.map((computedItem, idx) => {
+                const { item, layout } = computedItem;
+
+                if (item.type === 'module') {
+                  return (
+                    <View key={item.id} style={styles.themeHeaderRow}>
+                      <View style={styles.themeHeaderDivider} />
+                      <Text style={styles.themeHeaderTitle}>{item.title}</Text>
+                      <View style={styles.themeHeaderDivider} />
+                    </View>
+                  );
+                }
+
+                if (!layout) return null;
+
+                const les = item.lesson;
+                const isHero = item.status === 'current' && item.type === 'lesson';
+                const nodeSize = isHero ? 50 : 44;
+                const nodeLeft = pathCenterX + layout.x - nodeSize / 2;
+                const rowHeight = layout.height;
+                const nodeTop = (rowHeight - nodeSize) / 2;
+
+                // Find the next node for drawing connection paths
+                let pathSegment = null;
+                const nextNodeItem = computedRoadmapItems.slice(idx + 1).find(c => c.layout !== null);
+                const nextImmediateItem = roadmapItems[idx + 1];
+
+                if (nextNodeItem && nextNodeItem.layout && nextImmediateItem && nextImmediateItem.type !== 'module') {
+                  const segmentHeight = rowHeight;
+                  const startX = pathCenterX + layout.x;
+                  const endX = pathCenterX + nextNodeItem.layout.x;
+                  const midY = segmentHeight / 2;
+                  const d = `M ${startX} 0 C ${startX} ${midY}, ${endX} ${midY}, ${endX} ${segmentHeight}`;
+
+                  // Connection line state colors
+                  const isCurrentConnector = item.status === 'completed' && nextNodeItem.item.status === 'current';
+                  let strokeColor = '#E5E5EA'; // Grey (Locked)
+                  if (item.status === 'completed' && nextNodeItem.item.status === 'completed') {
+                    strokeColor = '#8DBB75'; // Completed (Green)
+                  } else if (isCurrentConnector || item.status === 'current') {
+                    strokeColor = '#8B78D8'; // Active/Current (Purple)
+                  }
+
+                  pathSegment = (
+                    <View style={[styles.connectorWrap, { top: rowHeight / 2, height: segmentHeight }]} pointerEvents="none">
+                      <Svg width={screenWidth} height={segmentHeight}>
+                        <Path d={d} stroke="#FFE5D9" strokeWidth={18} fill="none" strokeLinecap="round" opacity={0.6} />
+                        <Path
+                          d={d}
+                          stroke={strokeColor}
+                          strokeWidth={4}
+                          strokeDasharray={isCurrentConnector ? '6, 8' : undefined}
+                          fill="none"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        />
+                      </Svg>
+                    </View>
+                  );
+                }
+
+                // Node Icon Component
+                let nodeIcon = null;
+                const isLocked = item.status === 'locked';
+
+                if (item.type === 'lesson' && les) {
+                  if (les.isCompleted) {
+                    nodeIcon = (
+                      <Pressable
+                        style={[styles.nodeCircle, styles.nodeCircleCompleted, { left: nodeLeft, top: nodeTop, width: nodeSize, height: nodeSize }]}
+                        onPress={() => handleLessonClick(les)}
+                      >
+                        <Text style={styles.nodeCheckText}>✓</Text>
+                      </Pressable>
+                    );
+                  } else if (item.status === 'current') {
+                    nodeIcon = (
+                      <CurrentFlowerNode size={nodeSize} style={{ position: 'absolute', left: nodeLeft, top: nodeTop }}>
+                        <Pressable
+                          style={[styles.nodeCircle, styles.nodeCircleCurrent, { width: nodeSize, height: nodeSize }]}
+                          onLayout={(e) => setActiveLessonY(e.nativeEvent.layout.y)}
+                          onPress={() => handleLessonClick(les)}
+                        >
+                          <View style={styles.nodeCircleInnerDot} />
+                        </Pressable>
+                      </CurrentFlowerNode>
+                    );
+                  } else {
+                    nodeIcon = (
+                      <View style={[styles.nodeCircle, styles.nodeCircleLocked, { left: nodeLeft, top: nodeTop, width: nodeSize, height: nodeSize }]}>
+                        <Ionicons name="lock-closed" size={16} color="#8E8E93" />
+                      </View>
+                    );
+                  }
+                } else if (item.type === 'module-gate') {
+                  if (item.status === 'completed') {
+                    nodeIcon = (
+                      <View style={[styles.nodeCircle, styles.nodeCircleCompleted, { left: nodeLeft, top: nodeTop, width: nodeSize, height: nodeSize }]}>
+                        <Text style={styles.nodeCheckText}>✓</Text>
+                      </View>
+                    );
+                  } else {
+                    nodeIcon = (
+                      <View style={[styles.nodeCircle, styles.nodeCircleStar, { left: nodeLeft, top: nodeTop, width: nodeSize, height: nodeSize }]}>
+                        <Text style={styles.nodeStarText}>⭐</Text>
+                      </View>
+                    );
+                  }
+                } else if (item.type === 'flag') {
+                  nodeIcon = (
+                    <View style={[styles.nodeCircle, styles.nodeCircleFlag, { left: nodeLeft, top: nodeTop, width: nodeSize, height: nodeSize }]}>
+                      <Text style={styles.nodeFlagText}>🏁</Text>
+                    </View>
+                  );
+                }
+
+                // Text label
+                const labelLeft = pathCenterX + 45;
+                const labelWidth = screenWidth - labelLeft - 16;
+                const isLessonCompleted = item.type === 'lesson' && les?.isCompleted;
+
+                const labelContent = (
+                  <View style={[styles.nodeLabelContainer, { left: labelLeft, top: nodeTop, height: nodeSize, width: labelWidth }]}>
+                    {item.type === 'lesson' && les ? (
+                      <Pressable
+                        style={styles.labelPressable}
+                        onPress={() => handleLessonClick(les)}
+                        disabled={isLocked}
+                      >
+                        <Text
+                          style={[
+                            styles.nodeLabelText,
+                            isLocked && styles.nodeLabelTextLocked,
+                            isHero && styles.nodeLabelTextCurrent,
+                          ]}
+                          numberOfLines={1}
+                        >
+                          {item.displayOrder}. {les.title}
+                        </Text>
+                        {isLessonCompleted && (
+                          <Ionicons name="checkmark-circle" size={18} color="#8DBB75" style={{ marginLeft: 6 }} />
+                        )}
+                        {isHero && (
+                          <View style={styles.currentBadgePill}>
+                            <Text style={styles.currentBadgeText}>Current</Text>
+                          </View>
+                        )}
+                      </Pressable>
+                    ) : item.type === 'module-gate' ? (
+                      <View style={styles.labelPressable}>
+                        <Text
+                          style={[
+                            styles.nodeLabelText,
+                            isLocked && styles.nodeLabelTextLocked,
+                            styles.nodeLabelTextGate,
+                          ]}
+                          numberOfLines={1}
+                        >
+                          {item.title}
+                        </Text>
+                      </View>
+                    ) : (
+                      <View style={styles.labelPressable}>
+                        <Text style={[styles.nodeLabelText, styles.nodeLabelTextFlag]}>
+                          Adventure End!
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                );
+
+                return (
+                  <View key={item.id} style={{ height: rowHeight, width: screenWidth, position: 'relative' }}>
+                    {pathSegment}
+                    {nodeIcon}
+                    {labelContent}
+                  </View>
+                );
+              });
+            })()}
           </View>
-        )}
+
+          {/* ENGAGING DAILY GOAL COMPLETION STATE */}
+          {isTodayComplete && (
+            <View style={styles.completionContainer}>
+              <Text style={styles.completionEmoji}>🏆</Text>
+              <Text style={styles.completionTitle}>Today's adventure complete!</Text>
+              <View style={styles.rewardsRow}>
+                <View style={styles.rewardPill}>
+                  <Text style={styles.rewardPillText}>⭐ +20 XP</Text>
+                </View>
+                <View style={styles.rewardPill}>
+                  <Text style={styles.rewardPillText}>🎉 +1 Sticker</Text>
+                </View>
+              </View>
+              <Text style={styles.completionSubtitle}>See you tomorrow!</Text>
+              <View style={styles.timerWrap}>
+                <Ionicons name="time-outline" size={18} color={colors.textMuted} />
+                <Text style={styles.timerText}>Next unlocks in {hoursUntilMidnight}h</Text>
+              </View>
+            </View>
+          )}
+
+          {/* RECOMMENDED STORY SECTION */}
+          {recommendation && (
+            <View style={styles.recommendationBox}>
+              <Text style={styles.sectionHeader}>Recommended Story</Text>
+              <Pressable
+                style={styles.recomCard}
+                onPress={() => navigation.navigate('StoryDetail', { storyId: recommendation.id })}
+              >
+                <Text style={styles.recomEmoji}>📖</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.recomTitle}>{recommendation.title}</Text>
+                  <Text style={styles.recomMeta}>{recommendation.readingLevel || 'Early Reader'}</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={22} color={colors.purple} />
+              </Pressable>
+            </View>
+          )}
+        </ScrollView>
       </View>
     </ScreenContainer>
   );
@@ -845,159 +959,703 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FFF9F3',
   },
+  scrollView: {
+    flex: 1,
+  },
+  center: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.xl,
+  },
   topBar: {
     backgroundColor: '#FFF9F3',
+    paddingHorizontal: 32,
+    paddingTop: Platform.OS === 'ios' ? 20 : 20,
+    paddingBottom: 20,
     borderBottomWidth: 1.5,
     borderBottomColor: '#F1E4D3',
-    alignItems: 'center',
-    paddingVertical: 18,
-    zIndex: 10,
+    zIndex: 100,
+    overflow: 'visible' as const,
   },
-  topBarCentered: {
-    paddingHorizontal: 20,
-  },
-  logoContainer: {
+  topBarContent: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 10,
+    justifyContent: 'space-between',
   },
   logoText: {
     fontSize: 26,
     fontWeight: '900',
     letterSpacing: -0.5,
   },
-  headerRow: {
+  childTrigger: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  greetingSection: {
-    flex: 1.2,
-  },
-  greetingText: {
-    fontSize: 24,
-    fontWeight: '900',
-    color: '#3B342F',
-  },
-  greetingSubtext: {
-    fontSize: 15,
-    color: '#7A726C',
-    marginTop: 2,
-  },
-  starPill: {
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-    borderRadius: 24,
+    backgroundColor: colors.white,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 28,
     borderWidth: 1.5,
     borderColor: '#F1E4D3',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...shadows.sm,
   },
-  starPillText: {
-    fontSize: 17,
-    fontWeight: 'bold',
-    color: '#8B78D8',
-  },
-  centerLoader: {
-    flex: 1,
+  avatarCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
+    marginRight: 10,
   },
-  centeredContainer: {
-    flex: 1,
-    alignSelf: 'center',
-    position: 'relative',
+  avatarEmoji: {
+    fontSize: 18,
   },
-  nodeRow: {
+  activeChildName: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: colors.text,
+    marginRight: 8,
+    fontFamily: typography.families.rounded,
+  },
+  dropdown: {
     position: 'absolute',
+    top: 70,
+    right: 32,
+    backgroundColor: colors.white,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: '#F1E4D3',
+    padding: 10,
+    minWidth: 180,
+    ...shadows.md,
+    zIndex: 200,
+  },
+  dropdownItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingRight: 24,
+    padding: 14,
+    borderRadius: 14,
   },
-  cardWrapper: {
+  dropdownEmptyText: {
+    fontSize: 13,
+    color: colors.textMuted,
+    padding: 12,
+    textAlign: 'center',
+    fontFamily: typography.families.rounded,
+  },
+  dropdownDivider: {
+    height: 1,
+    backgroundColor: '#F1E4D3',
+    marginVertical: 4,
+  },
+  avatarCircleMini: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
   },
-  currentLessonCard: {
-    backgroundColor: '#FFFFFF',
+  avatarEmojiMini: {
+    fontSize: 16,
+  },
+  dropdownItemText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.text,
+    fontFamily: typography.families.rounded,
+  },
+  scrollContent: {
+    padding: spacing.xl,
+    paddingBottom: 130,
+  },
+  continueCard: {
+    backgroundColor: '#FFE5D9',
     borderRadius: 24,
     padding: 20,
+    ...shadows.md,
+    marginBottom: spacing.lg,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    minWidth: 140,
-    maxWidth: 240,
-    ...shadows.md,
-  },
-  currentCardContent: {
-    flex: 1,
-    marginRight: 8,
-    gap: 4,
-  },
-  cardTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#3B342F',
-  },
-  boldText: {
-    fontSize: 20,
-    fontWeight: '900',
-  },
-  currentCardSubtext: {
-    fontSize: 15,
-    color: '#8B78D8',
-    fontWeight: '700',
-  },
-  continueButton: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: '#8B78D8',
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...shadows.sm,
-  },
-  normalLessonCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    paddingHorizontal: 20,
-    paddingVertical: 16,
     borderWidth: 1.5,
     borderColor: '#F1E4D3',
-    minWidth: 140,
+  },
+  continueCardLeft: {
+    flex: 1,
+    paddingRight: 10,
+  },
+  continueCardLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#855CF8',
+    letterSpacing: 0.5,
+    fontFamily: typography.families.rounded,
+    marginBottom: 4,
+  },
+  continueTopic: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: colors.text,
+    fontFamily: typography.families.rounded,
+    marginBottom: 4,
+  },
+  continueLesson: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.textMuted,
+    fontFamily: typography.families.rounded,
+    marginBottom: 8,
+  },
+  continueRemaining: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.textMuted,
+    fontFamily: typography.families.rounded,
+    marginBottom: 12,
+  },
+  resumeBtn: {
+    backgroundColor: '#FFF',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    borderWidth: 1.5,
+    borderColor: '#E5E5EA',
+    ...shadows.sm,
+  },
+  resumeBtnText: {
+    fontSize: 13,
+    fontWeight: '900',
+    color: colors.purple,
+    fontFamily: typography.families.rounded,
+  },
+  continueCardRight: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  plantIllustrationBg: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    backgroundColor: '#FFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#F1E4D3',
+  },
+  plantIllustrationEmoji: {
+    fontSize: 48,
+  },
+  headerStatsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerStatItem: {
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  headerStatValueRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerStatIcon: {
+    fontSize: 16,
+    marginRight: 4,
+  },
+  headerStatValue: {
+    fontSize: 15,
+    fontWeight: '900',
+    color: colors.text,
+    fontFamily: typography.families.rounded,
+  },
+  headerStatLabel: {
+    fontSize: 9,
+    color: colors.textMuted,
+    fontWeight: '700',
+    fontFamily: typography.families.rounded,
+    marginTop: -2,
+  },
+  floatingStreakCard: {
+    position: 'absolute',
+    left: 16,
+    top: 20,
+    backgroundColor: '#FFF',
+    borderWidth: 1.5,
+    borderColor: '#F1E4D3',
+    borderRadius: 18,
+    padding: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 68,
+    height: 72,
+    ...shadows.sm,
+    zIndex: 50,
+  },
+  floatingStreakEmoji: {
+    fontSize: 22,
+    marginBottom: 2,
+  },
+  floatingStreakText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: colors.text,
+    fontFamily: typography.families.rounded,
+    textAlign: 'center',
+  },
+  progressContainer: {
+    backgroundColor: colors.white,
+    borderRadius: 28,
+    padding: 24,
+    borderWidth: 1.5,
+    borderColor: '#F1E4D3',
+    marginBottom: spacing.md,
+  },
+  goalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  goalTitle: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: colors.text,
+    fontFamily: typography.families.rounded,
+  },
+  goalFraction: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: colors.textMuted,
+    fontFamily: typography.families.rounded,
+  },
+  progressBar: {
+    height: 14,
+    borderRadius: 7,
+  },
+  statsChips: {
+    flexDirection: 'row',
+    gap: 16,
+    marginTop: 20,
+  },
+  statChip: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8F9FA',
+    borderWidth: 1,
+    borderColor: '#E9ECEF',
+    borderRadius: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+  },
+  statEmoji: {
+    fontSize: 18,
+    marginRight: 10,
+  },
+  statChipText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: colors.text,
+    fontFamily: typography.families.rounded,
+  },
+  roadmapBox: {
+    position: 'relative',
+    marginTop: spacing.sm,
+  },
+  connectorWrap: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    zIndex: -1,
+  },
+  nodeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    height: '100%',
+  },
+  nodeCircle: {
+    position: 'absolute',
+    borderRadius: 25,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#F1E4D3',
+    backgroundColor: '#FFF',
+    ...shadows.sm,
+  },
+  nodeCircleCompleted: {
+    backgroundColor: '#EAF5E3',
+    borderColor: '#8DBB75',
+  },
+  nodeCircleCurrent: {
+    backgroundColor: colors.purple,
+    borderColor: colors.purple,
+  },
+  nodeCircleInnerDot: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: '#FFF',
+  },
+  nodeCircleLocked: {
+    backgroundColor: '#F2F2F7',
+    borderColor: '#E5E5EA',
+  },
+  nodeCircleStar: {
+    backgroundColor: '#FFF9E6',
+    borderColor: '#FFD60A',
+  },
+  nodeCircleFlag: {
+    backgroundColor: '#FFF0F0',
+    borderColor: '#FF453A',
+  },
+  nodeCheckText: {
+    color: '#8DBB75',
+    fontSize: 18,
+    fontWeight: '900',
+  },
+  nodeStarText: {
+    fontSize: 18,
+  },
+  nodeFlagText: {
+    fontSize: 18,
+  },
+  nodeLabelContainer: {
+    position: 'absolute',
+    justifyContent: 'center',
+  },
+  labelPressable: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  nodeLabelText: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: colors.text,
+    fontFamily: typography.families.rounded,
+  },
+  nodeLabelTextCurrent: {
+    color: colors.purple,
+    fontWeight: '900',
+  },
+  nodeLabelTextLocked: {
+    color: '#8E8E93',
+    fontWeight: '600',
+  },
+  nodeLabelTextGate: {
+    color: '#855CF8',
+    fontWeight: '800',
+  },
+  nodeLabelTextFlag: {
+    color: '#FF453A',
+    fontWeight: '800',
+  },
+  currentBadgePill: {
+    backgroundColor: '#EDE8FF',
+    borderWidth: 1,
+    borderColor: '#C0B3F1',
+    borderRadius: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    marginLeft: 8,
+  },
+  currentBadgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: colors.purple,
+    fontFamily: typography.families.rounded,
+  },
+  moduleCard: {
+    backgroundColor: colors.white,
+    borderRadius: 24,
+    borderWidth: 1.5,
+    borderColor: '#F1E4D3',
+    padding: 20,
+    ...shadows.sm,
+  },
+  moduleCardLocked: {
+    opacity: 0.6,
+  },
+  moduleHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  moduleTitle: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: colors.text,
+    fontFamily: typography.families.rounded,
+  },
+  moduleMeta: {
+    fontSize: 13,
+    color: colors.textMuted,
+    marginTop: 2,
+    fontFamily: typography.families.rounded,
+  },
+  moduleProgressRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 14,
+    gap: 12,
+  },
+  moduleProgress: {
+    flex: 1,
+    height: 10,
+  },
+  modulePercent: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: colors.success,
+    fontFamily: typography.families.rounded,
+  },
+  lockOverlay: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(255,255,255,0.7)',
+    borderRadius: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  lockText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: colors.textMuted,
+    fontFamily: typography.families.rounded,
+  },
+  lessonCard: {
+    backgroundColor: colors.white,
+    borderRadius: 24,
+    borderWidth: 1.5,
+    borderColor: '#F1E4D3',
+    padding: 14,
     maxWidth: 240,
     ...shadows.sm,
   },
-  normalCardContent: {
-    gap: 3,
+  lessonCardTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: colors.text,
+    fontFamily: typography.families.rounded,
   },
-  completedBadgeRow: {
+  completeLabelRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+    marginTop: 4,
   },
-  completedBadgeText: {
-    fontSize: 14,
+  completeLabelText: {
+    fontSize: 13,
     color: '#8DBB75',
+    fontWeight: '800',
+    fontFamily: typography.families.rounded,
+  },
+  activeLabelText: {
+    fontSize: 13,
+    color: colors.purple,
+    fontWeight: '800',
+    marginTop: 4,
+    fontFamily: typography.families.rounded,
+  },
+  lockedLabelText: {
+    fontSize: 13,
+    color: colors.textMuted,
     fontWeight: '700',
+    marginTop: 4,
+    fontFamily: typography.families.rounded,
   },
-  starText: {
-    fontSize: 12,
+  startBadge: {
+    position: 'absolute',
+    bottom: -8,
+    backgroundColor: '#F7C94B',
+    paddingHorizontal: 12,
+    paddingVertical: 3,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: colors.white,
   },
-  lockedCardSubtext: {
+  startBadgeText: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: '#3B342F',
+    textTransform: 'uppercase',
+  },
+  completionContainer: {
+    backgroundColor: '#EEF9E6',
+    borderWidth: 2,
+    borderColor: '#C7EAB4',
+    borderRadius: 28,
+    padding: 28,
+    alignItems: 'center',
+    marginTop: spacing.md,
+    ...shadows.sm,
+  },
+  completionEmoji: {
+    fontSize: 56,
+    marginBottom: 12,
+  },
+  completionTitle: {
+    fontSize: 22,
+    fontWeight: '900',
+    color: '#3C763D',
+    textAlign: 'center',
+    fontFamily: typography.families.rounded,
+  },
+  rewardsRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 14,
+  },
+  rewardPill: {
+    backgroundColor: '#FFF',
+    borderWidth: 1,
+    borderColor: '#C7EAB4',
+    borderRadius: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+  },
+  rewardPillText: {
     fontSize: 14,
-    color: '#8F8A82',
-    fontWeight: '600',
+    fontWeight: '900',
+    color: colors.success,
+    fontFamily: typography.families.rounded,
   },
-  milestoneSubtext: {
+  completionSubtitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#3C763D',
+    marginTop: 14,
+    fontFamily: typography.families.rounded,
+  },
+  timerWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 10,
+  },
+  timerText: {
     fontSize: 14,
+    color: colors.textMuted,
     fontWeight: '700',
+    fontFamily: typography.families.rounded,
   },
-  rewardSubtext: {
+  recommendationBox: {
+    marginTop: spacing.lg,
+  },
+  sectionHeader: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: colors.text,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: spacing.xs,
+    fontFamily: typography.families.rounded,
+  },
+  recomCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.white,
+    borderRadius: 24,
+    borderWidth: 1.5,
+    borderColor: '#F1E4D3',
+    padding: 20,
+    ...shadows.sm,
+  },
+  recomEmoji: {
+    fontSize: 36,
+    marginRight: 20,
+  },
+  recomTitle: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: colors.text,
+    fontFamily: typography.families.rounded,
+  },
+  recomMeta: {
+    fontSize: 13,
+    color: colors.textMuted,
+    marginTop: 2,
+    fontFamily: typography.families.rounded,
+  },
+  unlocksBox: {
+    marginTop: spacing.lg,
+  },
+  carouselContainer: {
+    gap: 20,
+    paddingRight: spacing.md,
+    paddingVertical: 4,
+  },
+  unlockCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 24,
+    borderWidth: 1.5,
+    borderColor: '#F1E4D3',
+    padding: 20,
+    minWidth: 240,
+    ...shadows.sm,
+  },
+  unlockIcon: {
+    fontSize: 32,
+    marginRight: 14,
+  },
+  unlockTitle: {
+    fontSize: 15,
+    fontWeight: '900',
+    color: colors.text,
+    fontFamily: typography.families.rounded,
+  },
+  unlockDesc: {
+    fontSize: 13,
+    color: colors.textMuted,
+    marginTop: 2,
+    fontFamily: typography.families.rounded,
+  },
+  floatingResume: {
+    position: 'absolute',
+    bottom: 32,
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.purple,
+    paddingHorizontal: 28,
+    paddingVertical: 16,
+    borderRadius: 32,
+    ...shadows.lg,
+  },
+  floatingResumeText: {
+    fontSize: 16,
+    fontWeight: '900',
+    color: '#FFF',
+    fontFamily: typography.families.rounded,
+  },
+  themeHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 24,
+    width: '100%',
+    gap: 12,
+  },
+  themeHeaderDivider: {
+    flex: 1,
+    height: 2,
+    backgroundColor: '#F1E4D3',
+  },
+  themeHeaderTitle: {
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '900',
+    color: '#855CF8',
+    fontFamily: typography.families.rounded,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
   },
 });
 

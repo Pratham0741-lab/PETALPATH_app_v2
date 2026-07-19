@@ -22,15 +22,15 @@ import { useDeviceType } from '../../hooks/useDeviceType';
 import type { ApiResponse } from '../../types/api';
 import type { Lesson, Activity } from '../../store/roadmapStore';
 import { colors, spacing, typography, radius, iconSizes, breakpoints } from '../../theme';
+import { normalizeActivityType } from '../../utils/activityNormalization';
 
 type LessonRouteParams = {
   LessonOverview: { lessonId: string };
 };
 
-type ExtendedActivityType = 'video' | 'listen' | 'speak' | 'write' | 'reading' | 'quiz' | 'story' | 'game' | 'ai_tutor';
-
-const launchActivity = (activity: { id: string; activityType: ExtendedActivityType }, navigation: any) => {
-  switch (activity.activityType) {
+const launchActivity = (activity: { id: string; activityType: string }, navigation: any) => {
+  const normalizedType = normalizeActivityType(activity.activityType);
+  switch (normalizedType) {
     case 'video':
       navigation.navigate('Video', { activityId: activity.id });
       break;
@@ -42,21 +42,6 @@ const launchActivity = (activity: { id: string; activityType: ExtendedActivityTy
       break;
     case 'write':
       navigation.navigate('Write', { activityId: activity.id });
-      break;
-    case 'reading':
-      navigation.navigate('Reading', { activityId: activity.id });
-      break;
-    case 'story':
-      navigation.navigate('Stories', { activityId: activity.id });
-      break;
-    case 'quiz':
-      navigation.navigate('Quiz', { activityId: activity.id });
-      break;
-    case 'game':
-      navigation.navigate('Game', { activityId: activity.id });
-      break;
-    case 'ai_tutor':
-      navigation.navigate('AITutor', { activityId: activity.id });
       break;
   }
 };
@@ -101,7 +86,7 @@ export const LessonScreen: React.FC = () => {
 
   const handleActivityPress = useCallback(
     (activity: Activity) => {
-      launchActivity(activity as { id: string; activityType: ExtendedActivityType }, navigation);
+      launchActivity(activity as any, navigation);
     },
     [navigation],
   );
@@ -109,10 +94,11 @@ export const LessonScreen: React.FC = () => {
   const isAllActivitiesCompleted = activities.length > 0 && activities.every((a) => {
     if (!lesson?.progress) return false;
     const p = lesson.progress;
-    if (a.activityType === 'video') return p.videoCompleted;
-    if (a.activityType === 'listen') return p.listenCompleted;
-    if (a.activityType === 'speak') return p.speakCompleted;
-    if (a.activityType === 'write') return p.writeCompleted;
+    const t = normalizeActivityType(a.activityType);
+    if (t === 'video') return p.videoCompleted;
+    if (t === 'listen') return p.listenCompleted;
+    if (t === 'speak') return p.speakCompleted;
+    if (t === 'write') return p.writeCompleted;
     return false;
   });
 
@@ -177,10 +163,11 @@ export const LessonScreen: React.FC = () => {
     (a) => {
       if (!lesson.progress) return false;
       const p = lesson.progress;
-      if (a.activityType === 'video') return p.videoCompleted;
-      if (a.activityType === 'listen') return p.listenCompleted;
-      if (a.activityType === 'speak') return p.speakCompleted;
-      if (a.activityType === 'write') return p.writeCompleted;
+      const t = normalizeActivityType(a.activityType);
+      if (t === 'video') return p.videoCompleted;
+      if (t === 'listen') return p.listenCompleted;
+      if (t === 'speak') return p.speakCompleted;
+      if (t === 'write') return p.writeCompleted;
       return false;
     },
   ).length;

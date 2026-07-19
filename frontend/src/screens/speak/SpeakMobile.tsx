@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { StyleSheet, View, Text, Pressable, ActivityIndicator } from 'react-native';
 import { ScreenContainer } from '../../components/common/ScreenContainer';
 import { TopBar } from '../../components/navigation/TopBar';
@@ -9,6 +9,65 @@ import { Ionicons } from '@expo/vector-icons';
 import { UniversalSpeechRecognizer } from '../../utils/speechRecognition';
 import { getNextActivity, navigateToActivity } from '../../utils/navigationFlow';
 import { NavigationGuide } from '../../components/tutorial/NavigationGuide';
+import { Card, Button } from '../../components/ui';
+
+const SpeakComingSoonMobile: React.FC<{
+  activityId: string;
+  activityTitle: string;
+  navigation: any;
+}> = ({ activityId, activityTitle, navigation }) => {
+  const { completeActivity } = useSpeakStore();
+  const [isCompleting, setIsCompleting] = useState(false);
+
+  const handleProceed = async () => {
+    setIsCompleting(true);
+    try {
+      await completeActivity(100);
+      const next = getNextActivity(activityId);
+      if (next) {
+        await navigateToActivity(navigation, next);
+        return;
+      }
+      navigation.navigate('LessonOverview');
+    } catch (err) {
+      if (__DEV__) console.warn('Failed to complete and proceed:', err);
+      navigation.navigate('LessonOverview');
+    } finally {
+      setIsCompleting(false);
+    }
+  };
+
+  return (
+    <ScreenContainer style={styles.container}>
+      <TopBar title={activityTitle || 'Speak Activity'} showBack />
+
+      {/* Main Coming Soon Area */}
+      <View style={styles.comingSoonPanel}>
+        <Card style={styles.comingSoonCard}>
+          <Ionicons name="mic-outline" size={56} color={colors.yellow} style={styles.comingSoonIcon} />
+          <Text style={[styles.comingSoonTitle, { fontFamily: typography.families.rounded }]}>Speech Activity Coming Soon! 🌟</Text>
+          <Text style={[styles.comingSoonSubtitle, { fontFamily: typography.families.rounded }]}>
+            Our team is preparing a magical voice-recording practice for this lesson.
+          </Text>
+          <Text style={[styles.comingSoonDetails, { fontFamily: typography.families.rounded }]}>
+            You don't have to wait! Tap the button below to proceed to the next activity.
+          </Text>
+        </Card>
+      </View>
+
+      {/* Bottom Area */}
+      <View style={styles.bottomPanel}>
+        <Button
+          label="Proceed to Next Activity"
+          variant="primary"
+          onPress={handleProceed}
+          disabled={isCompleting}
+          style={styles.proceedBtn}
+        />
+      </View>
+    </ScreenContainer>
+  );
+};
 
 export const SpeakMobile: React.FC = () => {
   const navigation = useNavigation<any>();
@@ -27,6 +86,7 @@ export const SpeakMobile: React.FC = () => {
     retry,
     completeActivity,
     lives,
+    isComingSoon,
   } = useSpeakStore();
 
   const [recognizer, setRecognizer] = useState<UniversalSpeechRecognizer | null>(null);
@@ -89,7 +149,7 @@ export const SpeakMobile: React.FC = () => {
           setLocalRecording(false);
           const success = await stopRecording(res.transcript, res.confidence);
           if (!success) {
-            setErrorMessage("That's not quite right, let's try again! ðŸŒ¸");
+            setErrorMessage("That's not quite right, let's try again! 🌸");
             retry();
           }
         },
@@ -143,6 +203,14 @@ export const SpeakMobile: React.FC = () => {
     );
   }
 
+  if (isComingSoon) {
+    return (
+      <View style={{ flex: 1 }}>
+        <SpeakComingSoonMobile activityId={activityId || 'placeholder-id'} activityTitle="Speak & Learn" navigation={navigation} />
+      </View>
+    );
+  }
+
   if (error || !activityId) {
     return (
       <View style={[styles.container, styles.center]}>
@@ -171,7 +239,7 @@ export const SpeakMobile: React.FC = () => {
           <View style={styles.stepDot}><Text style={styles.stepNum}>4</Text></View>
         </View>
         <View style={styles.heartIndicator}>
-          <Text style={styles.heartText}>ðŸ’– {lives} Lives</Text>
+          <Text style={styles.heartText}>💖 {lives} Lives</Text>
         </View>
       </View>
 
@@ -180,7 +248,7 @@ export const SpeakMobile: React.FC = () => {
         <View style={styles.phraseCard}>
           {/* Owl mascot sitting in the corner */}
           <View style={styles.mascotBadge}>
-            <Text style={styles.mascotEmoji}>ðŸ¦‰</Text>
+            <Text style={styles.mascotEmoji}>🦉</Text>
           </View>
 
           <Text style={[styles.speakLabel, { fontFamily: typography.families.rounded }]}>Say out loud:</Text>
@@ -615,6 +683,52 @@ const styles = StyleSheet.create({
   },
   starsRow: {
     flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  comingSoonPanel: {
+    flex: 0.6,
+    backgroundColor: colors.background,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.md,
+  },
+  comingSoonCard: {
+    alignItems: 'center',
+    width: '90%',
+    maxWidth: 400,
+  },
+  comingSoonIcon: {
+    marginBottom: spacing.md,
+  },
+  comingSoonTitle: {
+    fontSize: typography.sizes.body,
+    fontWeight: typography.weights.black,
+    color: colors.textPrimary,
+    textAlign: 'center',
+    marginBottom: spacing.xs,
+  },
+  comingSoonSubtitle: {
+    fontSize: typography.sizes.small,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: spacing.md,
+    lineHeight: 18,
+  },
+  comingSoonDetails: {
+    fontSize: typography.sizes.caption,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 16,
+    opacity: 0.8,
+  },
+  proceedBtn: {
+    width: '100%',
+    maxWidth: 300,
+    height: 50,
+  },
+  bottomPanel: {
+    padding: spacing.lg,
     justifyContent: 'center',
     alignItems: 'center',
   },

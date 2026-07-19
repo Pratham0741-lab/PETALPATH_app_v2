@@ -1,5 +1,6 @@
 import { prisma } from '../../config/database.js';
 import { Prisma } from '@prisma/client';
+import { curriculumService } from '../curriculum/index.js';
 
 export class AssessmentsRepository {
   async findActive() {
@@ -35,32 +36,45 @@ export class AssessmentsRepository {
   }
 
   async findAttemptById(id: string) {
-    return prisma.assessmentAttempt.findFirst({
+    const attempt = await prisma.assessmentAttempt.findFirst({
       where: { id, deletedAt: null },
-      include: {
-        assessment: {
-          include: {
-            questions: true,
-          },
-        },
-      },
     });
+    if (!attempt) return null;
+
+    let assessment = curriculumService.getAssessment(attempt.assessmentId);
+    if (!assessment) {
+      assessment = (await this.findById(attempt.assessmentId)) as any;
+    }
+
+    return {
+      ...attempt,
+      assessment,
+    };
   }
 
   async findAttemptsByChild(childId: string, assessmentId?: string) {
-    return prisma.assessmentAttempt.findMany({
+    const attempts = await prisma.assessmentAttempt.findMany({
       where: {
         childId,
         deletedAt: null,
         ...(assessmentId ? { assessmentId } : {}),
       },
       orderBy: { startedAt: 'desc' },
-      include: {
-        assessment: {
-          select: { id: true, title: true },
-        },
-      },
     });
+
+    const mapped = await Promise.all(
+      attempts.map(async (attempt) => {
+        const assessment =
+          curriculumService.getAssessment(attempt.assessmentId) ||
+          (await this.findById(attempt.assessmentId));
+        return {
+          ...attempt,
+          assessment: assessment ? { id: assessment.id, title: assessment.title } : null,
+        };
+      })
+    );
+
+    return mapped;
   }
 
   async createAttempt(childId: string, assessmentId: string) {
@@ -70,15 +84,19 @@ export class AssessmentsRepository {
   }
 
   async completeAttempt(id: string, data: Prisma.AssessmentAttemptUpdateInput) {
-    return prisma.assessmentAttempt.update({
+    const attempt = await prisma.assessmentAttempt.update({
       where: { id },
       data,
-      include: {
-        assessment: {
-          select: { id: true, title: true },
-        },
-      },
     });
+
+    const assessment =
+      curriculumService.getAssessment(attempt.assessmentId) ||
+      (await this.findById(attempt.assessmentId));
+
+    return {
+      ...attempt,
+      assessment: assessment ? { id: assessment.id, title: assessment.title } : null,
+    };
   }
 }
 

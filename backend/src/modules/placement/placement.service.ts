@@ -95,6 +95,9 @@ export class PlacementService {
       });
     });
 
+    if (!attempt.assessment) {
+      throw new NotFoundError('Assessment definition not found');
+    }
     return this.buildProgress(attempt.id, attempt.assessment.questions);
   }
 
@@ -210,6 +213,9 @@ export class PlacementService {
       throw new ValidationError('Placement attempt is already completed');
     }
 
+    if (!attempt.assessment) {
+      throw new NotFoundError('Assessment definition not found');
+    }
     const existingResponses = (attempt.rawResponses as Array<Record<string, unknown>>) ?? [];
     if (existingResponses.length >= attempt.assessment.questions.length) {
       throw new ConflictError('All questions have already been answered; complete the attempt first');
@@ -254,7 +260,7 @@ export class PlacementService {
       percentage,
     });
 
-    const progress = this.buildProgress(attemptId, attempt.assessment.questions, updatedResponses);
+    const progress = this.buildProgress(attemptId, attempt.assessment!.questions, updatedResponses);
 
     return { progress, correct };
   }
@@ -271,6 +277,9 @@ export class PlacementService {
       throw new ConflictError('Placement assessment is already completed');
     }
 
+    if (!attempt.assessment) {
+      throw new NotFoundError('Assessment definition not found');
+    }
     const responses = (attempt.rawResponses as Array<Record<string, unknown>>) ?? [];
     const questions = attempt.assessment.questions;
 

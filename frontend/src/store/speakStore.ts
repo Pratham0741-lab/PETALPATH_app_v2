@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import { api } from '../api/client';
+import { useRoadmapStore } from './roadmapStore';
+import { getLessonMatchData } from '../utils/lessonActivityMatcher';
 
 interface SpeakState {
   activityId: string | null;
@@ -12,6 +14,7 @@ interface SpeakState {
   loading: boolean;
   lives: number;
   error: string | null;
+  isComingSoon: boolean;
 
   loadSpeak: (activityId: string, activityTitle: string) => Promise<void>;
   startRecording: () => void;
@@ -19,17 +22,6 @@ interface SpeakState {
   retry: () => void;
   completeActivity: (score?: number) => Promise<void>;
   clearState: () => void;
-}
-
-function deriveTargetPhrase(title: string): string {
-  return title
-    .replace('Listen to ', '')
-    .replace('Say ', '')
-    .replace('Trace ', '')
-    .replace('Watch ', '')
-    .replace(' Tutorial', '')
-    .replace(' Audio Guide', '')
-    .trim();
 }
 
 export const useSpeakStore = create<SpeakState>((set, get) => {
@@ -44,11 +36,28 @@ export const useSpeakStore = create<SpeakState>((set, get) => {
     loading: false,
     error: null,
     lives: 3,
+    isComingSoon: false,
 
     loadSpeak: async (activityId, activityTitle) => {
-      set({ loading: true, error: null, transcript: '', confidence: 0, stars: null, isRecording: false });
+      set({ loading: true, error: null, transcript: '', confidence: 0, stars: null, isRecording: false, isComingSoon: false });
       try {
-        const target = deriveTargetPhrase(activityTitle);
+        const isComingSoon = !activityId || !activityTitle || activityTitle.toLowerCase().includes('coming_soon') || activityTitle.toLowerCase().includes('placeholder');
+        
+        if (isComingSoon) {
+          set({
+            activityId: activityId || 'placeholder-speak-id',
+            targetPhrase: useRoadmapStore.getState().selectedLesson?.title || 'Speaking Practice',
+            isCompleted: false,
+            confidence: 0,
+            stars: null,
+            isComingSoon: true,
+          });
+          return;
+        }
+
+        const lessonTitle = useRoadmapStore.getState().selectedLesson?.title || '';
+        const match = getLessonMatchData(lessonTitle, activityTitle);
+        const target = match.targetPhrase;
         
         let isCompleted = false;
         let confidence = 0;
@@ -70,9 +79,18 @@ export const useSpeakStore = create<SpeakState>((set, get) => {
           isCompleted,
           confidence,
           stars: starsCount,
+          isComingSoon: false,
         });
-    } catch (err: unknown) {
-            set({ error: err instanceof Error ? err.message : 'Failed to load speak activity' });
+      } catch (err: unknown) {
+        // Fallback to placeholder instead of hard crash
+        set({
+          activityId: activityId || 'placeholder-speak-id',
+          targetPhrase: useRoadmapStore.getState().selectedLesson?.title || 'Speaking Practice',
+          isCompleted: false,
+          confidence: 0,
+          stars: null,
+          isComingSoon: true,
+        });
       } finally {
         set({ loading: false });
       }
@@ -164,6 +182,7 @@ export const useSpeakStore = create<SpeakState>((set, get) => {
         loading: false,
         error: null,
         lives: 3,
+        isComingSoon: false,
       });
     },
   };

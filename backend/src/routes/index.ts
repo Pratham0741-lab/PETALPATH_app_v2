@@ -39,6 +39,8 @@ import { skillRoadmapRoutes } from '../modules/skill-roadmap/skill-roadmap.route
 import masteryEngineRoutes from '../modules/mastery-engine/mastery-engine.routes.js';
 import aiTutorRoutes from '../modules/ai-tutor/ai-tutor.routes.js';
 import { adaptationRoutes } from '../modules/adaptation/adaptation.routes.js';
+import { dashboardRoutes } from '../modules/dashboard/dashboard.routes.js';
+import { teacherDashboardRoutes } from '../modules/teacher-dashboard/teacher-dashboard.routes.js';
 
 const router = Router();
 
@@ -105,6 +107,12 @@ router.use('/v1/ai-tutor', aiTutorRoutes);
 
 router.use('/adaptation', adaptationRoutes);
 router.use('/v1/adaptation', adaptationRoutes);
+
+router.use('/dashboard', dashboardRoutes);
+router.use('/v1/dashboard', dashboardRoutes);
+
+router.use('/teacher/dashboard', teacherDashboardRoutes);
+router.use('/v1/teacher/dashboard', teacherDashboardRoutes);
 
 export { router as rootRouter };
 

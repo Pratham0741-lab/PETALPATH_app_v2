@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { StyleSheet, View, Text, Switch, ScrollView, TouchableOpacity, Alert, Platform } from 'react-native';
 import { ScreenContainer } from '../../components/common/ScreenContainer';
 import { api } from '../../api/client';
@@ -101,6 +101,13 @@ export const ProfileTablet: React.FC = () => {
           <SectionHeader title="Settings & Profiles" subtitle="Manage game configuration and child profiles." />
           
           <View style={styles.content}>
+            <AppButton
+              label="Parent Dashboard"
+              onPress={() => navigation.navigate('ParentDashboard')}
+              variant="primary"
+              style={{ marginBottom: spacing.md }}
+            />
+
             {/* Parent Account Card */}
             <AppCard style={styles.card} outlined>
               <Text style={styles.cardTitle}>Parent Account</Text>
@@ -151,9 +158,9 @@ export const ProfileTablet: React.FC = () => {
                       </View>
                       <View style={{ flex: 1 }}>
                         <Text style={[styles.childNameText, isActive && styles.activeChildText]}>
-                          {child.name} {isActive && 'ðŸŒŸ'}
+                          {child.name} {isActive && '🌟'}
                         </Text>
-                        <Text style={styles.childAgeText}>Age {child.age} â€¢ Group {child.ageGroup}</Text>
+                        <Text style={styles.childAgeText}>Age {child.age} • Group {child.ageGroup}</Text>
                       </View>
                       <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
                     </TouchableOpacity>

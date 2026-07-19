@@ -19,7 +19,7 @@ export const learningApi = {
 
   getMastery: (childId: string) => apiClient.get(`/mastery?childId=${childId}`),
 
-  getRecommendation: (childId: string) => apiClient.get(`/learner/${childId}/recommendation`),
+  getRecommendation: (childId: string) => apiClient.get(`/v1/learner/${childId}/recommendation`),
 
   getRewards: (childId: string) => apiClient.get(`/rewards?childId=${childId}`),
   getStickers: (childId: string) => apiClient.get(`/rewards/stickers?childId=${childId}`),

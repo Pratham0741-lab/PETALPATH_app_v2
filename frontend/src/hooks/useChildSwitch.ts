@@ -1,13 +1,18 @@
 import { useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { useChildStore } from '../store/childStore';
+import { useChildStore, type Child } from '../store/childStore';
 
 export function useChildSwitch() {
   const queryClient = useQueryClient();
   const setActiveChild = useChildStore((s) => s.setActiveChild);
 
-  const switchChild = useCallback(async (childId: string) => {
-    const child = useChildStore.getState().childrenList.find(c => c.id === childId);
+  const switchChild = useCallback(async (childOrId: string | Child) => {
+    let child: Child | undefined;
+    if (typeof childOrId === 'string') {
+      child = useChildStore.getState().childrenList.find(c => c.id === childOrId);
+    } else {
+      child = childOrId;
+    }
     if (!child) return;
 
     await setActiveChild(child);

@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import { api } from '../api/client';
+import { useRoadmapStore } from './roadmapStore';
+import { getLessonMatchData } from '../utils/lessonActivityMatcher';
 
 export interface Point {
   x: number;
@@ -25,17 +27,6 @@ interface WriteState {
   clearState: () => void;
 }
 
-function deriveGuideName(title: string): string {
-  return title
-    .replace('Listen to ', '')
-    .replace('Say ', '')
-    .replace('Trace ', '')
-    .replace('Watch ', '')
-    .replace(' Tutorial', '')
-    .replace(' Audio Guide', '')
-    .trim();
-}
-
 export const useWriteStore = create<WriteState>((set, get) => {
   return {
     activityId: null,
@@ -51,7 +42,9 @@ export const useWriteStore = create<WriteState>((set, get) => {
     loadWrite: async (activityId, activityTitle) => {
       set({ loading: true, error: null, strokes: [], accuracyScore: null, stars: null });
       try {
-        const guide = deriveGuideName(activityTitle);
+        const lessonTitle = useRoadmapStore.getState().selectedLesson?.title || '';
+        const match = getLessonMatchData(lessonTitle, activityTitle);
+        const guide = match.guideName;
         
         let isCompleted = false;
         try {
@@ -68,8 +61,8 @@ export const useWriteStore = create<WriteState>((set, get) => {
           guideName: guide,
           isCompleted,
         });
-    } catch (err: unknown) {
-            set({ error: err instanceof Error ? err.message : 'Failed to load write activity' });
+      } catch (err: unknown) {
+        set({ error: err instanceof Error ? err.message : 'Failed to load write activity' });
       } finally {
         set({ loading: false });
       }

@@ -109,15 +109,32 @@ export const useAppStore = create<AppState>((set) => ({
     await storage.setItem('token', sessionData.accessToken);
     await storage.setItem('refreshToken', sessionData.refreshToken);
     await storage.setItem('user', JSON.stringify(sessionData.user));
+    
+    // Sync authStore as well
+    const { useAuthStore } = await import('./authStore');
+    useAuthStore.setState({
+      user: sessionData.user as any,
+      token: sessionData.accessToken,
+      refreshToken: sessionData.refreshToken,
+      isAuthenticated: true,
+    });
+
     set(() => ({
       token: sessionData.accessToken,
       refreshToken: sessionData.refreshToken,
-      user: sessionData.user,
+      user: sessionData.user as any,
     }));
   },
 
   setToken: async (token) => {
     await storage.setItem('token', token);
+    
+    // Sync authStore as well so that apiClient requests use the correct token
+    const { useAuthStore } = await import('./authStore');
+    useAuthStore.setState({
+      token,
+    });
+
     set(() => ({
       token,
     }));
@@ -133,6 +150,10 @@ export const useAppStore = create<AppState>((set) => ({
     const { useChildStore } = await import('./childStore');
     useChildStore.setState({ activeChild: null, childrenList: [] });
 
+    // Clear authStore as well
+    const { useAuthStore } = await import('./authStore');
+    useAuthStore.setState({ user: null, token: null, refreshToken: null, isAuthenticated: false });
+    
     set(() => ({
       token: null,
       refreshToken: null,

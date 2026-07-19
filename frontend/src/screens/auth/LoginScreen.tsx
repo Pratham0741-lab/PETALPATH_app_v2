@@ -144,7 +144,7 @@ export const LoginScreen: React.FC = () => {
   const isLoading = isSubmitting || googleLoading;
 
   return (
-    <Screen scroll keyboardAvoid padded>
+    <Screen keyboardAvoid>
       <AuthBackground>
         <ScrollView
           contentContainerStyle={styles.scrollContainer}
@@ -155,111 +155,113 @@ export const LoginScreen: React.FC = () => {
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             style={styles.flex}
           >
-            <AuthHeader
-              title="Welcome Back!"
-              subtitle="Begin your language learning journey!"
-            />
-
-            <View
-              style={[
-                styles.form,
-                {
-                  backgroundColor: colors.surface,
-                  borderColor: colors.border,
-                },
-                shadows.md,
-              ]}
-            >
-              {formError ? (
-                <Text
-                  style={[styles.errorText, { color: colors.error }]}
-                  accessibilityRole="alert"
-                  accessibilityLabel={formError}
-                >
-                  {formError}
-                </Text>
-              ) : null}
-
-              {isOffline ? (
-                <Text
-                  style={[styles.offlineText, { color: colors.warning }]}
-                  accessibilityRole="alert"
-                >
-                  You are offline. Please check your connection.
-                </Text>
-              ) : null}
-
-              <Button
-                title={googleLoading ? 'Connecting...' : 'Continue with Google'}
-                onPress={handleGoogleLogin}
-                disabled={isLoading}
-                variant="outline"
-                fullWidth
-                leftIcon={<Ionicons name="logo-google" size={20} color={colors.primary} />}
-                accessibilityLabel="Continue with Google"
-                style={styles.googleBtn}
+            <View style={styles.authCardWrapper}>
+              <AuthHeader
+                title="Welcome Back!"
+                subtitle="Begin your language learning journey!"
               />
 
-              <View style={styles.dividerContainer}>
-                <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
-                <Text style={[styles.dividerText, { color: colors.textMuted }]}>
-                  or continue with email
-                </Text>
-                <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+              <View
+                style={[
+                  styles.form,
+                  {
+                    backgroundColor: colors.surface,
+                    borderColor: colors.border,
+                  },
+                  shadows.md,
+                ]}
+              >
+                {formError ? (
+                  <Text
+                    style={[styles.errorText, { color: colors.error }]}
+                    accessibilityRole="alert"
+                    accessibilityLabel={formError}
+                  >
+                    {formError}
+                  </Text>
+                ) : null}
+
+                {isOffline ? (
+                  <Text
+                    style={[styles.offlineText, { color: colors.warning }]}
+                    accessibilityRole="alert"
+                  >
+                    You are offline. Please check your connection.
+                  </Text>
+                ) : null}
+
+                <Button
+                  title={googleLoading ? 'Connecting...' : 'Continue with Google'}
+                  onPress={handleGoogleLogin}
+                  disabled={isLoading}
+                  variant="outline"
+                  fullWidth
+                  leftIcon={<Ionicons name="logo-google" size={20} color={colors.primary} />}
+                  accessibilityLabel="Continue with Google"
+                  style={styles.googleBtn}
+                />
+
+                <View style={styles.dividerContainer}>
+                  <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+                  <Text style={[styles.dividerText, { color: colors.textMuted }]}>
+                    or continue with email
+                  </Text>
+                  <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+                </View>
+
+                <FormInput
+                  name="email"
+                  control={control as any}
+                  label="Email Address"
+                  placeholder="explorer@petalpath.com"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  disabled={isLoading}
+                  returnKeyType="next"
+                />
+
+                <FormPasswordInput
+                  name="password"
+                  control={control as any}
+                  label="Password"
+                  placeholder="Enter your password"
+                  disabled={isLoading}
+                  returnKeyType="done"
+                />
+
+                <FormSwitch
+                  name="rememberMe"
+                  control={control as any}
+                  label="Remember me"
+                  disabled={isLoading}
+                />
+
+                <Button
+                  title={isLoading ? 'Logging in...' : 'Login'}
+                  onPress={handleSubmit(onSubmit)}
+                  disabled={isLoading}
+                  loading={isSubmitting}
+                  variant="primary"
+                  size="lg"
+                  fullWidth
+                  accessibilityLabel="Login button"
+                  style={styles.loginBtn}
+                />
               </View>
 
-              <FormInput
-                name="email"
-                control={control as any}
-                label="Email Address"
-                placeholder="explorer@petalpath.com"
-                keyboardType="email-address"
-                autoCapitalize="none"
-                disabled={isLoading}
-                returnKeyType="next"
-              />
-
-              <FormPasswordInput
-                name="password"
-                control={control as any}
-                label="Password"
-                placeholder="Enter your password"
-                disabled={isLoading}
-                returnKeyType="done"
-              />
-
-              <FormSwitch
-                name="rememberMe"
-                control={control as any}
-                label="Remember me"
-                disabled={isLoading}
-              />
-
-              <Button
-                title={isLoading ? 'Logging in...' : 'Login'}
-                onPress={handleSubmit(onSubmit)}
-                disabled={isLoading}
-                loading={isSubmitting}
-                variant="primary"
-                size="lg"
-                fullWidth
-                accessibilityLabel="Login button"
-                style={styles.loginBtn}
+              <AuthFooter
+                links={[
+                  {
+                    label: "Don't have an account? Sign Up",
+                    onPress: () => { if (!isLoading) navigation.navigate('Register'); },
+                  },
+                  {
+                    label: 'Forgot Password?',
+                    onPress: () => { if (!isLoading) navigation.navigate('ForgotPassword'); },
+                  },
+                ]}
               />
             </View>
-
-            <AuthFooter
-              links={[
-                {
-                  label: "Don't have an account? Sign Up",
-                  onPress: () => { if (!isLoading) navigation.navigate('Register'); },
-                },
-                {
-                  label: 'Forgot Password?',
-                  onPress: () => { if (!isLoading) navigation.navigate('ForgotPassword'); },
-                },
-              ]}
-            />
           </KeyboardAvoidingView>
         </ScrollView>
       </AuthBackground>
@@ -309,6 +311,11 @@ const styles = StyleSheet.create({
   },
   loginBtn: {
     marginTop: spacing.sm,
+  },
+  authCardWrapper: {
+    width: '100%',
+    maxWidth: 450,
+    alignSelf: 'center',
   },
 });
 

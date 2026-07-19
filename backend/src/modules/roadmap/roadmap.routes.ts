@@ -4,6 +4,11 @@ import { authMiddleware } from '../../middleware/auth.middleware.js';
 
 const router = Router();
 
-router.get('/', authMiddleware, roadmapController.getRoadmap);
+router.use(authMiddleware as any);
+
+router.get('/', roadmapController.getRoadmap as any);
+router.get('/current', roadmapController.getCurrentLesson as any);
+router.get('/current-theme', roadmapController.getCurrentTheme as any);
+router.get('/current-grade', roadmapController.getCurrentGrade as any);
 
 export { router as roadmapRoutes };

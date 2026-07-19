@@ -106,8 +106,8 @@ const MobileTabs = () => {
       tabBar={(props) => <BottomNavigation {...props} />}
       screenOptions={{ headerShown: false }}
     >
-      <Tab.Screen name="Home" component={ParentDashboardScreen} />
-      <Tab.Screen name="Journey" component={RoadmapScreen} />
+      <Tab.Screen name="Home" component={HomeScreen} />
+      <Tab.Screen name="Journey" component={CurriculumExplorerScreen} />
       <Tab.Screen name="Mentor" component={MentorScreen} />
       <Tab.Screen name="Rewards" component={RewardsScreen} />
       <Tab.Screen name="Profile" component={ProfileScreen} />
@@ -213,6 +213,7 @@ export const RootNavigator = () => {
         <Stack.Screen name="NotificationCenter" component={NotificationCenterScreen} />
         <Stack.Screen name="CurriculumExplorer" component={CurriculumExplorerScreen} />
         <Stack.Screen name="SkillDetail" component={SkillDetailScreen} />
+        <Stack.Screen name="Roadmap" component={HomeScreen} />
       </Stack.Navigator>
     );
   }
@@ -228,11 +229,11 @@ export const RootNavigator = () => {
             animation: 'fade', // Clean cross-fade transition on larger displays
           }}
         >
-          <Stack.Screen name="Home" component={ParentDashboardScreen} />
+          <Stack.Screen name="Home" component={HomeScreen} />
           <Stack.Screen name="LessonOverview" component={LessonOverviewScreen} />
           <Stack.Screen name="Lesson" component={LessonScreen} />
           <Stack.Screen name="Module" component={ModuleScreen} />
-          <Stack.Screen name="Journey" component={RoadmapScreen} />
+          <Stack.Screen name="Journey" component={CurriculumExplorerScreen} />
           <Stack.Screen name="Mentor" component={MentorScreen} />
           <Stack.Screen name="Rewards" component={RewardsScreen} />
           <Stack.Screen name="Profile" component={ProfileScreen} />
@@ -292,6 +293,7 @@ export const RootNavigator = () => {
           <Stack.Screen name="NotificationCenter" component={NotificationCenterScreen} />
           <Stack.Screen name="CurriculumExplorer" component={CurriculumExplorerScreen} />
           <Stack.Screen name="SkillDetail" component={SkillDetailScreen} />
+          <Stack.Screen name="Roadmap" component={HomeScreen} />
         </Stack.Navigator>
       </View>
     </View>

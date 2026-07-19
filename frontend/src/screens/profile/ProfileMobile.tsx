@@ -1,4 +1,4 @@
-﻿import React, { useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { StyleSheet, ScrollView, View, Text, Switch, TouchableOpacity, Alert, Platform, TextInput } from 'react-native';
 import { ScreenContainer } from '../../components/common/ScreenContainer';
 import { api } from '../../api/client';
@@ -59,11 +59,18 @@ export const ProfileMobile: React.FC = () => {
 
   const handleParentSectionTap = () => {
     if (parentSectionOpen) {
-      // Close it
+      // Close the unlocked parent section
       setParentSectionOpen(false);
       setShowChallenge(false);
       return;
     }
+    
+    if (showChallenge) {
+      // Close the math challenge challenge gate if already open
+      setShowChallenge(false);
+      return;
+    }
+
     // Show math challenge
     generateChallenge();
     setShowChallenge(true);
@@ -219,7 +226,7 @@ export const ProfileMobile: React.FC = () => {
             <View style={styles.challengeContainer}>
               <Text style={styles.challengeTitle}>Parental Verification</Text>
               <Text style={styles.challengeQuestion}>
-                What is {challengeA} Ã— {challengeB}?
+                What is {challengeA} x {challengeB}?
               </Text>
               <View style={styles.challengeInputRow}>
                 <TextInput
@@ -238,13 +245,19 @@ export const ProfileMobile: React.FC = () => {
                 </TouchableOpacity>
               </View>
               {challengeError && (
-                <Text style={styles.challengeErrorText}>That's not right â€” try again!</Text>
+                <Text style={styles.challengeErrorText}>That's not right - try again!</Text>
               )}
             </View>
           )}
 
           {parentSectionOpen && (
             <View style={styles.parentSectionContent}>
+              <AppButton
+                label="Parent Dashboard"
+                onPress={() => navigation.navigate('ParentDashboard')}
+                variant="primary"
+                style={{ marginBottom: spacing.sm }}
+              />
 
               {/* Parent Account */}
               <AppCard style={styles.card} outlined>
@@ -288,9 +301,9 @@ export const ProfileMobile: React.FC = () => {
                           </View>
                           <View style={{ flex: 1 }}>
                             <Text style={[styles.childNameText, isActive && styles.activeChildText]}>
-                              {child.name} {isActive && 'ðŸŒŸ'}
+                              {child.name} {isActive && '🌟'}
                             </Text>
-                            <Text style={styles.childAgeText}>Age {child.age} â€¢ {child.mentor?.name || 'No companion'}</Text>
+                            <Text style={styles.childAgeText}>Age {child.age} • {child.mentor?.name || 'No companion'}</Text>
                           </View>
                         </TouchableOpacity>
 

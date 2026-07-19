@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { StyleSheet, ScrollView, View, Text, ActivityIndicator, Pressable } from 'react-native';
 import { ScreenContainer } from '../../components/common/ScreenContainer';
 import { TopBar } from '../../components/navigation/TopBar';
@@ -41,7 +41,7 @@ export const MentorMobile: React.FC = () => {
 
   const handleWaterTree = () => {
     setPetalPoints(prev => prev + 2);
-    setWateringMessage("Splish splash! You watered the tree! ðŸ’§ðŸŒ¸ +2 Petal Points!");
+    setWateringMessage("Splish splash! You watered the tree! 💦🌸 +2 Petal Points!");
     setTimeout(() => {
       setWateringMessage(null);
     }, 3000);
@@ -61,25 +61,25 @@ export const MentorMobile: React.FC = () => {
           <Card style={styles.gardenVisualCard}>
             <View style={styles.gardenVisualHeader}>
               <View style={styles.petalPointsBadge}>
-                <Text style={styles.petalBadgeText}>ðŸŒ¸ {petalPoints} Petal Points</Text>
+                <Text style={styles.petalBadgeText}>🌸 {petalPoints} Petal Points</Text>
               </View>
-              <Text style={styles.gardenWeather}>â˜€ï¸ Sunny Day</Text>
+              <Text style={styles.gardenWeather}>☀️ Sunny Day</Text>
             </View>
 
             {/* Tree & Character Scene */}
             <View style={styles.treeScene}>
-              <Text style={styles.birdHouse}>ðŸ¦</Text>
-              <Text style={styles.butterfly}>ðŸ¦‹</Text>
-              <Text style={styles.treeEmoji}>ðŸŒ³</Text>
+              <Text style={styles.birdHouse}>🐦</Text>
+              <Text style={styles.butterfly}>🦋</Text>
+              <Text style={styles.treeEmoji}>🌳</Text>
               <View style={styles.mascotStand}>
-                <Text style={styles.mascotEmoji}>{activeMentor ? 'ðŸ¢' : 'ðŸ¦Š'}</Text>
+                <Text style={styles.mascotEmoji}>{activeMentor ? '🐢' : '🦊'}</Text>
               </View>
             </View>
 
             {/* Water Tree CTA */}
             <View style={styles.wateringActionSection}>
               <Button
-                label="Water the Tree ðŸ’§"
+                label="Water the Tree 💦"
                 variant="success"
                 onPress={handleWaterTree}
                 style={styles.waterBtn}

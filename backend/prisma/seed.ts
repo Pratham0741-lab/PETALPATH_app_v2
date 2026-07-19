@@ -1,12 +1,89 @@
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcrypt';
+import fs from 'fs';
+import path from 'path';
+import { curriculumLoader } from '../src/modules/curriculum/curriculum-loader.js';
 
 const prisma = new PrismaClient();
 
-async function main() {
-  console.log('Seeding database...');
+/**
+ * Dynamically discover curricula folders in the curriculum directory.
+ * E.g., curriculum/cbse, curriculum/icse, etc.
+ */
+function getCurriculumDirs(): string[] {
+  const primaryPath = path.join(process.cwd(), 'curriculum');
+  const secondaryPath = path.join(process.cwd(), '..', 'curriculum');
 
-  // Clean existing progress and curriculum data in correct dependency order
+  const rootPath = fs.existsSync(primaryPath) ? primaryPath : secondaryPath;
+  if (!fs.existsSync(rootPath)) {
+    return [];
+  }
+
+  return fs.readdirSync(rootPath)
+    .map((name) => path.join(rootPath, name))
+    .filter((p) => fs.statSync(p).isDirectory());
+}
+
+function getActivityTitle(lessonTitle: string, type: string): string {
+  const typeMap: Record<string, string> = {
+    video: 'Video Lesson',
+    listen: 'Listening Guide',
+    speak: 'Speaking Practice',
+    read: 'Reading Practice',
+    write: 'Writing Practice',
+    revision: 'Revision & Review',
+    phonics: 'Phonics Activity',
+    blend: 'Word Blending',
+    spell: 'Spelling Challenge',
+    identify: 'Identify Activity',
+    select: 'Selection Game',
+    match: 'Matching Game',
+    count: 'Counting Exercise',
+    sort: 'Sorting Game',
+    puzzle: 'Puzzle Challenge',
+    sequence: 'Ordering Sequence',
+    trace: 'Tracing Activity',
+    draw: 'Drawing Canvas',
+    drag_drop: 'Drag and Drop',
+    memory: 'Memory Game',
+    story: 'Story Time',
+    conversation: 'Conversation Practice',
+    addition: 'Addition Practice',
+    subtraction: 'Subtraction Practice',
+    compare: 'Comparison Game',
+    pattern: 'Pattern Play',
+    measure: 'Measurement Fun',
+    missing_number: 'Find the Missing Number',
+    classify: 'Classification Game',
+    connect: 'Connect the Dots',
+    circle: 'Circle the Answer',
+    assessment: 'Lesson Assessment',
+  };
+
+  const suffix = typeMap[type] || `${type.charAt(0).toUpperCase()}${type.slice(1)} Practice`;
+  return `${lessonTitle}: ${suffix}`;
+}
+
+async function main() {
+  console.log('Seeding database from Curriculum loader...');
+
+  // 1. Run Curriculum Loader validation - fail fast if validation fails
+  console.log('Validating static curriculum files...');
+  try {
+    curriculumLoader.loadAllCurricula();
+  } catch (err: any) {
+    console.error('Curriculum validation failed. Aborting database seeding.');
+    if (err.formatDiagnostics) {
+      console.error(err.formatDiagnostics());
+    } else {
+      console.error(err);
+    }
+    process.exit(1);
+  }
+  console.log('Static curriculum files validated successfully.');
+
+  // 2. Clean existing database records in correct dependency order
+  console.log('Cleaning existing records...');
   await prisma.childSkillCurriculum.deleteMany({});
   await prisma.reinforcementQueue.deleteMany({});
   await prisma.regressionLog.deleteMany({});
@@ -39,7 +116,7 @@ async function main() {
   await prisma.mentor.deleteMany({});
   await prisma.user.deleteMany({});
 
-  // Seed Mentors
+  // 3. Seed Mentors
   console.log('Seeding mentors...');
   const mentorsData = [
     {
@@ -85,12 +162,10 @@ async function main() {
   ];
 
   for (const m of mentorsData) {
-    await prisma.mentor.create({
-      data: m,
-    });
+    await prisma.mentor.create({ data: m });
   }
 
-  // Create default test user & child so developer does not need to register again
+  // 4. Create default test user & child
   console.log('Seeding default user and child...');
   const salt = await bcrypt.genSalt(10);
   const passwordHash = await bcrypt.hash('password123', salt);
@@ -104,7 +179,6 @@ async function main() {
   });
 
   const pandaMentor = await prisma.mentor.findFirst({ where: { characterType: 'panda' } });
-
   const child = await prisma.child.create({
     data: {
       userId: user.id,
@@ -123,483 +197,153 @@ async function main() {
     },
   });
 
-  // Seed Curriculum Tree
-  console.log('Seeding curriculum tree...');
-
-  const curriculum = [
-    {
-      title: 'Prewriting Skills',
-      description: 'Lines, curves and patterns',
-      displayOrder: 1,
-      modules: [
-        {
-          title: 'Lines',
-          description: 'Practice drawing straight lines',
-          displayOrder: 1,
-          lessons: [
-            { title: 'Standing Line', description: 'Learn to trace vertical standing lines', difficulty: 'EASY', video: 'lines_and_curves/prewriting_001_standing_line.mp4', audio: 'speech_guide_standingline_en.mp3' },
-            { title: 'Sleeping Line', description: 'Learn to trace horizontal sleeping lines', difficulty: 'EASY', video: 'lines_and_curves/prewriting_002_sleeping_line.mp4', audio: 'speech_guide_sleepingline_en.mp3' },
-            { title: 'Left Slanting Line', description: 'Learn to trace left slanting lines', difficulty: 'EASY', video: 'lines_and_curves/prewriting_003_left_slanting_line.mp4', audio: 'speech_guide_leftslantingline_en.mp3' },
-            { title: 'Right Slanting Line', description: 'Learn to trace right slanting lines', difficulty: 'EASY', video: 'lines_and_curves/prewriting_004_right_slanting_line.mp4', audio: 'speech_guide_rightslantingline_en.mp3' }
-          ]
-        },
-        {
-          title: 'Curves',
-          description: 'Learn to trace smooth curves',
-          displayOrder: 2,
-          lessons: [
-            { title: 'Big Curve', description: 'Learn to trace big curves', difficulty: 'EASY', video: 'lines_and_curves/prewriting_005_big_curve.mp4', audio: 'speech_guide_bigcurve_en.mp3' },
-            { title: 'Small Curve', description: 'Learn to trace small curves', difficulty: 'EASY', video: 'coming_soon', audio: 'speech_guide_smallcurve_en.mp3' },
-            { title: 'Semi Circle', description: 'Learn to trace semi circles', difficulty: 'EASY', video: 'lines_and_curves/prewriting_007_semi_circle.mp4', audio: 'speech_guide_semicircle_en.mp3' },
-            { title: 'Reverse Semi Circle', description: 'Learn to trace reverse semi circles', difficulty: 'EASY', video: 'lines_and_curves/prewriting_008_reverse_semi_circle.mp4', audio: 'speech_guide_reverse_semicircle_en.mp3' }
-          ]
-        },
-        {
-          title: 'Patterns',
-          description: 'Trace winding patterns',
-          displayOrder: 3,
-          lessons: [
-            { title: 'Zig-zag', description: 'Trace zigzag path patterns', difficulty: 'EASY', video: 'coming_soon', audio: 'coming_soon' },
-            { title: 'Spiral', description: 'Trace spiral path patterns', difficulty: 'EASY', video: 'coming_soon', audio: 'speech_guide_spiral_en.mp3' },
-            { title: 'Loop', description: 'Trace loops path patterns', difficulty: 'EASY', video: 'coming_soon', audio: 'speech_guide_loop_en.mp3' },
-            { title: 'Combined Curves', description: 'Trace combined curves and waves', difficulty: 'EASY', video: 'coming_soon', audio: 'speech_guide_combinedcurves_en.mp3' }
-          ]
-        }
-      ]
-    },
-    {
-      title: 'Shapes',
-      description: 'Learn shapes all around',
-      displayOrder: 2,
-      modules: [
-        {
-          title: 'Module 1',
-          description: 'Circle, Square, and Triangle',
-          displayOrder: 1,
-          lessons: [
-            { title: 'Circle', description: 'Learn to trace a circle', difficulty: 'EASY', video: 'shapes/shape_001_circle.mp4', audio: 'speech_guide_circle_en.mp3' },
-            { title: 'Square', description: 'Learn to trace a square', difficulty: 'EASY', video: 'shapes/shape_002_square.mp4', audio: 'speech_guide_square_en.mp3' },
-            { title: 'Triangle', description: 'Learn to trace a triangle', difficulty: 'EASY', video: 'shapes/shape_003_triangle.mp4', audio: 'speech_guide_triangle_en.mp3' }
-          ]
-        },
-        {
-          title: 'Module 2',
-          description: 'Rectangle, Oval, and Star',
-          displayOrder: 2,
-          lessons: [
-            { title: 'Rectangle', description: 'Learn to trace a rectangle', difficulty: 'EASY', video: 'shapes/shape_004_rectangle.mp4', audio: 'speech_guide_rectangle_en.mp3' },
-            { title: 'Oval', description: 'Learn to trace an oval', difficulty: 'EASY', video: 'shapes/shape_005_oval.mp4', audio: 'speech_guide_oval_en.mp3' },
-            { title: 'Star', description: 'Learn to trace a star', difficulty: 'EASY', video: 'shapes/shape_006_star.mp4', audio: 'speech_guide_star_en.mp3' }
-          ]
-        },
-        {
-          title: 'Module 3',
-          description: 'Heart, Diamond, and Pentagon',
-          displayOrder: 3,
-          lessons: [
-            { title: 'Heart', description: 'Learn to trace a heart', difficulty: 'MEDIUM', video: 'coming_soon', audio: 'speech_guide_circle_en.mp3' },
-            { title: 'Diamond', description: 'Learn to trace a diamond', difficulty: 'MEDIUM', video: 'coming_soon', audio: 'speech_guide_circle_en.mp3' },
-            { title: 'Pentagon', description: 'Learn to trace a pentagon', difficulty: 'MEDIUM', video: 'coming_soon', audio: 'speech_guide_circle_en.mp3' }
-          ]
-        },
-        {
-          title: 'Module 4',
-          description: 'Hexagon',
-          displayOrder: 4,
-          lessons: [
-            { title: 'Hexagon', description: 'Learn to trace a hexagon', difficulty: 'HARD', video: 'coming_soon', audio: 'speech_guide_circle_en.mp3' }
-          ]
-        }
-      ]
-    },
-    {
-      title: 'Alphabet',
-      description: 'A to Z fun learning',
-      displayOrder: 3,
-      modules: [
-        {
-          title: 'Module A-C',
-          description: 'Letters A, B, C',
-          displayOrder: 1,
-          lessons: [
-            { title: 'Letter A', description: 'Learn letter A', difficulty: 'EASY', video: 'alphabet/alphabet_001_a_apple.mp4', audio: 'speech_guide_a_en.mp3' },
-            { title: 'Letter B', description: 'Learn letter B', difficulty: 'EASY', video: 'alphabet/alphabet_002_b_ball.mp4', audio: 'speech_guide_b_en.mp3' },
-            { title: 'Letter C', description: 'Learn letter C', difficulty: 'EASY', video: 'alphabet/alphabet_003_c_cat.mp4', audio: 'speech_guide_c_en.mp3' }
-          ]
-        },
-        {
-          title: 'Module D-F',
-          description: 'Letters D, E, F',
-          displayOrder: 2,
-          lessons: [
-            { title: 'Letter D', description: 'Learn letter D', difficulty: 'EASY', video: 'alphabet/alphabet_004_d_dog.mp4', audio: 'speech_guide_d_en.mp3' },
-            { title: 'Letter E', description: 'Learn letter E', difficulty: 'EASY', video: 'alphabet/alphabet_005_e_egg.mp4', audio: 'speech_guide_e_en.mp3' },
-            { title: 'Letter F', description: 'Learn letter F', difficulty: 'EASY', video: 'alphabet/alphabet_006_f_fish.mp4', audio: 'speech_guide_f_en.mp3' }
-          ]
-        },
-        {
-          title: 'Module G-I',
-          description: 'Letters G, H, I',
-          displayOrder: 3,
-          lessons: [
-            { title: 'Letter G', description: 'Learn letter G', difficulty: 'EASY', video: 'alphabet/alphabet_007_g_grapes.mp4', audio: 'speech_guide_a_en.mp3' },
-            { title: 'Letter H', description: 'Learn letter H', difficulty: 'EASY', video: 'alphabet/alphabet_008_h_house.mp4', audio: 'speech_guide_a_en.mp3' },
-            { title: 'Letter I', description: 'Learn letter I', difficulty: 'EASY', video: 'alphabet/alphabet_009_i_icecream.mp4', audio: 'speech_guide_a_en.mp3' }
-          ]
-        },
-        {
-          title: 'Module J-L',
-          description: 'Letters J, K, L',
-          displayOrder: 4,
-          lessons: [
-            { title: 'Letter J', description: 'Learn letter J', difficulty: 'EASY', video: 'alphabet/alphabet_010_j_jar.mp4', audio: 'speech_guide_a_en.mp3' },
-            { title: 'Letter K', description: 'Learn letter K', difficulty: 'EASY', video: 'alphabet/alphabet_011_k_kite.mp4', audio: 'speech_guide_a_en.mp3' },
-            { title: 'Letter L', description: 'Learn letter L', difficulty: 'EASY', video: 'alphabet/alphabet_012_l_lion.mp4', audio: 'speech_guide_a_en.mp3' }
-          ]
-        },
-        {
-          title: 'Module M-O',
-          description: 'Letters M, N, O',
-          displayOrder: 5,
-          lessons: [
-            { title: 'Letter M', description: 'Learn letter M', difficulty: 'EASY', video: 'alphabet/alphabet_013_m_mango.mp4', audio: 'speech_guide_a_en.mp3' },
-            { title: 'Letter N', description: 'Learn letter N', difficulty: 'EASY', video: 'alphabet/alphabet_014_n_nest.mp4', audio: 'speech_guide_a_en.mp3' },
-            { title: 'Letter O', description: 'Learn letter O', difficulty: 'EASY', video: 'alphabet/alphabet_015_o_owl.mp4', audio: 'speech_guide_a_en.mp3' }
-          ]
-        },
-        {
-          title: 'Module P-R',
-          description: 'Letters P, Q, R',
-          displayOrder: 6,
-          lessons: [
-            { title: 'Letter P', description: 'Learn letter P', difficulty: 'EASY', video: 'alphabet/alphabet_016_p_parrot.mp4', audio: 'speech_guide_a_en.mp3' },
-            { title: 'Letter Q', description: 'Learn letter Q', difficulty: 'EASY', video: 'coming_soon', audio: 'speech_guide_a_en.mp3' },
-            { title: 'Letter R', description: 'Learn letter R', difficulty: 'EASY', video: 'coming_soon', audio: 'speech_guide_a_en.mp3' }
-          ]
-        },
-        {
-          title: 'Module S-U',
-          description: 'Letters S, T, U',
-          displayOrder: 7,
-          lessons: [
-            { title: 'Letter S', description: 'Learn letter S', difficulty: 'EASY', video: 'alphabet/alphabet_019_s_sun.mp4', audio: 'speech_guide_a_en.mp3' },
-            { title: 'Letter T', description: 'Learn letter T', difficulty: 'EASY', video: 'coming_soon', audio: 'speech_guide_a_en.mp3' },
-            { title: 'Letter U', description: 'Learn letter U', difficulty: 'EASY', video: 'coming_soon', audio: 'speech_guide_a_en.mp3' }
-          ]
-        },
-        {
-          title: 'Module V-X',
-          description: 'Letters V, W, X',
-          displayOrder: 8,
-          lessons: [
-            { title: 'Letter V', description: 'Learn letter V', difficulty: 'EASY', video: 'coming_soon', audio: 'speech_guide_a_en.mp3' },
-            { title: 'Letter W', description: 'Learn letter W', difficulty: 'EASY', video: 'coming_soon', audio: 'speech_guide_a_en.mp3' },
-            { title: 'Letter X', description: 'Learn letter X', difficulty: 'EASY', video: 'coming_soon', audio: 'speech_guide_a_en.mp3' }
-          ]
-        },
-        {
-          title: 'Module Y-Z',
-          description: 'Letters Y, Z',
-          displayOrder: 9,
-          lessons: [
-            { title: 'Letter Y', description: 'Learn letter Y', difficulty: 'EASY', video: 'coming_soon', audio: 'speech_guide_a_en.mp3' },
-            { title: 'Letter Z', description: 'Learn letter Z', difficulty: 'EASY', video: 'coming_soon', audio: 'speech_guide_a_en.mp3' }
-          ]
-        }
-      ]
-    },
-    {
-      title: 'Numbers',
-      description: 'Count, write and understand',
-      displayOrder: 4,
-      modules: [
-        {
-          title: 'Module 1',
-          description: 'Numbers 1, 2, 3',
-          displayOrder: 1,
-          lessons: [
-            { title: 'Number 1', description: 'Learn number 1', difficulty: 'EASY', video: 'coming_soon', audio: 'speech_guide_standingline_en.mp3' },
-            { title: 'Number 2', description: 'Learn number 2', difficulty: 'EASY', video: 'coming_soon', audio: 'speech_guide_standingline_en.mp3' },
-            { title: 'Number 3', description: 'Learn number 3', difficulty: 'EASY', video: 'coming_soon', audio: 'speech_guide_standingline_en.mp3' }
-          ]
-        },
-        {
-          title: 'Module 2',
-          description: 'Numbers 4, 5, 6',
-          displayOrder: 2,
-          lessons: [
-            { title: 'Number 4', description: 'Learn number 4', difficulty: 'EASY', video: 'coming_soon', audio: 'speech_guide_standingline_en.mp3' },
-            { title: 'Number 5', description: 'Learn number 5', difficulty: 'EASY', video: 'coming_soon', audio: 'speech_guide_standingline_en.mp3' },
-            { title: 'Number 6', description: 'Learn number 6', difficulty: 'EASY', video: 'coming_soon', audio: 'speech_guide_standingline_en.mp3' }
-          ]
-        },
-        {
-          title: 'Module 3',
-          description: 'Numbers 7, 8, 9',
-          displayOrder: 3,
-          lessons: [
-            { title: 'Number 7', description: 'Learn number 7', difficulty: 'EASY', video: 'coming_soon', audio: 'speech_guide_standingline_en.mp3' },
-            { title: 'Number 8', description: 'Learn number 8', difficulty: 'EASY', video: 'coming_soon', audio: 'speech_guide_standingline_en.mp3' },
-            { title: 'Number 9', description: 'Learn number 9', difficulty: 'EASY', video: 'coming_soon', audio: 'speech_guide_standingline_en.mp3' }
-          ]
-        },
-        {
-          title: 'Module 4',
-          description: 'Numbers 10, 11, 12',
-          displayOrder: 4,
-          lessons: [
-            { title: 'Number 10', description: 'Learn number 10', difficulty: 'EASY', video: 'coming_soon', audio: 'speech_guide_standingline_en.mp3' },
-            { title: 'Number 11', description: 'Learn number 11', difficulty: 'EASY', video: 'coming_soon', audio: 'speech_guide_standingline_en.mp3' },
-            { title: 'Number 12', description: 'Learn number 12', difficulty: 'EASY', video: 'coming_soon', audio: 'speech_guide_standingline_en.mp3' }
-          ]
-        },
-        {
-          title: 'Module 5',
-          description: 'Numbers 13, 14, 15',
-          displayOrder: 5,
-          lessons: [
-            { title: 'Number 13', description: 'Learn number 13', difficulty: 'MEDIUM', video: 'coming_soon', audio: 'speech_guide_standingline_en.mp3' },
-            { title: 'Number 14', description: 'Learn number 14', difficulty: 'MEDIUM', video: 'coming_soon', audio: 'speech_guide_standingline_en.mp3' },
-            { title: 'Number 15', description: 'Learn number 15', difficulty: 'MEDIUM', video: 'coming_soon', audio: 'speech_guide_standingline_en.mp3' }
-          ]
-        },
-        {
-          title: 'Module 6',
-          description: 'Numbers 16, 17, 18',
-          displayOrder: 6,
-          lessons: [
-            { title: 'Number 16', description: 'Learn number 16', difficulty: 'MEDIUM', video: 'coming_soon', audio: 'speech_guide_standingline_en.mp3' },
-            { title: 'Number 17', description: 'Learn number 17', difficulty: 'MEDIUM', video: 'coming_soon', audio: 'speech_guide_standingline_en.mp3' },
-            { title: 'Number 18', description: 'Learn number 18', difficulty: 'MEDIUM', video: 'coming_soon', audio: 'speech_guide_standingline_en.mp3' }
-          ]
-        },
-        {
-          title: 'Module 7',
-          description: 'Numbers 19, 20',
-          displayOrder: 7,
-          lessons: [
-            { title: 'Number 19', description: 'Learn number 19', difficulty: 'MEDIUM', video: 'coming_soon', audio: 'speech_guide_standingline_en.mp3' },
-            { title: 'Number 20', description: 'Learn number 20', difficulty: 'MEDIUM', video: 'coming_soon', audio: 'speech_guide_standingline_en.mp3' }
-          ]
-        },
-        {
-          title: 'Module 8',
-          description: 'Counting and patterns',
-          displayOrder: 8,
-          lessons: [
-            { title: 'Count Objects', description: 'Learn to count objects', difficulty: 'MEDIUM', video: 'coming_soon', audio: 'speech_guide_standingline_en.mp3' },
-            { title: 'More and Less', description: 'Learn more and less concepts', difficulty: 'MEDIUM', video: 'coming_soon', audio: 'speech_guide_standingline_en.mp3' },
-            { title: 'Number Patterns', description: 'Find number patterns', difficulty: 'HARD', video: 'coming_soon', audio: 'speech_guide_standingline_en.mp3' }
-          ]
-        }
-      ]
-    },
-    {
-      title: 'Words',
-      description: 'Short words and sight words',
-      displayOrder: 5,
-      modules: [
-        {
-          title: 'Module 1',
-          description: 'Sight words At, In, On',
-          displayOrder: 1,
-          lessons: [
-            { title: 'At', description: 'Learn word At', difficulty: 'EASY', video: 'coming_soon', audio: 'speech_guide_standingline_en.mp3' },
-            { title: 'In', description: 'Learn word In', difficulty: 'EASY', video: 'coming_soon', audio: 'speech_guide_standingline_en.mp3' },
-            { title: 'On', description: 'Learn word On', difficulty: 'EASY', video: 'coming_soon', audio: 'speech_guide_standingline_en.mp3' }
-          ]
-        },
-        {
-          title: 'Module 2',
-          description: 'Sight words Up, It',
-          displayOrder: 2,
-          lessons: [
-            { title: 'Up', description: 'Learn word Up', difficulty: 'EASY', video: 'coming_soon', audio: 'speech_guide_standingline_en.mp3' },
-            { title: 'It', description: 'Learn word It', difficulty: 'EASY', video: 'coming_soon', audio: 'speech_guide_standingline_en.mp3' }
-          ]
-        },
-        {
-          title: 'Module 3',
-          description: 'Words Cat, Dog, Sun',
-          displayOrder: 3,
-          lessons: [
-            { title: 'Cat', description: 'Learn word Cat', difficulty: 'EASY', video: 'coming_soon', audio: 'speech_guide_standingline_en.mp3' },
-            { title: 'Dog', description: 'Learn word Dog', difficulty: 'EASY', video: 'coming_soon', audio: 'speech_guide_standingline_en.mp3' },
-            { title: 'Sun', description: 'Learn word Sun', difficulty: 'EASY', video: 'coming_soon', audio: 'speech_guide_standingline_en.mp3' }
-          ]
-        },
-        {
-          title: 'Module 4',
-          description: 'Words Bus, Cup',
-          displayOrder: 4,
-          lessons: [
-            { title: 'Bus', description: 'Learn word Bus', difficulty: 'EASY', video: 'coming_soon', audio: 'speech_guide_standingline_en.mp3' },
-            { title: 'Cup', description: 'Learn word Cup', difficulty: 'EASY', video: 'coming_soon', audio: 'speech_guide_standingline_en.mp3' }
-          ]
-        },
-        {
-          title: 'Module 5',
-          description: 'Words I, Am, The',
-          displayOrder: 5,
-          lessons: [
-            { title: 'I', description: 'Learn word I', difficulty: 'EASY', video: 'coming_soon', audio: 'speech_guide_standingline_en.mp3' },
-            { title: 'Am', description: 'Learn word Am', difficulty: 'EASY', video: 'coming_soon', audio: 'speech_guide_standingline_en.mp3' },
-            { title: 'The', description: 'Learn word The', difficulty: 'EASY', video: 'coming_soon', audio: 'speech_guide_standingline_en.mp3' }
-          ]
-        },
-        {
-          title: 'Module 6',
-          description: 'Words Is, Can',
-          displayOrder: 6,
-          lessons: [
-            { title: 'Is', description: 'Learn word Is', difficulty: 'EASY', video: 'coming_soon', audio: 'speech_guide_standingline_en.mp3' },
-            { title: 'Can', description: 'Learn word Can', difficulty: 'EASY', video: 'coming_soon', audio: 'speech_guide_standingline_en.mp3' }
-          ]
-        }
-      ]
-    },
-    {
-      title: 'Reading Readiness',
-      description: 'Sentences, stories and more',
-      displayOrder: 6,
-      modules: [
-        {
-          title: 'Module 1',
-          description: 'Simple Sentences',
-          displayOrder: 1,
-          lessons: [
-            { title: 'Simple Sentences', description: 'Learn simple sentence reading', difficulty: 'MEDIUM', video: 'coming_soon', audio: 'speech_guide_standingline_en.mp3' }
-          ]
-        },
-        {
-          title: 'Module 2',
-          description: 'Story Sequences',
-          displayOrder: 2,
-          lessons: [
-            { title: 'Story Sequences', description: 'Understand story timelines', difficulty: 'HARD', video: 'coming_soon', audio: 'speech_guide_standingline_en.mp3' }
-          ]
-        }
-      ]
-    }
+  // 5. Seed Dynamic Subjects
+  console.log('Seeding subjects from configuration...');
+  const subjectsData = [
+    { name: 'English', description: 'English language learning, alphabet and stories', icon: 'book', color: '#3357FF' },
+    { name: 'Fine Motor & Cognitive Skills', description: 'Cognitive reasoning and writing coordination', icon: 'brain', color: '#F33FF5' },
+    { name: 'Social-Emotional Learning & Life Skills', description: 'Social cooperation and self-expression', icon: 'heart', color: '#FF5733' },
+    { name: 'Hindi', description: 'Hindi language learning, alphabets and rhymes', icon: 'bookmark', color: '#FFC300' },
+    { name: 'Environmental Studies / General Awareness', description: 'Nature, safety, and surroundings exploration', icon: 'globe', color: '#33FF57' },
+    { name: 'Maths', description: 'Numbers, shapes, counting and logical math', icon: 'calculator', color: '#900C3F' },
   ];
 
-  // Helper to add the Video, Listen, Speak, Write activities to a lesson
-  const seedCurriculum = async (
-    lessonId: string,
-    titlePrefix: string,
-    videoPath: string,
-    audioFilename: string
-  ) => {
-    // Prepend correct folder path prefix according to conventions
-    const videoKey = videoPath === 'coming_soon' ? 'coming_soon' : `videos/${videoPath}`;
-    const audioKey = audioFilename === 'coming_soon' ? 'coming_soon' : `audio/${audioFilename}`;
-    const thumbnailKey = 'thumbnails/default.png';
+  const subjectMap = new Map<string, string>();
+  for (const s of subjectsData) {
+    const created = await prisma.subject.create({ data: s });
+    subjectMap.set(s.name, created.id);
+  }
 
-    // 1. Video
-    const aVideo = await prisma.activity.create({
+  // 6. Dynamically load and seed Categories, Modules, Lessons, and Activities
+  console.log('Seeding curricula...');
+  const allCurricula = curriculumLoader.loadAllCurricula();
+
+  const seededSkillNames = new Set<string>();
+
+  for (const [gradeKey, cur] of allCurricula.entries()) {
+    console.log(`Processing Grade: ${cur.grade.name}`);
+
+    // Create Category representing the Grade
+    const category = await prisma.category.create({
       data: {
-        lessonId,
-        title: `Watch ${titlePrefix} Tutorial`,
-        activityType: 'video',
-        displayOrder: 1,
-      },
-    });
-    await prisma.video.create({
-      data: {
-        activityId: aVideo.id,
-        title: `${titlePrefix} Tutorial`,
-        videoKey,
-        duration: 10,
-        thumbnailKey,
+        title: cur.grade.name,
+        description: cur.grade.description,
+        displayOrder: gradeKey === 'prenursery' ? 1 : gradeKey === 'nursery' ? 2 : gradeKey === 'lkg' ? 3 : 4,
       },
     });
 
-    // 2. Listen
-    const aListen = await prisma.activity.create({
-      data: {
-        lessonId,
-        title: `Listen to ${titlePrefix}`,
-        activityType: 'listen',
-        displayOrder: 2,
-      },
-    });
-    await prisma.audio.create({
-      data: {
-        activityId: aListen.id,
-        title: `${titlePrefix} Audio Guide`,
-        audioKey,
-        duration: 5,
-      },
-    });
-
-    // 3. Speak
-    await prisma.activity.create({
-      data: {
-        lessonId,
-        title: `Say ${titlePrefix}`,
-        activityType: 'speak',
-        displayOrder: 3,
-      },
-    });
-
-    // 4. Write
-    await prisma.activity.create({
-      data: {
-        lessonId,
-        title: `Trace ${titlePrefix}`,
-        activityType: 'write',
-        displayOrder: 4,
-      },
-    });
-  };
-
-  for (const catData of curriculum) {
-    const createdCat = await prisma.category.create({
-      data: {
-        title: catData.title,
-        description: catData.description,
-        displayOrder: catData.displayOrder,
-      },
-    });
-
-    console.log(`Created Category: ${createdCat.title}`);
-
-    for (const modData of catData.modules) {
-      const createdMod = await prisma.module.create({
+    for (const theme of cur.themes) {
+      // Create Module representing the Theme
+      const module = await prisma.module.create({
         data: {
-          categoryId: createdCat.id,
-          title: modData.title,
-          description: modData.description,
-          displayOrder: modData.displayOrder,
+          categoryId: category.id,
+          title: theme.title,
+          description: `Theme: ${theme.title}`,
+          displayOrder: theme.order,
         },
       });
 
-      console.log(`  Created Module: ${createdMod.title}`);
-
-      let displayOrder = 1;
-      for (const lesData of modData.lessons) {
-        const createdLes = await prisma.lesson.create({
+      for (const node of theme.nodes) {
+        // Create Lesson representing the Node using node.id as stable natural key
+        const difficultyString = node.difficulty <= 2 ? 'EASY' : node.difficulty <= 4 ? 'MEDIUM' : 'HARD';
+        const lesson = await prisma.lesson.create({
           data: {
-            moduleId: createdMod.id,
-            title: lesData.title,
-            description: lesData.description,
-            displayOrder: displayOrder++,
-            difficulty: lesData.difficulty,
+            id: node.id,
+            moduleId: module.id,
+            title: node.title,
+            description: node.curriculum.learning_outcome,
+            displayOrder: node.order,
+            difficulty: difficultyString,
           },
         });
 
-        console.log(`    Created Lesson: ${createdLes.title}`);
+        // Seed activities & guides for the lesson
+        for (let i = 0; i < node.activities.length; i++) {
+          const act = node.activities[i];
+          const activity = await prisma.activity.create({
+            data: {
+              lessonId: lesson.id,
+              title: getActivityTitle(node.title, act.type),
+              activityType: act.type,
+              displayOrder: i + 1,
+            },
+          });
 
-        await seedCurriculum(
-          createdLes.id,
-          lesData.title,
-          lesData.video,
-          lesData.audio
-        );
+          if (act.type === 'video') {
+            await prisma.video.create({
+              data: {
+                activityId: activity.id,
+                title: `${node.title} Video Lesson`,
+                videoKey: `videos/${node.id}.mp4`,
+                thumbnailKey: 'thumbnails/default.png',
+                duration: act.estimated_minutes * 60,
+              },
+            });
+          } else if (act.type === 'listen') {
+            await prisma.audio.create({
+              data: {
+                activityId: activity.id,
+                title: `${node.title} Listening Guide`,
+                audioKey: `audio/${node.id}.mp3`,
+                duration: act.estimated_minutes * 60,
+              },
+            });
+          }
+        }
+
+        // Create database Skill mapping for the node (resolving name duplicate conflicts)
+        let skillName = node.title;
+        if (seededSkillNames.has(skillName)) {
+          skillName = `${node.title} (${cur.grade.name})`;
+          let idx = 1;
+          while (seededSkillNames.has(skillName)) {
+            skillName = `${node.title} (${cur.grade.name}) ${idx++}`;
+          }
+        }
+        seededSkillNames.add(skillName);
+
+        const subjectId = subjectMap.get(node.curriculum.subject);
+        if (subjectId) {
+          await prisma.skill.create({
+            data: {
+              id: node.id,
+              name: skillName,
+              description: node.curriculum.learning_outcome,
+              difficulty: node.difficulty,
+              estimatedAge: gradeKey === 'prenursery' ? 3 : gradeKey === 'nursery' ? 4 : gradeKey === 'lkg' ? 5 : 6,
+              isRootSkill: node.prerequisites.length === 0,
+              subjectId: subjectId,
+              skillCode: node.id,
+            },
+          });
+        }
       }
     }
   }
 
+  // 7. Seed Skill Dependencies from Loader
+  console.log('Seeding skill dependencies...');
+  for (const cur of allCurricula.values()) {
+    for (const theme of cur.themes) {
+      for (const node of theme.nodes) {
+        for (const prereqId of node.prerequisites) {
+          const parentExists = await prisma.skill.findUnique({ where: { id: prereqId } });
+          const childExists = await prisma.skill.findUnique({ where: { id: node.id } });
+          if (parentExists && childExists) {
+            await prisma.skillDependency.create({
+              data: {
+                parentSkillId: prereqId,
+                childSkillId: node.id,
+                weight: 1.0,
+              },
+            });
+          }
+        }
+      }
+    }
+  }
+
+  // 8. Seed Stickers
   console.log('Seeding stickers...');
   const stickersData = [
     { name: 'Sun', description: 'Glows bright in the sky!', iconKey: 'stickers/sun.png', requiredStars: 20 },
@@ -615,6 +359,7 @@ async function main() {
     await prisma.sticker.create({ data: s });
   }
 
+  // 9. Seed Badges
   console.log('Seeding badges...');
   const badgesData = [
     { name: 'First Lesson', description: 'First lesson completed', iconKey: 'badges/first_lesson.png' },
@@ -631,79 +376,8 @@ async function main() {
     await prisma.badge.create({ data: b });
   }
 
-  console.log('Seeding subjects...');
-  const subjectsData = [
-    { name: 'Writing', description: 'Prewriting lines, curves, and patterns', icon: 'edit', color: '#FF5733' },
-    { name: 'Math', description: 'Numbers, counting, and mathematical concepts', icon: 'calculator', color: '#33FF57' },
-    { name: 'Language', description: 'Alphabet letters, sounds, and sight words', icon: 'book', color: '#3357FF' },
-    { name: 'Cognitive', description: 'Shapes, colors, and spatial thinking', icon: 'brain', color: '#F33FF5' },
-  ];
-
-  const subjectMap: Record<string, any> = {};
-  for (const s of subjectsData) {
-    const created = await prisma.subject.create({ data: s });
-    subjectMap[s.name] = created;
-  }
-
-  console.log('Seeding skills and dependencies...');
-  const skillsData = [
-    { name: 'Standing Line', description: 'Draw vertical lines', subjectName: 'Writing', difficulty: 1, estimatedAge: 3, isRootSkill: true },
-    { name: 'Sleeping Line', description: 'Draw horizontal lines', subjectName: 'Writing', difficulty: 1, estimatedAge: 3, isRootSkill: true },
-    { name: 'Left Slanting Line', description: 'Draw slanting lines', subjectName: 'Writing', difficulty: 2, estimatedAge: 4, isRootSkill: true },
-    { name: 'Right Slanting Line', description: 'Draw slanting lines', subjectName: 'Writing', difficulty: 2, estimatedAge: 4, isRootSkill: true },
-    { name: 'Curves', description: 'Trace smooth curves', subjectName: 'Writing', difficulty: 3, estimatedAge: 4, isRootSkill: false },
-    { name: 'Circle', description: 'Draw circle shape', subjectName: 'Cognitive', difficulty: 2, estimatedAge: 4, isRootSkill: false },
-    { name: 'Square', description: 'Draw square shape', subjectName: 'Cognitive', difficulty: 2, estimatedAge: 4, isRootSkill: false },
-    { name: 'Triangle', description: 'Draw triangle shape', subjectName: 'Cognitive', difficulty: 3, estimatedAge: 5, isRootSkill: false },
-    { name: 'Letter A', description: 'Recognize and write Letter A', subjectName: 'Language', difficulty: 3, estimatedAge: 5, isRootSkill: false },
-    { name: 'Letter B', description: 'Recognize and write Letter B', subjectName: 'Language', difficulty: 3, estimatedAge: 5, isRootSkill: true },
-    { name: 'Letter C', description: 'Recognize and write Letter C', subjectName: 'Language', difficulty: 3, estimatedAge: 5, isRootSkill: true },
-  ];
-
-  const skillMap: Record<string, any> = {};
-  for (const s of skillsData) {
-    const subject = subjectMap[s.subjectName];
-    const created = await prisma.skill.create({
-      data: {
-        name: s.name,
-        description: s.description,
-        difficulty: s.difficulty,
-        estimatedAge: s.estimatedAge,
-        isRootSkill: s.isRootSkill,
-        subjectId: subject.id,
-      },
-    });
-    skillMap[s.name] = created;
-  }
-
-  const dependencies = [
-    { parent: 'Standing Line', child: 'Curves', weight: 0.5 },
-    { parent: 'Sleeping Line', child: 'Curves', weight: 0.5 },
-    { parent: 'Curves', child: 'Circle', weight: 0.8 },
-    { parent: 'Left Slanting Line', child: 'Triangle', weight: 0.4 },
-    { parent: 'Right Slanting Line', child: 'Triangle', weight: 0.4 },
-    { parent: 'Sleeping Line', child: 'Triangle', weight: 0.2 },
-    { parent: 'Left Slanting Line', child: 'Letter A', weight: 0.4 },
-    { parent: 'Right Slanting Line', child: 'Letter A', weight: 0.4 },
-    { parent: 'Sleeping Line', child: 'Letter A', weight: 0.2 },
-  ];
-
-  for (const dep of dependencies) {
-    const parentSkill = skillMap[dep.parent];
-    const childSkill = skillMap[dep.child];
-    if (parentSkill && childSkill) {
-      await prisma.skillDependency.create({
-        data: {
-          parentSkillId: parentSkill.id,
-          childSkillId: childSkill.id,
-          weight: dep.weight,
-        },
-      });
-    }
-  }
-
-  // Seed stories
-  await prisma.story.deleteMany({});
+  // 10. Seed Stories
+  console.log('Seeding stories...');
   const stories = [
     { title: 'The Brave Little Seed', description: 'A story about a seed that learns to grow', category: 'FICTION', difficulty: 'EASY', readingLevel: 1, estimatedDuration: 3 },
     { title: 'Colors of the Rainbow', description: 'Learn about colors through a fun adventure', category: 'EDUCATIONAL', difficulty: 'EASY', readingLevel: 1, estimatedDuration: 4 },
@@ -712,11 +386,18 @@ async function main() {
     { title: 'Alphabet Adventure', description: 'Explore the alphabet from A to Z', category: 'EDUCATIONAL', difficulty: 'EASY', readingLevel: 1, estimatedDuration: 5 },
     { title: 'The Moonlight Garden', description: 'Magical garden adventures under the moonlight', category: 'FICTION', difficulty: 'MEDIUM', readingLevel: 2, estimatedDuration: 6 },
     { title: 'Weather Wonders', description: 'Learn about sunny, rainy, and snowy days', category: 'EDUCATIONAL', difficulty: 'MEDIUM', readingLevel: 2, estimatedDuration: 5 },
-    { title: 'The Flying Turtle', description: 'A turtle who dreams of flying', category: 'FICTION', difficulty: 'HARD', readingLevel: 3, estimatedDuration: 7 },
+    { title: 'The Flying Turtle', description: 'A turtle who dreams of flying', category: 'FICTION', difficulty: 'HARD', readingLevel: 3, preferredModality: 'STORY', readingTime: 7 },
   ];
 
   for (const storyData of stories) {
-    const story = await prisma.story.create({ data: storyData });
+    const story = await prisma.story.create({ data: {
+      title: storyData.title,
+      description: storyData.description,
+      category: storyData.category,
+      difficulty: storyData.difficulty,
+      readingLevel: storyData.readingLevel,
+      estimatedDuration: storyData.readingTime || 5
+    } });
 
     const pages = [];
     for (let i = 0; i < 3; i++) {
@@ -729,7 +410,7 @@ async function main() {
     await prisma.storyPage.createMany({ data: pages });
   }
 
-  console.log('Stories seeded.');
+  console.log('Stories seeded successfully.');
   console.log('Seeding complete.');
 }
 

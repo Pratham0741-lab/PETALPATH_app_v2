@@ -2,94 +2,97 @@ import { prisma } from '../../config/database.js';
 import { logger } from '../../utils/logger.js';
 
 export class RewardService {
-  async unlockSticker(childId: string, stickerId: string): Promise<void> {
-    const existing = await prisma.childSticker.findUnique({
+  async unlockSticker(childId: string, stickerId: string, tx?: any): Promise<void> {
+    const client = tx || prisma;
+    const existing = await client.childSticker.findUnique({
       where: {
         childId_stickerId: { childId, stickerId },
       },
     });
 
     if (!existing) {
-      await prisma.childSticker.create({
+      await client.childSticker.create({
         data: { childId, stickerId },
       });
-      const sticker = await prisma.sticker.findUnique({ where: { id: stickerId } });
+      const sticker = await client.sticker.findUnique({ where: { id: stickerId } });
       logger.info({ childId, stickerId: sticker?.id, stickerName: sticker?.name }, 'sticker unlocked');
     }
   }
 
-  async unlockBadge(childId: string, badgeId: string): Promise<void> {
-    const existing = await prisma.childBadge.findUnique({
+  async unlockBadge(childId: string, badgeId: string, tx?: any): Promise<void> {
+    const client = tx || prisma;
+    const existing = await client.childBadge.findUnique({
       where: {
         childId_badgeId: { childId, badgeId },
       },
     });
 
     if (!existing) {
-      await prisma.childBadge.create({
+      await client.childBadge.create({
         data: { childId, badgeId },
       });
-      const badge = await prisma.badge.findUnique({ where: { id: badgeId } });
+      const badge = await client.badge.findUnique({ where: { id: badgeId } });
       logger.info({ childId, badgeId: badge?.id, badgeName: badge?.name }, 'badge earned');
     }
   }
 
-  async refreshRewards(childId: string): Promise<void> {
+  async refreshRewards(childId: string, tx?: any): Promise<void> {
+    const client = tx || prisma;
     // 1. Fetch child stars record
-    const starsRecord = await prisma.stars.findUnique({
+    const starsRecord = await client.stars.findUnique({
       where: { childId },
     });
     const totalStars = starsRecord?.totalStars ?? 0;
 
     // 2. Fetch all stickers & unlock those qualifying
-    const stickers = await prisma.sticker.findMany();
-    const unlockedStickers = await prisma.childSticker.findMany({
+    const stickers = await client.sticker.findMany();
+    const unlockedStickers = await client.childSticker.findMany({
       where: { childId },
     });
-    const unlockedStickerIds = new Set(unlockedStickers.map((us) => us.stickerId));
+    const unlockedStickerIds = new Set(unlockedStickers.map((us: any) => us.stickerId));
 
     for (const sticker of stickers) {
       if (totalStars >= sticker.requiredStars && !unlockedStickerIds.has(sticker.id)) {
-        await this.unlockSticker(childId, sticker.id);
+        await this.unlockSticker(childId, sticker.id, client);
       }
     }
 
     // 3. Fetch all badges & earned badges
-    const badges = await prisma.badge.findMany();
-    const earnedBadges = await prisma.childBadge.findMany({
+    const badges = await client.badge.findMany();
+    const earnedBadges = await client.childBadge.findMany({
       where: { childId },
     });
-    const earnedBadgeIds = new Set(earnedBadges.map((eb) => eb.badgeId));
+    const earnedBadgeIds = new Set(earnedBadges.map((eb: any) => eb.badgeId));
 
     // 4. Calculate indicators for badge eligibility
-    const lessonProgresses = await prisma.lessonProgress.findMany({
+    const lessonProgresses = await client.lessonProgress.findMany({
       where: { childId, status: 'COMPLETED' },
     });
     const completedLessonsCount = lessonProgresses.length;
 
     // Check for perfect lesson (8/8 stars)
-    const hasPerfectLesson = lessonProgresses.some((lp) => lp.totalStars === 8);
+    const hasPerfectLesson = lessonProgresses.some((lp: any) => lp.totalStars === 8);
 
     // Speak progress averages
-    const speakProgress = await prisma.speakProgress.findMany({
+    const speakProgress = await client.speakProgress.findMany({
       where: { childId, attemptCount: { gt: 0 } },
     });
-    const speakScores = speakProgress.map((p) => p.averageScore);
-    const avgSpeakScore = speakScores.length > 0 ? (speakScores.reduce((a, b) => a + b, 0) / speakScores.length) : 0;
+    const speakScores = speakProgress.map((p: any) => p.averageScore);
+    const avgSpeakScore = speakScores.length > 0 ? (speakScores.reduce((a: any, b: any) => a + b, 0) / speakScores.length) : 0;
 
     // Write progress averages
-    const writeProgress = await prisma.writeProgress.findMany({
+    const writeProgress = await client.writeProgress.findMany({
       where: { childId, attemptCount: { gt: 0 } },
     });
-    const writeScores = writeProgress.map((p) => p.averageScore);
-    const avgWriteScore = writeScores.length > 0 ? (writeScores.reduce((a, b) => a + b, 0) / writeScores.length) : 0;
+    const writeScores = writeProgress.map((p: any) => p.averageScore);
+    const avgWriteScore = writeScores.length > 0 ? (writeScores.reduce((a: any, b: any) => a + b, 0) / writeScores.length) : 0;
 
     // Category completions
-    const categoryProgresses = await prisma.categoryProgress.findMany({
+    const categoryProgresses = await client.categoryProgress.findMany({
       where: { childId, isCompleted: true },
       include: { category: true },
     });
-    const completedCategoryTitles = new Set(categoryProgresses.map((cp) => cp.category.title));
+    const completedCategoryTitles = new Set(categoryProgresses.map((cp: any) => cp.category.title));
 
     // Evaluate each badge eligibility
     for (const badge of badges) {
@@ -125,7 +128,7 @@ export class RewardService {
       }
 
       if (isEligible) {
-        await this.unlockBadge(childId, badge.id);
+        await this.unlockBadge(childId, badge.id, client);
       }
     }
   }

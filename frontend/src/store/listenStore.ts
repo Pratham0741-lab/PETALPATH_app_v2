@@ -1,7 +1,7 @@
-﻿import { create } from 'zustand';
+import { create } from 'zustand';
 import { api } from '../api/client';
 import { useRoadmapStore } from './roadmapStore';
-import type { Category, Module, Lesson } from './roadmapStore';
+import { getLessonMatchData } from '../utils/lessonActivityMatcher';
 
 export interface AudioItem {
   id: string;
@@ -30,117 +30,36 @@ interface ListenState {
   clearState: () => void;
 }
 
-// Helper to generate multiple-choice options locally based on activity title and Roadmap tree
-function generateOptionsForActivity(activityId: string, title: string): { options: string[]; correct: string } {
-  let targetCategory: Category | null = null;
-  let targetModule: Module | null = null;
-  let targetLesson: Lesson | null = null;
+// Helper to generate multiple-choice options locally based on activity and lesson matching logic
+function generateOptionsForActivity(lessonTitle: string, activityTitle: string): { options: string[]; correct: string } {
+  const match = getLessonMatchData(lessonTitle, activityTitle);
+  const correct = match.correctAnswer;
 
-  try {
-    const categories = useRoadmapStore.getState().categories;
-    if (categories && categories.length > 0) {
-      for (const cat of categories) {
-        for (const mod of cat.modules) {
-          for (const les of mod.lessons) {
-            if (les.activities && les.activities.some(act => act.id === activityId)) {
-              targetCategory = cat;
-              targetModule = mod;
-              targetLesson = les;
-              break;
-            }
-          }
-          if (targetLesson) break;
-        }
-        if (targetLesson) break;
-      }
-    }
-  } catch (e) {
-    if (typeof __DEV__ !== 'undefined' && __DEV__) console.error('Error fetching curriculum context for listening options:', e);
-  }
-
-  if (targetLesson && targetModule) {
-    // 1. Collect all lesson titles from the same module
-    let optionCandidates = targetModule.lessons.map((l: Lesson) => l.title);
-    optionCandidates = Array.from(new Set(optionCandidates));
-
-    // 2. If fewer than 3, fill from parent category
-    if (optionCandidates.length < 3 && targetCategory) {
-      for (const mod of targetCategory.modules) {
-        for (const les of mod.lessons) {
-          if (!optionCandidates.includes(les.title)) {
-            optionCandidates.push(les.title);
-          }
-          if (optionCandidates.length >= 3) break;
-        }
-        if (optionCandidates.length >= 3) break;
-      }
-    }
-
-    // 3. Fallback backfill pool if still less than 3
-    const fallbackPool = [
-      'Standing Line', 'Sleeping Line', 'Left Curve', 'Right Curve',
-      'Circle', 'Square', 'Triangle', 'Letter A', 'Letter B', 'Letter C',
-      'Number 1', 'Number 2', 'Number 3'
-    ];
-    if (optionCandidates.length < 3) {
-      for (const fb of fallbackPool) {
-        if (!optionCandidates.includes(fb)) {
-          optionCandidates.push(fb);
-        }
-        if (optionCandidates.length >= 3) break;
-      }
-    }
-
-    const correct = targetLesson.title;
-    
-    // Filter out the correct answer so we can select 2 other random options
-    const otherCandidates = optionCandidates.filter((opt: string) => opt !== correct);
-    const selectedOthers = otherCandidates.sort(() => Math.random() - 0.5).slice(0, 2);
-
-    // Shuffle the final 3 options
-    const finalOptions = [correct, ...selectedOthers].sort(() => Math.random() - 0.5);
-
-    return {
-      options: finalOptions,
-      correct,
-    };
-  }
-
-  // Fallback if not found in roadmap store
-  let cleanName = title
-    .replace('Listen to ', '')
-    .replace('Say ', '')
-    .replace('Trace ', '')
-    .replace('Watch ', '')
-    .replace(' Tutorial', '')
-    .replace(' Audio Guide', '')
-    .trim();
-
-  let options = [cleanName];
-  if (cleanName.includes('Standing Line')) {
-    options = ['Standing Line', 'Sleeping Line', 'Left Curve'];
-  } else if (cleanName.includes('Sleeping Line')) {
-    options = ['Sleeping Line', 'Standing Line', 'Circle'];
-  } else if (cleanName.includes('Left Curve')) {
-    options = ['Left Curve', 'Circle', 'Standing Line'];
-  } else if (cleanName.includes('Circle')) {
-    options = ['Circle', 'Letter A', 'Sleeping Line'];
-  } else if (cleanName.includes('Letter A')) {
-    options = ['Letter A', 'Letter B', 'Letter C'];
-  } else if (cleanName.includes('Number 1')) {
-    options = ['Number 1', 'Number 2', 'Number 3'];
+  let options: string[] = [correct];
+  
+  if (correct.startsWith('Letter ')) {
+    const activeLetter = correct.replace('Letter ', '').toUpperCase();
+    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const otherLetters = alphabet.split('').filter((l) => l !== activeLetter);
+    const selected = otherLetters.sort(() => Math.random() - 0.5).slice(0, 2);
+    options = [correct, `Letter ${selected[0]}`, `Letter ${selected[1]}`];
+  } else if (correct.startsWith('Number ')) {
+    const activeNum = parseInt(correct.replace('Number ', ''), 10) || 1;
+    const candidates = Array.from({ length: 10 }, (_, i) => i + 1).filter((n) => n !== activeNum);
+    const selected = candidates.sort(() => Math.random() - 0.5).slice(0, 2);
+    options = [correct, `Number ${selected[0]}`, `Number ${selected[1]}`];
   } else {
-    options = [cleanName, 'Option B', 'Option C'];
+    const shapes = ['Standing Line', 'Sleeping Line', 'Left Curve', 'Right Curve', 'Circle', 'Square', 'Triangle'];
+    const filtered = shapes.filter((s) => s.toLowerCase() !== correct.toLowerCase());
+    const selected = filtered.sort(() => Math.random() - 0.5).slice(0, 2);
+    options = [correct, selected[0], selected[1]];
   }
 
-  const finalOptions = Array.from(new Set(options)).sort(() => Math.random() - 0.5);
-  while (finalOptions.length < 3) {
-    finalOptions.push('Option ' + (finalOptions.length + 1));
-  }
-
+  // Shuffle options
+  const shuffled = options.sort(() => Math.random() - 0.5);
   return {
-    options: finalOptions.slice(0, 3),
-    correct: cleanName,
+    options: shuffled,
+    correct,
   };
 }
 
@@ -162,30 +81,24 @@ export const useListenStore = create<ListenState>((set, get) => {
         const audioRes = await api.get(`/audio?activityId=${activityId}`);
         let audios = audioRes.data || [];
         let isComingSoon = false;
+        let audio;
 
         if (audios.length === 0 || (audios.length > 0 && audios[0].filename === 'coming_soon')) {
-          // If target audio is not available, load a random audio from the system as fallback
-          try {
-            const allAudiosRes = await api.get('/audio');
-            const allAudios = allAudiosRes.data || [];
-            // Filter out any audio files that are marked 'coming_soon'
-            const validAudios = allAudios.filter((a: any) => a.filename !== 'coming_soon');
-            if (validAudios.length > 0) {
-              const randomIndex = Math.floor(Math.random() * validAudios.length);
-              audios = [validAudios[randomIndex]];
-              isComingSoon = true;
-            } else {
-              throw new Error('No audio metadata found for this activity');
-            }
-          } catch (e) {
-            throw new Error('No audio metadata found for this activity');
-          }
+          audio = {
+            id: 'placeholder-audio-id',
+            activityId,
+            title: activityTitle || 'Audio Guide',
+            audioUrl: 'coming_soon',
+            filename: 'coming_soon',
+            duration: 10,
+          };
+          isComingSoon = true;
+        } else {
+          audio = {
+            ...audios[0],
+            activityId,
+          };
         }
-
-        const audio = {
-          ...audios[0],
-          activityId,
-        };
         
         // Fetch progress from backend
         let isCompleted = false;
@@ -198,7 +111,8 @@ export const useListenStore = create<ListenState>((set, get) => {
           if (typeof __DEV__ !== 'undefined' && __DEV__) console.warn('Failed to load listen progress:', err);
         }
 
-        const { options, correct } = generateOptionsForActivity(activityId, activityTitle);
+        const lessonTitle = useRoadmapStore.getState().selectedLesson?.title || '';
+        const { options, correct } = generateOptionsForActivity(lessonTitle, activityTitle);
 
         set({
           currentAudio: audio,
@@ -207,8 +121,8 @@ export const useListenStore = create<ListenState>((set, get) => {
           correctAnswer: correct,
           isComingSoon,
         });
-    } catch (err: unknown) {
-            set({ error: err instanceof Error ? err.message : 'Failed to load audio' });
+      } catch (err: unknown) {
+        set({ error: err instanceof Error ? err.message : 'Failed to load audio' });
       } finally {
         set({ loading: false });
       }

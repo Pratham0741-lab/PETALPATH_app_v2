@@ -17,6 +17,7 @@ export const ScreenContainer: React.FC<ScreenContainerProps> = ({ children, styl
     >
       <View
         onTouchStart={() => useTutorialStore.getState().recordInteraction()}
+        style={{ flex: 1 }}
       >
         {children}
       </View>

@@ -265,6 +265,90 @@ export class AnalyticsController {
       next(error);
     }
   }
+
+  async getLearnerAnalytics(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const parsed = z.object({ childId: z.string().uuid() }).safeParse(req.params);
+      if (!parsed.success) {
+        throw new ValidationError('Invalid childId parameter', parsed.error.format());
+      }
+      const data = await analyticsService.getLearnerAnalytics(parsed.data.childId);
+      return res.status(200).json({ success: true, data });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getLearnerTrends(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const parsed = z.object({ childId: z.string().uuid() }).safeParse(req.params);
+      if (!parsed.success) {
+        throw new ValidationError('Invalid childId parameter', parsed.error.format());
+      }
+      const data = await analyticsService.getLearnerTrends(parsed.data.childId);
+      return res.status(200).json({ success: true, data });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getClassroomAnalytics(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const parsed = z.object({ classroomId: z.string().uuid() }).safeParse(req.params);
+      if (!parsed.success) {
+        throw new ValidationError('Invalid classroomId parameter', parsed.error.format());
+      }
+      const data = await analyticsService.getClassroomAnalytics(parsed.data.classroomId);
+      return res.status(200).json({ success: true, data });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getClassroomTrends(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const parsed = z.object({ classroomId: z.string().uuid() }).safeParse(req.params);
+      if (!parsed.success) {
+        throw new ValidationError('Invalid classroomId parameter', parsed.error.format());
+      }
+      const data = await analyticsService.getClassroomTrends(parsed.data.classroomId);
+      return res.status(200).json({ success: true, data });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getCurriculumAnalytics(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const parsed = z.object({ gradeId: z.string() }).safeParse(req.params);
+      if (!parsed.success) {
+        throw new ValidationError('Invalid gradeId parameter', parsed.error.format());
+      }
+      const teacherUserId = req.user?.role === 'TEACHER' || req.user?.role === 'MENTOR'
+        ? req.user.userId
+        : undefined;
+      const data = await analyticsService.getCurriculumAnalytics(parsed.data.gradeId, teacherUserId);
+      return res.status(200).json({ success: true, data });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async getAssessmentAnalytics(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const parsed = z.object({ assessmentId: z.string() }).safeParse(req.params);
+      if (!parsed.success) {
+        throw new ValidationError('Invalid assessmentId parameter', parsed.error.format());
+      }
+      const teacherUserId = req.user?.role === 'TEACHER' || req.user?.role === 'MENTOR'
+        ? req.user.userId
+        : undefined;
+      const data = await analyticsService.getAssessmentAnalytics(parsed.data.assessmentId, teacherUserId);
+      return res.status(200).json({ success: true, data });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export const analyticsController = new AnalyticsController();

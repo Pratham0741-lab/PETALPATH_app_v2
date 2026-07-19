@@ -15,11 +15,11 @@ import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { Skeleton } from '../../components/ui/Skeleton';
 import { useChildStore, type Child } from '../../store/childStore';
+import { useChildSwitch } from '../../hooks/useChildSwitch';
 import { useDeviceType } from '../../hooks/useDeviceType';
-import { useApiQuery, useApiMutation } from '../../hooks/useReactQuery';
+import { useApiQuery } from '../../hooks/useReactQuery';
 import { queryKeys } from '../../utils/queryKeys';
 import { apiClient } from '../../services/api/apiClient';
-import { storageService, StorageKeys } from '../../services/storage';
 import { colors, spacing, typography, radius, shadows } from '../../theme';
 import type { ApiResponse } from '../../types/api';
 import { customAlert } from '../../utils/alert';
@@ -46,7 +46,8 @@ export const getAvatarBgColor = (avatarId: string): string => {
 export const ChildSelectionScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const deviceType = useDeviceType();
-  const { activeChild, setActiveChild, removeChild, refreshChildren } = useChildStore();
+  const { activeChild, removeChild, refreshChildren } = useChildStore();
+  const { switchChild } = useChildSwitch();
   const [selectedChildId, setSelectedChildId] = useState<string | null>(null);
   const [switchAnim] = useState(() => new Animated.Value(1));
 
@@ -68,13 +69,6 @@ export const ChildSelectionScreen: React.FC = () => {
     }
   }, [childrenList, selectedChildId]);
 
-  const selectChildMutation = useApiMutation(
-    async (child: Child) => {
-      const response = await apiClient.post<ApiResponse<{ accessToken: string }>>('/auth/select-child', { childId: child.id });
-      return response;
-    },
-  );
-
   const handleSelectChild = useCallback(async (child: Child) => {
     Animated.sequence([
       Animated.timing(switchAnim, { toValue: 0.95, duration: 100, useNativeDriver: true }),
@@ -82,12 +76,10 @@ export const ChildSelectionScreen: React.FC = () => {
     ]).start();
 
     try {
-      await selectChildMutation.mutateAsync(child);
+      await switchChild(child.id);
     } catch {
-      // selection API failure is non-blocking
+      // selection failure is non-blocking — child is still set locally
     }
-    await setActiveChild(child);
-    await storageService.setItem(StorageKeys.ACTIVE_CHILD, child);
 
     customAlert('Active Child Set', `Welcome back, ${child.name}!`, [
       {
@@ -101,7 +93,7 @@ export const ChildSelectionScreen: React.FC = () => {
         },
       },
     ]);
-  }, [deviceType, navigation, selectChildMutation, setActiveChild, switchAnim]);
+  }, [deviceType, navigation, switchChild, switchAnim]);
 
   const handleDeleteChild = useCallback((id: string, name: string) => {
     customAlert(

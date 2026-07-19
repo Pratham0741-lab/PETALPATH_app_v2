@@ -37,16 +37,15 @@ export class PlacementRepository {
   }
 
   async findAttemptById(attemptId: string) {
-    return prisma.assessmentAttempt.findUnique({
+    const attempt = await prisma.assessmentAttempt.findUnique({
       where: { id: attemptId },
-      include: {
-        assessment: {
-          include: {
-            questions: { orderBy: { order: 'asc' } },
-          },
-        },
-      },
     });
+    if (!attempt) return null;
+    const assessment = await this.findAssessmentById(attempt.assessmentId);
+    return {
+      ...attempt,
+      assessment,
+    };
   }
 
   async completeAttempt(

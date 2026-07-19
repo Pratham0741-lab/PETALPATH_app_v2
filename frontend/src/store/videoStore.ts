@@ -20,7 +20,7 @@ interface VideoState {
   loading: boolean;
   error: string | null;
 
-  loadVideo: (activityId: string) => Promise<void>;
+  loadVideo: (activityId: string, activityTitle?: string) => Promise<void>;
   savePosition: (position: number) => Promise<void>;
   resumeVideo: () => void;
   pauseVideo: () => void;
@@ -40,16 +40,25 @@ export const useVideoStore = create<VideoState>((set, get) => {
     loading: false,
     error: null,
 
-    loadVideo: async (activityId) => {
+    loadVideo: async (activityId, activityTitle) => {
       set({ loading: true, error: null, isPlaying: false });
       try {
         const videoRes = await api.get(`/videos?activityId=${activityId}`);
         const videos = videoRes.data || [];
+        let video;
         if (videos.length === 0) {
-          throw new Error('No video found for this activity');
+          video = {
+            id: 'placeholder-video-id',
+            activityId,
+            title: activityTitle || 'Video Lesson',
+            videoUrl: 'coming_soon',
+            filename: 'coming_soon',
+            thumbnailUrl: null,
+            duration: 10,
+          };
+        } else {
+          video = videos[0];
         }
-
-        const video = videos[0];
         
         // Fetch progress from backend
         let watchPosition = 0;

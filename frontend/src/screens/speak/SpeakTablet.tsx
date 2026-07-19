@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { StyleSheet, View, Text, Pressable, ActivityIndicator } from 'react-native';
 import { ScreenContainer } from '../../components/common/ScreenContainer';
 import { TopBar } from '../../components/navigation/TopBar';
@@ -12,6 +12,65 @@ import { useChildStore } from '../../store/childStore';
 import { enhanceMentor, MENTORS } from '../../constants/mentors';
 import { AvatarCard } from '../../components/cards/AvatarCard';
 import { NavigationGuide } from '../../components/tutorial/NavigationGuide';
+import { Card, Button } from '../../components/ui';
+
+const SpeakComingSoonTablet: React.FC<{
+  activityId: string;
+  activityTitle: string;
+  navigation: any;
+}> = ({ activityId, activityTitle, navigation }) => {
+  const { completeActivity } = useSpeakStore();
+  const [isCompleting, setIsCompleting] = useState(false);
+
+  const handleProceed = async () => {
+    setIsCompleting(true);
+    try {
+      await completeActivity(100);
+      const next = getNextActivity(activityId);
+      if (next) {
+        await navigateToActivity(navigation, next);
+        return;
+      }
+      navigation.navigate('LessonOverview');
+    } catch (err) {
+      if (__DEV__) console.warn('Failed to complete and proceed:', err);
+      navigation.navigate('LessonOverview');
+    } finally {
+      setIsCompleting(false);
+    }
+  };
+
+  return (
+    <ScreenContainer style={styles.container}>
+      <TopBar title={activityTitle || 'Speak Activity'} showBack />
+
+      {/* Main Coming Soon Area */}
+      <View style={styles.comingSoonPanel}>
+        <Card style={styles.comingSoonCard}>
+          <Ionicons name="mic-outline" size={72} color={colors.yellow} style={styles.comingSoonIcon} />
+          <Text style={[styles.comingSoonTitle, { fontFamily: typography.families.rounded }]}>Speech Activity Coming Soon! 🌟</Text>
+          <Text style={[styles.comingSoonSubtitle, { fontFamily: typography.families.rounded }]}>
+            Our team is preparing a magical voice-recording practice for this lesson.
+          </Text>
+          <Text style={[styles.comingSoonDetails, { fontFamily: typography.families.rounded }]}>
+            You don't have to wait! Tap the button below to proceed to the next activity.
+          </Text>
+        </Card>
+      </View>
+
+      {/* Bottom Area */}
+      <View style={styles.bottomPanel}>
+        <Button
+          label="Proceed to Next Activity"
+          variant="primary"
+          onPress={handleProceed}
+          disabled={isCompleting}
+          style={styles.proceedBtn}
+        />
+      </View>
+    </ScreenContainer>
+  );
+};
 
 export const SpeakTablet: React.FC = () => {
   const navigation = useNavigation<any>();
@@ -33,6 +92,7 @@ export const SpeakTablet: React.FC = () => {
     retry,
     completeActivity,
     lives,
+    isComingSoon,
   } = useSpeakStore();
 
   const [recognizer, setRecognizer] = useState<UniversalSpeechRecognizer | null>(null);
@@ -93,7 +153,7 @@ export const SpeakTablet: React.FC = () => {
           setLocalRecording(false);
           const success = await stopRecording(res.transcript, res.confidence);
           if (!success) {
-            setErrorMessage("That's not quite right, let's try again! ðŸŒ¸");
+            setErrorMessage("That's not quite right, let's try again! 🌸");
             retry();
           }
         },
@@ -147,6 +207,14 @@ export const SpeakTablet: React.FC = () => {
     );
   }
 
+  if (isComingSoon) {
+    return (
+      <View style={{ flex: 1 }}>
+        <SpeakComingSoonTablet activityId={activityId || 'placeholder-id'} activityTitle="Speak & Learn" navigation={navigation} />
+      </View>
+    );
+  }
+
   if (error || !activityId) {
     return (
       <View style={[styles.container, styles.center]}>
@@ -175,7 +243,7 @@ export const SpeakTablet: React.FC = () => {
           <View style={styles.stepDot}><Text style={styles.stepNum}>4</Text></View>
         </View>
         <View style={styles.heartIndicator}>
-          <Text style={styles.heartText}>ðŸ’– {lives} Lives</Text>
+          <Text style={styles.heartText}>💖 {lives} Lives</Text>
         </View>
       </View>
 
@@ -185,7 +253,7 @@ export const SpeakTablet: React.FC = () => {
           {/* Practice Phrase Display */}
           <View style={styles.phraseCard}>
             <View style={styles.mascotBadge}>
-              <Text style={styles.mascotEmoji}>ðŸ¦‰</Text>
+              <Text style={styles.mascotEmoji}>🦉</Text>
             </View>
             <Text style={[styles.speakLabel, { fontFamily: typography.families.rounded }]}>Say out loud:</Text>
             <Text style={[styles.targetPhraseText, { fontFamily: typography.families.rounded }]}>"{targetPhrase}"</Text>
@@ -303,7 +371,7 @@ export const SpeakTablet: React.FC = () => {
           <AvatarCard mentor={activeMentor} style={styles.mentorCard} />
           <View style={styles.mentorBubble}>
             <Text style={[styles.tipsText, { fontFamily: typography.families.rounded }]}>
-              "Hi {activeChild?.name}! Click the mic and read the phrase aloud so I can listen! I know you can do it! ðŸŒ¸"
+              "Hi {activeChild?.name}! Click the mic and read the phrase aloud so I can listen! I know you can do it! 🌸"
             </Text>
           </View>
         </View>
@@ -668,6 +736,52 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     fontSize: typography.sizes.small,
     lineHeight: 18,
+  },
+  comingSoonPanel: {
+    flex: 0.6,
+    backgroundColor: colors.background,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.md,
+  },
+  comingSoonCard: {
+    alignItems: 'center',
+    width: '90%',
+    maxWidth: 450,
+  },
+  comingSoonIcon: {
+    marginBottom: spacing.md,
+  },
+  comingSoonTitle: {
+    fontSize: typography.sizes.body,
+    fontWeight: typography.weights.black,
+    color: colors.textPrimary,
+    textAlign: 'center',
+    marginBottom: spacing.xs,
+  },
+  comingSoonSubtitle: {
+    fontSize: typography.sizes.small,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: spacing.md,
+    lineHeight: 18,
+  },
+  comingSoonDetails: {
+    fontSize: typography.sizes.caption,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 16,
+    opacity: 0.8,
+  },
+  proceedBtn: {
+    width: '100%',
+    maxWidth: 300,
+    height: 50,
+  },
+  bottomPanel: {
+    padding: spacing.lg,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
 export default SpeakTablet;

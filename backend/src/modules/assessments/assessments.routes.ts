@@ -9,6 +9,7 @@ router.use(authMiddleware as any);
 
 // Assessment catalog (any authenticated parent)
 router.get('/', assessmentsController.listAssessments as any);
+router.get('/lesson/:lessonId', assessmentsController.getLessonAssessment as any);
 router.get('/:id', assessmentsController.getAssessment as any);
 router.post('/', assessmentsController.createAssessment as any);
 

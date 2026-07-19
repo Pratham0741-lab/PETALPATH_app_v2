@@ -4,7 +4,9 @@ import { starService } from '../stars/star.service.js';
 import { moduleProgressService } from './module-progress.service.js';
 import { categoryProgressService } from './category-progress.service.js';
 import { rewardService } from '../rewards/rewards.service.js';
+import { curriculumService, curriculumEngineService } from '../curriculum/index.js';
 import { Prisma } from '@prisma/client';
+import { NotFoundError } from '../../utils/errors.js';
 
 export class ProgressService {
   async getAllProgress() {
@@ -31,169 +33,295 @@ export class ProgressService {
     return progressRepository.update(id, data);
   }
 
-  async updateActivityCompletion(childId: string, lessonId: string, activityType: string, stars: number = 0) {
-    let progress = await progressRepository.findByChildAndLesson(childId, lessonId);
-
-    if (!progress) {
-      progress = await progressRepository.create({
-        childId,
-        lessonId,
-        status: 'IN_PROGRESS' as any,
+  async updateActivityCompletion(
+    childId: string,
+    lessonId: string,
+    activityType: string,
+    stars: number = 0,
+    tx?: any
+  ) {
+    const executeUpdate = async (client: any) => {
+      let progress = await client.lessonProgress.findUnique({
+        where: {
+          childId_lessonId: { childId, lessonId },
+        },
       });
-    }
 
-    interface ProgressUpdatePayload {
-      status?: 'IN_PROGRESS' | 'COMPLETED';
-      completedAt?: Date | null;
-      videoCompleted?: boolean;
-      videoStars?: number;
-      listenCompleted?: boolean;
-      listenStars?: number;
-      speakCompleted?: boolean;
-      speakStars?: number;
-      writeCompleted?: boolean;
-      writeStars?: number;
-      totalStars?: number;
-    }
-
-    const updateData: ProgressUpdatePayload = {};
-    if (activityType === 'video') {
-      updateData.videoCompleted = true;
-      updateData.videoStars = stars;
-    } else if (activityType === 'listen') {
-      updateData.listenCompleted = true;
-      updateData.listenStars = stars;
-    } else if (activityType === 'speak') {
-      updateData.speakCompleted = true;
-      updateData.speakStars = stars;
-    } else if (activityType === 'write') {
-      updateData.writeCompleted = true;
-      updateData.writeStars = stars;
-    }
-
-    const lessonActivities = await prisma.activity.findMany({
-      where: { lessonId, deletedAt: null },
-    });
-
-    const hasVideo = lessonActivities.some((a) => a.activityType === 'video');
-    const hasListen = lessonActivities.some((a) => a.activityType === 'listen');
-    const hasSpeak = lessonActivities.some((a) => a.activityType === 'speak');
-    const hasWrite = lessonActivities.some((a) => a.activityType === 'write');
-
-    const isVideoDone = hasVideo ? (updateData.videoCompleted ?? progress.videoCompleted) : true;
-    const isListenDone = hasListen ? (updateData.listenCompleted ?? progress.listenCompleted) : true;
-    const isSpeakDone = hasSpeak ? (updateData.speakCompleted ?? progress.speakCompleted) : true;
-    const isWriteDone = hasWrite ? (updateData.writeCompleted ?? progress.writeCompleted) : true;
-
-    const currentVideoStars = updateData.videoStars ?? progress.videoStars;
-    const currentListenStars = updateData.listenStars ?? progress.listenStars;
-    const currentSpeakStars = updateData.speakStars ?? progress.speakStars;
-    const currentWriteStars = updateData.writeStars ?? progress.writeStars;
-
-    updateData.totalStars = currentVideoStars + currentListenStars + currentSpeakStars + currentWriteStars;
-
-    let becameCompleted = false;
-    if (isVideoDone && isListenDone && isSpeakDone && isWriteDone) {
-      if (progress.status !== 'COMPLETED') {
-        becameCompleted = true;
+      if (!progress) {
+        progress = await client.lessonProgress.create({
+          data: {
+            childId,
+            lessonId,
+            status: 'IN_PROGRESS',
+          },
+        });
       }
-      updateData.status = 'COMPLETED';
-      updateData.completedAt = progress.completedAt ?? new Date();
-    } else {
-      updateData.status = 'IN_PROGRESS';
-    }
 
-    await prisma.lessonProgress.update({
-      where: { id: progress.id },
-      data: updateData as any,
-    });
+      interface ProgressUpdatePayload {
+        status?: 'IN_PROGRESS' | 'COMPLETED';
+        completedAt?: Date | null;
+        videoCompleted?: boolean;
+        videoStars?: number;
+        listenCompleted?: boolean;
+        listenStars?: number;
+        speakCompleted?: boolean;
+        speakStars?: number;
+        writeCompleted?: boolean;
+        writeStars?: number;
+        totalStars?: number;
+      }
 
-    await starService.updateTotalStars(childId);
+      const updateData: ProgressUpdatePayload = {};
+      if (activityType === 'video') {
+        updateData.videoCompleted = true;
+        updateData.videoStars = stars;
+      } else if (activityType === 'listen') {
+        updateData.listenCompleted = true;
+        updateData.listenStars = stars;
+      } else if (activityType === 'speak') {
+        updateData.speakCompleted = true;
+        updateData.speakStars = stars;
+      } else if (activityType === 'write') {
+        updateData.writeCompleted = true;
+        updateData.writeStars = stars;
+      }
 
-    if (becameCompleted) {
-      const lesson = await prisma.lesson.findUnique({
-        where: { id: lessonId },
-        include: { module: true },
+      const lessonNode = curriculumService.getLessonById(lessonId);
+      if (!lessonNode) {
+        throw new NotFoundError('Lesson not found in curriculum');
+      }
+
+      const currentVideoStars = updateData.videoStars ?? progress.videoStars;
+      const currentListenStars = updateData.listenStars ?? progress.listenStars;
+      const currentSpeakStars = updateData.speakStars ?? progress.speakStars;
+      const currentWriteStars = updateData.writeStars ?? progress.writeStars;
+
+      updateData.totalStars = currentVideoStars + currentListenStars + currentSpeakStars + currentWriteStars;
+
+      const mergedProgress = {
+        videoCompleted: updateData.videoCompleted ?? progress.videoCompleted,
+        listenCompleted: updateData.listenCompleted ?? progress.listenCompleted,
+        speakCompleted: updateData.speakCompleted ?? progress.speakCompleted,
+        writeCompleted: updateData.writeCompleted ?? progress.writeCompleted,
+      };
+
+      const knowledgeState = await client.knowledgeState.findFirst({
+        where: { childId, topicId: lessonId },
       });
-      if (lesson) {
-        const moduleCompleted = await moduleProgressService.completeModule(childId, lesson.moduleId);
-        if (moduleCompleted) {
-          await categoryProgressService.completeCategory(childId, lesson.module.categoryId);
+
+      const isEligibleForCompletion = curriculumEngineService.canCompleteLesson(
+        lessonNode,
+        mergedProgress,
+        knowledgeState || undefined
+      );
+
+      let becameCompleted = false;
+      if (isEligibleForCompletion) {
+        if (progress.status !== 'COMPLETED') {
+          becameCompleted = true;
         }
+        updateData.status = 'COMPLETED';
+        updateData.completedAt = progress.completedAt ?? new Date();
+      } else {
+        updateData.status = 'IN_PROGRESS';
       }
-    }
 
-    await rewardService.refreshRewards(childId);
+      await client.lessonProgress.update({
+        where: { id: progress.id },
+        data: updateData as any,
+      });
+
+      await starService.updateTotalStars(childId, client);
+
+      if (becameCompleted) {
+        // Idempotently apply reward points from curriculum metadata
+        if (lessonNode.reward) {
+          const rewardTitle = `Lesson Completed: ${lessonNode.id}`;
+          const existingReward = await client.reward.findFirst({
+            where: { childId, title: rewardTitle },
+          });
+          if (!existingReward) {
+            await client.reward.create({
+              data: {
+                childId,
+                title: rewardTitle,
+                description: `Completed "${lessonNode.title}". Earned ${lessonNode.reward.xp} XP and ${lessonNode.reward.coins} coins.`,
+                points: lessonNode.reward.xp,
+              },
+            });
+          }
+        }
+
+        const lesson = await client.lesson.findUnique({
+          where: { id: lessonId },
+          include: { module: true },
+        });
+        if (lesson) {
+          const moduleCompleted = await moduleProgressService.completeModule(childId, lesson.moduleId, client);
+          if (moduleCompleted) {
+            await categoryProgressService.completeCategory(childId, lesson.module.categoryId, client);
+          }
+        }
+        await this.checkAndTriggerGradeProgression(childId, lessonId, client);
+      }
+
+      await rewardService.refreshRewards(childId, client);
+    };
+
+    if (tx) {
+      await executeUpdate(tx);
+    } else {
+      await prisma.$transaction(async (t) => {
+        await executeUpdate(t);
+      });
+    }
   }
 
-  async forceCompleteLesson(childId: string, lessonId: string) {
-    let progress = await progressRepository.findByChildAndLesson(childId, lessonId);
+  /**
+   * Admin/Testing/Recovery method to complete a lesson.
+   * Bypasses standard interactive learner flows.
+   */
+  async forceCompleteLesson(childId: string, lessonId: string, tx?: any) {
+    const executeForce = async (client: any) => {
+      const lessonNode = curriculumService.getLessonById(lessonId);
+      if (!lessonNode) {
+        throw new NotFoundError('Lesson not found in curriculum');
+      }
 
-    const speakStars = progress && progress.speakStars > 0 ? progress.speakStars : 3;
-    const writeStars = progress && progress.writeStars > 0 ? progress.writeStars : 3;
-    const videoStars = 1;
-    const listenStars = 1;
-    const totalStars = videoStars + listenStars + speakStars + writeStars;
-
-    let becameCompleted = false;
-    if (!progress || progress.status !== 'COMPLETED') {
-      becameCompleted = true;
-    }
-
-    const updateData = {
-      status: 'COMPLETED',
-      videoCompleted: true,
-      listenCompleted: true,
-      speakCompleted: true,
-      writeCompleted: true,
-      videoStars,
-      listenStars,
-      speakStars,
-      writeStars,
-      totalStars,
-      completedAt: progress?.completedAt ?? new Date(),
-    };
-
-    let updatedProgress;
-    if (!progress) {
-      updatedProgress = await progressRepository.create({
-        childId,
-        lessonId,
-        ...updateData,
+      let progress = await client.lessonProgress.findUnique({
+        where: {
+          childId_lessonId: { childId, lessonId },
+        },
       });
-    } else {
-      await progressRepository.update(progress.id, updateData);
-      updatedProgress = await progressRepository.findById(progress.id);
-    }
 
-    const newTotalStars = await starService.updateTotalStars(childId);
+      const videoStars = progress?.videoStars && progress.videoStars > 0
+        ? progress.videoStars
+        : curriculumEngineService.getActivityDefaultStars('video');
+      const listenStars = progress?.listenStars && progress.listenStars > 0
+        ? progress.listenStars
+        : curriculumEngineService.getActivityDefaultStars('listen');
+      const speakStars = progress?.speakStars && progress.speakStars > 0
+        ? progress.speakStars
+        : curriculumEngineService.getActivityDefaultStars('speak');
+      const writeStars = progress?.writeStars && progress.writeStars > 0
+        ? progress.writeStars
+        : curriculumEngineService.getActivityDefaultStars('write');
+      const totalStars = videoStars + listenStars + speakStars + writeStars;
 
-    let moduleCompleted = false;
-    let categoryCompleted = false;
+      let becameCompleted = false;
+      if (!progress || progress.status !== 'COMPLETED') {
+        becameCompleted = true;
+      }
 
-    if (becameCompleted) {
-      const lesson = await prisma.lesson.findUnique({
-        where: { id: lessonId },
-        include: { module: true },
-      });
-      if (lesson) {
-        moduleCompleted = await moduleProgressService.completeModule(childId, lesson.moduleId);
-        if (moduleCompleted) {
-          categoryCompleted = await categoryProgressService.completeCategory(childId, lesson.module.categoryId);
+      // Upsert a KnowledgeState setting mastery to node.mastery.required_score if defined
+      if (lessonNode.mastery) {
+        const existingKS = await client.knowledgeState.findFirst({
+          where: { childId, topicId: lessonId },
+        });
+        if (existingKS) {
+          await client.knowledgeState.update({
+            where: { id: existingKS.id },
+            data: { mastery: Math.max(existingKS.mastery, lessonNode.mastery.required_score) },
+          });
+        } else {
+          await client.knowledgeState.create({
+            data: {
+              childId,
+              topicId: lessonId,
+              mastery: lessonNode.mastery.required_score,
+              confidence: 1.0,
+              lastTransitionAt: new Date(),
+            },
+          });
         }
       }
-    }
 
-    await rewardService.refreshRewards(childId);
+      const updateData = {
+        status: 'COMPLETED',
+        videoCompleted: true,
+        listenCompleted: true,
+        speakCompleted: true,
+        writeCompleted: true,
+        videoStars,
+        listenStars,
+        speakStars,
+        writeStars,
+        totalStars,
+        completedAt: progress?.completedAt ?? new Date(),
+      };
 
-    return {
-      progress: updatedProgress,
-      becameCompleted,
-      moduleCompleted,
-      categoryCompleted,
-      starsEarned: totalStars,
-      totalStars: newTotalStars,
+      let updatedProgress;
+      if (!progress) {
+        updatedProgress = await client.lessonProgress.create({
+          data: {
+            childId,
+            lessonId,
+            ...updateData,
+          },
+        });
+      } else {
+        updatedProgress = await client.lessonProgress.update({
+          where: { id: progress.id },
+          data: updateData,
+        });
+      }
+
+      const newTotalStars = await starService.updateTotalStars(childId, client);
+
+      let moduleCompleted = false;
+      let categoryCompleted = false;
+
+      if (becameCompleted) {
+        // Idempotently apply rewards
+        if (lessonNode.reward) {
+          const rewardTitle = `Lesson Completed: ${lessonNode.id}`;
+          const existingReward = await client.reward.findFirst({
+            where: { childId, title: rewardTitle },
+          });
+          if (!existingReward) {
+            await client.reward.create({
+              data: {
+                childId,
+                title: rewardTitle,
+                description: `Completed "${lessonNode.title}". Earned ${lessonNode.reward.xp} XP and ${lessonNode.reward.coins} coins.`,
+                points: lessonNode.reward.xp,
+              },
+            });
+          }
+        }
+
+        const lesson = await client.lesson.findUnique({
+          where: { id: lessonId },
+          include: { module: true },
+        });
+        if (lesson) {
+          moduleCompleted = await moduleProgressService.completeModule(childId, lesson.moduleId, client);
+          if (moduleCompleted) {
+            categoryCompleted = await categoryProgressService.completeCategory(childId, lesson.module.categoryId, client);
+          }
+        }
+        await this.checkAndTriggerGradeProgression(childId, lessonId, client);
+      }
+
+      await rewardService.refreshRewards(childId, client);
+
+      return {
+        progress: updatedProgress,
+        becameCompleted,
+        moduleCompleted,
+        categoryCompleted,
+        starsEarned: totalStars,
+        totalStars: newTotalStars,
+      };
     };
+
+    if (tx) {
+      return executeForce(tx);
+    } else {
+      return prisma.$transaction(async (t) => {
+        return executeForce(t);
+      });
+    }
   }
 
   async resetAllProgress(childId: string) {
@@ -232,6 +360,43 @@ export class ProgressService {
   async deleteProgress(id: string) {
     return progressRepository.delete(id);
   }
+
+  async checkAndTriggerGradeProgression(childId: string, completedLessonId: string, tx?: any) {
+    const client = tx || prisma;
+    const child = await client.child.findUnique({ where: { id: childId } });
+    if (!child) return;
+
+    const currentGradeId = curriculumService.resolveChildGrade(child);
+    try {
+      const nodes = curriculumService.getLessonsInCurriculumOrder(currentGradeId);
+
+      const completedProgress = await client.lessonProgress.findMany({
+        where: {
+          childId,
+          lessonId: { in: nodes.map((n) => n.id) },
+        },
+      });
+
+      const gradeIsFinished = curriculumEngineService.isGradeCompleted(
+        nodes,
+        completedProgress,
+        completedLessonId
+      );
+
+      if (gradeIsFinished) {
+        const nextLabel = curriculumEngineService.getNextGradeLabel(currentGradeId);
+        if (nextLabel) {
+          await client.child.update({
+            where: { id: childId },
+            data: { ageGroup: nextLabel },
+          });
+        }
+      }
+    } catch (err) {
+      // Ignore errors in progression check
+    }
+  }
 }
 
 export const progressService = new ProgressService();
+

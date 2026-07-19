@@ -22,7 +22,8 @@ import { apiClient } from '../../services/api/apiClient';
 import { useApiMutation } from '../../hooks/useReactQuery';
 import { queryKeys } from '../../utils/queryKeys';
 import { childFormSchema } from '../../utils/validation';
-import { colors, spacing, typography, radius, shadows } from '../../theme';
+import { spacing, typography, radius, shadows } from '../../theme';
+import { useTheme } from '../../theme/ThemeContext';
 import type { ApiResponse } from '../../types/api';
 import type { Child, ChildFormData } from '../../types/child';
 import type { OnboardingStackParamList } from '../../types/navigation';
@@ -51,6 +52,10 @@ export const getAvatarBgColor = (avatarId: string): string => {
 const AGE_OPTIONS = [2, 3, 4, 5, 6];
 
 export const AddEditChildScreen: React.FC = () => {
+  const { theme } = useTheme();
+  const { colors } = theme;
+  const styles = useMemo(() => getStyles(colors), [colors]);
+
   const navigation = useNavigation<any>();
   const route = useRoute<RouteProp<OnboardingStackParamList, 'AddChild'>>();
   const deviceType = useDeviceType();
@@ -309,47 +314,53 @@ export const AddEditChildScreen: React.FC = () => {
   );
 
   const renderMobile = () => (
-    <Screen scroll padded keyboardAvoid>
-      <View style={styles.header}>
-        <Text style={styles.title}>{isEditMode ? 'Edit Profile' : 'Create Child Profile'}</Text>
-        <Text style={styles.subtitle}>Personalize your child's learning journey</Text>
-      </View>
-
-      {renderFormFields()}
-
-      <Card style={styles.mobilePreviewCard} variant="outlined">
-        <View style={[styles.mobilePreviewAvatar, { backgroundColor: getAvatarBgColor(selectedAvatar) }]}>
-          <Text style={styles.mobilePreviewEmoji}>{getAvatarEmoji(selectedAvatar)}</Text>
+    <Screen scroll padded keyboardAvoid backgroundColor={colors.background}>
+      <View style={styles.mainWrapper}>
+        <View style={styles.header}>
+          <Text style={styles.title}>{isEditMode ? 'Edit Profile' : 'Create Child Profile'}</Text>
+          <Text style={styles.subtitle}>Personalize your child's learning journey</Text>
         </View>
-        <Text style={styles.mobilePreviewName}>{formValues.name.trim() || 'Explorer Name'}</Text>
-        <Text style={styles.mobilePreviewAge}>Age {formValues.age}</Text>
-      </Card>
 
-      <View style={styles.actionsContainer}>
-        <Button
-          label={isLoading ? 'Saving...' : (isEditMode ? 'Update Profile' : 'Save Profile')}
-          onPress={handleSubmit(onSubmit)}
-          variant="primary"
-          loading={isLoading}
-          disabled={isLoading}
-          fullWidth
-        />
-        <Button
-          label="Cancel"
-          onPress={() => navigation.goBack()}
-          variant="ghost"
-          fullWidth
-        />
+        <Card style={styles.formCard} variant="elevated">
+          {renderFormFields()}
+        </Card>
+
+        <Card style={styles.mobilePreviewCard} variant="outlined">
+          <View style={[styles.mobilePreviewAvatar, { backgroundColor: getAvatarBgColor(selectedAvatar) }]}>
+            <Text style={styles.mobilePreviewEmoji}>{getAvatarEmoji(selectedAvatar)}</Text>
+          </View>
+          <Text style={styles.mobilePreviewName}>{formValues.name.trim() || 'Explorer Name'}</Text>
+          <Text style={styles.mobilePreviewAge}>Age {formValues.age}</Text>
+        </Card>
+
+        <View style={styles.actionsContainer}>
+          <Button
+            label={isLoading ? 'Saving...' : (isEditMode ? 'Update Profile' : 'Save Profile')}
+            onPress={handleSubmit(onSubmit)}
+            variant="primary"
+            loading={isLoading}
+            disabled={isLoading}
+            fullWidth
+          />
+          <Button
+            label="Cancel"
+            onPress={() => navigation.goBack()}
+            variant="ghost"
+            fullWidth
+          />
+        </View>
       </View>
     </Screen>
   );
 
   const renderTablet = () => (
-    <Screen keyboardAvoid>
+    <Screen keyboardAvoid backgroundColor={colors.background}>
       <View style={styles.splitWrapper}>
         <ScrollView style={styles.splitLeft} contentContainerStyle={styles.splitLeftContent} keyboardShouldPersistTaps="handled">
           <Text style={styles.sectionHeader}>{isEditMode ? 'Modify Explorer Profile' : 'New Explorer Profile'}</Text>
-          {renderFormFields()}
+          <Card style={styles.formCard} variant="elevated">
+            {renderFormFields()}
+          </Card>
         </ScrollView>
 
         <View style={styles.splitRight}>
@@ -370,7 +381,7 @@ export const AddEditChildScreen: React.FC = () => {
   return renderLayout();
 };
 
-const styles = StyleSheet.create({
+const getStyles = (colors: any) => StyleSheet.create({
   header: {
     alignItems: 'center',
     marginBottom: spacing.xl,
@@ -634,6 +645,19 @@ const styles = StyleSheet.create({
   },
   splitActions: {
     gap: spacing.md,
+  },
+  mainWrapper: {
+    width: '100%',
+    maxWidth: 450,
+    alignSelf: 'center',
+  },
+  formCard: {
+    padding: spacing.lg,
+    borderRadius: radius.lg,
+    width: '100%',
+    maxWidth: 450,
+    alignSelf: 'center',
+    marginBottom: spacing.lg,
   },
 });
 
