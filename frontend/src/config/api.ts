@@ -11,30 +11,16 @@
  */
 
 function getApiBaseUrl(): string {
-  // Force localhost in development to ensure adb reverse port forwarding works reliably
-  if (typeof __DEV__ !== 'undefined' && __DEV__) {
-    return 'http://127.0.0.1:5000';
-  }
+    const raw = process.env.EXPO_PUBLIC_API_URL;
 
-  let raw = process.env.EXPO_PUBLIC_API_URL;
+    if (!raw) {
+        throw new Error(
+            'EXPO_PUBLIC_API_URL is not configured.'
+        );
+    }
 
-  if (!raw) {
-    throw new Error(
-      '[PetalPath] EXPO_PUBLIC_API_URL is not set.\n' +
-      'Create a .env file in the project root with:\n' +
-      '  EXPO_PUBLIC_API_URL=http://YOUR_BACKEND_IP:PORT\n' +
-      'See .env.development for local dev or .env.production for EC2.'
-    );
-  }
-
-  // Use the env variable as-is. For local development, set 127.0.0.1
-  // and use `adb reverse tcp:5000 tcp:5000` (works for both emulators
-  // and physical devices connected via USB).
-
-  // Strip trailing slash(es) to prevent double-slash in endpoint URLs
-  return raw.replace(/\/+$/, '');
+    return raw.replace(/\/+$/, '');
 }
-
 /** Whether we are running in Expo/Metro development mode */
 export const IS_DEV: boolean = typeof __DEV__ !== 'undefined' ? __DEV__ : false;
 
