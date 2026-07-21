@@ -38,7 +38,7 @@ const envSchema = z.object({
 
   // Rate limiting overrides
   RATE_LIMIT_GLOBAL_MAX: z.coerce.number().default(100),
-  RATE_LIMIT_AUTH_MAX: z.coerce.number().default(20),
+  RATE_LIMIT_AUTH_MAX: z.coerce.number().default(100),
   RATE_LIMIT_STRICT_MAX: z.coerce.number().default(10),
   RATE_LIMIT_MODERATE_MAX: z.coerce.number().default(50),
 

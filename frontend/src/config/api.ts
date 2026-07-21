@@ -26,7 +26,7 @@ export const IS_DEV: boolean = typeof __DEV__ !== 'undefined' ? __DEV__ : false;
 
 /**
  * The base server URL (no path suffix).
- * Example: `http://13.235.178.117`
+ * Example: `http://\3.235.178.117`
  */
 // Force Metro Babel cache invalidation after env change
 export const API_BASE_URL: string = getApiBaseUrl();
