@@ -2,7 +2,7 @@ import rateLimit from 'express-rate-limit';
 import { env } from '../config/env.js';
 
 export const authLimiter = rateLimit({
-  windowMs: 5 * 60 * 1000,
+  windowMs: 1 * 60 * 1000, // 1 minute
   limit: env.RATE_LIMIT_AUTH_MAX,
   standardHeaders: 'draft-7',
   legacyHeaders: false,
@@ -10,7 +10,7 @@ export const authLimiter = rateLimit({
 });
 
 export const strictLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000,
+  windowMs: 1 * 60 * 1000, // 1 minute
   limit: env.RATE_LIMIT_STRICT_MAX,
   standardHeaders: 'draft-7',
   legacyHeaders: false,
@@ -18,7 +18,7 @@ export const strictLimiter = rateLimit({
 });
 
 export const moderateLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
+  windowMs: 1 * 60 * 1000, // 1 minute
   limit: env.RATE_LIMIT_MODERATE_MAX,
   standardHeaders: 'draft-7',
   legacyHeaders: false,

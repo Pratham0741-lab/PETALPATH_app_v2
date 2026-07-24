@@ -11,7 +11,8 @@
       "supportsTablet": true,
       "infoPlist": {
         "NSSpeechRecognitionUsageDescription": "Allow PetalPath to use speech recognition for learning activities.",
-        "NSMicrophoneUsageDescription": "Allow PetalPath to use the microphone for speech activities."
+        "NSMicrophoneUsageDescription": "Allow PetalPath to use the microphone for speech activities.",
+        "NSCameraUsageDescription": "Allow PetalPath to use the camera for live pose and activity detection."
       }
     },
     "android": {
@@ -24,10 +25,7 @@
       "predictiveBackGestureEnabled": false,
       "package": "com.anonymous.petalpath_app_v2",
       "permissions": [
-        "android.permission.RECORD_AUDIO",
-        "android.permission.MODIFY_AUDIO_SETTINGS",
-        "android.permission.FOREGROUND_SERVICE",
-        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
+        "android.permission.CAMERA",
         "android.permission.RECORD_AUDIO",
         "android.permission.MODIFY_AUDIO_SETTINGS",
         "android.permission.FOREGROUND_SERVICE",
@@ -41,6 +39,12 @@
         "@react-native-google-signin/google-signin",
         {
           "iosUrlScheme": "com.googleusercontent.apps.244358134848-cblimclem7n3knhsu6ahu29kd7l0pqve"
+        }
+      ],
+      [
+        "react-native-vision-camera",
+        {
+          "cameraPermissionText": "Allow PetalPath to use the camera for live pose and activity detection."
         }
       ],
       "expo-video",

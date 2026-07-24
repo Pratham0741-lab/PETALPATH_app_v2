@@ -36,11 +36,11 @@ const envSchema = z.object({
   // CDN
   CDN_BASE_URL: z.string().default('https://dy3um9dzarz6y.cloudfront.net'),
 
-  // Rate limiting overrides
+  // Rate limiting overrides (100 requests per minute)
   RATE_LIMIT_GLOBAL_MAX: z.coerce.number().default(100),
   RATE_LIMIT_AUTH_MAX: z.coerce.number().default(100),
-  RATE_LIMIT_STRICT_MAX: z.coerce.number().default(10),
-  RATE_LIMIT_MODERATE_MAX: z.coerce.number().default(50),
+  RATE_LIMIT_STRICT_MAX: z.coerce.number().default(100),
+  RATE_LIMIT_MODERATE_MAX: z.coerce.number().default(100),
 
   // Jobs
   JOBS_CLEANUP_INTERVAL_MINUTES: z.coerce.number().default(60),

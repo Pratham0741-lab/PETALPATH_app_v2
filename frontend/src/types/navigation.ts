@@ -97,6 +97,9 @@ export type RootStackParamList = {
   LearningHistory: undefined;
   WeeklyReport: undefined;
   MonthlyReport: undefined;
+  CameraActivity: undefined;
+  CameraActivityLesson: { lessonId?: string; activityId?: string; activityType?: string } | undefined;
+  Calibration: undefined;
 };
 
 export type AppNavigationProp = NativeStackNavigationProp<RootStackParamList>;

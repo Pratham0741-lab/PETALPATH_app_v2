@@ -95,9 +95,9 @@ app.use('/api/health', healthRoutes);
 
 const isProduction = env.NODE_ENV === 'production';
 
-// Rate limiting — applied to /api routes
+// Rate limiting — applied to /api routes (100 requests per minute)
 const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
+  windowMs: 1 * 60 * 1000, // 1 minute
   limit: env.RATE_LIMIT_GLOBAL_MAX,
   standardHeaders: 'draft-7',
   legacyHeaders: false,

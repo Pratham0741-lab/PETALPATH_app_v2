@@ -61,6 +61,9 @@ import PlacementAssessmentResultScreen from '../screens/placement/PlacementAsses
 import NotificationCenterScreen from '../screens/notifications/NotificationCenterScreen';
 import CurriculumExplorerScreen from '../screens/curriculum/CurriculumExplorerScreen';
 import SkillDetailScreen from '../screens/curriculum/SkillDetailScreen';
+import CameraActivityScreen from '../features/camera/screens/CameraActivityScreen';
+import CameraActivityLesson from '../features/camera/curriculum/CameraActivityLesson';
+import CalibrationScreen from '../features/camera/calibration/CalibrationScreen';
 import {
   ParentDashboardScreen as ParentDashScreen,
   AnalyticsScreen,
@@ -293,6 +296,9 @@ export const RootNavigator = () => {
           <Stack.Screen name="NotificationCenter" component={NotificationCenterScreen} />
           <Stack.Screen name="CurriculumExplorer" component={CurriculumExplorerScreen} />
           <Stack.Screen name="SkillDetail" component={SkillDetailScreen} />
+          <Stack.Screen name="CameraActivity" component={CameraActivityScreen} />
+          <Stack.Screen name="CameraActivityLesson" component={CameraActivityLesson} />
+          <Stack.Screen name="Calibration" component={CalibrationScreen} />
           <Stack.Screen name="Roadmap" component={HomeScreen} />
         </Stack.Navigator>
       </View>
