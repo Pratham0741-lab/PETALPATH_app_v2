@@ -49,6 +49,7 @@
     "@types/react": "~19.2.2",
     "caniuse-lite": "1.0.30001690",
     "concurrently": "^10.0.3",
+    "patch-package": "^8.0.1",
     "typescript": "~6.0.3"
   },
   "scripts": {
@@ -56,7 +57,8 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
-    "dev": "concurrently \"npm run dev --prefix server\" \"npm start\""
+    "dev": "concurrently \"npm run dev --prefix server\" \"npm start\"",
+    "postinstall": "patch-package"
   },
   "private": true
 }

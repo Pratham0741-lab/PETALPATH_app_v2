@@ -1,0 +1,15 @@
+diff --git a/node_modules/@scottjgilroy/react-native-vision-camera-v4-pose-detection/android/src/main/java/com/visioncamerav3posedetection/VisionCameraV3PoseDetectionModule.kt b/node_modules/@scottjgilroy/react-native-vision-camera-v4-pose-detection/android/src/main/java/com/visioncamerav3posedetection/VisionCameraV3PoseDetectionModule.kt
+index 89f218d..9fcba71 100644
+--- a/node_modules/@scottjgilroy/react-native-vision-camera-v4-pose-detection/android/src/main/java/com/visioncamerav3posedetection/VisionCameraV3PoseDetectionModule.kt
++++ b/node_modules/@scottjgilroy/react-native-vision-camera-v4-pose-detection/android/src/main/java/com/visioncamerav3posedetection/VisionCameraV3PoseDetectionModule.kt
+@@ -87,8 +87,8 @@ class VisionCameraV3PoseDetectionModule(proxy : VisionCameraProxy, options: Map<
+       addLandmarkToMap(pose.getPoseLandmark(PoseLandmark.RIGHT_EAR), "rightEarPosition")
+       addLandmarkToMap(pose.getPoseLandmark(PoseLandmark.LEFT_MOUTH), "leftMouthPosition")
+       addLandmarkToMap(pose.getPoseLandmark(PoseLandmark.RIGHT_MOUTH), "rightMouthPosition")
+-}
+-      return map.toHashMap()
++      @Suppress("UNCHECKED_CAST")
++      return map.toHashMap() as HashMap<String, Any>
+     } catch (e: Exception) {
+       throw Exception("Error processing pose detection: $e")
+     }
