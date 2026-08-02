@@ -8,19 +8,53 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../types/navigation';
 import { normalizeActivityType } from './activityNormalization';
 
-export const getNextActivity = (currentActivityId: string): Activity | null | undefined => {
-  const { activities } = useRoadmapStore.getState();
-  if (!activities || activities.length === 0) {
-    return undefined;
+export const getNextActivity = (currentActivityId: string): Activity | null => {
+  const { activities, selectedLesson } = useRoadmapStore.getState();
+  
+  // Use loaded activities or fallback to selectedLesson activities
+  let actList = activities;
+  if ((!actList || actList.length === 0) && selectedLesson?.activities) {
+    actList = selectedLesson.activities;
   }
-  const currentIndex = activities.findIndex(a => a.id === currentActivityId);
+
+  // Filter out any identify activities
+  if (actList) {
+    actList = actList.filter(a => (a.activityType as string) !== 'identify' && !a.title?.toLowerCase().includes('identify'));
+  }
+
+  if (!actList || actList.length === 0) {
+    return null;
+  }
+
+  // 1. Try finding by exact activityId
+  let currentIndex = actList.findIndex(a => a.id === currentActivityId);
+
+  // 2. Fallback: match by normalized activity type if currentActivityId is generic (e.g. 'video', 'placeholder-video-id')
   if (currentIndex === -1) {
-    return undefined;
+    if (currentActivityId === 'placeholder-video-id' || currentActivityId === 'video' || currentActivityId.includes('video')) {
+      currentIndex = actList.findIndex(a => normalizeActivityType(a.activityType) === 'video');
+    } else if (currentActivityId === 'placeholder-audio-id' || currentActivityId === 'listen' || currentActivityId.includes('listen')) {
+      currentIndex = actList.findIndex(a => normalizeActivityType(a.activityType) === 'listen');
+    } else if (currentActivityId === 'placeholder-speak-id' || currentActivityId === 'speak' || currentActivityId.includes('speak')) {
+      currentIndex = actList.findIndex(a => normalizeActivityType(a.activityType) === 'speak');
+    } else if (currentActivityId === 'placeholder-write-id' || currentActivityId === 'write' || currentActivityId.includes('write')) {
+      currentIndex = actList.findIndex(a => normalizeActivityType(a.activityType) === 'write');
+    } else if (currentActivityId === 'placeholder-drag-id' || currentActivityId === 'drag' || currentActivityId.includes('drag')) {
+      currentIndex = actList.findIndex(a => normalizeActivityType(a.activityType) === 'drag_drop');
+    }
   }
-  if (currentIndex === activities.length - 1) {
-    return null; // No next activity (end of sequence)
+
+  // 3. Fallback: if still -1, take the first activity after index 0 if multiple exist, or return null
+  if (currentIndex === -1) {
+    return actList.length > 1 ? actList[1] : null;
   }
-  return activities[currentIndex + 1];
+
+  // 4. Check if it's the last activity in the lesson sequence
+  if (currentIndex >= actList.length - 1) {
+    return null; // No next activity (end of sequence for this lesson)
+  }
+
+  return actList[currentIndex + 1];
 };
 
 export const navigateToActivity = async (
@@ -55,6 +89,12 @@ export const navigateToActivity = async (
       navigation.navigate('Write');
     } catch (err: unknown) {
       Alert.alert('Error', err instanceof Error ? err.message : 'Failed to load write activity');
+    }
+  } else if (normalizedType === 'drag_drop') {
+    try {
+      navigation.navigate('Game', { activityId: activity.id });
+    } catch (err: unknown) {
+      Alert.alert('Error', err instanceof Error ? err.message : 'Failed to load drag and drop activity');
     }
   }
 };

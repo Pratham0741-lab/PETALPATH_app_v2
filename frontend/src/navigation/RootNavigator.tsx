@@ -64,6 +64,7 @@ import SkillDetailScreen from '../screens/curriculum/SkillDetailScreen';
 import CameraActivityScreen from '../features/camera/screens/CameraActivityScreen';
 import CameraActivityLesson from '../features/camera/curriculum/CameraActivityLesson';
 import CalibrationScreen from '../features/camera/calibration/CalibrationScreen';
+import { CameraExplorerScreen } from '../features/camera/screens/CameraExplorerScreen';
 import {
   ParentDashboardScreen as ParentDashScreen,
   AnalyticsScreen,
@@ -111,6 +112,7 @@ const MobileTabs = () => {
     >
       <Tab.Screen name="Home" component={HomeScreen} />
       <Tab.Screen name="Journey" component={CurriculumExplorerScreen} />
+      <Tab.Screen name="Camera" component={CameraExplorerScreen} />
       <Tab.Screen name="Mentor" component={MentorScreen} />
       <Tab.Screen name="Rewards" component={RewardsScreen} />
       <Tab.Screen name="Profile" component={ProfileScreen} />
@@ -216,6 +218,9 @@ export const RootNavigator = () => {
         <Stack.Screen name="NotificationCenter" component={NotificationCenterScreen} />
         <Stack.Screen name="CurriculumExplorer" component={CurriculumExplorerScreen} />
         <Stack.Screen name="SkillDetail" component={SkillDetailScreen} />
+        <Stack.Screen name="CameraActivity" component={CameraActivityScreen} />
+        <Stack.Screen name="CameraActivityLesson" component={CameraActivityLesson} />
+        <Stack.Screen name="Calibration" component={CalibrationScreen} />
         <Stack.Screen name="Roadmap" component={HomeScreen} />
       </Stack.Navigator>
     );
@@ -237,6 +242,7 @@ export const RootNavigator = () => {
           <Stack.Screen name="Lesson" component={LessonScreen} />
           <Stack.Screen name="Module" component={ModuleScreen} />
           <Stack.Screen name="Journey" component={CurriculumExplorerScreen} />
+          <Stack.Screen name="Camera" component={CameraExplorerScreen} />
           <Stack.Screen name="Mentor" component={MentorScreen} />
           <Stack.Screen name="Rewards" component={RewardsScreen} />
           <Stack.Screen name="Profile" component={ProfileScreen} />

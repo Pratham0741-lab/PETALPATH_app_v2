@@ -86,6 +86,20 @@ export class CurriculumLoader {
       try {
         const fileContent = fs.readFileSync(filePath, 'utf-8');
         const parsed = JSON.parse(fileContent);
+
+        // Filter out 'identify' activities from all themes and lesson nodes
+        if (parsed.themes) {
+          for (const theme of parsed.themes) {
+            if (theme.nodes) {
+              for (const node of theme.nodes) {
+                if (node.activities) {
+                  node.activities = node.activities.filter((act: any) => act.type !== 'identify');
+                }
+              }
+            }
+          }
+        }
+
         loadedData.push({ gradeId: grade, data: parsed });
       } catch (err: any) {
         allErrors.push({

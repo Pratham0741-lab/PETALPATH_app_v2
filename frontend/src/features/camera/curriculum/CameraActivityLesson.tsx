@@ -65,12 +65,12 @@ export const CameraActivityLesson: React.FC = () => {
   }, [permissionStatus, requestPermission]);
 
   useEffect(() => {
-    if (hasPermission && isActive && sessionState === 'idle') {
-      startSession(activityType, 3);
+    if (isActive && sessionState === 'idle') {
+      startSession(activityType, 0);
       speakInstruction(config.instruction);
       cameraAnalytics.logEvent('activity_started', { lessonId, activityId, activityType });
     }
-  }, [hasPermission, isActive, sessionState, startSession, activityType, config.instruction, speakInstruction, lessonId, activityId]);
+  }, [isActive, sessionState, startSession, activityType, config.instruction, speakInstruction, lessonId, activityId]);
 
   useEffect(() => {
     if (sessionState === 'running') {
@@ -84,6 +84,9 @@ export const CameraActivityLesson: React.FC = () => {
         .handleActivityCompletion(lessonId, activityId, activityType, 1500)
         .then(() => {
           offlineQueue.getQueue().then((q) => setQueueCount(q.length));
+        })
+        .catch(() => {
+          // Gracefully handle 404 / network errors — completion is already saved locally
         });
     }
   }, [sessionState, lessonId, activityId, activityType]);
@@ -102,94 +105,92 @@ export const CameraActivityLesson: React.FC = () => {
       <TopBar title={config.title} showBack />
 
       <View style={styles.previewContainer}>
-        {hasPermission && isActive ? (
-          <>
-            <CameraPreview
-              isActive={isActive}
-              frameProcessor={frameProcessor}
-              onDeviceFormatReady={handleDeviceFormatReady}
+        <CameraPreview
+          isActive={isActive}
+          frameProcessor={frameProcessor}
+          onDeviceFormatReady={handleDeviceFormatReady}
+        />
+
+        {/* Instruction Header */}
+        <View style={styles.instructionCard}>
+          <Text style={styles.instructionText}>{config.instruction}</Text>
+        </View>
+
+        {/* Timer Ring & Countdown */}
+        <View style={styles.centerHUD}>
+          {sessionState === 'starting' ? (
+            <ActivityTimerRing
+              progressMs={0}
+              targetMs={technicalDef.holdDurationMs}
+              countdownSec={snapshot.countdownSec}
+              isStarting
             />
-
-            {/* Instruction Header */}
-            <View style={styles.instructionCard}>
-              <Text style={styles.instructionText}>{config.instruction}</Text>
-            </View>
-
-            {/* Timer Ring & Countdown */}
-            <View style={styles.centerHUD}>
-              {sessionState === 'starting' ? (
-                <ActivityTimerRing
-                  progressMs={0}
-                  targetMs={technicalDef.holdDurationMs}
-                  countdownSec={snapshot.countdownSec}
-                  isStarting
-                />
-              ) : sessionState === 'running' ? (
-                <>
-                  <ActivityTimerRing
-                    progressMs={snapshot.holdProgressMs}
-                    targetMs={technicalDef.holdDurationMs}
-                  />
-                  <RepetitionCounter
-                    currentReps={snapshot.currentReps}
-                    targetReps={snapshot.targetReps}
-                  />
-                </>
-              ) : null}
-            </View>
-
-            {/* Session State Overlays */}
-            {sessionState === 'completed' ? (
-              <View style={styles.completionCard}>
-                <Text style={styles.completionEmoji}>🎉</Text>
-                <Text style={styles.completionTitle}>Activity Completed!</Text>
-                <Text style={styles.completionSubtitle}>
-                  +{config.reward.stars} Stars • +{config.reward.xp} XP Earned
-                </Text>
-                <Pressable
-                  style={styles.continueButton}
-                  onPress={() => navigation.canGoBack() && navigation.goBack()}
-                >
-                  <Text style={styles.continueButtonText}>Continue Learning</Text>
-                </Pressable>
-              </View>
-            ) : sessionState === 'timed_out' ? (
-              <View style={styles.completionCard}>
-                <Text style={styles.completionEmoji}>⏳</Text>
-                <Text style={styles.completionTitle}>Time Up!</Text>
-                <Text style={styles.completionSubtitle}>Take a breath and try again whenever you are ready!</Text>
-                <Pressable style={styles.continueButton} onPress={handleRestart}>
-                  <Text style={styles.continueButtonText}>Try Again</Text>
-                </Pressable>
-              </View>
-            ) : (
-              <ChildFeedbackOverlay
-                message={activityResult.feedback}
-                category={
-                  activityResult.state === 'completed'
-                    ? 'completion'
-                    : activityResult.state === 'detected'
-                    ? 'success'
-                    : 'encouragement'
-                }
+          ) : sessionState === 'running' ? (
+            <>
+              <ActivityTimerRing
+                progressMs={snapshot.holdProgressMs}
+                targetMs={technicalDef.holdDurationMs}
               />
-            )}
+              <RepetitionCounter
+                currentReps={snapshot.currentReps}
+                targetReps={snapshot.targetReps}
+              />
+            </>
+          ) : null}
+        </View>
 
-            {/* Dev Debug Overlay with Queue Status */}
-            <DebugOverlay
-              metrics={debugMetrics}
-              cameraStatus={hasPermission ? 'ready' : 'loading'}
-              deviceFormatText={deviceFormatText}
-              poseResult={poseResult}
-              activityResult={activityResult}
-            />
-          </>
+
+
+
+
+        {/* Session State Overlays */}
+        {sessionState === 'completed' ? (
+          <View style={styles.completionCard}>
+            <Text style={styles.completionEmoji}>🎉</Text>
+            <Text style={styles.completionTitle}>Activity Completed!</Text>
+            <Text style={styles.completionSubtitle}>
+              +{config.reward.stars} Stars • +{config.reward.xp} XP Earned
+            </Text>
+            <Pressable
+              style={styles.continueButton}
+              onPress={() => navigation.canGoBack() && navigation.goBack()}
+            >
+              <Text style={styles.continueButtonText}>Continue Learning</Text>
+            </Pressable>
+          </View>
+        ) : sessionState === 'timed_out' ? (
+          <View style={styles.completionCard}>
+            <Text style={styles.completionEmoji}>⏳</Text>
+            <Text style={styles.completionTitle}>Time Up!</Text>
+            <Text style={styles.completionSubtitle}>Take a breath and try again whenever you are ready!</Text>
+            <Pressable style={styles.continueButton} onPress={handleRestart}>
+              <Text style={styles.continueButtonText}>Try Again</Text>
+            </Pressable>
+          </View>
         ) : (
-          <CameraPermissionState
-            status={permissionStatus === 'denied' ? 'permission_denied' : 'loading'}
-            onRequestPermission={requestPermission}
+          <ChildFeedbackOverlay
+            message={activityResult.feedback}
+            category={
+              activityResult.state === 'completed'
+                ? 'completion'
+                : activityResult.state === 'detected'
+                ? 'success'
+                : 'encouragement'
+            }
           />
         )}
+
+        {/* Diagnostic Pipeline Overlay */}
+        <DebugOverlay
+          metrics={debugMetrics}
+          cameraStatus={hasPermission ? 'ready' : 'loading'}
+          deviceFormatText={deviceFormatText}
+          poseResult={poseResult}
+          activityResult={activityResult}
+          isNativeReady={true}
+          hasPlugin={true}
+          lastFrameTimestamp={poseResult?.pose?.timestamp || 0}
+        />
       </View>
     </ScreenContainer>
   );
@@ -224,12 +225,50 @@ const styles = StyleSheet.create({
   },
   centerHUD: {
     position: 'absolute',
-    top: '35%',
+    top: '30%',
     left: 0,
     right: 0,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 10,
+  },
+  poseButtonContainer: {
+    position: 'absolute',
+    bottom: 90,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    zIndex: 50,
+  },
+  poseButton: {
+    backgroundColor: 'rgba(139, 120, 216, 0.95)',
+    paddingVertical: 18,
+    paddingHorizontal: 36,
+    borderRadius: 36,
+    borderWidth: 3,
+    borderColor: '#FFFFFF',
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 10,
+  },
+  poseButtonActive: {
+    backgroundColor: '#10B981',
+    borderColor: '#6EE7B7',
+    transform: [{ scale: 1.06 }],
+  },
+  poseButtonEmoji: {
+    fontSize: 28,
+  },
+  poseButtonText: {
+    fontFamily: typography.families.rounded,
+    fontSize: typography.sizes.lg,
+    color: '#FFFFFF',
+    fontWeight: 'bold',
   },
   completionCard: {
     position: 'absolute',

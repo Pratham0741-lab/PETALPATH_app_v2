@@ -4,7 +4,7 @@ import { colors, typography, spacing, radius } from '../../theme';
 import { AppCard } from './AppCard';
 import { Ionicons } from '@expo/vector-icons';
 
-export type ActivityType = 'listen' | 'speak' | 'write' | 'video' | 'stories';
+export type ActivityType = 'listen' | 'speak' | 'write' | 'video' | 'stories' | 'drag_drop';
 
 interface ActivityCardProps {
   title: string;
@@ -38,6 +38,8 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
         return '#EF4444'; // Red accent for video
       case 'stories':
         return colors.yellow;
+      case 'drag_drop':
+        return '#F59E0B'; // Vibrant amber for drag & drop games
       default:
         return colors.purple;
     }
@@ -55,6 +57,8 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
         return 'play-circle';
       case 'stories':
         return 'book';
+      case 'drag_drop':
+        return 'hand-left';
       default:
         return 'help-circle';
     }

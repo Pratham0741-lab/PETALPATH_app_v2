@@ -8,6 +8,7 @@ export const BottomNavigation: React.FC<BottomTabBarProps> = ({ state, descripto
   const tabs = [
     { name: 'Home', icon: 'home', label: 'Home' },
     { name: 'Journey', icon: 'compass', label: 'Explore' },
+    { name: 'Camera', icon: 'camera', label: 'Camera' },
     { name: 'Mentor', icon: 'flower', label: 'Mentors' },
     { name: 'Rewards', icon: 'stats-chart', label: 'Rewards' },
     { name: 'Profile', icon: 'person', label: 'Profile' },

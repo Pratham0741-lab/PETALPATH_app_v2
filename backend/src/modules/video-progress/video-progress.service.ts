@@ -6,6 +6,14 @@ import { NotFoundError } from '../../utils/errors.js';
 
 export class VideoProgressService {
   async getProgress(childId: string, videoId: string) {
+    if (videoId.startsWith('placeholder') || videoId === 'coming_soon') {
+      return {
+        childId,
+        videoId,
+        watchPosition: 0,
+        isCompleted: false,
+      };
+    }
     const progress = await videoProgressRepository.findProgress(childId, videoId);
     if (!progress) {
       return {
@@ -18,9 +26,23 @@ export class VideoProgressService {
     return progress;
   }
 
-  async saveProgress(childId: string, videoId: string, watchPosition: number) {
+  async saveProgress(childId: string, videoId: string, watchPosition: number, activityId?: string) {
     const video = await videosRepository.findById(videoId);
     if (!video) {
+      if (videoId.startsWith('placeholder') || videoId === 'coming_soon') {
+        if (activityId) {
+          const activity = await activitiesRepository.findById(activityId);
+          if (activity) {
+            await progressService.updateActivityCompletion(childId, activity.lessonId, 'video', 1);
+          }
+        }
+        return {
+          childId,
+          videoId,
+          watchPosition,
+          isCompleted: true,
+        };
+      }
       throw new NotFoundError('Video not found');
     }
 
@@ -43,9 +65,23 @@ export class VideoProgressService {
     return progress;
   }
 
-  async completeVideo(childId: string, videoId: string) {
+  async completeVideo(childId: string, videoId: string, activityId?: string) {
     const video = await videosRepository.findById(videoId);
     if (!video) {
+      if (videoId.startsWith('placeholder') || videoId === 'coming_soon') {
+        if (activityId) {
+          const activity = await activitiesRepository.findById(activityId);
+          if (activity) {
+            await progressService.updateActivityCompletion(childId, activity.lessonId, 'video', 1);
+          }
+        }
+        return {
+          childId,
+          videoId,
+          watchPosition: 10,
+          isCompleted: true,
+        };
+      }
       throw new NotFoundError('Video not found');
     }
 

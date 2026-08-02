@@ -11,10 +11,12 @@ import { useNavigation } from '@react-navigation/native';
 interface TopBarProps {
   title: string;
   showBack?: boolean;
+  onNext?: () => void;
+  nextLabel?: string;
   style?: ViewStyle;
 }
 
-export const TopBar: React.FC<TopBarProps> = ({ title, showBack = false, style }) => {
+export const TopBar: React.FC<TopBarProps> = ({ title, showBack = false, onNext, nextLabel, style }) => {
   const activeChild = useChildStore((state) => state.activeChild);
   const activeMentor = activeChild?.mentor ? enhanceMentor(activeChild.mentor) : null;
   const navigation = useNavigation<any>();
@@ -37,6 +39,12 @@ export const TopBar: React.FC<TopBarProps> = ({ title, showBack = false, style }
         </Text>
       </View>
       <View style={styles.rightSection}>
+        {onNext && (
+          <Pressable onPress={onNext} style={styles.nextButton}>
+            <Text style={styles.nextButtonText}>{nextLabel || 'Next'}</Text>
+            <Ionicons name="arrow-forward" size={18} color="#FFF8ED" />
+          </Pressable>
+        )}
         <NotificationBell color={colors.text} size={22} />
         <StarCounter />
       </View>
@@ -46,24 +54,24 @@ export const TopBar: React.FC<TopBarProps> = ({ title, showBack = false, style }
 
 const styles = StyleSheet.create({
   container: {
-    height: 70,
+    height: 64,
     backgroundColor: colors.background,
     borderBottomWidth: 1.5,
     borderBottomColor: colors.border,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.md,
   },
   leftSection: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
-    marginRight: spacing.md,
+    marginRight: spacing.xs,
   },
   backButton: {
     padding: spacing.xs,
-    marginRight: spacing.sm,
+    marginRight: spacing.xs,
   },
   mentorIndicator: {
     flexDirection: 'row',
@@ -71,7 +79,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
     borderRadius: radius.full,
-    marginRight: spacing.md,
+    marginRight: spacing.sm,
   },
   mentorName: {
     fontSize: typography.sizes.xs,
@@ -81,12 +89,30 @@ const styles = StyleSheet.create({
   },
   title: {
     color: colors.text,
-    fontSize: typography.sizes.xl,
+    fontSize: typography.sizes.lg,
     fontWeight: typography.weights.bold,
     fontFamily: typography.families.rounded,
+    flex: 1,
   },
   rightSection: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 4,
+  },
+  nextButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.purple,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: radius.md,
+    marginRight: 4,
+    gap: 2,
+  },
+  nextButtonText: {
+    color: '#FFF8ED',
+    fontWeight: typography.weights.bold,
+    fontSize: typography.sizes.xs + 1,
+    fontFamily: typography.families.rounded,
   },
 });

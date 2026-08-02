@@ -4,6 +4,7 @@ import { ScreenContainer } from '../../components/common/ScreenContainer';
 import { TopBar } from '../../components/navigation/TopBar';
 import { colors, typography, spacing, radius, shadows } from '../../theme';
 import { useListenStore } from '../../store/listenStore';
+import { useRoadmapStore } from '../../store/roadmapStore';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { UniversalAudioPlayer } from '../../utils/audioPlayer';
@@ -107,7 +108,7 @@ export const ListenMobile: React.FC = () => {
       if (speakerRef.current) {
         speakerRef.current.measureInWindow((x, y, width, height) => {
           if (width > 0 && height > 0) {
-            setHandCoords({ x: x + width / 2, y: y + height / 2 });
+            setHandCoords({ x: x + width / 2, y: y + height / 2 - 35 });
           }
         });
       }
@@ -187,10 +188,14 @@ export const ListenMobile: React.FC = () => {
     const next = getNextActivity(currentAudio.activityId);
     if (next) {
       await navigateToActivity(navigation, next);
-    } else if (next === null) {
+      return;
+    }
+    const { selectedLesson } = useRoadmapStore.getState();
+    if (selectedLesson) {
+      await useRoadmapStore.getState().completeLesson(selectedLesson.id);
       navigation.navigate('LessonComplete');
     } else {
-      navigation.navigate('LessonOverview');
+      navigation.navigate('MainTabs', { screen: 'Journey' });
     }
   };
 
@@ -373,18 +378,31 @@ export const ListenMobile: React.FC = () => {
           )}
 
           {!answered ? (
-            <Pressable
-              ref={actionBtnRef}
-              style={({ pressed }) => [
-                styles.actionBtn,
-                !selectedAnswer && styles.actionBtnDisabled,
-                pressed && selectedAnswer && styles.actionBtnPressed,
-              ]}
-              onPress={handleSubmit}
-              disabled={!selectedAnswer}
-            >
-              <Text style={[styles.actionBtnText, { fontFamily: typography.families.rounded }]}>Check Answer</Text>
-            </Pressable>
+            <View style={{ flexDirection: 'row', gap: 10, width: '100%' }}>
+              <Pressable
+                ref={actionBtnRef}
+                style={({ pressed }) => [
+                  styles.actionBtn,
+                  { flex: 2 },
+                  !selectedAnswer && styles.actionBtnDisabled,
+                  pressed && selectedAnswer && styles.actionBtnPressed,
+                ]}
+                onPress={handleSubmit}
+                disabled={!selectedAnswer}
+              >
+                <Text style={[styles.actionBtnText, { fontFamily: typography.families.rounded }]}>Check Answer</Text>
+              </Pressable>
+              <Pressable
+                style={({ pressed }) => [
+                  styles.actionBtn,
+                  { flex: 1, backgroundColor: colors.purple, borderWidth: 0 },
+                  pressed && styles.actionBtnPressed,
+                ]}
+                onPress={handleNextActivity}
+              >
+                <Text style={[styles.actionBtnText, { color: '#FFF8ED', fontFamily: typography.families.rounded }]}>Skip ➔</Text>
+              </Pressable>
+            </View>
           ) : (
             <View style={styles.nextActionsRow}>
               {feedback?.includes('Correct') ? (
@@ -401,18 +419,32 @@ export const ListenMobile: React.FC = () => {
                   <Ionicons name="arrow-forward" size={20} color="#FFF8ED" />
                 </Pressable>
               ) : (
-                <Pressable
-                  ref={actionBtnRef}
-                  style={({ pressed }) => [
-                    styles.actionBtn,
-                    styles.retryBtn,
-                    pressed && styles.actionBtnPressed,
-                  ]}
-                  onPress={handleRetry}
-                >
-                  <Ionicons name="refresh" size={20} color="#FFF8ED" />
-                  <Text style={[styles.actionBtnText, { fontFamily: typography.families.rounded }]}>Try Again</Text>
-                </Pressable>
+                <View style={{ flexDirection: 'row', gap: 10, width: '100%' }}>
+                  <Pressable
+                    ref={actionBtnRef}
+                    style={({ pressed }) => [
+                      styles.actionBtn,
+                      styles.retryBtn,
+                      { flex: 1 },
+                      pressed && styles.actionBtnPressed,
+                    ]}
+                    onPress={handleRetry}
+                  >
+                    <Ionicons name="refresh" size={20} color="#FFF8ED" />
+                    <Text style={[styles.actionBtnText, { fontFamily: typography.families.rounded }]}>Try Again</Text>
+                  </Pressable>
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.actionBtn,
+                      styles.nextBtn,
+                      { flex: 1 },
+                      pressed && styles.actionBtnPressed,
+                    ]}
+                    onPress={handleNextActivity}
+                  >
+                    <Text style={[styles.actionBtnText, { fontFamily: typography.families.rounded }]}>Next ➔</Text>
+                  </Pressable>
+                </View>
               )}
             </View>
           )}

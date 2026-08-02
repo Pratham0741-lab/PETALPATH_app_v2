@@ -2,9 +2,25 @@
  * Normalizes any curriculum activity type to one of the four supported core modalities
  * which have progress tracking database tables and screens: video, listen, speak, write.
  */
-export const normalizeActivityType = (type: string | null | undefined): 'video' | 'listen' | 'speak' | 'write' => {
+export const normalizeActivityType = (
+  type: string | null | undefined
+): 'video' | 'listen' | 'speak' | 'write' | 'drag_drop' => {
   if (!type) return 'listen';
   const t = type.toLowerCase().trim();
+
+  // Drag & Drop interactive types
+  if (
+    t === 'drag_drop' ||
+    t === 'drag-and-drop' ||
+    t === 'drag' ||
+    t === 'sorting' ||
+    t === 'puzzle' ||
+    t === 'sequence' ||
+    t === 'categorization' ||
+    t === 'matching'
+  ) {
+    return 'drag_drop';
+  }
 
   // Video types
   if (t === 'video' || t === 'tutorial' || t === 'watch') {

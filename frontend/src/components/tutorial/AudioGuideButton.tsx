@@ -67,14 +67,14 @@ export const AudioGuideButton: React.FC<AudioGuideButtonProps> = ({ style }) => 
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
-    bottom: spacing.xl,
-    right: spacing.lg,
+    bottom: 88,
+    right: spacing.md,
     zIndex: 100,
   },
   button: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: colors.purple,
     justifyContent: 'center',
     alignItems: 'center',

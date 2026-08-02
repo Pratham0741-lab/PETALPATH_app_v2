@@ -41,8 +41,9 @@ export const LessonOverviewMobile: React.FC = () => {
     if (prevType === 'listen') return progress.listenCompleted;
     if (prevType === 'speak') return progress.speakCompleted;
     if (prevType === 'write') return progress.writeCompleted;
-    
-    return false;
+    if (prevType === 'drag_drop') return true;
+
+    return true;
   };
 
   const handleActivityPress = async (act: any) => {

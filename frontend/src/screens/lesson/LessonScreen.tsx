@@ -43,6 +43,9 @@ const launchActivity = (activity: { id: string; activityType: string }, navigati
     case 'write':
       navigation.navigate('Write', { activityId: activity.id });
       break;
+    case 'drag_drop':
+      navigation.navigate('Game', { activityId: activity.id });
+      break;
   }
 };
 
@@ -262,7 +265,7 @@ export const LessonScreen: React.FC = () => {
                   key={activity.id}
                   id={activity.id}
                   title={activity.title}
-                  activityType={activity.activityType}
+                  activityType={activity.activityType as any}
                   isCompleted={false}
                   onPress={() => handleActivityPress(activity)}
                 />

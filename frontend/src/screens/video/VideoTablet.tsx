@@ -33,11 +33,7 @@ const VideoPlayerTablet: React.FC<{
 }) => {
   const [isPlaying, setIsPlaying] = useState(true);
   const [videoEnded, setVideoEnded] = useState(false);
-
-  const [containerDimensions, setContainerDimensions] = useState({ width: 0, height: 0 });
   const [aspectRatio, setAspectRatio] = useState<number>(16 / 9);
-
-  const videoViewRef = useRef<View>(null);
 
   // Initialize player
   const player = useVideoPlayer(currentVideo?.videoUrl || '', (p) => {
@@ -45,12 +41,6 @@ const VideoPlayerTablet: React.FC<{
     p.currentTime = isCompleted ? 0 : currentPosition;
     p.play();
   });
-
-  // Track layout dimensions of parent panel
-  const handleLayout = (event: any) => {
-    const { width, height } = event.nativeEvent.layout;
-    setContainerDimensions({ width, height });
-  };
 
   // Detect actual video dimensions to adjust aspect ratio
   useEffect(() => {
@@ -68,21 +58,9 @@ const VideoPlayerTablet: React.FC<{
         if (!videoEl) {
           videoEl = document.querySelector('video');
         }
-        if (videoEl) {
-          if (videoEl.videoWidth > 0 && videoEl.videoHeight > 0) {
-            setAspectRatio(videoEl.videoWidth / videoEl.videoHeight);
-            return true;
-          }
-          videoEl.onloadedmetadata = () => {
-            if (videoEl && videoEl.videoWidth > 0 && videoEl.videoHeight > 0) {
-              setAspectRatio(videoEl.videoWidth / videoEl.videoHeight);
-            }
-          };
-          videoEl.onplaying = () => {
-            if (videoEl && videoEl.videoWidth > 0 && videoEl.videoHeight > 0) {
-              setAspectRatio(videoEl.videoWidth / videoEl.videoHeight);
-            }
-          };
+        if (videoEl && videoEl.videoWidth > 0 && videoEl.videoHeight > 0) {
+          setAspectRatio(videoEl.videoWidth / videoEl.videoHeight);
+          return true;
         }
       }
       return false;
@@ -98,39 +76,6 @@ const VideoPlayerTablet: React.FC<{
 
     return () => clearInterval(interval);
   }, [player, currentVideo]);
-
-  // Calculate proportional player dimensions
-  const getPlayerDimensions = (): { 
-    width: DimensionValue; 
-    height: DimensionValue; 
-    aspectRatio?: number; 
-    maxWidth?: DimensionValue; 
-    maxHeight?: DimensionValue;
-  } => {
-    if (Platform.OS === 'web') {
-      return {
-        width: '100%',
-        height: '100%',
-        aspectRatio,
-        maxWidth: '100%',
-        maxHeight: '100%',
-      };
-    }
-
-    const { width: containerWidth, height: containerHeight } = containerDimensions;
-    if (!containerWidth || !containerHeight) {
-      return { width: '100%', height: '100%' };
-    }
-
-    const targetWidth = containerHeight * aspectRatio;
-    if (targetWidth <= containerWidth) {
-      return { width: targetWidth, height: containerHeight };
-    } else {
-      return { width: containerWidth, height: containerWidth / aspectRatio };
-    }
-  };
-
-  const playerStyle = getPlayerDimensions();
 
   useEffect(() => {
     try {
@@ -150,10 +95,8 @@ const VideoPlayerTablet: React.FC<{
   useEffect(() => {
     const interval = setInterval(() => {
       try {
-        if (player.duration > 0) {
-          if (player.duration !== duration) {
-            useVideoStore.setState({ duration: player.duration });
-          }
+        if (player.duration > 0 && player.duration !== duration) {
+          useVideoStore.setState({ duration: player.duration });
           clearInterval(interval);
         }
       } catch (e) {
@@ -203,39 +146,69 @@ const VideoPlayerTablet: React.FC<{
 
   const handleNextPress = async () => {
     await completeVideo();
-    if (currentVideo) {
-      const next = getNextActivity(currentVideo.activityId);
-      if (next) {
-        await navigateToActivity(navigation, next);
-        return;
-      }
+    const actId = currentVideo?.activityId || 'video';
+    const next = getNextActivity(actId);
+    if (next) {
+      await navigateToActivity(navigation, next);
+      return;
     }
-    navigation.navigate('LessonOverview');
+    const { selectedLesson } = useRoadmapStore.getState();
+    if (selectedLesson) {
+      await useRoadmapStore.getState().completeLesson(selectedLesson.id);
+      navigation.navigate('LessonComplete');
+    } else {
+      navigation.navigate('MainTabs', { screen: 'Journey' });
+    }
   };
+
+  const hasRealVideo = currentVideo?.videoUrl && currentVideo.videoUrl !== 'coming_soon' && !currentVideo.videoUrl.includes('coming_soon');
 
   return (
     <ScreenContainer style={styles.container}>
       {/* Top Bar with back navigation */}
       <View style={styles.topBar}>
         <Pressable style={styles.backIconBtn} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={20} color={colors.textPrimary} />
+          <Ionicons name="arrow-back" size={18} color={colors.textPrimary} />
           <Text style={[styles.topBarBackText, { fontFamily: typography.families.rounded }]}>Back to Lesson</Text>
         </Pressable>
         <Text style={[styles.topBarTitle, { fontFamily: typography.families.rounded }]} numberOfLines={1}>
           {selectedLesson?.title || 'Video Activity'}
         </Text>
-        <View style={{ width: 120 }} />
+        <Pressable style={styles.nextLinkBtn} onPress={handleNextPress}>
+          <Text style={[styles.nextLinkText, { fontFamily: typography.families.rounded }]}>Next</Text>
+          <Ionicons name="arrow-forward" size={16} color="#FFF8ED" />
+        </Pressable>
       </View>
 
-      {/* Main Content */}
-      <View style={styles.playerColumn} onLayout={handleLayout}>
-        <View ref={videoViewRef} style={[styles.videoWrapper, playerStyle]}>
-          <VideoView
-            player={player}
-            style={[StyleSheet.absoluteFill, { backgroundColor: 'transparent' }, Platform.OS === 'web' && { objectFit: 'contain' } as any]}
-            contentFit="contain"
-            nativeControls={!videoEnded}
-          />
+      {/* Main Content with Flexible Aspect Ratio */}
+      <View style={styles.playerColumn}>
+        <View style={[styles.flexibleVideoContainer, { aspectRatio }]}>
+          {/* Always Visible Flexible Placeholder Card */}
+          <View style={styles.placeholderCard}>
+            <View style={styles.playCircle}>
+              <Ionicons name={isPlaying ? 'pause' : 'play'} size={42} color="#FFF8ED" style={{ marginLeft: isPlaying ? 0 : 4 }} />
+            </View>
+            <Text style={[styles.placeholderTitle, { fontFamily: typography.families.rounded }]} numberOfLines={1}>
+              {currentVideo?.title || 'Video Lesson'}
+            </Text>
+            <View style={styles.badgeRow}>
+              <View style={styles.hdBadge}>
+                <Ionicons name="film-outline" size={14} color={colors.yellow} />
+                <Text style={[styles.hdBadgeText, { fontFamily: typography.families.rounded }]}>Demonstration Video</Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Expo VideoView overlay */}
+          {hasRealVideo && (
+            <VideoView
+              player={player}
+              style={StyleSheet.absoluteFill}
+              contentFit="contain"
+              nativeControls={!videoEnded}
+            />
+          )}
+
           {videoEnded && (
             <View style={[StyleSheet.absoluteFill, styles.endedOverlay]}>
               <Pressable style={styles.replayOverlayBtn} onPress={handleReplay}>
@@ -258,15 +231,16 @@ const VideoPlayerTablet: React.FC<{
                 <Text style={[styles.completedSubtitle, { fontFamily: typography.families.rounded }]}>You're ready to proceed to the next activity.</Text>
               </View>
             </View>
-            <Button label="Next Activity" variant="success" onPress={handleNextPress} style={styles.nextBtn} />
+            <Button label="Next Activity ➔" variant="success" onPress={handleNextPress} style={styles.nextBtn} />
           </Card>
         ) : (
-          <View style={styles.infoSection}>
+          <Card style={styles.infoCard}>
             <Text style={[styles.videoTitle, { fontFamily: typography.families.rounded }]}>{currentVideo?.title || 'Video Lesson'}</Text>
             <Text style={[styles.videoInstructions, { fontFamily: typography.families.rounded }]}>
               Watch the video demonstration carefully to prepare for the tracing activities.
             </Text>
-          </View>
+            <Button label="Next Activity ➔" variant="primary" onPress={handleNextPress} style={styles.infoNextBtn} />
+          </Card>
         )}
       </View>
     </ScreenContainer>
@@ -285,15 +259,27 @@ const VideoComingSoonTablet: React.FC<{
     setIsCompleting(true);
     try {
       await completeVideo();
-      const next = getNextActivity(video.activityId);
+      const actId = video?.activityId || 'video';
+      const next = getNextActivity(actId);
       if (next) {
         await navigateToActivity(navigation, next);
         return;
       }
-      navigation.navigate('LessonOverview');
+      const { selectedLesson: activeLesson } = useRoadmapStore.getState();
+      if (activeLesson) {
+        await useRoadmapStore.getState().completeLesson(activeLesson.id);
+        navigation.navigate('LessonComplete');
+      } else {
+        navigation.navigate('MainTabs', { screen: 'Journey' });
+      }
     } catch (err) {
       if (__DEV__) console.warn('Failed to complete and proceed:', err);
-      navigation.navigate('LessonOverview');
+      const { selectedLesson: activeLesson } = useRoadmapStore.getState();
+      if (activeLesson) {
+        navigation.navigate('LessonOverview', { lessonId: activeLesson.id });
+      } else {
+        navigation.navigate('MainTabs', { screen: 'Journey' });
+      }
     } finally {
       setIsCompleting(false);
     }
@@ -475,22 +461,92 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 12,
   },
+  nextLinkBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: colors.purple,
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    borderRadius: radius.chip,
+  },
+  nextLinkText: {
+    color: '#FFF8ED',
+    fontWeight: 'bold',
+    fontSize: 13,
+  },
   topBarTitle: {
     color: colors.textPrimary,
-    fontSize: typography.sizes.largeTitle,
+    fontSize: typography.sizes.body,
     fontWeight: typography.weights.black,
     flex: 1,
     textAlign: 'center',
+    marginHorizontal: spacing.xs,
   },
   playerColumn: {
-    flex: 0.6,
+    flex: 1,
     backgroundColor: colors.background,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 0,
+    padding: spacing.lg,
   },
-  videoWrapper: {
-    backgroundColor: 'transparent',
+  flexibleVideoContainer: {
+    width: '100%',
+    maxWidth: 720,
+    backgroundColor: '#1E1B18',
+    borderRadius: 20,
+    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: colors.border,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...shadows.md,
+  },
+  placeholderCard: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: '#2A2421',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.xl,
+  },
+  playCircle: {
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    backgroundColor: colors.purple,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+    shadowColor: colors.purple,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  placeholderTitle: {
+    color: '#FFF8ED',
+    fontSize: typography.sizes.largeTitle,
+    fontWeight: typography.weights.bold,
+    textAlign: 'center',
+    marginBottom: spacing.xs,
+  },
+  badgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  hdBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: radius.full,
+  },
+  hdBadgeText: {
+    color: colors.yellow,
+    fontSize: typography.sizes.small,
+    fontWeight: typography.weights.bold,
   },
   replayOverlayBtn: {
     backgroundColor: 'rgba(59,52,47,0.85)',
@@ -510,21 +566,22 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.small,
   },
   bottomPanel: {
-    flex: 0.4,
+    padding: spacing.xl,
     backgroundColor: colors.background,
-    padding: spacing.xxl,
-    justifyContent: 'center',
     alignItems: 'center',
   },
-  infoSection: {
+  infoCard: {
+    width: '100%',
+    maxWidth: 680,
+    padding: spacing.lg,
     alignItems: 'center',
-    maxWidth: 600,
+    gap: spacing.xs,
   },
   videoTitle: {
     fontSize: typography.sizes.largeTitle,
     fontWeight: typography.weights.black,
     color: colors.textPrimary,
-    marginBottom: spacing.sm,
+    marginBottom: 4,
     textAlign: 'center',
   },
   videoInstructions: {
@@ -532,10 +589,15 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     textAlign: 'center',
     lineHeight: 22,
+    marginBottom: spacing.md,
+  },
+  infoNextBtn: {
+    width: '100%',
+    height: 50,
   },
   completedSection: {
     width: '100%',
-    maxWidth: 600,
+    maxWidth: 680,
     gap: spacing.md,
   },
   completedRow: {
@@ -557,7 +619,7 @@ const styles = StyleSheet.create({
   },
   nextBtn: {
     width: '100%',
-    height: 48,
+    height: 50,
   },
   endedOverlay: {
     backgroundColor: 'rgba(59,52,47,0.7)',
@@ -566,7 +628,7 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   comingSoonPanel: {
-    flex: 0.6,
+    flex: 1,
     backgroundColor: colors.background,
     justifyContent: 'center',
     alignItems: 'center',

@@ -38,6 +38,7 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ deviceType
   const tabs = [
     { name: 'Home' as const, label: 'Home', icon: 'home' },
     { name: 'Journey' as const, label: 'Explore', icon: 'compass' },
+    { name: 'Camera' as const, label: 'Camera', icon: 'camera' },
     { name: 'Mentor' as const, label: 'Mentors', icon: 'flower' },
     { name: 'Rewards' as const, label: 'Rewards', icon: 'stats-chart' },
     { name: 'Profile' as const, label: 'Profile', icon: 'person' },

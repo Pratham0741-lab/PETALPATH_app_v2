@@ -21,6 +21,7 @@ export type OnboardingStackParamList = {
 export type MainTabParamList = {
   Home: undefined;
   Journey: undefined;
+  Camera: undefined;
   Mentor: undefined;
   Rewards: undefined;
   Profile: undefined;
@@ -40,6 +41,7 @@ export type RootStackParamList = {
   Tutorial: undefined;
   Home: undefined;
   Journey: undefined;
+  Camera: undefined;
   Mentor: undefined;
   Rewards: undefined;
   Profile: undefined;

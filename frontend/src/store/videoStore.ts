@@ -102,6 +102,7 @@ export const useVideoStore = create<VideoState>((set, get) => {
         try {
           const res = await api.post('/video-progress', {
             videoId: currentVideo.id,
+            activityId: currentVideo.activityId,
             watchPosition: roundedPosition,
           });
           if (res.success && res.data) {
@@ -126,6 +127,7 @@ export const useVideoStore = create<VideoState>((set, get) => {
       try {
         await api.post('/video-progress/complete', {
           videoId: currentVideo.id,
+          activityId: currentVideo.activityId,
         });
       } catch (err) {
         if (typeof __DEV__ !== 'undefined' && __DEV__) console.warn('Failed to mark video as complete:', err);

@@ -13,6 +13,8 @@ import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint
 
 import expo.modules.ApplicationLifecycleDispatcher
 import expo.modules.ExpoReactHostFactory
+import com.petalpath.mediapipe.MediaPipePackage
+import com.petalpath.cameraengine.CameraEnginePackage
 
 class MainApplication : Application(), ReactApplication {
 
@@ -21,8 +23,9 @@ class MainApplication : Application(), ReactApplication {
       context = applicationContext,
       packageList =
         PackageList(this).packages.apply {
-          // Packages that cannot be autolinked yet can be added manually here, for example:
-          // add(MyReactNativePackage())
+          // Explicitly add CameraEnginePackage to React Native package list
+          add(CameraEnginePackage())
+          add(MediaPipePackage())
         }
     )
   }

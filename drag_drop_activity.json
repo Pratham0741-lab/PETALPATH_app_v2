@@ -1,0 +1,1839 @@
+{
+  "$schema": "https://petalpath.io/schemas/drag-drop-activity/v2.1.0",
+  "$id": "petalpath:drag-drop-activity:v2.1.0",
+
+  "_comment": "PetalPath Drag & Drop Activity Specification v2.1.0. This file is the canonical data contract between the PetalPath curriculum system and any drag-and-drop rendering engine. It defines WHAT an activity contains, never HOW it is rendered or executed. The curriculum JSON (Grade → Theme → Node → Activities[]) is the single source of truth for all pedagogical decisions including sequencing, difficulty, prerequisites, progression, and rewards. This schema describes only the mechanics of a single drag-and-drop interaction: what the child drags, where they drop it, how validation works, and what interaction signals are emitted upon completion. v2.1.0 introduces engine metadata, versionable template references, completion signals (replacing rewards), and activity-level curriculum references.",
+
+  "schemaVersion": "2.1.0",
+
+  "_versioningStrategy": {
+    "_comment": "Versioning follows Semantic Versioning (SemVer). MAJOR: breaking changes to required fields or validation logic. MINOR: new optional fields, new enum values, new template types, new sections with deprecation paths. PATCH: documentation fixes, typo corrections, comment updates. Every activity document carries a 'schemaVersion' field so engines can feature-detect. Engines MUST ignore unknown fields to maintain forward compatibility. Fields are NEVER removed in minor/patch releases; they are deprecated with a '_deprecated' flag and a 'replacedBy' pointer. A migration guide accompanies every major version bump.",
+    "format": "MAJOR.MINOR.PATCH",
+    "currentVersion": "2.1.0",
+    "backwardCompatibilityRules": [
+      "New optional fields MAY be added in MINOR releases without breaking existing activities",
+      "Enum values MAY be extended in MINOR releases; engines MUST treat unknown enum values as 'custom'",
+      "Required fields are NEVER added in MINOR or PATCH releases",
+      "Deprecated fields carry '_deprecated: true' and 'replacedBy' pointing to the successor",
+      "Engines MUST ignore unrecognised top-level keys to allow forward compatibility",
+      "Template types registered in 'templateRegistry' are open-ended; new types never require schema changes",
+      "All ID fields use URN-style strings (petalpath:<entity>:<uuid>) for global uniqueness",
+      "Asset references are always by ID, never by URL, so CDN migrations are transparent",
+      "The 'extensions' object on every major node allows engine-specific data without polluting the core schema",
+      "When both a deprecated field and its replacement are present, engines MUST use the replacement",
+      "Engine capability negotiation occurs before activity loading; incompatible activities are skipped gracefully"
+    ]
+  },
+
+  "_migrationFromV1": {
+    "_comment": "Migration guide from v1.0.0 to v2.0.0. This is a MAJOR version bump because required fields were restructured.",
+    "breakingChanges": [
+      "REMOVED: 'curriculumRef' object (contained gradeId, subjectId, unitId, lessonId, conceptId, learningObjectiveId, bloomsLevel, month). REPLACED BY: single 'curriculumNodeId' string field (now itself deprecated in v2.1.0 in favor of 'curriculumRef' object).",
+      "REMOVED: 'metadata.difficulty' — now resolved from curriculum node.",
+      "REMOVED: 'metadata.estimatedDurationSeconds' — now resolved from curriculum node's 'estimated_minutes'.",
+      "REMOVED: 'metadata.ageRange' — now resolved from grade definition in curriculum.",
+      "REMOVED: 'metadata.recommendedGrade' — now resolved from curriculum node's grade file.",
+      "REMOVED: 'metadata.prerequisites' — now resolved from curriculum node's 'prerequisites' array."
+    ],
+    "migrationSteps": [
+      "1. Map old curriculumRef fields to the curriculum node ID. The node ID is the leaf-level identifier (e.g., 'pn_letter_a', 'n_fm_cutting').",
+      "2. Remove 'curriculumRef' object entirely.",
+      "3. Add 'curriculumNodeId' field with the mapped node ID.",
+      "4. Remove 'metadata.difficulty', 'metadata.estimatedDurationSeconds', 'metadata.ageRange', 'metadata.recommendedGrade', 'metadata.prerequisites'.",
+      "5. Update 'schemaVersion' to '2.0.0'."
+    ]
+  },
+
+  "_migrationFromV2_0": {
+    "_comment": "Migration guide from v2.0.0 to v2.1.0. This is a MINOR version bump — all changes are additive with backward-compatible deprecation paths. Existing v2.0.0 activities continue to work without modification.",
+    "addedFields": [
+      "ADDED: 'curriculumRef' object (nodeId, activityIndex, activityType) — replaces 'curriculumNodeId'. DEPRECATES: 'curriculumNodeId'.",
+      "ADDED: 'engine' object (engineId, targetEngineVersion, minimumEngineVersion, requiredCapabilities) — new first-class engine metadata.",
+      "ADDED: 'metadata.templateRef' object (templateId, templateVersion) — replaces 'metadata.templateType'. DEPRECATES: 'metadata.templateType'.",
+      "ADDED: 'completionSignals' section — replaces 'rewards'. Activity emits interaction signals; progression system maps them to rewards. DEPRECATES: 'rewards'.",
+      "ADDED: 'curriculumValidation' section — pre-load validation rules for curriculum reference integrity.",
+      "REMOVED from analytics: 'starsEarned', 'masteryAchieved' — these are progression-level concerns, not interaction metrics."
+    ],
+    "migrationSteps": [
+      "1. Add 'curriculumRef' object: set nodeId to the old curriculumNodeId value, find the drag_drop entry index in the curriculum node's activities[] array, set activityIndex to that index, set activityType to 'drag_drop'.",
+      "2. Add 'engine' object: set engineId to 'petalpath:engine:drag-drop', set minimumEngineVersion to '1.0.0', set requiredCapabilities based on what the activity uses.",
+      "3. Replace metadata.templateType string with metadata.templateRef object: set templateId to the old templateType value, set templateVersion to '1.0.0'.",
+      "4. Replace 'rewards' section with 'completionSignals': convert each reward condition to a signal with a condition string.",
+      "5. Remove 'starsEarned' and 'masteryAchieved' from analytics.metricsToCollect.",
+      "6. Update schemaVersion to '2.1.0'.",
+      "7. Optionally remove deprecated fields (curriculumNodeId, templateType, rewards) — they are safely ignored by v2.1.0 engines."
+    ]
+  },
+
+  "specification": {
+
+    "activity": {
+      "_comment": "Root object for a single Drag & Drop activity instance. Every activity attaches to exactly one curriculum activity entry via curriculumRef (or the deprecated curriculumNodeId). The activity never duplicates curriculum data — it only references the curriculum. All pedagogical metadata (difficulty, prerequisites, progression, mastery thresholds, rewards, subject, learning outcome) lives exclusively in the curriculum. This schema defines only the interaction layer: what the child drags, where they drop it, how validation works, what feedback they receive, and what signals are emitted upon completion.",
+
+      "id": {
+        "_comment": "Globally unique identifier for this activity instance. Format: petalpath:activity:<uuid-v4>. Used by analytics, progress tracking, and content management systems.",
+        "type": "string",
+        "format": "urn",
+        "pattern": "^petalpath:activity:[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$",
+        "required": true,
+        "example": "petalpath:activity:a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d"
+      },
+
+      "schemaVersion": {
+        "_comment": "The version of this specification the activity was authored against. Engines use this to apply version-specific parsing or migration logic.",
+        "type": "string",
+        "format": "semver",
+        "required": true,
+        "example": "2.1.0"
+      },
+
+      "engine": {
+        "_comment": "Declares which rendering engine this activity targets and what capabilities it requires. Engines use this section to verify compatibility before attempting to load and render the activity. This is the handshake between the activity content and the runtime. Added in v2.1.0.",
+
+        "engineId": {
+          "_comment": "Identifies the rendering engine this activity is designed for. Format: petalpath:engine:<engine-name>. Different activity types (drag-and-drop, trace, tap) have different engines. An engine should only load activities whose engineId matches its own.",
+          "type": "string",
+          "format": "urn",
+          "required": true,
+          "example": "petalpath:engine:drag-drop"
+        },
+
+        "targetEngineVersion": {
+          "_comment": "The engine version this activity was authored and tested against. The engine may use this to apply version-specific rendering adjustments or backward-compatible polyfills.",
+          "type": "string",
+          "format": "semver",
+          "required": false,
+          "example": "1.4.0"
+        },
+
+        "minimumEngineVersion": {
+          "_comment": "The oldest engine version that can correctly render this activity. If the running engine's version is below this, it MUST refuse to load the activity and display a 'please update' message rather than rendering incorrectly.",
+          "type": "string",
+          "format": "semver",
+          "required": true,
+          "example": "1.0.0"
+        },
+
+        "requiredCapabilities": {
+          "_comment": "Array of named capabilities the engine must support to render this activity correctly. The engine checks this list against its own capability manifest before loading. If any required capability is missing, the engine refuses to load. Capabilities are lowercase, hyphenated identifiers. Common capabilities: 'drag-and-drop' (core dragging mechanics), 'snap-to-target' (magnetic snapping), 'image-outline-hit-detection' (alpha-channel based hit testing for image-outline drop zones), 'progressive-hints' (multi-level hint system), 'animation-lottie' (Lottie animation playback), 'animation-spritesheet' (spritesheet animation), 'audio-playback' (sound effects and narration), 'tts' (text-to-speech synthesis), 'switch-access' (adaptive input device support), 'multi-touch' (simultaneous drag of multiple items), 'custom-validator' (custom validation logic via validatorId).",
+          "type": "array",
+          "items": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+          "required": false,
+          "default": ["drag-and-drop", "snap-to-target"],
+          "example": ["drag-and-drop", "snap-to-target", "image-outline-hit-detection", "progressive-hints", "audio-playback"]
+        },
+
+        "extensions": {
+          "type": "object",
+          "additionalProperties": true,
+          "required": false,
+          "default": {}
+        }
+      },
+
+      "curriculumRef": {
+        "_comment": "Precise link to a specific activity entry within a curriculum node. The curriculum hierarchy is Grade → Theme → Node → Activities[]. Each node contains an array of activity entries (e.g., [{type:'match',...}, {type:'drag_drop',...}]). This reference identifies both the node and the specific activity entry within it, eliminating ambiguity when a node has multiple activities. The engine resolves all pedagogical context (difficulty, estimated_minutes, prerequisites, rewards, mastery thresholds) from the curriculum node and its activity entry. Added in v2.1.0 to replace the less precise 'curriculumNodeId'.",
+
+        "nodeId": {
+          "_comment": "The curriculum node ID. Must exist in one of the grade files (prenursery.json, nursery.json, lkg.json, ukg.json). Examples: 'pn_animal_babies' (Pre-Nursery, Animals theme), 'n_fm_cutting' (Nursery, Fine Motor theme), 'lkg_classification' (LKG, Numbers theme), 'ukg_fm_sort_4bin' (UKG, Fine Motor theme).",
+          "type": "string",
+          "required": true,
+          "example": "pn_animal_babies"
+        },
+
+        "activityIndex": {
+          "_comment": "0-based index into the node's activities[] array identifying which activity entry this instance implements. For example, if the node has activities: [{type:'match',...}, {type:'drag_drop',...}], then activityIndex 1 points to the drag_drop entry. The entry at this index must have type 'drag_drop'.",
+          "type": "integer",
+          "minimum": 0,
+          "required": true,
+          "example": 1
+        },
+
+        "activityType": {
+          "_comment": "Type assertion. Must match the 'type' field of the activity entry at activityIndex in the curriculum node. For activities governed by this schema, this is always 'drag_drop'. The engine verifies this assertion before loading — if the curriculum entry at activityIndex has a different type, the activity fails validation.",
+          "type": "string",
+          "enum": ["drag_drop"],
+          "required": true,
+          "example": "drag_drop"
+        }
+      },
+
+      "curriculumNodeId": {
+        "_comment": "DEPRECATED in v2.1.0. Use 'curriculumRef' instead. This field pointed to the curriculum node but did not identify which activity entry within the node this instance implements — a node can have multiple activities (e.g., match + drag_drop + tap). When both 'curriculumRef' and 'curriculumNodeId' are present, engines MUST use 'curriculumRef'. When only 'curriculumNodeId' is present, the engine should locate the first 'drag_drop' entry in the node's activities[] array.",
+        "_deprecated": true,
+        "_deprecatedInVersion": "2.1.0",
+        "replacedBy": "curriculumRef",
+        "type": "string",
+        "required": false,
+        "example": "pn_letter_a"
+      },
+
+      "metadata": {
+        "_comment": "Interaction-level metadata that belongs to the activity itself — NOT to the curriculum. This section contains only information about HOW this activity works as a drag-and-drop interaction, not WHAT it teaches (which the curriculum defines). Fields removed from v1 because they are owned by the curriculum node: difficulty, estimatedDurationSeconds, ageRange, recommendedGrade, prerequisites.",
+
+        "title": {
+          "_comment": "Human-readable name for CMS and teacher dashboards. References a localization key so it can be displayed in any supported language.",
+          "type": "string",
+          "required": true,
+          "localizationKeyRef": true,
+          "example": "l10n:activity:a1b2c3d4:title"
+        },
+
+        "description": {
+          "_comment": "Brief description of the interaction mechanic (e.g., 'Drag each item to its matching target'). Describes the activity experience, not the learning objective.",
+          "type": "string",
+          "required": true,
+          "localizationKeyRef": true,
+          "example": "l10n:activity:a1b2c3d4:description"
+        },
+
+        "templateRef": {
+          "_comment": "Versionable reference to a template pattern in the template registry. Added in v2.1.0 to replace the unversioned 'templateType' string. The version field allows templates to evolve (e.g., adding new default drop zone configurations or changing typical validation strategy) without breaking activities authored against an older version of the pattern.",
+
+          "templateId": {
+            "_comment": "Registry key identifying the template pattern. Must match a 'templateId' entry in the templateRegistry. The engine uses this to select the appropriate rendering strategy and default layout.",
+            "type": "string",
+            "required": true,
+            "example": "letter-to-outline"
+          },
+
+          "templateVersion": {
+            "_comment": "SemVer version of the template pattern this activity was authored against. The engine uses this to apply version-specific rendering defaults. If omitted, the engine uses the latest version of the template.",
+            "type": "string",
+            "format": "semver",
+            "required": false,
+            "default": "1.0.0",
+            "example": "1.0.0"
+          }
+        },
+
+        "templateType": {
+          "_comment": "DEPRECATED in v2.1.0. Use 'templateRef' instead, which adds version tracking for template patterns. When both 'templateRef' and 'templateType' are present, engines MUST use 'templateRef'. When only 'templateType' is present, the engine treats it as templateRef with templateId equal to the templateType value and templateVersion '1.0.0'.",
+          "_deprecated": true,
+          "_deprecatedInVersion": "2.1.0",
+          "replacedBy": "templateRef",
+          "type": "string",
+          "required": false,
+          "example": "letter-to-outline"
+        },
+
+        "activityType": {
+          "_comment": "Always 'drag-and-drop' for activities governed by this schema. Other schemas handle 'trace', 'tap', 'speak', 'listen', 'draw', 'select', 'identify', etc.",
+          "type": "string",
+          "enum": ["drag-and-drop"],
+          "required": true
+        },
+
+        "primaryLanguage": {
+          "_comment": "BCP-47 language tag for the primary language of the interaction content. Determines which localized assets the engine loads.",
+          "type": "string",
+          "format": "bcp47",
+          "required": true,
+          "example": "en-IN"
+        },
+
+        "supportedLanguages": {
+          "_comment": "Array of BCP-47 tags for all languages this activity has been localized into. The engine falls back to primaryLanguage if the child's preferred language is not listed.",
+          "type": "array",
+          "items": { "type": "string", "format": "bcp47" },
+          "required": false,
+          "default": [],
+          "example": ["en-IN", "hi-IN"]
+        },
+
+        "tags": {
+          "_comment": "Freeform tags for search, filtering, and recommendation within the CMS. Should describe the interaction pattern and content domain. Tags are lowercase, hyphenated.",
+          "type": "array",
+          "items": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+          "required": false,
+          "default": [],
+          "example": ["matching", "drag-to-target", "one-to-one"]
+        },
+
+        "status": {
+          "_comment": "Content lifecycle status. 'draft' = in authoring, 'review' = pending QA, 'published' = live, 'archived' = retired but preserved for analytics, 'deprecated' = replaced by another activity.",
+          "type": "string",
+          "enum": ["draft", "review", "published", "archived", "deprecated"],
+          "required": true,
+          "default": "draft",
+          "example": "published"
+        },
+
+        "createdAt": {
+          "_comment": "ISO 8601 timestamp of when this activity was first authored.",
+          "type": "string",
+          "format": "date-time",
+          "required": true
+        },
+
+        "updatedAt": {
+          "_comment": "ISO 8601 timestamp of the most recent edit.",
+          "type": "string",
+          "format": "date-time",
+          "required": true
+        },
+
+        "authorId": {
+          "_comment": "ID of the content author or authoring system that created this activity. Used for audit trails.",
+          "type": "string",
+          "required": false
+        },
+
+        "reviewedBy": {
+          "_comment": "ID of the reviewer who approved this activity for publication.",
+          "type": "string",
+          "required": false
+        },
+
+        "extensions": {
+          "_comment": "Open object for CMS-specific metadata that does not belong in the core schema. Engines MUST ignore unknown keys here.",
+          "type": "object",
+          "additionalProperties": true,
+          "required": false,
+          "default": {}
+        }
+      },
+
+      "canvas": {
+        "_comment": "Defines the visual stage on which the drag-and-drop interaction takes place. All coordinates in the activity use this canvas as the reference frame. The canvas is abstract — engines scale it to fit the device screen while preserving aspect ratio.",
+
+        "width": {
+          "_comment": "Logical width of the canvas in abstract units. Not pixels — the engine maps these to physical pixels based on device DPI and screen size.",
+          "type": "number",
+          "required": true,
+          "default": 1000,
+          "example": 1000
+        },
+
+        "height": {
+          "_comment": "Logical height of the canvas.",
+          "type": "number",
+          "required": true,
+          "default": 750,
+          "example": 750
+        },
+
+        "backgroundAssetId": {
+          "_comment": "Optional background image or scene. References an asset in the asset management system. NULL means the engine uses its default background for the template type.",
+          "type": "string",
+          "format": "urn",
+          "required": false,
+          "example": "petalpath:asset:bg-classroom-scene-01"
+        },
+
+        "backgroundAudioId": {
+          "_comment": "Optional ambient audio loop (e.g., nature sounds for an animal-habitat activity). Controlled by the child's audio preferences.",
+          "type": "string",
+          "format": "urn",
+          "required": false
+        },
+
+        "orientation": {
+          "_comment": "Preferred device orientation. 'landscape' is default for most drag activities as it provides more horizontal space. 'portrait' suits vertical sorting/sequencing. 'any' lets the engine choose.",
+          "type": "string",
+          "enum": ["landscape", "portrait", "any"],
+          "required": false,
+          "default": "landscape"
+        },
+
+        "extensions": {
+          "type": "object",
+          "additionalProperties": true,
+          "required": false,
+          "default": {}
+        }
+      },
+
+      "draggables": {
+        "_comment": "Array of objects that the child can pick up and move. Every draggable is generic — it declares its content type (text, image, shape, etc.) and references assets by ID. The schema intentionally avoids domain-specific fields like 'letter' or 'animal'; instead, the content type and asset references carry the semantic meaning. This makes the schema universal across all template types.",
+
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 50,
+        "required": true,
+
+        "itemSchema": {
+          "id": {
+            "_comment": "Unique identifier for this draggable within the activity. Used by drop zones to specify which items they accept, and by analytics to track individual item interactions.",
+            "type": "string",
+            "required": true,
+            "example": "drag-item-1"
+          },
+
+          "contentType": {
+            "_comment": "Declares what kind of content this draggable displays. The engine uses this to select the appropriate renderer. 'text' = plain text string, 'letter' = single alphabet character (enables letter-specific rendering like phonetic audio), 'number' = numeric value, 'word' = single word, 'sentence' = phrase or sentence, 'image' = raster image, 'svg' = vector graphic, 'audio' = audio clip (visual representation is a speaker icon or waveform), 'shape' = geometric shape, 'emoji' = unicode emoji, 'icon' = icon from icon library, 'sticker' = decorative sticker image, 'custom-widget' = engine-specific interactive widget.",
+            "type": "string",
+            "enum": [
+              "text", "letter", "number", "word", "sentence",
+              "image", "svg", "audio", "shape", "emoji",
+              "icon", "sticker", "custom-widget"
+            ],
+            "required": true,
+            "example": "image"
+          },
+
+          "content": {
+            "_comment": "The actual content value. For text/letter/number/word/sentence, this is the string or number. For image/svg/audio/sticker, this is NULL — the asset reference carries the content. For shape, this is the shape type (circle, square, triangle, etc.). For emoji, this is the unicode character. This field is always a localization key when the content is user-visible text.",
+            "type": ["string", "number", "null"],
+            "required": false,
+            "example": "A"
+          },
+
+          "contentLocalizationKey": {
+            "_comment": "Localization key for the content value. Used when the draggable displays text that must be translated (e.g., a word or sentence). For language-independent content like numbers or shapes, this may be null.",
+            "type": "string",
+            "required": false,
+            "example": "l10n:drag:a1b2c3d4:item-1:content"
+          },
+
+          "assetRef": {
+            "_comment": "References to visual and audio assets associated with this draggable. All assets are managed centrally — never embedded.",
+
+            "imageAssetId": {
+              "_comment": "Primary visual asset. For 'image' and 'sticker' content types, this is the main content. For 'letter' or 'number', this might be a stylized rendering.",
+              "type": "string",
+              "format": "urn",
+              "required": false,
+              "example": "petalpath:asset:item-1-image"
+            },
+
+            "svgAssetId": {
+              "_comment": "Vector graphic asset. Used for 'svg' content type or when resolution-independent rendering is needed.",
+              "type": "string",
+              "format": "urn",
+              "required": false
+            },
+
+            "audioAssetId": {
+              "_comment": "Audio that plays when the draggable is picked up or tapped. For letters, this would be the phonetic sound. For animals, the animal sound. For words, the pronunciation.",
+              "type": "string",
+              "format": "urn",
+              "required": false,
+              "example": "petalpath:asset:audio:item-1-sound"
+            },
+
+            "animationAssetId": {
+              "_comment": "Optional animation that plays on the draggable (e.g., a bouncing item to attract attention).",
+              "type": "string",
+              "format": "urn",
+              "required": false
+            }
+          },
+
+          "position": {
+            "_comment": "Initial position of the draggable on the canvas, in canvas coordinate units. The engine may randomize positions within a defined region if 'randomizePosition' is true.",
+            "x": { "type": "number", "required": true, "example": 100 },
+            "y": { "type": "number", "required": true, "example": 500 },
+            "randomizePosition": {
+              "_comment": "If true, the engine places this draggable at a random position within the 'sourceRegion' defined on the canvas. Prevents children from memorizing positions across retries.",
+              "type": "boolean",
+              "required": false,
+              "default": false
+            },
+            "sourceRegion": {
+              "_comment": "Bounding box within which the draggable may be randomly placed. Only used when randomizePosition is true.",
+              "x": { "type": "number" },
+              "y": { "type": "number" },
+              "width": { "type": "number" },
+              "height": { "type": "number" },
+              "required": false
+            }
+          },
+
+          "dimensions": {
+            "_comment": "Visual size of the draggable on the canvas. The engine scales this relative to the canvas dimensions.",
+            "width": { "type": "number", "required": true, "example": 80 },
+            "height": { "type": "number", "required": true, "example": 80 }
+          },
+
+          "style": {
+            "_comment": "Visual styling hints. The engine has final say on rendering, but these hints guide the visual treatment.",
+            "backgroundColor": {
+              "_comment": "CSS-style color string. Used as background for text/letter/number draggables.",
+              "type": "string",
+              "required": false,
+              "example": "#FF6B6B"
+            },
+            "borderColor": { "type": "string", "required": false },
+            "borderRadius": {
+              "_comment": "Corner rounding in canvas units. Higher values make the draggable more pill-shaped.",
+              "type": "number",
+              "required": false,
+              "default": 8
+            },
+            "fontSize": {
+              "_comment": "Font size for text-based content types, in canvas units.",
+              "type": "number",
+              "required": false
+            },
+            "fontFamily": {
+              "_comment": "Font family hint. The engine maps this to available fonts, respecting accessibility settings like dyslexia-friendly fonts.",
+              "type": "string",
+              "required": false
+            },
+            "opacity": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "required": false,
+              "default": 1
+            },
+            "elevation": {
+              "_comment": "Visual lift/shadow depth when the draggable is picked up. Higher values = more prominent shadow. 0 = flat.",
+              "type": "number",
+              "minimum": 0,
+              "maximum": 5,
+              "required": false,
+              "default": 2
+            }
+          },
+
+          "behavior": {
+            "_comment": "Interaction behavior configuration for this specific draggable.",
+
+            "draggable": {
+              "_comment": "Whether this item can be dragged. Setting to false makes it a static display element (useful for reference items in categorization activities).",
+              "type": "boolean",
+              "required": false,
+              "default": true
+            },
+            "returnToOriginOnFailure": {
+              "_comment": "If true, the item animates back to its starting position when dropped on an invalid target. If false, it stays where dropped.",
+              "type": "boolean",
+              "required": false,
+              "default": true
+            },
+            "lockAfterCorrectDrop": {
+              "_comment": "If true, the item cannot be moved again after being correctly placed. Prevents accidental displacement.",
+              "type": "boolean",
+              "required": false,
+              "default": true
+            },
+            "reusable": {
+              "_comment": "If true, the draggable can be used multiple times (creates copies). Useful for counting activities where the same object is dragged to multiple targets.",
+              "type": "boolean",
+              "required": false,
+              "default": false
+            },
+            "rotatable": {
+              "_comment": "If true, the child can rotate the draggable (useful for puzzle assembly and geometry matching).",
+              "type": "boolean",
+              "required": false,
+              "default": false
+            },
+            "resizable": {
+              "_comment": "If true, the child can resize the draggable. Rare — primarily for future physics-based activities.",
+              "type": "boolean",
+              "required": false,
+              "default": false
+            }
+          },
+
+          "accessibility": {
+            "_comment": "Accessibility properties specific to this draggable. These supplement the activity-level accessibility settings.",
+            "screenReaderLabel": {
+              "_comment": "Localization key for the screen reader announcement when this draggable receives focus.",
+              "type": "string",
+              "localizationKeyRef": true,
+              "required": true,
+              "example": "l10n:drag:a1b2c3d4:item-1:sr-label"
+            },
+            "narrationAudioId": {
+              "_comment": "Audio asset that narrates what this draggable is, for children who cannot read.",
+              "type": "string",
+              "format": "urn",
+              "required": false,
+              "example": "petalpath:asset:audio:narration-item-1"
+            }
+          },
+
+          "groupId": {
+            "_comment": "Optional grouping identifier. Draggables with the same groupId belong to the same logical set. Used by the engine for batch operations and by analytics for group-level metrics.",
+            "type": "string",
+            "required": false,
+            "example": "group-items"
+          },
+
+          "sortOrder": {
+            "_comment": "Defines the correct position in sequence-type activities (story ordering, number sequence, alphabet sequence). 1-based. Ignored for non-sequence activities.",
+            "type": "integer",
+            "minimum": 1,
+            "required": false,
+            "example": 1
+          },
+
+          "distractorFlag": {
+            "_comment": "If true, this draggable is a distractor — it has no correct drop zone. Used in categorization and sorting activities to test discrimination. The engine should handle distractor items gracefully (e.g., provide a 'does not belong' zone or return-to-origin behavior).",
+            "type": "boolean",
+            "required": false,
+            "default": false
+          },
+
+          "extensions": {
+            "type": "object",
+            "additionalProperties": true,
+            "required": false,
+            "default": {}
+          }
+        }
+      },
+
+      "dropZones": {
+        "_comment": "Array of target areas where draggables can be placed. Each drop zone defines its shape, position, accepted items, and feedback behavior. Drop zones are the 'answers' — they know which draggables constitute a correct placement.",
+
+        "type": "array",
+        "minItems": 1,
+        "maxItems": 50,
+        "required": true,
+
+        "itemSchema": {
+          "id": {
+            "_comment": "Unique identifier for this drop zone within the activity.",
+            "type": "string",
+            "required": true,
+            "example": "zone-target-1"
+          },
+
+          "shape": {
+            "_comment": "Geometric shape of the drop zone. Determines both the visual rendering and the hit-detection area.",
+
+            "type": {
+              "_comment": "'rectangle' = axis-aligned rectangle, 'circle' = circular area, 'polygon' = custom polygon defined by vertices, 'svg-path' = arbitrary SVG path data, 'invisible' = no visual representation (hit area only), 'image-outline' = drop zone shape derived from an image's alpha channel, 'custom' = engine-defined custom shape.",
+              "type": "string",
+              "enum": ["rectangle", "circle", "polygon", "svg-path", "invisible", "image-outline", "custom"],
+              "required": true,
+              "example": "rectangle"
+            },
+
+            "position": {
+              "_comment": "Center point or top-left corner of the drop zone, depending on shape type. For rectangles, this is top-left. For circles, this is center.",
+              "x": { "type": "number", "required": true, "example": 500 },
+              "y": { "type": "number", "required": true, "example": 200 }
+            },
+
+            "dimensions": {
+              "_comment": "Size for rectangle and image-outline shapes.",
+              "width": { "type": "number", "required": false, "example": 100 },
+              "height": { "type": "number", "required": false, "example": 100 }
+            },
+
+            "radius": {
+              "_comment": "Radius for circle shapes, in canvas units.",
+              "type": "number",
+              "required": false,
+              "example": 50
+            },
+
+            "vertices": {
+              "_comment": "Array of {x, y} points for polygon shapes. Points are connected in order; the polygon is automatically closed.",
+              "type": "array",
+              "items": {
+                "x": { "type": "number" },
+                "y": { "type": "number" }
+              },
+              "required": false
+            },
+
+            "svgPathData": {
+              "_comment": "SVG path 'd' attribute string for svg-path shapes. Allows pixel-perfect irregular shapes.",
+              "type": "string",
+              "required": false,
+              "example": "M 10 80 C 40 10, 65 10, 95 80 S 150 150, 180 80"
+            },
+
+            "outlineAssetId": {
+              "_comment": "Asset ID for image-outline shapes. The engine extracts the outline from the image's alpha channel to create the drop zone boundary.",
+              "type": "string",
+              "format": "urn",
+              "required": false,
+              "example": "petalpath:asset:outline-target-shape"
+            }
+          },
+
+          "acceptedDraggableIds": {
+            "_comment": "Array of draggable IDs that this zone considers correct. For one-to-one matching, this contains exactly one ID. For many-to-one (e.g., a category basket), it contains multiple IDs. An empty array means any draggable is accepted (engine handles validation elsewhere).",
+            "type": "array",
+            "items": { "type": "string" },
+            "required": true,
+            "example": ["drag-item-1"]
+          },
+
+          "capacity": {
+            "_comment": "Maximum number of draggables this zone can hold simultaneously. 1 for one-to-one matching, higher for categorization/sorting activities.",
+            "type": "integer",
+            "minimum": 1,
+            "required": false,
+            "default": 1,
+            "example": 1
+          },
+
+          "label": {
+            "_comment": "Optional visible label on the drop zone. Localization key.",
+            "type": "string",
+            "localizationKeyRef": true,
+            "required": false,
+            "example": "l10n:zone:a1b2c3d4:target-1:label"
+          },
+
+          "assetRef": {
+            "_comment": "Visual assets for the drop zone itself.",
+            "imageAssetId": {
+              "_comment": "Background or decorative image for the zone.",
+              "type": "string",
+              "format": "urn",
+              "required": false,
+              "example": "petalpath:asset:target-1-outline"
+            },
+            "filledAssetId": {
+              "_comment": "Image shown after a correct drop, replacing the empty state.",
+              "type": "string",
+              "format": "urn",
+              "required": false,
+              "example": "petalpath:asset:target-1-filled"
+            },
+            "audioOnDropId": {
+              "_comment": "Audio played when any item is dropped into this zone (before success/failure determination).",
+              "type": "string",
+              "format": "urn",
+              "required": false
+            }
+          },
+
+          "visualState": {
+            "_comment": "Controls how the drop zone appears in different states.",
+            "defaultAppearance": {
+              "_comment": "How the zone looks before any interaction. 'visible' shows the outline/shape, 'dimmed' shows a faded version, 'hidden' makes it invisible until a draggable hovers near it.",
+              "type": "string",
+              "enum": ["visible", "dimmed", "hidden"],
+              "required": false,
+              "default": "visible"
+            },
+            "hoverHighlight": {
+              "_comment": "Visual treatment when a draggable hovers over the zone.",
+              "type": "string",
+              "enum": ["glow", "border", "scale", "pulse", "none"],
+              "required": false,
+              "default": "glow"
+            },
+            "correctHighlight": {
+              "_comment": "Visual treatment applied when the correct item is placed.",
+              "type": "string",
+              "enum": ["glow-green", "checkmark", "sparkle", "fill", "none"],
+              "required": false,
+              "default": "glow-green"
+            },
+            "incorrectHighlight": {
+              "_comment": "Visual treatment applied briefly when an incorrect item is placed.",
+              "type": "string",
+              "enum": ["glow-red", "shake", "cross", "none"],
+              "required": false,
+              "default": "glow-red"
+            }
+          },
+
+          "snapping": {
+            "_comment": "Per-zone snapping overrides. If not specified, the activity-level snapping settings apply.",
+            "enabled": {
+              "_comment": "Whether draggables snap to the center of this zone when dropped within the snap radius.",
+              "type": "boolean",
+              "required": false,
+              "default": true
+            },
+            "snapRadiusOverride": {
+              "_comment": "Overrides the activity-level snap radius for this specific zone.",
+              "type": "number",
+              "required": false
+            }
+          },
+
+          "sortOrder": {
+            "_comment": "For sequence-type activities, defines the position of this zone in the sequence.",
+            "type": "integer",
+            "minimum": 1,
+            "required": false
+          },
+
+          "groupId": {
+            "_comment": "Groups drop zones that belong together. Used for batch validation and visual grouping.",
+            "type": "string",
+            "required": false,
+            "example": "group-targets"
+          },
+
+          "accessibility": {
+            "screenReaderLabel": {
+              "_comment": "Localization key for the screen reader announcement when this zone receives focus.",
+              "type": "string",
+              "localizationKeyRef": true,
+              "required": true,
+              "example": "l10n:zone:a1b2c3d4:target-1:sr-label"
+            },
+            "narrationAudioId": {
+              "_comment": "Audio that describes this drop zone for non-reading children.",
+              "type": "string",
+              "format": "urn",
+              "required": false
+            }
+          },
+
+          "extensions": {
+            "type": "object",
+            "additionalProperties": true,
+            "required": false,
+            "default": {}
+          }
+        }
+      },
+
+      "validation": {
+        "_comment": "Defines how the engine determines correctness. Validation is separate from drop zones' acceptedDraggableIds — this section controls the overall strategy, timing, and scoring logic. Scoring is interaction-level (how well did the child perform the drag-and-drop task). Educational outcomes like mastery are determined by the progression system using the score and completion signals, not by this schema.",
+
+        "strategy": {
+          "_comment": "The overall validation approach. 'one-to-one' = each draggable has exactly one correct zone. 'one-to-many' = one draggable can go to multiple valid zones. 'many-to-one' = multiple draggables go to one zone (categorization). 'ordered-sequence' = draggables must be placed in a specific order. 'unordered-group' = all items must reach correct zones but order doesn't matter. 'partial-credit' = some placements are more correct than others (scored on a scale). 'custom' = engine applies custom validation logic referenced by validatorId.",
+          "type": "string",
+          "enum": [
+            "one-to-one",
+            "one-to-many",
+            "many-to-one",
+            "ordered-sequence",
+            "unordered-group",
+            "partial-credit",
+            "custom"
+          ],
+          "required": true,
+          "example": "one-to-one"
+        },
+
+        "evaluationTiming": {
+          "_comment": "When validation occurs. 'on-drop' = each drop is validated immediately. 'on-submit' = child presses a 'check' button after placing all items. 'on-complete' = validated automatically when all zones are filled. 'continuous' = validation runs in real-time as items are dragged.",
+          "type": "string",
+          "enum": ["on-drop", "on-submit", "on-complete", "continuous"],
+          "required": false,
+          "default": "on-drop",
+          "example": "on-drop"
+        },
+
+        "allowRetries": {
+          "_comment": "Whether the child can retry incorrect placements.",
+          "type": "boolean",
+          "required": false,
+          "default": true
+        },
+
+        "maxAttempts": {
+          "_comment": "Maximum number of total drop attempts before the activity auto-completes or shows the answer. 0 = unlimited.",
+          "type": "integer",
+          "minimum": 0,
+          "required": false,
+          "default": 0,
+          "example": 10
+        },
+
+        "maxAttemptsPerItem": {
+          "_comment": "Maximum attempts for a single draggable before the engine provides the answer for that item. 0 = unlimited.",
+          "type": "integer",
+          "minimum": 0,
+          "required": false,
+          "default": 5
+        },
+
+        "scoringModel": {
+          "_comment": "How the interaction score is calculated. This score is a raw interaction metric — the progression system decides what it means educationally.",
+
+          "type": {
+            "_comment": "'binary' = all-or-nothing (full score or zero). 'per-item' = each correct placement earns points. 'weighted' = different items have different point values. 'time-bonus' = base points plus time-based bonus. 'accuracy-scaled' = score scales with accuracy percentage.",
+            "type": "string",
+            "enum": ["binary", "per-item", "weighted", "time-bonus", "accuracy-scaled"],
+            "required": false,
+            "default": "per-item"
+          },
+
+          "basePointsPerItem": {
+            "_comment": "Points awarded for each correct placement in per-item scoring.",
+            "type": "integer",
+            "minimum": 0,
+            "required": false,
+            "default": 10
+          },
+
+          "maxScore": {
+            "_comment": "Maximum achievable interaction score for the activity. This is a raw number used to compute score percentage — the progression system uses the percentage along with completion signals to determine educational outcomes.",
+            "type": "integer",
+            "minimum": 0,
+            "required": false,
+            "default": 100,
+            "example": 100
+          },
+
+          "penaltyPerIncorrect": {
+            "_comment": "Points deducted for each incorrect placement. 0 = no penalty (recommended for younger children).",
+            "type": "integer",
+            "minimum": 0,
+            "required": false,
+            "default": 0
+          },
+
+          "timeBonusConfig": {
+            "_comment": "Configuration for time-based bonus scoring. Only used when scoringModel.type is 'time-bonus'.",
+            "enabled": { "type": "boolean", "default": false },
+            "maxBonusPoints": { "type": "integer", "default": 20 },
+            "targetTimeSeconds": {
+              "_comment": "Completing within this time earns full bonus.",
+              "type": "integer",
+              "default": 30
+            },
+            "bonusDecayRate": {
+              "_comment": "Points lost per second beyond the target time.",
+              "type": "number",
+              "default": 1.0
+            }
+          },
+
+          "starThresholds": {
+            "_comment": "Score percentage thresholds for star-tier signals. These thresholds are used by the completionSignals system to determine which star-level signals to emit. Three tiers.",
+            "oneStar": { "type": "number", "default": 0.4, "example": 0.4 },
+            "twoStars": { "type": "number", "default": 0.7, "example": 0.7 },
+            "threeStars": { "type": "number", "default": 0.9, "example": 0.9 }
+          }
+        },
+
+        "customValidatorId": {
+          "_comment": "Reference to a custom validation function registered in the engine. Only used when strategy is 'custom'.",
+          "type": "string",
+          "required": false
+        },
+
+        "extensions": {
+          "type": "object",
+          "additionalProperties": true,
+          "required": false,
+          "default": {}
+        }
+      },
+
+      "interaction": {
+        "_comment": "Configures the physical interaction mechanics of dragging. These settings primarily affect motor difficulty — distinct from cognitive difficulty managed by the curriculum.",
+
+        "snapping": {
+          "_comment": "Global snapping configuration. Individual drop zones can override these values.",
+
+          "preset": {
+            "_comment": "Named difficulty preset that sets sensible defaults for snap radius, magnetic attraction, and animation. 'easy' = large snap radius, strong magnet. 'medium' = moderate values. 'hard' = tight snap radius, weak magnet. 'custom' = use the explicit values below.",
+            "type": "string",
+            "enum": ["easy", "medium", "hard", "custom"],
+            "required": false,
+            "default": "easy",
+            "example": "easy"
+          },
+
+          "snapRadius": {
+            "_comment": "Distance in canvas units within which a draggable snaps to the drop zone center. Larger = more forgiving.",
+            "type": "number",
+            "minimum": 10,
+            "maximum": 200,
+            "required": false,
+            "default": 100,
+            "example": 100
+          },
+
+          "magneticAttraction": {
+            "_comment": "Strength of the 'pull' effect as a draggable approaches a valid zone. 0 = no pull, 1 = maximum pull.",
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "required": false,
+            "default": 0.7,
+            "example": 0.7
+          },
+
+          "snapAnimationDurationMs": {
+            "_comment": "Duration in milliseconds of the snap-into-place animation.",
+            "type": "integer",
+            "minimum": 50,
+            "maximum": 1000,
+            "required": false,
+            "default": 300,
+            "example": 300
+          },
+
+          "returnAnimationDurationMs": {
+            "_comment": "Duration of the return-to-origin animation when a drop fails.",
+            "type": "integer",
+            "minimum": 100,
+            "maximum": 2000,
+            "required": false,
+            "default": 500
+          }
+        },
+
+        "dragBehavior": {
+          "_comment": "Controls how dragging feels.",
+
+          "touchMode": {
+            "_comment": "'direct' = item follows finger exactly. 'offset' = item maintains the grab offset. 'elevated' = item lifts above the finger position for visibility.",
+            "type": "string",
+            "enum": ["direct", "offset", "elevated"],
+            "required": false,
+            "default": "offset"
+          },
+
+          "dragFeedback": {
+            "_comment": "Visual feedback during dragging. 'shadow' = drop shadow underneath, 'scale' = item slightly enlarges, 'both' = shadow and scale, 'none' = no visual change.",
+            "type": "string",
+            "enum": ["shadow", "scale", "both", "none"],
+            "required": false,
+            "default": "both"
+          },
+
+          "dragScaleFactor": {
+            "_comment": "How much the draggable scales up when picked up. 1.0 = no change, 1.2 = 20% larger.",
+            "type": "number",
+            "minimum": 0.8,
+            "maximum": 2.0,
+            "required": false,
+            "default": 1.1
+          },
+
+          "multiTouch": {
+            "_comment": "Whether multiple items can be dragged simultaneously.",
+            "type": "boolean",
+            "required": false,
+            "default": false
+          },
+
+          "boundToCanvas": {
+            "_comment": "If true, draggables cannot be moved outside the canvas boundaries.",
+            "type": "boolean",
+            "required": false,
+            "default": true
+          }
+        },
+
+        "inputModes": {
+          "_comment": "Supported input methods. Engines enable these based on device capabilities.",
+          "touch": { "type": "boolean", "default": true },
+          "mouse": { "type": "boolean", "default": true },
+          "keyboard": {
+            "_comment": "Enables arrow-key navigation between draggables and space/enter to pick up/drop. Required for accessibility.",
+            "type": "boolean",
+            "default": true
+          },
+          "voice": { "_comment": "Future: voice commands.", "type": "boolean", "default": false },
+          "gesture": { "_comment": "Future: gesture recognition.", "type": "boolean", "default": false },
+          "eyeTracking": { "_comment": "Future: gaze-based selection.", "type": "boolean", "default": false }
+        },
+
+        "extensions": {
+          "type": "object",
+          "additionalProperties": true,
+          "required": false,
+          "default": {}
+        }
+      },
+
+      "animations": {
+        "_comment": "Defines animations triggered by activity events. All animations reference asset IDs or named engine-built-in effects. No animation logic is embedded in the schema.",
+
+        "onActivityStart": {
+          "_comment": "Animations played when the activity loads.",
+          "introAnimationId": { "type": "string", "format": "urn", "required": false },
+          "itemRevealStyle": {
+            "type": "string",
+            "enum": ["fade-in", "cascade", "bounce-in", "slide-in", "none"],
+            "required": false,
+            "default": "cascade"
+          },
+          "revealDelayMs": { "type": "integer", "required": false, "default": 200 }
+        },
+
+        "onCorrectDrop": {
+          "_comment": "Animations and effects triggered when a draggable is correctly placed.",
+          "effects": {
+            "type": "array",
+            "items": {
+              "type": { "type": "string", "enum": ["confetti", "stars", "bounce", "sparkle", "glow", "checkmark", "custom"], "required": true },
+              "animationAssetId": { "type": "string", "format": "urn", "required": false },
+              "durationMs": { "type": "integer", "default": 800 },
+              "delay": { "type": "integer", "default": 0 }
+            },
+            "required": false,
+            "default": [{ "type": "sparkle", "durationMs": 800 }]
+          },
+          "audioId": { "type": "string", "format": "urn", "required": false },
+          "voiceFeedbackId": { "type": "string", "format": "urn", "required": false },
+          "mascotAnimationId": { "type": "string", "format": "urn", "required": false }
+        },
+
+        "onIncorrectDrop": {
+          "_comment": "Animations and feedback for incorrect placement. Should be gentle and encouraging — never punitive.",
+          "effects": {
+            "type": "array",
+            "items": {
+              "type": { "type": "string", "enum": ["shake", "gentle-return", "wobble", "flash", "custom"], "required": true },
+              "animationAssetId": { "type": "string", "format": "urn", "required": false },
+              "durationMs": { "type": "integer", "default": 500 },
+              "delay": { "type": "integer", "default": 0 }
+            },
+            "required": false,
+            "default": [{ "type": "gentle-return", "durationMs": 500 }]
+          },
+          "audioId": { "type": "string", "format": "urn", "required": false },
+          "voiceFeedbackId": { "type": "string", "format": "urn", "required": false },
+          "mascotAnimationId": { "type": "string", "format": "urn", "required": false }
+        },
+
+        "onActivityComplete": {
+          "_comment": "Celebration sequence when the entire activity is completed.",
+          "effects": {
+            "type": "array",
+            "items": {
+              "type": { "type": "string", "enum": ["confetti", "stars", "fireworks", "applause", "trophy", "custom"], "required": true },
+              "animationAssetId": { "type": "string", "format": "urn", "required": false },
+              "durationMs": { "type": "integer", "default": 2000 },
+              "delay": { "type": "integer", "default": 0 }
+            },
+            "required": false,
+            "default": [
+              { "type": "confetti", "durationMs": 2000 },
+              { "type": "stars", "durationMs": 1500, "delay": 500 }
+            ]
+          },
+          "audioId": { "type": "string", "format": "urn", "required": false },
+          "voiceFeedbackId": { "type": "string", "format": "urn", "required": false },
+          "mascotAnimationId": { "type": "string", "format": "urn", "required": false },
+          "showScoreSummary": { "type": "boolean", "default": true },
+          "autoAdvanceDelayMs": { "type": "integer", "default": 0 }
+        },
+
+        "reducedMotionAlternatives": {
+          "_comment": "Simplified animations for children with vestibular disorders or motion sensitivity.",
+          "onCorrect": { "type": "string", "enum": ["static-checkmark", "color-change", "none"], "default": "static-checkmark" },
+          "onIncorrect": { "type": "string", "enum": ["color-change", "border-flash", "none"], "default": "color-change" },
+          "onComplete": { "type": "string", "enum": ["static-trophy", "color-change", "none"], "default": "static-trophy" }
+        },
+
+        "extensions": {
+          "type": "object",
+          "additionalProperties": true,
+          "required": false,
+          "default": {}
+        }
+      },
+
+      "hints": {
+        "_comment": "Progressive hint system that provides increasing levels of support as the child struggles. Hints are pedagogically sequenced: first hints are subtle (highlighting), progressing to explicit guidance (animated arrow showing the path), and finally auto-completion. The system never punishes — it scaffolds.",
+
+        "enabled": { "type": "boolean", "required": false, "default": true },
+
+        "progressiveHints": {
+          "_comment": "Ordered array of hint levels. Each level triggers after a specified number of failed attempts.",
+          "type": "array",
+          "required": false,
+          "default": [],
+          "itemSchema": {
+            "level": { "type": "integer", "minimum": 1, "required": true },
+            "triggerAfterAttempts": { "type": "integer", "minimum": 1, "required": true },
+            "hintType": {
+              "type": "string",
+              "enum": ["none", "highlight-target", "pulse-target", "show-arrow", "animate-path", "voice-hint", "reduce-options", "auto-complete", "custom"],
+              "required": true
+            },
+            "hintAudioId": { "type": "string", "format": "urn", "required": false },
+            "hintAnimationId": { "type": "string", "format": "urn", "required": false },
+            "durationMs": { "type": "integer", "required": false, "default": 3000 },
+            "repeatable": { "type": "boolean", "required": false, "default": true }
+          },
+          "example": [
+            { "level": 1, "triggerAfterAttempts": 2, "hintType": "highlight-target", "durationMs": 3000, "repeatable": true },
+            { "level": 2, "triggerAfterAttempts": 3, "hintType": "pulse-target", "durationMs": 3000, "repeatable": true },
+            { "level": 3, "triggerAfterAttempts": 4, "hintType": "show-arrow", "durationMs": 4000, "repeatable": true },
+            { "level": 4, "triggerAfterAttempts": 5, "hintType": "animate-path", "durationMs": 5000, "repeatable": false },
+            { "level": 5, "triggerAfterAttempts": 6, "hintType": "auto-complete", "durationMs": 2000, "repeatable": false }
+          ]
+        },
+
+        "idleHint": {
+          "_comment": "Hint that triggers when the child is inactive.",
+          "enabled": { "type": "boolean", "default": true },
+          "idleTimeoutMs": { "type": "integer", "default": 8000 },
+          "hintType": { "type": "string", "enum": ["pulse-draggable", "voice-instruction", "animate-example", "custom"], "default": "pulse-draggable" },
+          "audioId": { "type": "string", "format": "urn", "required": false }
+        },
+
+        "extensions": { "type": "object", "additionalProperties": true, "required": false, "default": {} }
+      },
+
+      "accessibility": {
+        "_comment": "Activity-level accessibility configuration. PetalPath serves young children, including those with visual, auditory, motor, and cognitive disabilities. Every setting here can be overridden by the child's profile-level accessibility preferences.",
+
+        "screenReader": {
+          "enabled": { "type": "boolean", "default": true },
+          "activityInstructionKey": { "type": "string", "localizationKeyRef": true, "required": true },
+          "completionAnnouncementKey": { "type": "string", "localizationKeyRef": true, "required": false }
+        },
+
+        "narration": {
+          "enabled": { "type": "boolean", "default": true },
+          "instructionAudioId": { "type": "string", "format": "urn", "required": false },
+          "autoPlayOnLoad": { "type": "boolean", "default": true },
+          "replayButtonVisible": { "type": "boolean", "default": true }
+        },
+
+        "textToSpeech": {
+          "enabled": { "type": "boolean", "default": false },
+          "voicePreference": { "type": "string", "enum": ["child-friendly", "adult-female", "adult-male", "default"], "default": "child-friendly" },
+          "rate": { "type": "number", "minimum": 0.25, "maximum": 2.0, "default": 0.85 }
+        },
+
+        "visual": {
+          "highContrast": { "type": "boolean", "default": false },
+          "largerTouchTargets": {
+            "enabled": { "type": "boolean", "default": false },
+            "scaleFactor": { "type": "number", "minimum": 1.0, "maximum": 3.0, "default": 1.5 }
+          },
+          "dyslexiaFriendlyFont": {
+            "enabled": { "type": "boolean", "default": false },
+            "fontAssetId": { "type": "string", "format": "urn", "default": "petalpath:asset:font:open-dyslexic" }
+          },
+          "colorBlindMode": {
+            "enabled": { "type": "boolean", "default": false },
+            "type": { "type": "string", "enum": ["protanopia", "deuteranopia", "tritanopia", "achromatopsia"], "default": "deuteranopia" }
+          }
+        },
+
+        "motor": {
+          "reducedPrecision": {
+            "enabled": { "type": "boolean", "default": false },
+            "snapRadiusMultiplier": { "type": "number", "default": 2.0 },
+            "magneticAttractionOverride": { "type": "number", "default": 0.9 }
+          },
+          "dwellSelection": {
+            "enabled": { "type": "boolean", "default": false },
+            "dwellTimeMs": { "type": "integer", "default": 1500 }
+          },
+          "switchAccess": {
+            "enabled": { "type": "boolean", "default": false },
+            "scanSpeedMs": { "type": "integer", "default": 2000 }
+          }
+        },
+
+        "rtlSupport": { "enabled": { "type": "boolean", "default": false } },
+        "reducedMotion": {
+          "respectSystemSetting": { "type": "boolean", "default": true },
+          "forceReducedMotion": { "type": "boolean", "default": false }
+        },
+
+        "extensions": { "type": "object", "additionalProperties": true, "required": false, "default": {} }
+      },
+
+      "localization": {
+        "_comment": "Localization configuration. All user-visible strings reference localization keys rather than containing hardcoded text.",
+
+        "keyNamespace": { "type": "string", "required": true, "example": "l10n:activity:a1b2c3d4" },
+        "fallbackLanguage": { "type": "string", "format": "bcp47", "required": false, "default": "en-IN" },
+        "stringKeys": {
+          "_comment": "Registry of all localization keys used by this activity. Serves as a manifest for translation verification.",
+          "type": "object",
+          "required": false
+        },
+        "textDirection": { "type": "string", "enum": ["ltr", "rtl", "auto"], "default": "ltr" },
+        "extensions": { "type": "object", "additionalProperties": true, "required": false, "default": {} }
+      },
+
+      "assets": {
+        "_comment": "Manifest of all external assets referenced by this activity. Assets are NEVER embedded — they are stored in the PetalPath asset management system and referenced by ID.",
+
+        "required": {
+          "_comment": "Assets that MUST be loaded before the activity can start.",
+          "type": "array",
+          "items": {
+            "assetId": { "type": "string", "format": "urn", "required": true },
+            "assetType": { "type": "string", "enum": ["image", "svg", "audio", "animation", "font", "video"], "required": true },
+            "purpose": { "type": "string", "required": false }
+          },
+          "required": true,
+          "default": []
+        },
+
+        "optional": {
+          "_comment": "Assets that enhance the experience but are not required.",
+          "type": "array",
+          "items": {
+            "assetId": { "type": "string", "format": "urn" },
+            "assetType": { "type": "string", "enum": ["image", "svg", "audio", "animation", "font", "video"] },
+            "purpose": { "type": "string", "required": false }
+          },
+          "required": false,
+          "default": []
+        },
+
+        "preloadStrategy": {
+          "type": "string",
+          "enum": ["eager", "lazy", "progressive"],
+          "required": false,
+          "default": "progressive"
+        },
+
+        "extensions": { "type": "object", "additionalProperties": true, "required": false, "default": {} }
+      },
+
+      "analytics": {
+        "_comment": "Defines the analytics data model for this activity. The engine collects these metrics during gameplay and submits them to the analytics service upon activity completion. This section defines WHAT to collect and HOW to aggregate it. All metrics are raw interaction data — educational interpretations (mastery, progression) are computed by the progression system using these metrics plus completion signals, NOT by the activity itself. In v2.1.0, 'starsEarned' and 'masteryAchieved' were removed because they are progression-level concerns.",
+
+        "trackingEnabled": { "type": "boolean", "required": false, "default": true },
+
+        "metricsToCollect": {
+          "_comment": "Raw interaction metrics. No educational outcomes — those are computed by the progression system from these metrics plus completion signals.",
+
+          "attempts": { "_comment": "Total drop attempts (correct + incorrect).", "collect": true, "aggregation": "sum" },
+          "correctDrops": { "_comment": "Number of successful placements.", "collect": true, "aggregation": "sum" },
+          "incorrectDrops": { "_comment": "Number of failed placements.", "collect": true, "aggregation": "sum" },
+          "accuracy": { "_comment": "correctDrops / attempts.", "collect": true, "aggregation": "calculated", "formula": "correctDrops / attempts" },
+          "completionTimeMs": { "_comment": "Total time from activity start to completion.", "collect": true, "aggregation": "value" },
+          "averageResponseTimeMs": { "_comment": "Average time between consecutive drops.", "collect": true, "aggregation": "average" },
+          "hintUsageCount": { "_comment": "Total hints triggered (progressive + idle).", "collect": true, "aggregation": "sum" },
+          "hintLevelsReached": { "_comment": "Highest hint level reached.", "collect": true, "aggregation": "max" },
+          "retryCount": { "_comment": "Times the child restarted the activity.", "collect": true, "aggregation": "sum" },
+          "dragDistanceTotal": { "_comment": "Total distance dragged in canvas units.", "collect": true, "aggregation": "sum" },
+          "idleTimeMs": { "_comment": "Total idle time.", "collect": true, "aggregation": "sum" },
+          "score": { "_comment": "Final computed interaction score based on scoringModel.", "collect": true, "aggregation": "value" }
+        },
+
+        "perItemTracking": {
+          "enabled": { "type": "boolean", "default": true },
+          "itemMetrics": { "fields": ["attempts", "firstTryCorrect", "hintsUsed", "timeToPlaceMs"] }
+        },
+
+        "sessionContext": {
+          "_comment": "Contextual data attached to every analytics event. Populated by the engine at runtime.",
+          "fields": ["childId", "sessionId", "deviceType", "screenSize", "inputMethod", "timestamp", "appVersion", "engineVersion"]
+        },
+
+        "extensions": { "type": "object", "additionalProperties": true, "required": false, "default": {} }
+      },
+
+      "completionSignals": {
+        "_comment": "Declares the interaction events this activity emits upon completion. These are pure interaction signals — the activity reports WHAT HAPPENED during the interaction, not what rewards to grant or whether mastery was achieved. The progression system (which lives outside this schema) subscribes to these signals and maps them to rewards (XP, coins, stickers, badges, achievements) and educational outcomes (mastery, progression). This clean separation means: (1) reward values can change without updating activity content, (2) different progression systems can interpret the same signals differently, (3) the activity schema stays engine-focused. Added in v2.1.0 to replace the 'rewards' section.",
+
+        "signals": {
+          "_comment": "Registry of all signals this activity can emit. Each signal has an ID, a condition under which it fires, and a description. The engine evaluates conditions against the activity's final state and emits matching signals to the progression system via the analytics pipeline.",
+          "type": "array",
+          "items": {
+            "signalId": {
+              "_comment": "Unique identifier for this signal. Format: activity.<signal-name>. The progression system maps these IDs to reward rules defined in the curriculum or reward configuration.",
+              "type": "string",
+              "required": true,
+              "example": "activity.completed"
+            },
+            "condition": {
+              "_comment": "Machine-readable condition evaluated against the activity's final analytics state. Supported condition syntax: 'always' (fires on any completion), 'all-correct-first-attempt' (every draggable placed correctly on first try), 'score-gte:<threshold>' (score percentage >= threshold, e.g., 'score-gte:0.9'), 'score-gte:starThresholds.threeStars' (score >= three-star threshold from scoring model), 'hints-eq:0' (no hints used), 'time-lte:targetTime' (completed within the target time from timeBonusConfig).",
+              "type": "string",
+              "required": true,
+              "example": "always"
+            },
+            "description": {
+              "_comment": "Human-readable description for CMS dashboards and content author reference.",
+              "type": "string",
+              "required": false
+            }
+          },
+          "required": false,
+          "default": [
+            { "signalId": "activity.completed", "condition": "always", "description": "Emitted whenever the activity is completed." }
+          ],
+          "example": [
+            { "signalId": "activity.completed", "condition": "always", "description": "Emitted on any completion." },
+            { "signalId": "activity.perfect", "condition": "all-correct-first-attempt", "description": "Every item correct on first try." },
+            { "signalId": "activity.threeStars", "condition": "score-gte:starThresholds.threeStars", "description": "Score meets three-star threshold." },
+            { "signalId": "activity.twoStars", "condition": "score-gte:starThresholds.twoStars", "description": "Score meets two-star threshold." },
+            { "signalId": "activity.oneStar", "condition": "score-gte:starThresholds.oneStar", "description": "Score meets one-star threshold." },
+            { "signalId": "activity.noHints", "condition": "hints-eq:0", "description": "Completed without any hints." },
+            { "signalId": "activity.speedRun", "condition": "time-lte:targetTime", "description": "Completed within the target time." }
+          ]
+        },
+
+        "extensions": { "type": "object", "additionalProperties": true, "required": false, "default": {} }
+      },
+
+      "rewards": {
+        "_comment": "DEPRECATED in v2.1.0. Use 'completionSignals' instead. This section mixed interaction-level concerns (when to fire signals) with progression-level concerns (how many XP to award, which badges to contribute to). In v2.1.0, the activity only emits signals via 'completionSignals'; the progression system maps those signals to rewards. Engines encountering this field should convert reward conditions to their signal equivalents: 'complete' → 'activity.completed', 'three-stars' → 'activity.threeStars', 'no-hints' → 'activity.noHints', 'speed-run' → 'activity.speedRun', 'first-try-perfect' → 'activity.perfect'.",
+        "_deprecated": true,
+        "_deprecatedInVersion": "2.1.0",
+        "replacedBy": "completionSignals",
+
+        "bonusConditions": {
+          "firstTryBonus": { "type": "integer", "minimum": 0, "required": false, "default": 0 },
+          "bonusPerStar": { "type": "integer", "minimum": 0, "required": false, "default": 0 }
+        },
+
+        "stickers": {
+          "type": "array",
+          "items": {
+            "stickerId": { "type": "string", "format": "urn" },
+            "condition": { "type": "string", "enum": ["complete", "three-stars", "no-hints", "speed-run", "first-try-perfect"] }
+          },
+          "required": false,
+          "default": []
+        },
+
+        "badges": {
+          "type": "array",
+          "items": {
+            "badgeId": { "type": "string", "format": "urn" },
+            "contributionWeight": { "type": "number", "minimum": 0, "maximum": 1, "default": 1.0 }
+          },
+          "required": false,
+          "default": []
+        },
+
+        "achievements": {
+          "type": "array",
+          "items": {
+            "achievementId": { "type": "string", "format": "urn" },
+            "condition": { "type": "string", "enum": ["complete", "three-stars", "no-hints", "speed-run", "first-try-perfect", "streak"] }
+          },
+          "required": false,
+          "default": []
+        },
+
+        "extensions": { "type": "object", "additionalProperties": true, "required": false, "default": {} }
+      },
+
+      "curriculumValidation": {
+        "_comment": "Pre-load validation rules that the engine MUST evaluate before rendering the activity. These rules verify that the curriculum reference is valid, the engine is compatible, and the activity's internal structure is consistent. If any 'error' severity rule fails, the engine skips the activity and reports the issue. If a 'warning' rule fails, the engine logs the issue but attempts to render with fallback behavior. Added in v2.1.0.",
+
+        "rules": [
+          {
+            "ruleId": "node-exists",
+            "description": "The nodeId in curriculumRef (or curriculumNodeId) must resolve to an existing node in one of the grade curriculum files (prenursery.json, nursery.json, lkg.json, ukg.json).",
+            "severity": "error",
+            "failAction": "skip-activity"
+          },
+          {
+            "ruleId": "activity-index-valid",
+            "description": "The activityIndex in curriculumRef must be within bounds of the node's activities[] array. When using deprecated curriculumNodeId, the engine locates the first 'drag_drop' entry automatically.",
+            "severity": "error",
+            "failAction": "skip-activity"
+          },
+          {
+            "ruleId": "activity-type-match",
+            "description": "The curriculum entry at activities[activityIndex] must have type 'drag_drop', matching the activityType assertion in curriculumRef.",
+            "severity": "error",
+            "failAction": "skip-activity"
+          },
+          {
+            "ruleId": "engine-id-match",
+            "description": "The engine's own ID must match the activity's engine.engineId. A trace engine should not load drag-and-drop activities.",
+            "severity": "error",
+            "failAction": "skip-activity"
+          },
+          {
+            "ruleId": "engine-version-check",
+            "description": "The running engine's version must be >= engine.minimumEngineVersion declared in the activity.",
+            "severity": "error",
+            "failAction": "skip-activity"
+          },
+          {
+            "ruleId": "capability-check",
+            "description": "The engine must support all capabilities listed in engine.requiredCapabilities. Missing capabilities mean the activity cannot render correctly.",
+            "severity": "error",
+            "failAction": "skip-activity"
+          },
+          {
+            "ruleId": "template-exists",
+            "description": "The templateId in templateRef (or templateType) should exist in the engine's template registry. Unknown templates trigger fallback rendering.",
+            "severity": "warning",
+            "failAction": "fallback-rendering"
+          },
+          {
+            "ruleId": "assets-resolvable",
+            "description": "All asset IDs in the 'required' assets list must be resolvable by the asset management system. Missing assets block rendering.",
+            "severity": "warning",
+            "failAction": "show-placeholder"
+          },
+          {
+            "ruleId": "draggable-zone-consistency",
+            "description": "Every draggable ID referenced in any dropZone's acceptedDraggableIds must exist in the draggables[] array. Every non-distractor draggable must be accepted by at least one drop zone.",
+            "severity": "error",
+            "failAction": "skip-activity"
+          },
+          {
+            "ruleId": "schema-version-supported",
+            "description": "The activity's schemaVersion must be within the engine's supported schema version range. If the major version exceeds the engine's capability, it must fail with a clear error.",
+            "severity": "error",
+            "failAction": "skip-activity"
+          }
+        ]
+      },
+
+      "extensions": {
+        "_comment": "Top-level extensions object for engine-specific, experimental, or future data. Keys should be namespaced (e.g., 'petalpath-physics-engine:gravity'). The core schema MUST NOT read from extensions.",
+        "type": "object",
+        "additionalProperties": true,
+        "required": false,
+        "default": {},
+        "example": {
+          "petalpath-physics-engine:v1": { "gravity": 9.8, "friction": 0.3, "bounciness": 0.5 },
+          "petalpath-multiplayer:v1": { "maxPlayers": 2, "turnBased": true, "sharedCanvas": true },
+          "petalpath-ar:v1": { "requiresARKit": true, "anchorType": "horizontal-plane" }
+        }
+      }
+    },
+
+    "templateRegistry": {
+      "_comment": "Registry of all supported Drag & Drop template types. Each template defines a named pattern with a description, version, and required engine capabilities. Templates are purely descriptive — they do NOT add new fields or validation rules. In v2.1.0, each entry gains templateId (replacing templateType), version, and engineCapabilities fields.",
+
+      "templates": [
+        { "templateId": "letter-to-outline", "version": "1.0.0", "description": "Match letters to their dotted outlines for letter recognition", "typicalDraggableType": "letter", "typicalDropZoneShape": "image-outline", "typicalValidation": "one-to-one", "curriculumAlignment": ["letter-recognition", "alphabet-foundation", "phonics"], "engineCapabilities": ["drag-and-drop", "snap-to-target", "image-outline-hit-detection"] },
+        { "templateId": "number-to-outline", "version": "1.0.0", "description": "Match numerals to their dotted outlines", "typicalDraggableType": "number", "typicalDropZoneShape": "image-outline", "typicalValidation": "one-to-one", "curriculumAlignment": ["number-recognition", "numeral-formation"], "engineCapabilities": ["drag-and-drop", "snap-to-target", "image-outline-hit-detection"] },
+        { "templateId": "shape-to-outline", "version": "1.0.0", "description": "Match shapes to their outlines for shape recognition", "typicalDraggableType": "shape", "typicalDropZoneShape": "image-outline", "typicalValidation": "one-to-one", "curriculumAlignment": ["shape-recognition", "geometry-foundation"], "engineCapabilities": ["drag-and-drop", "snap-to-target", "image-outline-hit-detection"] },
+        { "templateId": "image-to-shadow", "version": "1.0.0", "description": "Match images to their silhouettes/shadows", "typicalDraggableType": "image", "typicalDropZoneShape": "image-outline", "typicalValidation": "one-to-one", "curriculumAlignment": ["visual-discrimination", "object-recognition"], "engineCapabilities": ["drag-and-drop", "snap-to-target", "image-outline-hit-detection"] },
+        { "templateId": "animal-to-habitat", "version": "1.0.0", "description": "Classify animals into their correct habitats", "typicalDraggableType": "image", "typicalDropZoneShape": "rectangle", "typicalValidation": "many-to-one", "curriculumAlignment": ["animal-classification", "habitat-awareness", "environmental-studies"], "engineCapabilities": ["drag-and-drop", "snap-to-target"] },
+        { "templateId": "fruit-to-basket", "version": "1.0.0", "description": "Sort fruits into categorized baskets", "typicalDraggableType": "image", "typicalDropZoneShape": "rectangle", "typicalValidation": "many-to-one", "curriculumAlignment": ["food-recognition", "vocabulary-building", "categorization"], "engineCapabilities": ["drag-and-drop", "snap-to-target"] },
+        { "templateId": "color-matching", "version": "1.0.0", "description": "Match or sort items by colour", "typicalDraggableType": "image", "typicalDropZoneShape": "rectangle", "typicalValidation": "many-to-one", "curriculumAlignment": ["colour-recognition", "visual-matching"], "engineCapabilities": ["drag-and-drop", "snap-to-target"] },
+        { "templateId": "uppercase-to-lowercase", "version": "1.0.0", "description": "Match uppercase letters to their lowercase forms", "typicalDraggableType": "letter", "typicalDropZoneShape": "rectangle", "typicalValidation": "one-to-one", "curriculumAlignment": ["letter-case-matching", "alphabet-mastery"], "engineCapabilities": ["drag-and-drop", "snap-to-target"] },
+        { "templateId": "missing-letter", "version": "1.0.0", "description": "Fill in the missing letter in a word", "typicalDraggableType": "letter", "typicalDropZoneShape": "rectangle", "typicalValidation": "one-to-one", "curriculumAlignment": ["phonics", "spelling", "cvc-words"], "engineCapabilities": ["drag-and-drop", "snap-to-target"] },
+        { "templateId": "missing-word", "version": "1.0.0", "description": "Fill in the missing word in a sentence", "typicalDraggableType": "word", "typicalDropZoneShape": "rectangle", "typicalValidation": "one-to-one", "curriculumAlignment": ["sentence-building", "grammar", "reading-comprehension"], "engineCapabilities": ["drag-and-drop", "snap-to-target"] },
+        { "templateId": "missing-sentence", "version": "1.0.0", "description": "Fill in the missing sentence in a passage", "typicalDraggableType": "sentence", "typicalDropZoneShape": "rectangle", "typicalValidation": "one-to-one", "curriculumAlignment": ["reading-comprehension", "story-structure"], "engineCapabilities": ["drag-and-drop", "snap-to-target"] },
+        { "templateId": "number-sequence", "version": "1.0.0", "description": "Arrange numbers in correct sequential order", "typicalDraggableType": "number", "typicalDropZoneShape": "rectangle", "typicalValidation": "ordered-sequence", "curriculumAlignment": ["number-sequencing", "ascending-descending-order", "backward-counting"], "engineCapabilities": ["drag-and-drop", "snap-to-target"] },
+        { "templateId": "alphabet-sequence", "version": "1.0.0", "description": "Arrange letters in correct alphabetical order", "typicalDraggableType": "letter", "typicalDropZoneShape": "rectangle", "typicalValidation": "ordered-sequence", "curriculumAlignment": ["alphabet-sequencing", "alphabet-mastery"], "engineCapabilities": ["drag-and-drop", "snap-to-target"] },
+        { "templateId": "story-ordering", "version": "1.0.0", "description": "Arrange story events in correct chronological order", "typicalDraggableType": "image", "typicalDropZoneShape": "rectangle", "typicalValidation": "ordered-sequence", "curriculumAlignment": ["sequencing", "story-comprehension", "logical-thinking"], "engineCapabilities": ["drag-and-drop", "snap-to-target"] },
+        { "templateId": "life-cycle-ordering", "version": "1.0.0", "description": "Arrange life cycle stages in correct biological order", "typicalDraggableType": "image", "typicalDropZoneShape": "rectangle", "typicalValidation": "ordered-sequence", "curriculumAlignment": ["life-cycles", "nature-awareness", "environmental-studies"], "engineCapabilities": ["drag-and-drop", "snap-to-target"] },
+        { "templateId": "puzzle-assembly", "version": "1.0.0", "description": "Assemble puzzle pieces to complete an image", "typicalDraggableType": "image", "typicalDropZoneShape": "polygon", "typicalValidation": "one-to-one", "curriculumAlignment": ["spatial-reasoning", "fine-motor-skills", "visual-discrimination"], "engineCapabilities": ["drag-and-drop", "snap-to-target", "image-outline-hit-detection"] },
+        { "templateId": "categorization", "version": "1.0.0", "description": "Sort items into correct categories", "typicalDraggableType": "image", "typicalDropZoneShape": "rectangle", "typicalValidation": "many-to-one", "curriculumAlignment": ["classification", "sorting", "logical-thinking"], "engineCapabilities": ["drag-and-drop", "snap-to-target"] },
+        { "templateId": "sorting", "version": "1.0.0", "description": "Arrange items in order by a specified attribute", "typicalDraggableType": "image", "typicalDropZoneShape": "rectangle", "typicalValidation": "ordered-sequence", "curriculumAlignment": ["sorting", "comparing", "measurement"], "engineCapabilities": ["drag-and-drop", "snap-to-target"] },
+        { "templateId": "body-parts", "version": "1.0.0", "description": "Label body parts by dragging to correct positions", "typicalDraggableType": "image", "typicalDropZoneShape": "image-outline", "typicalValidation": "one-to-one", "curriculumAlignment": ["body-awareness", "vocabulary-building", "environmental-studies"], "engineCapabilities": ["drag-and-drop", "snap-to-target", "image-outline-hit-detection"] },
+        { "templateId": "opposites", "version": "1.0.0", "description": "Match items to their opposites", "typicalDraggableType": "image", "typicalDropZoneShape": "rectangle", "typicalValidation": "one-to-one", "curriculumAlignment": ["opposites", "vocabulary-building", "comprehension"], "engineCapabilities": ["drag-and-drop", "snap-to-target"] },
+        { "templateId": "rhyming-words", "version": "1.0.0", "description": "Match words that rhyme with each other", "typicalDraggableType": "word", "typicalDropZoneShape": "rectangle", "typicalValidation": "one-to-one", "curriculumAlignment": ["phonics", "rhyming", "phonemic-awareness"], "engineCapabilities": ["drag-and-drop", "snap-to-target"] },
+        { "templateId": "counting-objects", "version": "1.0.0", "description": "Count objects and match to the correct numeral", "typicalDraggableType": "image", "typicalDropZoneShape": "rectangle", "typicalValidation": "one-to-one", "curriculumAlignment": ["counting", "number-recognition", "one-to-one-correspondence"], "engineCapabilities": ["drag-and-drop", "snap-to-target"] },
+        { "templateId": "matching-quantities", "version": "1.0.0", "description": "Match numerals to groups of the corresponding quantity", "typicalDraggableType": "number", "typicalDropZoneShape": "rectangle", "typicalValidation": "one-to-one", "curriculumAlignment": ["quantity-matching", "subitizing", "number-sense"], "engineCapabilities": ["drag-and-drop", "snap-to-target"] },
+        { "templateId": "clock-matching", "version": "1.0.0", "description": "Match times to clock faces or daily activities", "typicalDraggableType": "image", "typicalDropZoneShape": "rectangle", "typicalValidation": "one-to-one", "curriculumAlignment": ["time-awareness", "measurement", "daily-routines"], "engineCapabilities": ["drag-and-drop", "snap-to-target"] },
+        { "templateId": "currency-matching", "version": "1.0.0", "description": "Match currency to values or compose amounts", "typicalDraggableType": "image", "typicalDropZoneShape": "rectangle", "typicalValidation": "one-to-one", "curriculumAlignment": ["money-concepts", "addition", "real-world-maths"], "engineCapabilities": ["drag-and-drop", "snap-to-target"] },
+        { "templateId": "geometry-matching", "version": "1.0.0", "description": "Match geometric shapes to names or real-world objects", "typicalDraggableType": "shape", "typicalDropZoneShape": "rectangle", "typicalValidation": "one-to-one", "curriculumAlignment": ["shape-recognition", "geometry", "real-world-connections"], "engineCapabilities": ["drag-and-drop", "snap-to-target"] },
+        { "templateId": "science-classification", "version": "1.0.0", "description": "Classify items into scientific categories", "typicalDraggableType": "image", "typicalDropZoneShape": "rectangle", "typicalValidation": "many-to-one", "curriculumAlignment": ["scientific-classification", "environmental-studies", "nature-awareness"], "engineCapabilities": ["drag-and-drop", "snap-to-target"] },
+        { "templateId": "geography-matching", "version": "1.0.0", "description": "Match geographic features to locations or labels", "typicalDraggableType": "image", "typicalDropZoneShape": "polygon", "typicalValidation": "one-to-one", "curriculumAlignment": ["geography", "environmental-studies", "general-awareness"], "engineCapabilities": ["drag-and-drop", "snap-to-target"] },
+        { "templateId": "matra-word-building", "version": "1.0.0", "description": "Build Hindi words by dragging matra marks onto consonants", "typicalDraggableType": "letter", "typicalDropZoneShape": "rectangle", "typicalValidation": "one-to-one", "curriculumAlignment": ["hindi-matra", "word-building", "hindi-literacy"], "engineCapabilities": ["drag-and-drop", "snap-to-target"] },
+        { "templateId": "place-value", "version": "1.0.0", "description": "Arrange digits into place value columns", "typicalDraggableType": "number", "typicalDropZoneShape": "rectangle", "typicalValidation": "one-to-one", "curriculumAlignment": ["place-value", "number-concepts", "tens-and-ones"], "engineCapabilities": ["drag-and-drop", "snap-to-target"] }
+      ]
+    }
+  },
+
+  "exampleActivity": {
+    "_comment": "DOCUMENTATION EXAMPLE — not production content. This is a minimal, generic activity demonstrating the v2.1.0 schema structure with placeholder asset IDs and generic content. It uses 2 draggable items and 2 drop zones to illustrate the one-to-one matching pattern. All asset IDs use the 'petalpath:asset:example:' prefix to clearly distinguish them from production assets. Content authors should use this as a structural reference, not copy it verbatim.",
+    "_isDocumentationExample": true,
+
+    "id": "petalpath:activity:00000000-0000-4000-8000-000000000000",
+    "schemaVersion": "2.1.0",
+
+    "engine": {
+      "engineId": "petalpath:engine:drag-drop",
+      "targetEngineVersion": "1.4.0",
+      "minimumEngineVersion": "1.0.0",
+      "requiredCapabilities": ["drag-and-drop", "snap-to-target", "progressive-hints", "audio-playback"],
+      "extensions": {}
+    },
+
+    "curriculumRef": {
+      "nodeId": "EXAMPLE_NODE_ID",
+      "activityIndex": 0,
+      "activityType": "drag_drop"
+    },
+
+    "metadata": {
+      "title": "l10n:activity:00000000:title",
+      "description": "l10n:activity:00000000:description",
+      "templateRef": {
+        "templateId": "categorization",
+        "templateVersion": "1.0.0"
+      },
+      "activityType": "drag-and-drop",
+      "primaryLanguage": "en-IN",
+      "supportedLanguages": ["en-IN"],
+      "tags": ["example", "one-to-one", "matching"],
+      "status": "draft",
+      "createdAt": "2026-01-01T00:00:00Z",
+      "updatedAt": "2026-01-01T00:00:00Z",
+      "authorId": "petalpath:author:schema-docs",
+      "extensions": {}
+    },
+
+    "canvas": {
+      "width": 1000,
+      "height": 750,
+      "backgroundAssetId": "petalpath:asset:example:background",
+      "orientation": "landscape",
+      "extensions": {}
+    },
+
+    "draggables": [
+      {
+        "id": "drag-item-1",
+        "contentType": "image",
+        "content": null,
+        "assetRef": {
+          "imageAssetId": "petalpath:asset:example:item-1-image",
+          "audioAssetId": "petalpath:asset:example:item-1-audio"
+        },
+        "position": { "x": 150, "y": 550, "randomizePosition": false },
+        "dimensions": { "width": 100, "height": 100 },
+        "style": { "backgroundColor": "#E8E8E8", "borderRadius": 12, "elevation": 2 },
+        "behavior": { "draggable": true, "returnToOriginOnFailure": true, "lockAfterCorrectDrop": true, "reusable": false, "rotatable": false, "resizable": false },
+        "accessibility": { "screenReaderLabel": "l10n:drag:00000000:item-1:sr-label", "narrationAudioId": "petalpath:asset:example:narration-item-1" },
+        "groupId": "group-example",
+        "sortOrder": 1,
+        "distractorFlag": false,
+        "extensions": {}
+      },
+      {
+        "id": "drag-item-2",
+        "contentType": "image",
+        "content": null,
+        "assetRef": {
+          "imageAssetId": "petalpath:asset:example:item-2-image",
+          "audioAssetId": "petalpath:asset:example:item-2-audio"
+        },
+        "position": { "x": 350, "y": 550, "randomizePosition": false },
+        "dimensions": { "width": 100, "height": 100 },
+        "style": { "backgroundColor": "#D0D0D0", "borderRadius": 12, "elevation": 2 },
+        "behavior": { "draggable": true, "returnToOriginOnFailure": true, "lockAfterCorrectDrop": true, "reusable": false, "rotatable": false, "resizable": false },
+        "accessibility": { "screenReaderLabel": "l10n:drag:00000000:item-2:sr-label", "narrationAudioId": "petalpath:asset:example:narration-item-2" },
+        "groupId": "group-example",
+        "sortOrder": 2,
+        "distractorFlag": false,
+        "extensions": {}
+      }
+    ],
+
+    "dropZones": [
+      {
+        "id": "zone-target-1",
+        "shape": { "type": "rectangle", "position": { "x": 200, "y": 150 }, "dimensions": { "width": 120, "height": 120 } },
+        "acceptedDraggableIds": ["drag-item-1"],
+        "capacity": 1,
+        "label": "l10n:zone:00000000:target-1:label",
+        "assetRef": { "imageAssetId": "petalpath:asset:example:target-1-outline" },
+        "visualState": { "defaultAppearance": "visible", "hoverHighlight": "glow", "correctHighlight": "glow-green", "incorrectHighlight": "glow-red" },
+        "snapping": { "enabled": true },
+        "sortOrder": 1,
+        "groupId": "group-targets",
+        "accessibility": { "screenReaderLabel": "l10n:zone:00000000:target-1:sr-label" },
+        "extensions": {}
+      },
+      {
+        "id": "zone-target-2",
+        "shape": { "type": "rectangle", "position": { "x": 600, "y": 150 }, "dimensions": { "width": 120, "height": 120 } },
+        "acceptedDraggableIds": ["drag-item-2"],
+        "capacity": 1,
+        "label": "l10n:zone:00000000:target-2:label",
+        "assetRef": { "imageAssetId": "petalpath:asset:example:target-2-outline" },
+        "visualState": { "defaultAppearance": "visible", "hoverHighlight": "glow", "correctHighlight": "glow-green", "incorrectHighlight": "glow-red" },
+        "snapping": { "enabled": true },
+        "sortOrder": 2,
+        "groupId": "group-targets",
+        "accessibility": { "screenReaderLabel": "l10n:zone:00000000:target-2:sr-label" },
+        "extensions": {}
+      }
+    ],
+
+    "validation": {
+      "strategy": "one-to-one",
+      "evaluationTiming": "on-drop",
+      "allowRetries": true,
+      "maxAttempts": 0,
+      "maxAttemptsPerItem": 5,
+      "scoringModel": {
+        "type": "per-item",
+        "basePointsPerItem": 50,
+        "maxScore": 100,
+        "penaltyPerIncorrect": 0,
+        "timeBonusConfig": { "enabled": false },
+        "starThresholds": { "oneStar": 0.4, "twoStars": 0.7, "threeStars": 0.9 }
+      },
+      "extensions": {}
+    },
+
+    "interaction": {
+      "snapping": { "preset": "easy", "snapRadius": 100, "magneticAttraction": 0.7, "snapAnimationDurationMs": 300, "returnAnimationDurationMs": 500 },
+      "dragBehavior": { "touchMode": "offset", "dragFeedback": "both", "dragScaleFactor": 1.1, "multiTouch": false, "boundToCanvas": true },
+      "inputModes": { "touch": true, "mouse": true, "keyboard": true, "voice": false, "gesture": false, "eyeTracking": false },
+      "extensions": {}
+    },
+
+    "animations": {
+      "onActivityStart": { "itemRevealStyle": "cascade", "revealDelayMs": 200 },
+      "onCorrectDrop": {
+        "effects": [{ "type": "sparkle", "durationMs": 800 }],
+        "audioId": "petalpath:asset:example:audio-correct"
+      },
+      "onIncorrectDrop": {
+        "effects": [{ "type": "gentle-return", "durationMs": 500 }],
+        "audioId": "petalpath:asset:example:audio-try-again"
+      },
+      "onActivityComplete": {
+        "effects": [{ "type": "confetti", "durationMs": 2000 }],
+        "audioId": "petalpath:asset:example:audio-complete",
+        "showScoreSummary": true,
+        "autoAdvanceDelayMs": 0
+      },
+      "reducedMotionAlternatives": { "onCorrect": "static-checkmark", "onIncorrect": "color-change", "onComplete": "static-trophy" },
+      "extensions": {}
+    },
+
+    "hints": {
+      "enabled": true,
+      "progressiveHints": [
+        { "level": 1, "triggerAfterAttempts": 2, "hintType": "highlight-target", "durationMs": 3000, "repeatable": true },
+        { "level": 2, "triggerAfterAttempts": 4, "hintType": "show-arrow", "durationMs": 4000, "repeatable": true },
+        { "level": 3, "triggerAfterAttempts": 6, "hintType": "auto-complete", "durationMs": 2000, "repeatable": false }
+      ],
+      "idleHint": { "enabled": true, "idleTimeoutMs": 8000, "hintType": "pulse-draggable", "audioId": "petalpath:asset:example:audio-idle-hint" },
+      "extensions": {}
+    },
+
+    "accessibility": {
+      "screenReader": { "enabled": true, "activityInstructionKey": "l10n:sr:00000000:instruction" },
+      "narration": { "enabled": true, "instructionAudioId": "petalpath:asset:example:audio-instruction", "autoPlayOnLoad": true, "replayButtonVisible": true },
+      "textToSpeech": { "enabled": false, "voicePreference": "child-friendly", "rate": 0.85 },
+      "visual": { "highContrast": false, "largerTouchTargets": { "enabled": false, "scaleFactor": 1.5 }, "dyslexiaFriendlyFont": { "enabled": false }, "colorBlindMode": { "enabled": false } },
+      "motor": { "reducedPrecision": { "enabled": false }, "dwellSelection": { "enabled": false }, "switchAccess": { "enabled": false } },
+      "rtlSupport": { "enabled": false },
+      "reducedMotion": { "respectSystemSetting": true, "forceReducedMotion": false },
+      "extensions": {}
+    },
+
+    "localization": {
+      "keyNamespace": "l10n:activity:00000000",
+      "fallbackLanguage": "en-IN",
+      "stringKeys": {
+        "title": "Example activity title (replace with actual localized content)",
+        "description": "Example activity description (replace with actual localized content)",
+        "instruction": "Drag each item to its matching target",
+        "draggable:drag-item-1:sr-label": "Item 1. Drag this to its matching target.",
+        "draggable:drag-item-2:sr-label": "Item 2. Drag this to its matching target.",
+        "zone:zone-target-1:label": "Target for item 1",
+        "zone:zone-target-1:sr-label": "Drop zone: target area for item 1",
+        "zone:zone-target-2:label": "Target for item 2",
+        "zone:zone-target-2:sr-label": "Drop zone: target area for item 2"
+      },
+      "textDirection": "ltr",
+      "extensions": {}
+    },
+
+    "assets": {
+      "required": [
+        { "assetId": "petalpath:asset:example:item-1-image", "assetType": "image", "purpose": "Draggable item 1 visual" },
+        { "assetId": "petalpath:asset:example:item-2-image", "assetType": "image", "purpose": "Draggable item 2 visual" },
+        { "assetId": "petalpath:asset:example:target-1-outline", "assetType": "image", "purpose": "Drop zone 1 outline" },
+        { "assetId": "petalpath:asset:example:target-2-outline", "assetType": "image", "purpose": "Drop zone 2 outline" },
+        { "assetId": "petalpath:asset:example:background", "assetType": "image", "purpose": "Canvas background" },
+        { "assetId": "petalpath:asset:example:audio-instruction", "assetType": "audio", "purpose": "Task instruction narration" }
+      ],
+      "optional": [
+        { "assetId": "petalpath:asset:example:audio-correct", "assetType": "audio", "purpose": "Correct placement sound" },
+        { "assetId": "petalpath:asset:example:audio-try-again", "assetType": "audio", "purpose": "Incorrect placement sound" },
+        { "assetId": "petalpath:asset:example:audio-complete", "assetType": "audio", "purpose": "Completion fanfare" },
+        { "assetId": "petalpath:asset:example:audio-idle-hint", "assetType": "audio", "purpose": "Idle hint narration" }
+      ],
+      "preloadStrategy": "progressive",
+      "extensions": {}
+    },
+
+    "analytics": {
+      "trackingEnabled": true,
+      "metricsToCollect": {
+        "attempts": { "collect": true, "aggregation": "sum" },
+        "correctDrops": { "collect": true, "aggregation": "sum" },
+        "incorrectDrops": { "collect": true, "aggregation": "sum" },
+        "accuracy": { "collect": true, "aggregation": "calculated", "formula": "correctDrops / attempts" },
+        "completionTimeMs": { "collect": true, "aggregation": "value" },
+        "averageResponseTimeMs": { "collect": true, "aggregation": "average" },
+        "hintUsageCount": { "collect": true, "aggregation": "sum" },
+        "hintLevelsReached": { "collect": true, "aggregation": "max" },
+        "retryCount": { "collect": true, "aggregation": "sum" },
+        "dragDistanceTotal": { "collect": true, "aggregation": "sum" },
+        "idleTimeMs": { "collect": true, "aggregation": "sum" },
+        "score": { "collect": true, "aggregation": "value" }
+      },
+      "perItemTracking": { "enabled": true, "itemMetrics": { "fields": ["attempts", "firstTryCorrect", "hintsUsed", "timeToPlaceMs"] } },
+      "sessionContext": { "fields": ["childId", "sessionId", "deviceType", "screenSize", "inputMethod", "timestamp", "appVersion", "engineVersion"] },
+      "extensions": {}
+    },
+
+    "completionSignals": {
+      "signals": [
+        { "signalId": "activity.completed", "condition": "always", "description": "Emitted on any completion." },
+        { "signalId": "activity.perfect", "condition": "all-correct-first-attempt", "description": "Every item correct on first try." },
+        { "signalId": "activity.threeStars", "condition": "score-gte:starThresholds.threeStars", "description": "Score meets three-star threshold." },
+        { "signalId": "activity.twoStars", "condition": "score-gte:starThresholds.twoStars", "description": "Score meets two-star threshold." },
+        { "signalId": "activity.oneStar", "condition": "score-gte:starThresholds.oneStar", "description": "Score meets one-star threshold." },
+        { "signalId": "activity.noHints", "condition": "hints-eq:0", "description": "Completed without any hints." }
+      ],
+      "extensions": {}
+    },
+
+    "extensions": {}
+  },
+
+  "backwardCompatibilityRecommendations": {
+    "_comment": "Guidelines for evolving this schema without breaking existing activities or engines.",
+
+    "rules": [
+      {
+        "rule": "Additive-Only Minor Releases",
+        "description": "New fields added in minor releases MUST be optional with sensible defaults. Existing activities that lack the new field should behave identically to how they behaved before the field existed."
+      },
+      {
+        "rule": "Enum Extension Safety",
+        "description": "New enum values MAY be added in minor releases. Engines MUST treat unrecognised enum values as the closest 'custom' or 'default' variant. Never remove enum values; deprecate them with documentation."
+      },
+      {
+        "rule": "Template Registry is Open",
+        "description": "The templateRegistry is an open catalog. New template types can be added at any time. Engines that encounter an unknown templateId should fall back to generic rendering (draggables on left, dropZones on right)."
+      },
+      {
+        "rule": "Use Extensions for Experiments",
+        "description": "Any experimental feature (physics, AR, multiplayer, voice, gesture) should be prototyped in the 'extensions' object with a namespaced key. Only promote to a core schema field after the feature stabilizes across two minor releases."
+      },
+      {
+        "rule": "Never Rename Fields",
+        "description": "If a field name needs changing, add the new name as an alias and deprecate the old one with '_deprecated: true' and 'replacedBy' pointing to the new field. Remove deprecated fields only in major releases after a full migration window."
+      },
+      {
+        "rule": "Asset ID Stability",
+        "description": "Asset IDs are permanent identifiers. They NEVER change even if the underlying file is re-exported, re-encoded, or moved to a different CDN."
+      },
+      {
+        "rule": "Localization Key Stability",
+        "description": "Localization keys are permanent. Changing a key requires a migration that updates all activities using it."
+      },
+      {
+        "rule": "Validate Unknown Fields Gracefully",
+        "description": "Engines MUST ignore unknown top-level keys and unknown keys within 'extensions' objects."
+      },
+      {
+        "rule": "Version Detection Before Parsing",
+        "description": "Engines should read 'schemaVersion' before parsing the rest of the document. If the major version exceeds the engine's supported version, it should fail with a clear error."
+      },
+      {
+        "rule": "Migration Scripts for Major Versions",
+        "description": "Every major version release MUST ship with an automated migration script that transforms v(N) activities to v(N+1). The script should be idempotent and reversible where possible."
+      },
+      {
+        "rule": "Curriculum Reference is the Only Link",
+        "description": "Activities reference the curriculum through curriculumRef (or the deprecated curriculumNodeId). The activity schema MUST NOT introduce fields that duplicate curriculum data (grade, subject, difficulty, prerequisites, mastery thresholds, scheduling, reward amounts). If new curriculum data is needed at render time, the engine resolves it from the curriculum — it is never copied into the activity."
+      },
+      {
+        "rule": "Deprecated Field Coexistence",
+        "description": "When a v2.0.0 activity contains a deprecated field (curriculumNodeId, templateType, rewards) but not its replacement, the engine MUST accept the deprecated field. When both are present, the engine MUST use the replacement. This ensures v2.0.0 activities run on v2.1.0 engines without modification."
+      },
+      {
+        "rule": "Engine Capability Negotiation",
+        "description": "Engines should publish a capability manifest. Activities declare requiredCapabilities. The loader checks capabilities before rendering. Missing capabilities result in a graceful skip, not a crash."
+      },
+      {
+        "rule": "Signals Replace Rewards",
+        "description": "Activities emit completion signals (interaction events). The progression system — not the activity schema — maps signals to rewards (XP, coins, stickers, badges). The activity schema MUST NOT define reward amounts or progression logic."
+      }
+    ]
+  }
+}

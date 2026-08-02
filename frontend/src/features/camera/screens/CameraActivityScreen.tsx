@@ -1,13 +1,12 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import { StyleSheet, View, Text, ScrollView, Pressable } from 'react-native';
 import { ScreenContainer } from '../../../components/common/ScreenContainer';
 import { TopBar } from '../../../components/navigation/TopBar';
 import { useCameraPermissions } from '../hooks/useCameraPermissions';
 import { useCameraLifecycle } from '../hooks/useCameraLifecycle';
-import { useFrameProcessorPipeline } from '../hooks/useFrameProcessorPipeline';
-import { CameraPreview } from '../components/CameraPreview';
+import { useCameraEnginePipeline } from '../../../camera/hooks/useCameraEnginePipeline';
+import { NativeCameraPreview } from '../../../camera/NativeCameraPreview';
 import { CameraPermissionState } from '../components/CameraPermissionState';
-import { DebugOverlay } from '../components/DebugOverlay';
 import { CameraStatus } from '../types/camera.types';
 import { ActivityType } from '../types/pose.types';
 import { colors, spacing, radius, typography } from '../../../theme';
@@ -27,24 +26,17 @@ export const CameraActivityScreen: React.FC = () => {
   const { hasPermission, permissionStatus, requestPermission } = useCameraPermissions();
   const { isActive } = useCameraLifecycle();
   const {
-    frameProcessor,
-    debugMetrics,
     poseResult,
     activityResult,
     activeActivity,
     setActiveActivity,
-  } = useFrameProcessorPipeline();
-  const [deviceFormatText, setDeviceFormatText] = useState<string>('');
+  } = useCameraEnginePipeline();
 
   useEffect(() => {
     if (permissionStatus === 'not-determined') {
       requestPermission();
     }
   }, [permissionStatus, requestPermission]);
-
-  const handleDeviceFormatReady = useCallback((formatText: string) => {
-    setDeviceFormatText(formatText);
-  }, []);
 
   let cameraStatus: CameraStatus = 'loading';
   if (permissionStatus === 'denied') {
@@ -61,11 +53,7 @@ export const CameraActivityScreen: React.FC = () => {
       <View style={styles.previewContainer}>
         {hasPermission && isActive ? (
           <>
-            <CameraPreview
-              isActive={isActive}
-              frameProcessor={frameProcessor}
-              onDeviceFormatReady={handleDeviceFormatReady}
-            />
+            <NativeCameraPreview style={StyleSheet.absoluteFill} />
 
             {/* Development-Only Activity Selector Controls */}
             {typeof __DEV__ !== 'undefined' && __DEV__ ? (
@@ -103,13 +91,7 @@ export const CameraActivityScreen: React.FC = () => {
               <Text style={styles.feedbackText}>{activityResult.feedback}</Text>
             </View>
 
-            <DebugOverlay
-              metrics={debugMetrics}
-              cameraStatus={cameraStatus}
-              deviceFormatText={deviceFormatText}
-              poseResult={poseResult}
-              activityResult={activityResult}
-            />
+
           </>
         ) : (
           <CameraPermissionState

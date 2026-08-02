@@ -9,7 +9,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, typography, radius, iconSizes } from '../../theme';
 
-type ActivityType = 'video' | 'listen' | 'speak' | 'write' | 'quiz' | 'story' | 'game' | 'ai_tutor';
+type ActivityType = 'video' | 'listen' | 'speak' | 'write' | 'quiz' | 'story' | 'game' | 'ai_tutor' | 'drag_drop';
 
 interface ActivityNodeProps {
   id: string;
@@ -28,6 +28,7 @@ const activityConfig: Record<ActivityType, { icon: keyof typeof Ionicons.glyphMa
   story: { icon: 'book', color: '#F6B5C5', label: 'Story' },
   game: { icon: 'game-controller', color: '#B89DE8', label: 'Game' },
   ai_tutor: { icon: 'bulb', color: '#F29A8F', label: 'AI Tutor' },
+  drag_drop: { icon: 'hand-left', color: '#F59E0B', label: 'Drag & Drop' },
 };
 
 export const ActivityNode: React.FC<ActivityNodeProps> = ({

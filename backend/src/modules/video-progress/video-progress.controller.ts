@@ -33,7 +33,7 @@ export class VideoProgressController {
         throw new UnauthorizedError('Active child profile is not selected');
       }
 
-      const { videoId, watchPosition } = req.body;
+      const { videoId, watchPosition, activityId } = req.body;
       if (!videoId) {
         throw new ValidationError('videoId is required');
       }
@@ -41,7 +41,7 @@ export class VideoProgressController {
         throw new ValidationError('watchPosition is required');
       }
 
-      const progress = await videoProgressService.saveProgress(childId, videoId, Number(watchPosition));
+      const progress = await videoProgressService.saveProgress(childId, videoId, Number(watchPosition), activityId);
       return res.status(200).json({
         success: true,
         data: progress,
@@ -58,12 +58,12 @@ export class VideoProgressController {
         throw new UnauthorizedError('Active child profile is not selected');
       }
 
-      const { videoId } = req.body;
+      const { videoId, activityId } = req.body;
       if (!videoId) {
         throw new ValidationError('videoId is required');
       }
 
-      const progress = await videoProgressService.completeVideo(childId, videoId);
+      const progress = await videoProgressService.completeVideo(childId, videoId, activityId);
       return res.status(200).json({
         success: true,
         data: progress,

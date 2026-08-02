@@ -1,15 +1,10 @@
-import React from 'react';
-import { StyleSheet, View } from 'react-native';
-import {
-  Camera,
-  useCameraDevice,
-  useCameraFormat,
-  ReadonlyFrameProcessor,
-} from 'react-native-vision-camera';
+import React, { useEffect } from 'react';
+import { StyleSheet, View, Text } from 'react-native';
+import { Camera, useCameraDevice, useCameraFormat } from 'react-native-vision-camera';
 
 interface CameraPreviewProps {
   isActive: boolean;
-  frameProcessor?: ReadonlyFrameProcessor;
+  frameProcessor?: any;
   onDeviceFormatReady?: (formatDescription: string) => void;
 }
 
@@ -18,13 +13,16 @@ export const CameraPreview: React.FC<CameraPreviewProps> = ({
   frameProcessor,
   onDeviceFormatReady,
 }) => {
-  const device = useCameraDevice('back');
+  const frontDevice = useCameraDevice('front');
+  const backDevice = useCameraDevice('back');
+  const device = frontDevice ?? backDevice;
+
   const format = useCameraFormat(device, [
     { fps: 30 },
     { videoResolution: { width: 1280, height: 720 } },
   ]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (format && onDeviceFormatReady) {
       const fps = format.maxFps ?? 30;
       const res = `${format.videoWidth}x${format.videoHeight}`;
@@ -33,7 +31,11 @@ export const CameraPreview: React.FC<CameraPreviewProps> = ({
   }, [format, onDeviceFormatReady]);
 
   if (!device) {
-    return null;
+    return (
+      <View style={styles.fallbackContainer}>
+        <Text style={styles.fallbackText}>📷 Opening Camera Device...</Text>
+      </View>
+    );
   }
 
   return (
@@ -57,4 +59,17 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#000000',
   },
+  fallbackContainer: {
+    flex: 1,
+    backgroundColor: '#000000',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fallbackText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
 });
+
+export default CameraPreview;

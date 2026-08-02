@@ -42,12 +42,48 @@ function getActivityTitle(lessonTitle: string, type: string): string {
   return `${lessonTitle}: ${suffix}`;
 }
 
+import fs from 'fs';
+import path from 'path';
+
+function getDragDropSpec(lessonId: string, activityIndex?: number): any | null {
+  try {
+    const manifestPath = path.resolve(process.cwd(), 'curriculum', 'activities', 'drag_drop_manifest.json');
+    const altManifestPath = path.resolve(process.cwd(), '..', 'curriculum', 'activities', 'drag_drop_manifest.json');
+    const actualManifestPath = fs.existsSync(manifestPath) ? manifestPath : altManifestPath;
+
+    if (!fs.existsSync(actualManifestPath)) return null;
+
+    const manifest = JSON.parse(fs.readFileSync(actualManifestPath, 'utf8'));
+    const matched = manifest.activities.find(
+      (a: any) => a.nodeId === lessonId && (activityIndex === undefined || a.activityIndex === activityIndex)
+    );
+
+    if (!matched) return null;
+
+    const specDir = path.dirname(actualManifestPath);
+    const specFilePath = path.join(specDir, 'drag_drop', matched.fileName);
+
+    if (fs.existsSync(specFilePath)) {
+      return JSON.parse(fs.readFileSync(specFilePath, 'utf8'));
+    }
+  } catch (e) {
+    // Return null silently if file reading fails
+  }
+  return null;
+}
+
 export class ActivitiesService {
   async getAllActivities(lessonId?: string) {
     if (lessonId) {
       const dbActivities = await activitiesRepository.findByLessonId(lessonId);
       if (dbActivities && dbActivities.length > 0) {
-        return dbActivities;
+        return dbActivities.map((act) => {
+          if (act.activityType === 'drag_drop') {
+            const spec = getDragDropSpec(act.lessonId, act.displayOrder - 1) || getDragDropSpec(act.lessonId);
+            return { ...act, dragDropSpec: spec };
+          }
+          return act;
+        });
       }
 
       // Dynamic Failsafe: Synthesize from static curriculum configuration if DB is not seeded
@@ -63,6 +99,7 @@ export class ActivitiesService {
           createdAt: new Date(),
           updatedAt: new Date(),
           deletedAt: null,
+          dragDropSpec: act.type === 'drag_drop' ? getDragDropSpec(lessonId, index) : null,
           video: act.type === 'video' ? {
             id: `v_${lessonId}`,
             activityId: `${lessonId}_act_${index + 1}`,
@@ -83,11 +120,25 @@ export class ActivitiesService {
 
       return [];
     }
-    return activitiesRepository.findAll();
+
+    const all = await activitiesRepository.findAll();
+    return all.map((act) => {
+      if (act.activityType === 'drag_drop') {
+        const spec = getDragDropSpec(act.lessonId, act.displayOrder - 1) || getDragDropSpec(act.lessonId);
+        return { ...act, dragDropSpec: spec };
+      }
+      return act;
+    });
   }
 
   async getActivityById(id: string) {
-    return activitiesRepository.findById(id);
+    const act = await activitiesRepository.findById(id);
+    if (!act) return null;
+    if (act.activityType === 'drag_drop') {
+      const spec = getDragDropSpec(act.lessonId, act.displayOrder - 1) || getDragDropSpec(act.lessonId);
+      return { ...act, dragDropSpec: spec };
+    }
+    return act;
   }
 
   async createActivity(data: Prisma.ActivityUncheckedCreateInput) {

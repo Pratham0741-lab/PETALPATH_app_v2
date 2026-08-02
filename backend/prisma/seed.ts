@@ -258,8 +258,9 @@ async function main() {
         });
 
         // Seed activities & guides for the lesson
-        for (let i = 0; i < node.activities.length; i++) {
-          const act = node.activities[i];
+        const validActivities = node.activities.filter(act => act.type !== 'identify');
+        for (let i = 0; i < validActivities.length; i++) {
+          const act = validActivities[i];
           const activity = await prisma.activity.create({
             data: {
               lessonId: lesson.id,

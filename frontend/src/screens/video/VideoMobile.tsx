@@ -5,6 +5,7 @@ import { useEventListener } from 'expo';
 import { colors, typography, spacing, radius, shadows } from '../../theme';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { useVideoStore } from '../../store/videoStore';
+import { useRoadmapStore } from '../../store/roadmapStore';
 import { getNextActivity, navigateToActivity } from '../../utils/navigationFlow';
 import { Ionicons } from '@expo/vector-icons';
 import { ScreenContainer } from '../../components/common/ScreenContainer';
@@ -30,10 +31,7 @@ const VideoPlayerMobile: React.FC<{
 }) => {
   const [isPlaying, setIsPlaying] = useState(true);
   const [videoEnded, setVideoEnded] = useState(false);
-  const [containerDimensions, setContainerDimensions] = useState({ width: 0, height: 0 });
   const [aspectRatio, setAspectRatio] = useState<number>(16 / 9);
-
-  const videoViewRef = useRef<View>(null);
 
   // Initialize expo-video player
   const player = useVideoPlayer(currentVideo?.videoUrl || '', (p) => {
@@ -41,12 +39,6 @@ const VideoPlayerMobile: React.FC<{
     p.currentTime = isCompleted ? 0 : currentPosition;
     p.play();
   });
-
-  // Track layout dimensions of parent panel
-  const handleLayout = (event: any) => {
-    const { width, height } = event.nativeEvent.layout;
-    setContainerDimensions({ width, height });
-  };
 
   // Detect actual video dimensions to adjust aspect ratio
   useEffect(() => {
@@ -64,21 +56,9 @@ const VideoPlayerMobile: React.FC<{
         if (!videoEl) {
           videoEl = document.querySelector('video');
         }
-        if (videoEl) {
-          if (videoEl.videoWidth > 0 && videoEl.videoHeight > 0) {
-            setAspectRatio(videoEl.videoWidth / videoEl.videoHeight);
-            return true;
-          }
-          videoEl.onloadedmetadata = () => {
-            if (videoEl && videoEl.videoWidth > 0 && videoEl.videoHeight > 0) {
-              setAspectRatio(videoEl.videoWidth / videoEl.videoHeight);
-            }
-          };
-          videoEl.onplaying = () => {
-            if (videoEl && videoEl.videoWidth > 0 && videoEl.videoHeight > 0) {
-              setAspectRatio(videoEl.videoWidth / videoEl.videoHeight);
-            }
-          };
+        if (videoEl && videoEl.videoWidth > 0 && videoEl.videoHeight > 0) {
+          setAspectRatio(videoEl.videoWidth / videoEl.videoHeight);
+          return true;
         }
       }
       return false;
@@ -94,39 +74,6 @@ const VideoPlayerMobile: React.FC<{
 
     return () => clearInterval(interval);
   }, [player, currentVideo]);
-
-  // Calculate proportional player dimensions
-  const getPlayerDimensions = (): { 
-    width: DimensionValue; 
-    height: DimensionValue; 
-    aspectRatio?: number; 
-    maxWidth?: DimensionValue; 
-    maxHeight?: DimensionValue;
-  } => {
-    if (Platform.OS === 'web') {
-      return {
-        width: '100%',
-        height: '100%',
-        aspectRatio,
-        maxWidth: '100%',
-        maxHeight: '100%',
-      };
-    }
-
-    const { width: containerWidth, height: containerHeight } = containerDimensions;
-    if (!containerWidth || !containerHeight) {
-      return { width: '100%', height: '100%' };
-    }
-
-    const targetWidth = containerHeight * aspectRatio;
-    if (targetWidth <= containerWidth) {
-      return { width: targetWidth, height: containerHeight };
-    } else {
-      return { width: containerWidth, height: containerWidth / aspectRatio };
-    }
-  };
-
-  const playerStyle = getPlayerDimensions();
 
   // Keep state synced with player changes
   useEffect(() => {
@@ -147,10 +94,8 @@ const VideoPlayerMobile: React.FC<{
   useEffect(() => {
     const interval = setInterval(() => {
       try {
-        if (player.duration > 0) {
-          if (player.duration !== duration) {
-            useVideoStore.setState({ duration: player.duration });
-          }
+        if (player.duration > 0 && player.duration !== duration) {
+          useVideoStore.setState({ duration: player.duration });
           clearInterval(interval);
         }
       } catch (e) {
@@ -201,43 +146,73 @@ const VideoPlayerMobile: React.FC<{
 
   const handleNextPress = async () => {
     await completeVideo();
-    if (currentVideo) {
-      const next = getNextActivity(currentVideo.activityId);
-      if (next) {
-        await navigateToActivity(navigation, next);
-        return;
-      }
+    const actId = currentVideo?.activityId || 'video';
+    const next = getNextActivity(actId);
+    if (next) {
+      await navigateToActivity(navigation, next);
+      return;
     }
-    navigation.navigate('LessonOverview');
+    const { selectedLesson } = useRoadmapStore.getState();
+    if (selectedLesson) {
+      await useRoadmapStore.getState().completeLesson(selectedLesson.id);
+      navigation.navigate('LessonComplete');
+    } else {
+      navigation.navigate('MainTabs', { screen: 'Journey' });
+    }
   };
+
+  const hasRealVideo = currentVideo?.videoUrl && currentVideo.videoUrl !== 'coming_soon' && !currentVideo.videoUrl.includes('coming_soon');
 
   return (
     <ScreenContainer style={styles.container}>
       {/* Header Bar */}
       <View style={styles.topBar}>
         <Pressable style={styles.backLink} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={20} color={colors.textPrimary} />
+          <Ionicons name="arrow-back" size={18} color={colors.textPrimary} />
           <Text style={[styles.backLinkText, { fontFamily: typography.families.rounded }]}>Back</Text>
         </Pressable>
         <Text style={[styles.topBarTitle, { fontFamily: typography.families.rounded }]} numberOfLines={1}>
-          {currentVideo.title}
+          {currentVideo?.title || 'Video Lesson'}
         </Text>
-        <View style={{ width: 80 }} />
+        <Pressable style={styles.nextLink} onPress={handleNextPress}>
+          <Text style={[styles.nextLinkText, { fontFamily: typography.families.rounded }]}>Next</Text>
+          <Ionicons name="arrow-forward" size={16} color="#FFF8ED" />
+        </Pressable>
       </View>
 
-      {/* Main Video Area */}
-      <View style={styles.playerPanel} onLayout={handleLayout}>
-        <View ref={videoViewRef} style={[styles.videoCard, playerStyle]}>
-          <VideoView
-            player={player}
-            style={[StyleSheet.absoluteFill, { backgroundColor: 'transparent' }, Platform.OS === 'web' && { objectFit: 'contain' } as any]}
-            contentFit="contain"
-            nativeControls={!videoEnded}
-          />
+      {/* Main Video Area with Flexible Aspect-Ratio Container */}
+      <View style={styles.playerPanel}>
+        <View style={[styles.flexibleVideoContainer, { aspectRatio }]}>
+          {/* Always Visible Flexible Placeholder Card */}
+          <View style={styles.placeholderCard}>
+            <View style={styles.playCircle}>
+              <Ionicons name={isPlaying ? 'pause' : 'play'} size={38} color="#FFF8ED" style={{ marginLeft: isPlaying ? 0 : 3 }} />
+            </View>
+            <Text style={[styles.placeholderTitle, { fontFamily: typography.families.rounded }]} numberOfLines={1}>
+              {currentVideo?.title || 'Video Lesson'}
+            </Text>
+            <View style={styles.badgeRow}>
+              <View style={styles.hdBadge}>
+                <Ionicons name="film-outline" size={14} color={colors.yellow} />
+                <Text style={[styles.hdBadgeText, { fontFamily: typography.families.rounded }]}>Demonstration Video</Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Expo VideoView overlay */}
+          {hasRealVideo && (
+            <VideoView
+              player={player}
+              style={StyleSheet.absoluteFill}
+              contentFit="contain"
+              nativeControls={!videoEnded}
+            />
+          )}
+
           {videoEnded && (
             <View style={[StyleSheet.absoluteFill, styles.endedOverlay]}>
               <Pressable style={styles.replayOverlayBtn} onPress={handleReplay}>
-                <Ionicons name="refresh" size={24} color="#FFF8ED" />
+                <Ionicons name="refresh" size={22} color="#FFF8ED" />
                 <Text style={[styles.replayOverlayBtnText, { fontFamily: typography.families.rounded }]}>Replay Video</Text>
               </Pressable>
             </View>
@@ -245,7 +220,7 @@ const VideoPlayerMobile: React.FC<{
         </View>
       </View>
 
-      {/* Bottom Area */}
+      {/* Bottom Area - Clean Vertical Column Layout */}
       <View style={styles.bottomPanel}>
         {(videoEnded || isCompleted) ? (
           <Card style={styles.completedSection}>
@@ -256,15 +231,16 @@ const VideoPlayerMobile: React.FC<{
                 <Text style={[styles.completedSubtitle, { fontFamily: typography.families.rounded }]}>You're ready to proceed to the next activity.</Text>
               </View>
             </View>
-            <Button label="Next Activity" variant="success" onPress={handleNextPress} style={styles.nextBtn} />
+            <Button label="Next Activity ➔" variant="success" onPress={handleNextPress} style={styles.nextBtn} />
           </Card>
         ) : (
-          <View style={styles.infoSection}>
+          <Card style={styles.infoCard}>
             <Text style={[styles.videoTitle, { fontFamily: typography.families.rounded }]}>{currentVideo?.title || 'Video Lesson'}</Text>
             <Text style={[styles.videoInstructions, { fontFamily: typography.families.rounded }]}>
               Watch the video demonstration carefully to prepare for the tracing activities.
             </Text>
-          </View>
+            <Button label="Next Activity ➔" variant="primary" onPress={handleNextPress} style={styles.infoNextBtn} />
+          </Card>
         )}
       </View>
     </ScreenContainer>
@@ -282,15 +258,27 @@ const VideoComingSoonMobile: React.FC<{
     setIsCompleting(true);
     try {
       await completeVideo();
-      const next = getNextActivity(video.activityId);
+      const actId = video?.activityId || 'video';
+      const next = getNextActivity(actId);
       if (next) {
         await navigateToActivity(navigation, next);
         return;
       }
-      navigation.navigate('LessonOverview');
+      const { selectedLesson } = useRoadmapStore.getState();
+      if (selectedLesson) {
+        await useRoadmapStore.getState().completeLesson(selectedLesson.id);
+        navigation.navigate('LessonComplete');
+      } else {
+        navigation.navigate('MainTabs', { screen: 'Journey' });
+      }
     } catch (err) {
       if (__DEV__) console.warn('Failed to complete and proceed:', err);
-      navigation.navigate('LessonOverview');
+      const { selectedLesson } = useRoadmapStore.getState();
+      if (selectedLesson) {
+        navigation.navigate('LessonOverview', { lessonId: selectedLesson.id });
+      } else {
+        navigation.navigate('MainTabs', { screen: 'Journey' });
+      }
     } finally {
       setIsCompleting(false);
     }
@@ -301,25 +289,28 @@ const VideoComingSoonMobile: React.FC<{
       {/* Header Bar */}
       <View style={styles.topBar}>
         <Pressable style={styles.backLink} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={20} color={colors.textPrimary} />
+          <Ionicons name="arrow-back" size={18} color={colors.textPrimary} />
           <Text style={[styles.backLinkText, { fontFamily: typography.families.rounded }]}>Back</Text>
         </Pressable>
         <Text style={[styles.topBarTitle, { fontFamily: typography.families.rounded }]} numberOfLines={1}>
           {video.title}
         </Text>
-        <View style={{ width: 80 }} />
+        <Pressable style={styles.nextLink} onPress={handleProceed}>
+          <Text style={[styles.nextLinkText, { fontFamily: typography.families.rounded }]}>Next</Text>
+          <Ionicons name="arrow-forward" size={16} color="#FFF8ED" />
+        </Pressable>
       </View>
 
       {/* Main Coming Soon Area */}
       <View style={styles.comingSoonPanel}>
         <Card style={styles.comingSoonCard}>
           <Ionicons name="film-outline" size={56} color={colors.yellow} style={styles.comingSoonIcon} />
-          <Text style={[styles.comingSoonTitle, { fontFamily: typography.families.rounded }]}>Video Coming Soon! 🌟</Text>
+          <Text style={[styles.comingSoonTitle, { fontFamily: typography.families.rounded }]}>Video Demonstration 🌟</Text>
           <Text style={[styles.comingSoonSubtitle, { fontFamily: typography.families.rounded }]}>
-            Our team is preparing a magical video demonstration for this lesson.
+            Watch the video demonstration carefully to prepare for the tracing activities.
           </Text>
           <Text style={[styles.comingSoonDetails, { fontFamily: typography.families.rounded }]}>
-            You don't have to wait! Tap the button below to proceed to the learning activities.
+            Tap the button below whenever you're ready to proceed.
           </Text>
         </Card>
       </View>
@@ -327,7 +318,7 @@ const VideoComingSoonMobile: React.FC<{
       {/* Bottom Area */}
       <View style={styles.bottomPanel}>
         <Button
-          label="Proceed to Next Activity"
+          label="Next Activity ➔"
           variant="primary"
           onPress={handleProceed}
           disabled={isCompleting}
@@ -440,7 +431,7 @@ const styles = StyleSheet.create({
     fontWeight: typography.weights.bold,
   },
   topBar: {
-    height: 60,
+    height: 56,
     borderBottomWidth: 1.5,
     borderBottomColor: colors.border,
     flexDirection: 'row',
@@ -452,10 +443,10 @@ const styles = StyleSheet.create({
   backLink: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.xs,
+    gap: 4,
     backgroundColor: colors.background,
-    paddingVertical: 4,
-    paddingHorizontal: 10,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
     borderRadius: radius.chip,
     borderWidth: 1.5,
     borderColor: colors.border,
@@ -463,7 +454,21 @@ const styles = StyleSheet.create({
   backLinkText: {
     color: colors.textPrimary,
     fontWeight: 'bold',
-    fontSize: 12,
+    fontSize: 13,
+  },
+  nextLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: colors.purple,
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    borderRadius: radius.chip,
+  },
+  nextLinkText: {
+    color: '#FFF8ED',
+    fontWeight: 'bold',
+    fontSize: 13,
   },
   topBarTitle: {
     color: colors.textPrimary,
@@ -471,16 +476,72 @@ const styles = StyleSheet.create({
     fontWeight: typography.weights.black,
     flex: 1,
     textAlign: 'center',
+    marginHorizontal: spacing.xs,
   },
   playerPanel: {
-    flex: 0.6,
+    flex: 1,
     backgroundColor: colors.background,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 0,
+    padding: spacing.md,
   },
-  videoCard: {
-    backgroundColor: 'transparent',
+  flexibleVideoContainer: {
+    width: '100%',
+    maxWidth: 560,
+    backgroundColor: '#1E1B18',
+    borderRadius: 16,
+    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: colors.border,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...shadows.md,
+  },
+  placeholderCard: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: '#2A2421',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.md,
+  },
+  playCircle: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    backgroundColor: colors.purple,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+    shadowColor: colors.purple,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  placeholderTitle: {
+    color: '#FFF8ED',
+    fontSize: typography.sizes.body,
+    fontWeight: typography.weights.bold,
+    textAlign: 'center',
+    marginBottom: spacing.xs,
+  },
+  badgeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  hdBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: radius.full,
+  },
+  hdBadgeText: {
+    color: colors.yellow,
+    fontSize: typography.sizes.xs,
+    fontWeight: typography.weights.bold,
   },
   replayOverlayBtn: {
     backgroundColor: 'rgba(59,52,47,0.85)',
@@ -500,28 +561,32 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.small,
   },
   bottomPanel: {
-    flex: 0.4,
+    padding: spacing.md,
     backgroundColor: colors.background,
-    padding: spacing.lg,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
-  infoSection: {
+  infoCard: {
+    width: '100%',
+    padding: spacing.md,
     alignItems: 'center',
-    maxWidth: '100%',
+    gap: spacing.xs,
   },
   videoTitle: {
     fontSize: typography.sizes.body,
     fontWeight: typography.weights.black,
     color: colors.textPrimary,
-    marginBottom: spacing.xs,
     textAlign: 'center',
+    marginBottom: 4,
   },
   videoInstructions: {
     fontSize: typography.sizes.small,
     color: colors.textSecondary,
     textAlign: 'center',
-    lineHeight: 18,
+    lineHeight: 20,
+    marginBottom: spacing.sm,
+  },
+  infoNextBtn: {
+    width: '100%',
+    height: 48,
   },
   completedSection: {
     width: '100%',
@@ -555,7 +620,7 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   comingSoonPanel: {
-    flex: 0.6,
+    flex: 1,
     backgroundColor: colors.background,
     justifyContent: 'center',
     alignItems: 'center',
@@ -592,8 +657,7 @@ const styles = StyleSheet.create({
   },
   proceedBtn: {
     width: '100%',
-    maxWidth: 300,
-    height: 50,
+    height: 48,
   },
 });
 

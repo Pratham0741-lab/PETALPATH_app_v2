@@ -4,6 +4,7 @@ import { ScreenContainer } from '../../components/common/ScreenContainer';
 import { TopBar } from '../../components/navigation/TopBar';
 import { colors, typography, spacing, radius, shadows } from '../../theme';
 import { useListenStore } from '../../store/listenStore';
+import { useRoadmapStore } from '../../store/roadmapStore';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { UniversalAudioPlayer } from '../../utils/audioPlayer';
@@ -155,10 +156,14 @@ export const ListenDesktop: React.FC = () => {
     const next = getNextActivity(currentAudio.activityId);
     if (next) {
       await navigateToActivity(navigation, next);
-    } else if (next === null) {
+      return;
+    }
+    const { selectedLesson } = useRoadmapStore.getState();
+    if (selectedLesson) {
+      await useRoadmapStore.getState().completeLesson(selectedLesson.id);
       navigation.navigate('LessonComplete');
     } else {
-      navigation.navigate('LessonOverview');
+      navigation.navigate('MainTabs', { screen: 'Journey' });
     }
   };
 
@@ -332,17 +337,30 @@ export const ListenDesktop: React.FC = () => {
               )}
 
               {!answered ? (
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.actionBtn,
-                    !selectedAnswer && styles.actionBtnDisabled,
-                    pressed && selectedAnswer && styles.actionBtnPressed,
-                  ]}
-                  onPress={handleSubmit}
-                  disabled={!selectedAnswer}
-                >
-                  <Text style={[styles.actionBtnText, { fontFamily: typography.families.rounded }]}>Check Answer</Text>
-                </Pressable>
+                <View style={{ flexDirection: 'row', gap: 12, width: '100%' }}>
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.actionBtn,
+                      { flex: 2 },
+                      !selectedAnswer && styles.actionBtnDisabled,
+                      pressed && selectedAnswer && styles.actionBtnPressed,
+                    ]}
+                    onPress={handleSubmit}
+                    disabled={!selectedAnswer}
+                  >
+                    <Text style={[styles.actionBtnText, { fontFamily: typography.families.rounded }]}>Check Answer</Text>
+                  </Pressable>
+                  <Pressable
+                    style={({ pressed }) => [
+                      styles.actionBtn,
+                      { flex: 1, backgroundColor: colors.purple, borderWidth: 0 },
+                      pressed && styles.actionBtnPressed,
+                    ]}
+                    onPress={handleNextActivity}
+                  >
+                    <Text style={[styles.actionBtnText, { color: '#FFF8ED', fontFamily: typography.families.rounded }]}>Skip ➔</Text>
+                  </Pressable>
+                </View>
               ) : (
                 <View style={styles.nextActionsRow}>
                   {feedback?.includes('Correct') ? (

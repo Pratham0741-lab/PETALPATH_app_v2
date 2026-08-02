@@ -58,11 +58,12 @@ export interface Activity {
   id: string;
   lessonId: string;
   title: string;
-  activityType: 'video' | 'listen' | 'speak' | 'write';
+  activityType: 'video' | 'listen' | 'speak' | 'write' | 'drag_drop' | string;
   contentUrl: string | null;
   displayOrder: number;
   createdAt: string;
   updatedAt: string;
+  dragDropSpec?: any | null;
   video?: {
     id: string;
     activityId: string;
@@ -257,9 +258,11 @@ export const useRoadmapStore = create<RoadmapState>((set, get) => ({
     set({ loading: true, error: null });
     try {
       const res = await api.get(`/activities?lessonId=${lessonId}`);
-      const activitiesList = (res.data || []).sort(
-        (a: Activity, b: Activity) => a.displayOrder - b.displayOrder
-      );
+      const activitiesList = (res.data || [])
+        .filter((a: Activity) => (a.activityType as string) !== 'identify' && !a.title?.toLowerCase().includes('identify'))
+        .sort(
+          (a: Activity, b: Activity) => a.displayOrder - b.displayOrder
+        );
       set({ activities: activitiesList });
     } catch (err: unknown) {
       set({ error: err instanceof Error ? err.message : 'Failed to load activities' });
