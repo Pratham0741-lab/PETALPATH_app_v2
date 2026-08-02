@@ -1,0 +1,10 @@
+# EAS Ignore Configuration
+node_modules/
+.expo/
+dist/
+web-build/
+android/
+ios/
+*.log
+*.tmp
+scratch/
