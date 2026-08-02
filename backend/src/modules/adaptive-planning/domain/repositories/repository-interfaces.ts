@@ -2,13 +2,11 @@ import { Practice } from '../entities/practice.entity.js';
 import { LearningDebt } from '../entities/learning-debt.entity.js';
 import { RecoveryMode } from '../entities/recovery-mode.entity.js';
 import { DynamicRoadmap } from '../entities/dynamic-roadmap.entity.js';
-import { SessionPlan } from '../entities/session-plan.entity.js';
-import { SessionBlock } from '../entities/session-block.entity.js';
+import { SessionPlan, SessionStatus } from '../entities/session-plan.entity.js';
+import { SessionBlock, SessionBlockStatus } from '../entities/session-block.entity.js';
 import { TopicState } from '../../../intelligence-core/domain/entities/topic-state.entity.js';
 import { KnowledgeState } from '../../../intelligence-core/domain/entities/knowledge-state.entity.js';
 import { ReinforcementQueue } from '../entities/reinforcement-queue.entity.js';
-import { SessionStatus } from '../entities/session-plan.entity.js';
-import { SessionBlockStatus } from '../entities/session-block.entity.js';
 
 export interface IPracticeRepository {
   create(practice: Practice): Promise<Practice>;

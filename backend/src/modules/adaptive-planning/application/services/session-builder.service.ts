@@ -1,7 +1,6 @@
 import { SessionPlan, SessionStatus } from '../../domain/entities/session-plan.entity.js';
 import { SessionBlock, SessionBlockType, SessionBlockStatus } from '../../domain/entities/session-block.entity.js';
-import { ISessionPlanRepository } from '../../domain/repositories/repository-interfaces.js';
-import { ISessionBlockRepository } from '../../domain/repositories/repository-interfaces.js';
+import { ISessionPlanRepository, ISessionBlockRepository } from '../../domain/repositories/repository-interfaces.js';
 import { DynamicRoadmap } from '../../domain/entities/dynamic-roadmap.entity.js';
 import { RoadmapSectionType, ActivityType, DifficultyLevel } from '../../domain/value-objects/planning-types.js';
 

@@ -123,7 +123,7 @@ export class AnalyticsReadRepository {
       ]);
 
     const averageAssessmentScore =
-      scoreAgg._avg.percentage != null ? Math.round(scoreAgg._avg.percentage * 100) / 100 : 0;
+      scoreAgg._avg.percentage !== null && scoreAgg._avg.percentage !== undefined ? Math.round(scoreAgg._avg.percentage * 100) / 100 : 0;
     const completionPercentage =
       lessonsStarted > 0 ? Math.round((lessonsCompleted / lessonsStarted) * 100) : 0;
     const totalLearningMinutes = Math.round(
@@ -225,7 +225,7 @@ export class AnalyticsReadRepository {
       }),
     ]);
 
-    const averageScore = scoreAgg._avg.percentage != null ? Math.round(scoreAgg._avg.percentage * 100) / 100 : 0;
+    const averageScore = scoreAgg._avg.percentage !== null && scoreAgg._avg.percentage !== undefined ? Math.round(scoreAgg._avg.percentage * 100) / 100 : 0;
 
     return {
       lessonTrend,

@@ -17,9 +17,9 @@ let classificationEngine: ClassificationEngine | null = null;
 let observationEngineController: ObservationEngineController | null = null;
 let evidenceProcessorController: EvidenceProcessorController | null = null;
 let classificationEngineController: ClassificationEngineController | null = null;
-let observationEngineRoutes: ReturnType<typeof createObservationEngineRoutes> | null = null;
-let evidenceProcessorRoutes: ReturnType<typeof createEvidenceProcessorRoutes> | null = null;
-let classificationEngineRoutes: ReturnType<typeof createClassificationEngineRoutes> | null = null;
+const observationEngineRoutes: ReturnType<typeof createObservationEngineRoutes> | null = null;
+const evidenceProcessorRoutes: ReturnType<typeof createEvidenceProcessorRoutes> | null = null;
+const classificationEngineRoutes: ReturnType<typeof createClassificationEngineRoutes> | null = null;
 
 function getObservationEngine(): ObservationEngine {
   if (!observationEngine) {

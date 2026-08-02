@@ -1,12 +1,14 @@
 import { DynamicRoadmap } from '../../domain/entities/dynamic-roadmap.entity.js';
 import { Practice } from '../../domain/entities/practice.entity.js';
-import { IDynamicRoadmapRepository } from '../../domain/repositories/repository-interfaces.js';
-import { ITopicStateRepository } from '../../domain/repositories/repository-interfaces.js';
-import { IKnowledgeStateRepository } from '../../domain/repositories/repository-interfaces.js';
-import { ILearningDebtRepository } from '../../domain/repositories/repository-interfaces.js';
-import { IReinforcementQueueRepository } from '../../domain/repositories/repository-interfaces.js';
-import { IRecoveryModeRepository } from '../../domain/repositories/repository-interfaces.js';
-import { IPracticeRepository } from '../../domain/repositories/repository-interfaces.js';
+import {
+  IDynamicRoadmapRepository,
+  ITopicStateRepository,
+  IKnowledgeStateRepository,
+  ILearningDebtRepository,
+  IReinforcementQueueRepository,
+  IRecoveryModeRepository,
+  IPracticeRepository,
+} from '../../domain/repositories/repository-interfaces.js';
 import { ILearnerStateRepository } from '../../../intelligence-core/domain/repositories/repository-interfaces.js';
 import { RoadmapSectionType } from '../../domain/value-objects/planning-types.js';
 

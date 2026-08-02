@@ -188,7 +188,7 @@ export class ProgressService {
         throw new NotFoundError('Lesson not found in curriculum');
       }
 
-      let progress = await client.lessonProgress.findUnique({
+      const progress = await client.lessonProgress.findUnique({
         where: {
           childId_lessonId: { childId, lessonId },
         },

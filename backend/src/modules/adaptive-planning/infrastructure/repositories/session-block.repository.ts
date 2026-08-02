@@ -1,7 +1,6 @@
 import { prisma } from '../../../../config/database.js';
-import { SessionBlock } from '../../domain/entities/session-block.entity.js';
+import { SessionBlock, SessionBlockStatus } from '../../domain/entities/session-block.entity.js';
 import { SessionBlockType, ActivityType, DifficultyLevel } from '../../domain/value-objects/planning-types.js';
-import { SessionBlockStatus } from '../../domain/entities/session-block.entity.js';
 import { ISessionBlockRepository } from '../../domain/repositories/repository-interfaces.js';
 
 function toPrismaCreate(entity: SessionBlock): Record<string, unknown> {

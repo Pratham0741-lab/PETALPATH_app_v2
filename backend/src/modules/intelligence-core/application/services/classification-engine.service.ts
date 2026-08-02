@@ -1,5 +1,4 @@
-import { ITopicStateRepository } from '../../domain/repositories/repository-interfaces.js';
-import { IKnowledgeStateRepository } from '../../domain/repositories/repository-interfaces.js';
+import { ITopicStateRepository, IKnowledgeStateRepository } from '../../domain/repositories/repository-interfaces.js';
 import { TopicState } from '../../domain/entities/topic-state.entity.js';
 import { KnowledgeState } from '../../domain/entities/knowledge-state.entity.js';
 import { MetricSnapshot } from '../../domain/entities/metric-snapshot.entity.js';

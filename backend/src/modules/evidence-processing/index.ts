@@ -5,8 +5,7 @@ import { LearningDebtProcessor } from './application/services/learning-debt-proc
 import { ReinforcementProcessor } from './application/services/reinforcement-processor.service.js';
 import { EvidenceProcessingPipeline } from './application/services/evidence-processing-pipeline.service.js';
 import { getLearningStateUpdater } from '../learning-state/index.js';
-import { getLearningDebtService } from '../adaptive-planning/index.js';
-import { getReinforcementQueueService } from '../adaptive-planning/index.js';
+import { getLearningDebtService, getReinforcementQueueService } from '../adaptive-planning/index.js';
 
 let validator: EvidenceValidationService | null = null;
 let aggregator: EvidenceAggregationService | null = null;

@@ -1,6 +1,5 @@
 import { prisma } from '../../config/database.js';
-import type { Prisma } from '@prisma/client';
-import { SessionBlockStatus, SessionStatus } from '@prisma/client';
+import { Prisma, SessionBlockStatus, SessionStatus } from '@prisma/client';
 
 export class AiTutorRepository {
   async createSessionPlan(data: Prisma.SessionPlanUncheckedCreateInput, tx?: Prisma.TransactionClient) {
