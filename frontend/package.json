@@ -17,6 +17,7 @@
     "expo": "~56.0.12",
     "expo-asset": "~56.0.17",
     "expo-audio": "~56.0.12",
+    "expo-build-properties": "^57.0.8",
     "expo-dev-client": "~56.0.20",
     "expo-font": "~56.0.7",
     "expo-notifications": "~56.0.21",
@@ -43,7 +44,10 @@
     "zustand": "^5.0.14"
   },
   "devDependencies": {
+    "@expo/config-plugins": "^57.0.6",
+    "@react-native-community/cli": "^20.2.0",
     "@types/react": "~19.2.2",
+    "caniuse-lite": "1.0.30001690",
     "concurrently": "^10.0.3",
     "typescript": "~6.0.3"
   },
