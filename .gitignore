@@ -38,9 +38,9 @@ yarn-error.*
 # typescript
 *.tsbuildinfo
 
-# generated native folders
-/ios
-/android
+# generated native folders (CNG - Continuous Native Generation)
+**/android/
+**/ios/
 # Dependencies
 node_modules/
 
