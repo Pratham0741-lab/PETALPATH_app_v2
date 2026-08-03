@@ -68,7 +68,8 @@
             "targetSdkVersion": 36
           }
         }
-      ]
+      ],
+      "expo-secure-store"
     ],
     "web": {
       "favicon": "./assets/favicon.png"
