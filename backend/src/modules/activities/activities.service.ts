@@ -1,6 +1,10 @@
 import { activitiesRepository } from './activities.repository.js';
 import { Prisma } from '@prisma/client';
 import { curriculumService } from '../curriculum/curriculum.service.js';
+import { resolveVideoKey } from '../../shared/utils/video-resolver.js';
+import { resolveAudioKey } from '../../shared/utils/audio-resolver.js';
+
+import { generateDynamicDragDropSpec } from '../../shared/utils/spec-generator.js';
 
 function getActivityTitle(lessonTitle: string, type: string): string {
   const typeMap: Record<string, string> = {
@@ -72,24 +76,85 @@ function getDragDropSpec(lessonId: string, activityIndex?: number): any | null {
   return null;
 }
 
+function getDragDropSpecForLesson(lessonId: string): any | null {
+  const node = curriculumService.getLessonById(lessonId);
+  const activityIndex = node?.activities?.findIndex((activity: any) => activity.type === 'drag_drop');
+  const spec = getDragDropSpec(lessonId, activityIndex === undefined || activityIndex < 0 ? undefined : activityIndex)
+    || getDragDropSpec(lessonId);
+  if (spec) return spec;
+  if (node) {
+    return generateDynamicDragDropSpec(lessonId, node.title);
+  }
+  return null;
+}
+
+function isSpeakingActivity(type: string): boolean {
+  return ['speak', 'blend', 'conversation', 'read'].includes(type.toLowerCase());
+}
+
+function positionDragDropAfterSpeaking<T extends { activityType: string; displayOrder: number }>(activities: T[]): T[] {
+  const speakingActivity = activities
+    .filter((activity) => isSpeakingActivity(activity.activityType))
+    .sort((a, b) => a.displayOrder - b.displayOrder)
+    .at(-1);
+
+  if (!speakingActivity) return activities;
+
+  return activities.map((activity) => (
+    activity.activityType === 'drag_drop'
+      ? { ...activity, displayOrder: speakingActivity.displayOrder + 0.5 }
+      : activity
+  ));
+}
+
+function addMissingDragDropActivity(lessonId: string, activities: any[]): any[] {
+  if (activities.some((activity) => activity.activityType === 'drag_drop')) return activities;
+
+  const node = curriculumService.getLessonById(lessonId);
+  if (!node) return activities;
+
+  const spec = getDragDropSpecForLesson(lessonId);
+  const nextDisplayOrder = activities.length > 0
+    ? Math.max(...activities.map((a: any) => a.displayOrder)) + 1
+    : 4;
+
+  return [
+    ...activities,
+    {
+      id: `${lessonId}_act_${nextDisplayOrder}`,
+      lessonId,
+      title: getActivityTitle(node.title, 'drag_drop'),
+      activityType: 'drag_drop',
+      contentUrl: null,
+      displayOrder: nextDisplayOrder,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      deletedAt: null,
+      dragDropSpec: spec,
+    },
+  ];
+}
+
 export class ActivitiesService {
   async getAllActivities(lessonId?: string) {
     if (lessonId) {
       const dbActivities = await activitiesRepository.findByLessonId(lessonId);
       if (dbActivities && dbActivities.length > 0) {
-        return dbActivities.map((act) => {
+        const activitiesWithDragDrop = addMissingDragDropActivity(lessonId, dbActivities);
+        const enrichedActivities = activitiesWithDragDrop.map((act) => {
           if (act.activityType === 'drag_drop') {
-            const spec = getDragDropSpec(act.lessonId, act.displayOrder - 1) || getDragDropSpec(act.lessonId);
+            const spec = act.dragDropSpec || getDragDropSpecForLesson(act.lessonId);
             return { ...act, dragDropSpec: spec };
           }
           return act;
         });
+        return positionDragDropAfterSpeaking(enrichedActivities);
       }
 
       // Dynamic Failsafe: Synthesize from static curriculum configuration if DB is not seeded
       const node = curriculumService.getLessonById(lessonId);
       if (node && node.activities && node.activities.length > 0) {
-        return node.activities.map((act, index) => ({
+        let activities = node.activities.map((act, index) => ({
           id: `${lessonId}_act_${index + 1}`,
           lessonId,
           title: getActivityTitle(node.title, act.type),
@@ -99,12 +164,12 @@ export class ActivitiesService {
           createdAt: new Date(),
           updatedAt: new Date(),
           deletedAt: null,
-          dragDropSpec: act.type === 'drag_drop' ? getDragDropSpec(lessonId, index) : null,
+          dragDropSpec: act.type === 'drag_drop' ? getDragDropSpecForLesson(lessonId) : null,
           video: act.type === 'video' ? {
             id: `v_${lessonId}`,
             activityId: `${lessonId}_act_${index + 1}`,
             title: `${node.title} Video Lesson`,
-            videoKey: `videos/${node.id}.mp4`,
+            videoKey: resolveVideoKey(node),
             thumbnailKey: 'thumbnails/default.png',
             duration: act.estimated_minutes * 60,
           } : null,
@@ -112,10 +177,16 @@ export class ActivitiesService {
             id: `a_${lessonId}`,
             activityId: `${lessonId}_act_${index + 1}`,
             title: `${node.title} Listening Guide`,
-            audioKey: `audio/${node.id}.mp3`,
+            audioKey: resolveAudioKey(node),
             duration: act.estimated_minutes * 60,
           } : null,
         }));
+
+        if (!activities.some((a) => a.activityType === 'drag_drop')) {
+          activities = addMissingDragDropActivity(lessonId, activities);
+        }
+
+        return positionDragDropAfterSpeaking(activities);
       }
 
       return [];
@@ -124,7 +195,7 @@ export class ActivitiesService {
     const all = await activitiesRepository.findAll();
     return all.map((act) => {
       if (act.activityType === 'drag_drop') {
-        const spec = getDragDropSpec(act.lessonId, act.displayOrder - 1) || getDragDropSpec(act.lessonId);
+        const spec = getDragDropSpecForLesson(act.lessonId);
         return { ...act, dragDropSpec: spec };
       }
       return act;
@@ -135,7 +206,7 @@ export class ActivitiesService {
     const act = await activitiesRepository.findById(id);
     if (!act) return null;
     if (act.activityType === 'drag_drop') {
-      const spec = getDragDropSpec(act.lessonId, act.displayOrder - 1) || getDragDropSpec(act.lessonId);
+      const spec = getDragDropSpecForLesson(act.lessonId);
       return { ...act, dragDropSpec: spec };
     }
     return act;

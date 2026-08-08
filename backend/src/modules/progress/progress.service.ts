@@ -5,8 +5,10 @@ import { moduleProgressService } from './module-progress.service.js';
 import { categoryProgressService } from './category-progress.service.js';
 import { rewardService } from '../rewards/rewards.service.js';
 import { curriculumService, curriculumEngineService } from '../curriculum/index.js';
+import { masteryEngineService } from '../mastery-engine/mastery-engine.service.js';
 import { Prisma } from '@prisma/client';
 import { NotFoundError } from '../../utils/errors.js';
+import { normalizeActivityType } from '../../shared/utils/activity-type-normalizer.js';
 
 export class ProgressService {
   async getAllProgress() {
@@ -72,16 +74,18 @@ export class ProgressService {
       }
 
       const updateData: ProgressUpdatePayload = {};
-      if (activityType === 'video') {
+      // Normalize granular types (trace→write, tap→listen, etc.)
+      const normalizedType = normalizeActivityType(activityType);
+      if (normalizedType === 'video') {
         updateData.videoCompleted = true;
         updateData.videoStars = stars;
-      } else if (activityType === 'listen') {
+      } else if (normalizedType === 'listen') {
         updateData.listenCompleted = true;
         updateData.listenStars = stars;
-      } else if (activityType === 'speak') {
+      } else if (normalizedType === 'speak') {
         updateData.speakCompleted = true;
         updateData.speakStars = stars;
-      } else if (activityType === 'write') {
+      } else if (normalizedType === 'write') {
         updateData.writeCompleted = true;
         updateData.writeStars = stars;
       }
@@ -132,6 +136,27 @@ export class ProgressService {
       });
 
       await starService.updateTotalStars(childId, client);
+
+      // Trigger adaptive mastery evaluation for the corresponding skill
+      try {
+        const skillExists = await client.skill.findUnique({ where: { id: lessonId } });
+        if (skillExists) {
+          const accuracy = Math.min(100, Math.max(0, stars > 0 ? (stars / 3) * 100 : 0));
+          await masteryEngineService.evaluateMastery({
+            childId,
+            skillId: lessonId,
+            accuracy,
+            responseTime: 15,
+            attempts: 1,
+            retries: Math.max(0, 3 - stars),
+            engagementScore: accuracy,
+            helpRequests: 0,
+            sessionDuration: 120,
+          });
+        }
+      } catch (err) {
+        // Non-blocking background log
+      }
 
       if (becameCompleted) {
         // Idempotently apply reward points from curriculum metadata

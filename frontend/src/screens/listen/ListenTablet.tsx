@@ -162,6 +162,9 @@ export const ListenTablet: React.FC = () => {
       player.pause();
       setIsPlaying(false);
     } else {
+      if (playProgress >= 1) {
+        setPlayProgress(0);
+      }
       player.play();
       setIsPlaying(true);
     }

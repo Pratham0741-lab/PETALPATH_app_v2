@@ -1,0 +1,104 @@
+/**
+ * Validation System — PetalPath Drag & Drop Subsystem
+ * Pure correctness evaluator supporting all 6 validation strategies.
+ */
+
+import { ValidationConfig, DropZone } from '../types';
+
+export interface ValidationResult {
+  isValid: boolean;
+  isPartial: boolean;
+  isComplete: boolean;
+  reason?: string;
+}
+
+export type CustomValidator = (
+  draggableId: string,
+  dropZoneId: string,
+  currentPlacements: Record<string, string>
+) => boolean;
+
+export class ValidationSystem {
+  private customValidators: Map<string, CustomValidator> = new Map();
+
+  registerCustomValidator(id: string, validator: CustomValidator): void {
+    this.customValidators.set(id, validator);
+  }
+
+  evaluateDrop(
+    draggableId: string,
+    dropZoneId: string,
+    config: ValidationConfig,
+    dropZones: DropZone[],
+    currentPlacements: Record<string, string>
+  ): ValidationResult {
+    const targetZone = dropZones.find((z) => z.id === dropZoneId);
+    if (!targetZone) {
+      return { isValid: false, isPartial: false, isComplete: false, reason: 'Invalid drop zone' };
+    }
+
+    switch (config.strategy) {
+      case 'one-to-one':
+      case 'one-to-many':
+      case 'many-to-one':
+      case 'unordered': {
+        const isAccepted =
+          targetZone.acceptedDraggableIds.includes(draggableId) ||
+          targetZone.acceptedDraggableIds.includes('*');
+
+        return {
+          isValid: isAccepted,
+          isPartial: isAccepted,
+          isComplete: false, // Overall activity completeness checked separately
+        };
+      }
+
+      case 'ordered-sequence': {
+        if (!config.orderedSequence || config.orderedSequence.length === 0) {
+          const isAccepted = targetZone.acceptedDraggableIds.includes(draggableId);
+          return { isValid: isAccepted, isPartial: isAccepted, isComplete: false };
+        }
+
+        const nextExpectedItem = config.orderedSequence[Object.keys(currentPlacements).length];
+        const isValid = draggableId === nextExpectedItem;
+
+        return {
+          isValid,
+          isPartial: isValid,
+          isComplete: false,
+        };
+      }
+
+      case 'custom': {
+        if (config.customValidatorId && this.customValidators.has(config.customValidatorId)) {
+          const customFn = this.customValidators.get(config.customValidatorId)!;
+          const isValid = customFn(draggableId, dropZoneId, currentPlacements);
+          return { isValid, isPartial: isValid, isComplete: false };
+        }
+        // Default fallback to acceptedDraggableIds check
+        const isAccepted = targetZone.acceptedDraggableIds.includes(draggableId);
+        return { isValid: isAccepted, isPartial: isAccepted, isComplete: false };
+      }
+
+      default:
+        return { isValid: false, isPartial: false, isComplete: false };
+    }
+  }
+
+  evaluateOverallCompletion(
+    totalDraggables: number,
+    placements: Record<string, string>,
+    dropZones: DropZone[],
+    config: ValidationConfig
+  ): boolean {
+    const placedCount = Object.keys(placements).length;
+    const requiredTargetCount = dropZones.length;
+    if (placedCount < requiredTargetCount) return false;
+
+    // Check all placements validity
+    return Object.entries(placements).every(([zoneId, draggableId]) => {
+      const zone = dropZones.find((z) => z.id === zoneId);
+      return zone ? zone.acceptedDraggableIds.includes(draggableId) || zone.acceptedDraggableIds.includes('*') : false;
+    });
+  }
+}

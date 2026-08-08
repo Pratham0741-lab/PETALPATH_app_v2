@@ -5,7 +5,8 @@ import { TopBar } from '../../../components/navigation/TopBar';
 import { useCameraPermissions } from '../hooks/useCameraPermissions';
 import { useCameraLifecycle } from '../hooks/useCameraLifecycle';
 import { useCameraEnginePipeline } from '../../../camera/hooks/useCameraEnginePipeline';
-import { NativeCameraPreview } from '../../../camera/NativeCameraPreview';
+import { NativeCameraView } from '../../../camera/NativeCameraView';
+import { DebugOverlay } from '../../../camera/DebugOverlay';
 import { CameraPermissionState } from '../components/CameraPermissionState';
 import { CameraStatus } from '../types/camera.types';
 import { ActivityType } from '../types/pose.types';
@@ -26,10 +27,10 @@ export const CameraActivityScreen: React.FC = () => {
   const { hasPermission, permissionStatus, requestPermission } = useCameraPermissions();
   const { isActive } = useCameraLifecycle();
   const {
-    poseResult,
     activityResult,
     activeActivity,
     setActiveActivity,
+    switchCamera,
   } = useCameraEnginePipeline();
 
   useEffect(() => {
@@ -53,7 +54,13 @@ export const CameraActivityScreen: React.FC = () => {
       <View style={styles.previewContainer}>
         {hasPermission && isActive ? (
           <>
-            <NativeCameraPreview style={StyleSheet.absoluteFill} />
+            <NativeCameraView style={StyleSheet.absoluteFill} />
+            <DebugOverlay isVisible={true} />
+
+            {/* Camera Switch Button */}
+            <Pressable style={styles.switchCameraButton} onPress={switchCamera}>
+              <Text style={styles.switchCameraText}>🔄 Flip Camera</Text>
+            </Pressable>
 
             {/* Development-Only Activity Selector Controls */}
             {typeof __DEV__ !== 'undefined' && __DEV__ ? (
@@ -172,6 +179,22 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: 'bold',
     textAlign: 'center',
+  },
+  switchCameraButton: {
+    position: 'absolute',
+    top: spacing.lg,
+    right: spacing.lg,
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.full,
+    zIndex: 20,
+  },
+  switchCameraText: {
+    fontFamily: typography.families.rounded,
+    fontSize: typography.sizes.xs,
+    color: '#FFFFFF',
+    fontWeight: '600',
   },
 });
 

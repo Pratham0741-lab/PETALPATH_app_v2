@@ -1,6 +1,6 @@
 {
   "version": "2.1.0",
-  "totalActivities": 42,
+  "totalActivities": 43,
   "activities": [
     {
       "activityId": "petalpath:activity:f024ec93-51cf-4c95-aee4-026011ba7616",
@@ -379,6 +379,15 @@
       "templateId": "animal-to-habitat",
       "grade": "UKG",
       "subject": "Environmental Studies / General Awareness"
+    },
+    {
+      "activityId": "petalpath:activity:0c8c44fa-2391-4cd9-9a87-c2ca3071d4d0",
+      "nodeId": "pn_letter_c",
+      "activityIndex": 3,
+      "fileName": "pn_letter_c_3.json",
+      "templateId": "letter-to-word",
+      "grade": "Pre-Nursery",
+      "subject": "English"
     }
   ],
   "lastSyncTimestamp": "2026-07-27T09:50:57.111Z",

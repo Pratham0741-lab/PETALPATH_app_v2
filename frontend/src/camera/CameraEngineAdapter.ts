@@ -1,0 +1,150 @@
+import { NativeModules, NativeEventEmitter, Platform } from 'react-native';
+import { CameraState, DiagnosticMetrics, PoseFrameListener, PoseFrameV1 } from './CameraTypes';
+import { ICameraEngine } from './ICameraEngine';
+
+const { PetalPathCameraEngine } = NativeModules;
+const cameraEventEmitter = PetalPathCameraEngine ? new NativeEventEmitter(PetalPathCameraEngine) : null;
+
+export class CameraEngineAdapter implements ICameraEngine {
+  private state: CameraState = 'UNINITIALIZED';
+  private listeners: Set<PoseFrameListener> = new Set();
+  private eventSubscription: any = null;
+
+  constructor() {
+    if (Platform.OS === 'android' && cameraEventEmitter) {
+      this.eventSubscription = cameraEventEmitter.addListener('onPoseFrame', (event: PoseFrameV1) => {
+        this.listeners.forEach((listener) => listener(event));
+      });
+    }
+  }
+
+  public async start(): Promise<boolean> {
+    if (Platform.OS !== 'android' || !PetalPathCameraEngine) {
+      console.warn('[CameraEngineAdapter] Native MoveNet engine only supported on Android in Phase 1.');
+      return false;
+    }
+
+    this.state = 'INITIALIZING';
+    try {
+      const success = await PetalPathCameraEngine.start();
+      if (success) {
+        this.state = 'RUNNING';
+      } else {
+        this.state = 'ERROR';
+      }
+      return success;
+    } catch (error) {
+      this.state = 'ERROR';
+      console.error('[CameraEngineAdapter] Failed to start camera engine:', error);
+      return false;
+    }
+  }
+
+  public async stop(): Promise<boolean> {
+    if (!PetalPathCameraEngine) return false;
+    this.state = 'STOPPING';
+    try {
+      const success = await PetalPathCameraEngine.stop();
+      this.state = 'STOPPED';
+      return success;
+    } catch (error) {
+      this.state = 'ERROR';
+      return false;
+    }
+  }
+
+  public async pause(): Promise<boolean> {
+    if (!PetalPathCameraEngine) return false;
+    try {
+      const success = await PetalPathCameraEngine.pause();
+      if (success) this.state = 'PAUSED';
+      return success;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  public async resume(): Promise<boolean> {
+    if (!PetalPathCameraEngine) return false;
+    try {
+      const success = await PetalPathCameraEngine.resume();
+      if (success) this.state = 'RUNNING';
+      return success;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  public async switchCamera(): Promise<boolean> {
+    if (!PetalPathCameraEngine) return false;
+    try {
+      return await PetalPathCameraEngine.switchCamera();
+    } catch (error) {
+      return false;
+    }
+  }
+
+  public onPoseFrame(listener: PoseFrameListener): () => void {
+    this.listeners.add(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
+  }
+
+  public async getMetrics(): Promise<DiagnosticMetrics> {
+    if (!PetalPathCameraEngine) {
+      return {
+        framesReceived: 0,
+        framesProcessed: 0,
+        framesDropped: 0,
+        queueDepth: 0,
+        cameraState: this.state,
+        modelState: 'UNLOADED',
+        interpreterState: 'UNINITIALIZED',
+        delegateType: 'NONE',
+        lastInferenceMs: 0,
+        averageInferenceMs: 0,
+        peakInferenceMs: 0,
+        cameraFps: 0,
+        inferenceFps: 0,
+        usedMemoryMb: 0,
+        watchdogAlert: 'NATIVE_MODULE_MISSING',
+      };
+    }
+
+    try {
+      const rawMetrics = await PetalPathCameraEngine.getMetrics();
+      return rawMetrics as DiagnosticMetrics;
+    } catch (error) {
+      return {
+        framesReceived: 0,
+        framesProcessed: 0,
+        framesDropped: 0,
+        queueDepth: 0,
+        cameraState: 'ERROR',
+        modelState: 'ERROR',
+        interpreterState: 'ERROR',
+        delegateType: 'NONE',
+        lastInferenceMs: 0,
+        averageInferenceMs: 0,
+        peakInferenceMs: 0,
+        cameraFps: 0,
+        inferenceFps: 0,
+        usedMemoryMb: 0,
+        watchdogAlert: 'METRICS_FETCH_ERROR',
+      };
+    }
+  }
+
+  public getState(): CameraState {
+    return this.state;
+  }
+
+  public destroy() {
+    if (this.eventSubscription) {
+      this.eventSubscription.remove();
+      this.eventSubscription = null;
+    }
+    this.listeners.clear();
+  }
+}

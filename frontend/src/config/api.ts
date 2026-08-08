@@ -2,43 +2,52 @@
  * Centralized API Configuration
  *
  * Reads EXPO_PUBLIC_API_URL from environment variables (set via .env files).
- * All networking code should import from this module — never hardcode URLs.
- *
- * Switching environments requires changing only the .env file:
- *   - .env.development  → http://192.168.X.X:5000
- *   - .env.production   → http://13.235.178.117
- *   - Future            → https://api.petalpath.in
+ * Supports dynamic base URL fallback if primary route is unreachable.
  */
+import Constants from 'expo-constants';
 
-function getApiBaseUrl(): string {
-    const raw = process.env.EXPO_PUBLIC_API_URL;
-
-    if (!raw) {
-        throw new Error(
-            'EXPO_PUBLIC_API_URL is not configured.'
-        );
-    }
-
-    return raw.replace(/\/+$/, '');
-}
-/** Whether we are running in Expo/Metro development mode */
 export const IS_DEV: boolean = typeof __DEV__ !== 'undefined' ? __DEV__ : false;
 
-/**
- * The base server URL (no path suffix).
- * Example: `http://\3.235.178.117`
- */
-// Force Metro Babel cache invalidation after env change
+let currentBaseUrl: string = '';
+
+export function setDynamicApiBaseUrl(newUrl: string) {
+  currentBaseUrl = newUrl.replace(/\/+$/, '');
+}
+
+export function getApiBaseUrl(): string {
+  if (currentBaseUrl) {
+    return currentBaseUrl;
+  }
+
+  const envUrl = process.env.EXPO_PUBLIC_API_URL;
+  if (envUrl && envUrl.trim() !== '') {
+    return envUrl.replace(/\/+$/, '');
+  }
+
+  // Fallback: auto-detect host IP from Expo Metro connection in development
+  if (IS_DEV) {
+    const hostUri = Constants.expoConfig?.hostUri || (Constants as any).manifest?.debuggerHost;
+    if (hostUri) {
+      const devIp = hostUri.split(':')[0];
+      if (devIp && devIp !== 'localhost' && devIp !== '127.0.0.1') {
+        return `http://${devIp}:5000`;
+      }
+    }
+    // Network fallback to PC LAN IP if hostUri is unavailable
+    return 'http://10.0.1.18:5000';
+  }
+
+  return 'http://10.0.1.18:5000';
+}
+
+export function getApiUrl(): string {
+  return `${getApiBaseUrl()}/api`;
+}
+
+export function getStorageUrl(): string {
+  return `${getApiBaseUrl()}/storage`;
+}
+
 export const API_BASE_URL: string = getApiBaseUrl();
-
-/**
- * The API endpoint prefix for REST calls.
- * Example: `http://13.235.178.117/api`
- */
-export const API_URL: string = `${API_BASE_URL}/api`;
-
-/**
- * The static storage URL for serving audio, video, and other media.
- * Example: `http://13.235.178.117/storage`
- */
-export const STORAGE_URL: string = `${API_BASE_URL}/storage`;
+export const API_URL: string = getApiUrl();
+export const STORAGE_URL: string = getStorageUrl();

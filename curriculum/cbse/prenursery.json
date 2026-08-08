@@ -6960,6 +6960,12 @@
               "difficulty": 1,
               "estimated_minutes": 6,
               "repeatable": true
+            },
+            {
+              "type": "drag_drop",
+              "difficulty": 1,
+              "estimated_minutes": 3,
+              "repeatable": true
             }
           ],
           "reward": {

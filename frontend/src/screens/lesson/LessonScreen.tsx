@@ -44,7 +44,11 @@ const launchActivity = (activity: { id: string; activityType: string }, navigati
       navigation.navigate('Write', { activityId: activity.id });
       break;
     case 'drag_drop':
-      navigation.navigate('Game', { activityId: activity.id });
+      navigation.navigate('Game', {
+        activityId: activity.id,
+        dragDropSpec: (activity as Activity).dragDropSpec,
+        title: (activity as Activity).title,
+      });
       break;
   }
 };

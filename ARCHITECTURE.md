@@ -16,6 +16,7 @@
 | Audio Guides | expo-audio | 56.x |
 | Drawing | react-native-svg + PanResponder | 15.x |
 | Speech | expo-speech-recognition | 56.x |
+| Camera Engine | CameraX + TensorFlow Lite MoveNet Lightning | 1.3.4 / 2.14.0 |
 
 ---
 

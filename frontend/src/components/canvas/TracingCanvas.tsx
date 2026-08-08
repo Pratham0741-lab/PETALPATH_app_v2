@@ -323,6 +323,7 @@ export const TracingCanvas: React.FC<TracingCanvasProps> = ({
           }),
         };
       }
+      // === LETTER GUIDES A-Z ===
       case 'Letter A':
         return {
           d: `M ${w / 2} ${h * 0.2} L ${w * 0.25} ${h * 0.8} M ${w / 2} ${h * 0.2} L ${w * 0.75} ${h * 0.8} M ${w * 0.35} ${h * 0.55} L ${w * 0.65} ${h * 0.55}`,
@@ -332,14 +333,291 @@ export const TracingCanvas: React.FC<TracingCanvasProps> = ({
             `M ${w * 0.35} ${h * 0.55} L ${w * 0.65} ${h * 0.55}`,
           ],
         };
+      case 'Letter B': {
+        // Vertical line + two bumps as polylines
+        const bumpTop: string[] = [];
+        const bumpBot: string[] = [];
+        for (let i = 0; i <= 16; i++) {
+          const a = -Math.PI / 2 + (i * Math.PI) / 16;
+          bumpTop.push(`${w * 0.3 + w * 0.22 * Math.cos(a)} ${h * 0.35 + h * 0.15 * Math.sin(a)}`);
+        }
+        for (let i = 0; i <= 16; i++) {
+          const a = -Math.PI / 2 + (i * Math.PI) / 16;
+          bumpBot.push(`${w * 0.3 + w * 0.25 * Math.cos(a)} ${h * 0.65 + h * 0.15 * Math.sin(a)}`);
+        }
+        return {
+          d: `M ${w * 0.3} ${h * 0.2} L ${w * 0.3} ${h * 0.8} ${bumpTop.map((p, i) => (i === 0 ? `M ${p}` : `L ${p}`)).join(' ')} ${bumpBot.map((p, i) => (i === 0 ? `M ${p}` : `L ${p}`)).join(' ')}`,
+        };
+      }
+      case 'Letter C': {
+        // Open arc as polyline
+        const pts: string[] = [];
+        const cx = w * 0.5, cy = h * 0.5, rx = w * 0.28, ry = h * 0.3;
+        for (let i = 0; i <= 24; i++) {
+          const a = -2.4 + (i * 4.8) / 24; // from ~-2.4 to ~2.4 radians (open on right)
+          pts.push(`${cx - rx * Math.cos(a)} ${cy + ry * Math.sin(a)}`);
+        }
+        return { d: `M ${pts[0]} ${pts.slice(1).map(p => `L ${p}`).join(' ')}` };
+      }
+      case 'Letter D': {
+        // Vertical line + right bump as polyline
+        const bump: string[] = [];
+        for (let i = 0; i <= 20; i++) {
+          const a = -Math.PI / 2 + (i * Math.PI) / 20;
+          bump.push(`${w * 0.3 + w * 0.28 * Math.cos(a)} ${h * 0.5 + h * 0.3 * Math.sin(a)}`);
+        }
+        return {
+          d: `M ${w * 0.3} ${h * 0.2} L ${w * 0.3} ${h * 0.8} ${bump.map((p, i) => (i === 0 ? `M ${p}` : `L ${p}`)).join(' ')}`,
+        };
+      }
+      case 'Letter E':
+        return {
+          d: `M ${w * 0.3} ${h * 0.2} L ${w * 0.3} ${h * 0.8} M ${w * 0.3} ${h * 0.2} L ${w * 0.7} ${h * 0.2} M ${w * 0.3} ${h * 0.5} L ${w * 0.65} ${h * 0.5} M ${w * 0.3} ${h * 0.8} L ${w * 0.7} ${h * 0.8}`,
+        };
+      case 'Letter F':
+        return {
+          d: `M ${w * 0.3} ${h * 0.2} L ${w * 0.3} ${h * 0.8} M ${w * 0.3} ${h * 0.2} L ${w * 0.7} ${h * 0.2} M ${w * 0.3} ${h * 0.5} L ${w * 0.65} ${h * 0.5}`,
+        };
+      case 'Letter G': {
+        // Open arc + horizontal bar
+        const pts: string[] = [];
+        const cx = w * 0.5, cy = h * 0.5, rx = w * 0.25, ry = h * 0.3;
+        for (let i = 0; i <= 22; i++) {
+          const a = -0.4 + (i * (2 * Math.PI - 0.8)) / 22;
+          pts.push(`${cx + rx * Math.cos(a)} ${cy - ry * Math.sin(a)}`);
+        }
+        return {
+          d: `M ${pts[0]} ${pts.slice(1).map(p => `L ${p}`).join(' ')} M ${w * 0.75} ${h * 0.5} L ${w * 0.5} ${h * 0.5}`,
+        };
+      }
+      case 'Letter H':
+        return {
+          d: `M ${w * 0.3} ${h * 0.2} L ${w * 0.3} ${h * 0.8} M ${w * 0.7} ${h * 0.2} L ${w * 0.7} ${h * 0.8} M ${w * 0.3} ${h * 0.5} L ${w * 0.7} ${h * 0.5}`,
+        };
+      case 'Letter I':
+        return {
+          d: `M ${w * 0.35} ${h * 0.2} L ${w * 0.65} ${h * 0.2} M ${w / 2} ${h * 0.2} L ${w / 2} ${h * 0.8} M ${w * 0.35} ${h * 0.8} L ${w * 0.65} ${h * 0.8}`,
+        };
+      case 'Letter J': {
+        // Vertical line + hook curve
+        const hook: string[] = [];
+        for (let i = 0; i <= 12; i++) {
+          const a = (i * Math.PI) / 12;
+          hook.push(`${w * 0.42 + w * 0.13 * Math.cos(a)} ${h * 0.65 + h * 0.15 * Math.sin(a)}`);
+        }
+        return {
+          d: `M ${w * 0.35} ${h * 0.2} L ${w * 0.65} ${h * 0.2} M ${w * 0.55} ${h * 0.2} L ${w * 0.55} ${h * 0.65} ${hook.map((p, i) => (i === 0 ? `M ${p}` : `L ${p}`)).join(' ')}`,
+        };
+      }
+      case 'Letter K':
+        return {
+          d: `M ${w * 0.3} ${h * 0.2} L ${w * 0.3} ${h * 0.8} M ${w * 0.7} ${h * 0.2} L ${w * 0.3} ${h * 0.5} L ${w * 0.7} ${h * 0.8}`,
+        };
+      case 'Letter L':
+        return {
+          d: `M ${w * 0.3} ${h * 0.2} L ${w * 0.3} ${h * 0.8} L ${w * 0.7} ${h * 0.8}`,
+        };
+      case 'Letter M':
+        return {
+          d: `M ${w * 0.2} ${h * 0.8} L ${w * 0.2} ${h * 0.2} L ${w / 2} ${h * 0.55} L ${w * 0.8} ${h * 0.2} L ${w * 0.8} ${h * 0.8}`,
+        };
+      case 'Letter N':
+        return {
+          d: `M ${w * 0.25} ${h * 0.8} L ${w * 0.25} ${h * 0.2} L ${w * 0.75} ${h * 0.8} L ${w * 0.75} ${h * 0.2}`,
+        };
+      case 'Letter O': {
+        const pts: string[] = [];
+        const cx = w / 2, cy = h / 2, rx = w * 0.25, ry = h * 0.3;
+        for (let i = 0; i <= 36; i++) {
+          const a = (i * 2 * Math.PI) / 36;
+          pts.push(`${cx + rx * Math.cos(a)} ${cy + ry * Math.sin(a)}`);
+        }
+        return { d: `M ${pts[0]} ${pts.slice(1).map(p => `L ${p}`).join(' ')} Z` };
+      }
+      case 'Letter P': {
+        const bump: string[] = [];
+        for (let i = 0; i <= 16; i++) {
+          const a = -Math.PI / 2 + (i * Math.PI) / 16;
+          bump.push(`${w * 0.3 + w * 0.25 * Math.cos(a)} ${h * 0.35 + h * 0.15 * Math.sin(a)}`);
+        }
+        return {
+          d: `M ${w * 0.3} ${h * 0.2} L ${w * 0.3} ${h * 0.8} ${bump.map((p, i) => (i === 0 ? `M ${p}` : `L ${p}`)).join(' ')}`,
+        };
+      }
+      case 'Letter Q': {
+        const pts: string[] = [];
+        const cx = w / 2, cy = h * 0.45, rx = w * 0.25, ry = h * 0.25;
+        for (let i = 0; i <= 36; i++) {
+          const a = (i * 2 * Math.PI) / 36;
+          pts.push(`${cx + rx * Math.cos(a)} ${cy + ry * Math.sin(a)}`);
+        }
+        return { d: `M ${pts[0]} ${pts.slice(1).map(p => `L ${p}`).join(' ')} Z M ${w * 0.55} ${h * 0.6} L ${w * 0.72} ${h * 0.82}` };
+      }
+      case 'Letter R': {
+        const bump: string[] = [];
+        for (let i = 0; i <= 16; i++) {
+          const a = -Math.PI / 2 + (i * Math.PI) / 16;
+          bump.push(`${w * 0.3 + w * 0.25 * Math.cos(a)} ${h * 0.35 + h * 0.15 * Math.sin(a)}`);
+        }
+        return {
+          d: `M ${w * 0.3} ${h * 0.2} L ${w * 0.3} ${h * 0.8} ${bump.map((p, i) => (i === 0 ? `M ${p}` : `L ${p}`)).join(' ')} M ${w * 0.45} ${h * 0.5} L ${w * 0.7} ${h * 0.8}`,
+        };
+      }
+      case 'Letter S': {
+        // S-curve as polyline (top arc + bottom arc)
+        const pts: string[] = [];
+        const r = h * 0.14;
+        // top curve (going right then down-left)
+        for (let i = 0; i <= 14; i++) {
+          const a = -Math.PI * 0.8 + (i * Math.PI * 1.3) / 14;
+          pts.push(`${w * 0.5 - r * Math.cos(a)} ${h * 0.33 - r * Math.sin(a)}`);
+        }
+        // bottom curve (going left then down-right)
+        for (let i = 0; i <= 14; i++) {
+          const a = -Math.PI * 0.8 + (i * Math.PI * 1.3) / 14;
+          pts.push(`${w * 0.5 + r * Math.cos(a)} ${h * 0.67 + r * Math.sin(a)}`);
+        }
+        return { d: `M ${pts[0]} ${pts.slice(1).map(p => `L ${p}`).join(' ')}` };
+      }
+      case 'Letter T':
+        return {
+          d: `M ${w * 0.2} ${h * 0.2} L ${w * 0.8} ${h * 0.2} M ${w / 2} ${h * 0.2} L ${w / 2} ${h * 0.8}`,
+        };
+      case 'Letter U': {
+        // Two verticals + bottom curve
+        const curve: string[] = [];
+        for (let i = 0; i <= 16; i++) {
+          const a = Math.PI + (i * Math.PI) / 16;
+          curve.push(`${w * 0.5 + w * 0.25 * Math.cos(a)} ${h * 0.6 - h * 0.2 * Math.sin(a)}`);
+        }
+        return {
+          d: `M ${w * 0.25} ${h * 0.2} L ${w * 0.25} ${h * 0.6} ${curve.map((p, i) => (i === 0 ? `M ${p}` : `L ${p}`)).join(' ')} M ${w * 0.75} ${h * 0.6} L ${w * 0.75} ${h * 0.2}`,
+        };
+      }
+      case 'Letter V':
+        return {
+          d: `M ${w * 0.2} ${h * 0.2} L ${w / 2} ${h * 0.8} L ${w * 0.8} ${h * 0.2}`,
+        };
+      case 'Letter W':
+        return {
+          d: `M ${w * 0.1} ${h * 0.2} L ${w * 0.3} ${h * 0.8} L ${w * 0.5} ${h * 0.45} L ${w * 0.7} ${h * 0.8} L ${w * 0.9} ${h * 0.2}`,
+        };
+      case 'Letter X':
+        return {
+          d: `M ${w * 0.25} ${h * 0.2} L ${w * 0.75} ${h * 0.8} M ${w * 0.75} ${h * 0.2} L ${w * 0.25} ${h * 0.8}`,
+        };
+      case 'Letter Y':
+        return {
+          d: `M ${w * 0.25} ${h * 0.2} L ${w / 2} ${h * 0.5} M ${w * 0.75} ${h * 0.2} L ${w / 2} ${h * 0.5} M ${w / 2} ${h * 0.5} L ${w / 2} ${h * 0.8}`,
+        };
+      case 'Letter Z':
+        return {
+          d: `M ${w * 0.25} ${h * 0.2} L ${w * 0.75} ${h * 0.2} L ${w * 0.25} ${h * 0.8} L ${w * 0.75} ${h * 0.8}`,
+        };
+
+      // === NUMBER GUIDES 0-9 ===
+      case 'Number 0': {
+        const pts: string[] = [];
+        const cx = w / 2, cy = h / 2, rx = w * 0.2, ry = h * 0.3;
+        for (let i = 0; i <= 36; i++) {
+          const a = (i * 2 * Math.PI) / 36;
+          pts.push(`${cx + rx * Math.cos(a)} ${cy + ry * Math.sin(a)}`);
+        }
+        return { d: `M ${pts[0]} ${pts.slice(1).map(p => `L ${p}`).join(' ')} Z` };
+      }
       case 'Number 1':
         return {
           d: `M ${w * 0.4} ${h * 0.25} L ${w / 2} ${h * 0.2} L ${w / 2} ${h * 0.8} M ${w * 0.35} ${h * 0.8} L ${w * 0.65} ${h * 0.8}`,
-          paths: [
-            `M ${w * 0.4} ${h * 0.25} L ${w / 2} ${h * 0.2}`,
-            `M ${w / 2} ${h * 0.2} L ${w / 2} ${h * 0.8}`,
-            `M ${w * 0.35} ${h * 0.8} L ${w * 0.65} ${h * 0.8}`,
-          ],
+        };
+      case 'Number 2': {
+        // Top curve + diagonal + base
+        const curve: string[] = [];
+        const r = h * 0.15;
+        for (let i = 0; i <= 14; i++) {
+          const a = -Math.PI + (i * Math.PI * 1.2) / 14;
+          curve.push(`${w * 0.5 + r * Math.cos(a)} ${h * 0.35 + r * Math.sin(a)}`);
+        }
+        return {
+          d: `M ${curve[0]} ${curve.slice(1).map(p => `L ${p}`).join(' ')} L ${w * 0.3} ${h * 0.8} L ${w * 0.7} ${h * 0.8}`,
+        };
+      }
+      case 'Number 3': {
+        // Two bumps as polylines
+        const top: string[] = [];
+        const bot: string[] = [];
+        const r = h * 0.15;
+        for (let i = 0; i <= 14; i++) {
+          const a = -Math.PI * 0.7 + (i * Math.PI * 1.4) / 14;
+          top.push(`${w * 0.48 + r * Math.cos(a)} ${h * 0.35 + r * Math.sin(a)}`);
+        }
+        for (let i = 0; i <= 14; i++) {
+          const a = -Math.PI * 0.7 + (i * Math.PI * 1.4) / 14;
+          bot.push(`${w * 0.48 + r * Math.cos(a)} ${h * 0.65 + r * Math.sin(a)}`);
+        }
+        return { d: `M ${top[0]} ${top.slice(1).map(p => `L ${p}`).join(' ')} M ${bot[0]} ${bot.slice(1).map(p => `L ${p}`).join(' ')}` };
+      }
+      case 'Number 4':
+        return {
+          d: `M ${w * 0.6} ${h * 0.2} L ${w * 0.25} ${h * 0.55} L ${w * 0.75} ${h * 0.55} M ${w * 0.6} ${h * 0.2} L ${w * 0.6} ${h * 0.8}`,
+        };
+      case 'Number 5': {
+        // Top bar + vertical + bottom curve
+        const curve: string[] = [];
+        const r = h * 0.18;
+        for (let i = 0; i <= 16; i++) {
+          const a = -Math.PI * 0.6 + (i * Math.PI * 1.4) / 16;
+          curve.push(`${w * 0.48 + r * Math.cos(a)} ${h * 0.62 + r * Math.sin(a)}`);
+        }
+        return {
+          d: `M ${w * 0.65} ${h * 0.2} L ${w * 0.3} ${h * 0.2} L ${w * 0.3} ${h * 0.48} M ${curve[0]} ${curve.slice(1).map(p => `L ${p}`).join(' ')}`,
+        };
+      }
+      case 'Number 6': {
+        // Diagonal line + bottom circle
+        const circle: string[] = [];
+        const r = h * 0.18;
+        for (let i = 0; i <= 36; i++) {
+          const a = (i * 2 * Math.PI) / 36;
+          circle.push(`${w * 0.5 + r * Math.cos(a)} ${h * 0.62 + r * Math.sin(a)}`);
+        }
+        return {
+          d: `M ${w * 0.6} ${h * 0.22} L ${w * 0.35} ${h * 0.5} M ${circle[0]} ${circle.slice(1).map(p => `L ${p}`).join(' ')} Z`,
+        };
+      }
+      case 'Number 7':
+        return {
+          d: `M ${w * 0.3} ${h * 0.2} L ${w * 0.7} ${h * 0.2} L ${w * 0.4} ${h * 0.8}`,
+        };
+      case 'Number 8': {
+        // Two circles
+        const top: string[] = [];
+        const bot: string[] = [];
+        const r1 = h * 0.13, r2 = h * 0.15;
+        for (let i = 0; i <= 24; i++) {
+          const a = (i * 2 * Math.PI) / 24;
+          top.push(`${w * 0.5 + r1 * Math.cos(a)} ${h * 0.35 + r1 * Math.sin(a)}`);
+        }
+        for (let i = 0; i <= 24; i++) {
+          const a = (i * 2 * Math.PI) / 24;
+          bot.push(`${w * 0.5 + r2 * Math.cos(a)} ${h * 0.65 + r2 * Math.sin(a)}`);
+        }
+        return { d: `M ${top[0]} ${top.slice(1).map(p => `L ${p}`).join(' ')} Z M ${bot[0]} ${bot.slice(1).map(p => `L ${p}`).join(' ')} Z` };
+      }
+      case 'Number 9': {
+        // Top circle + tail
+        const circle: string[] = [];
+        const r = h * 0.18;
+        for (let i = 0; i <= 36; i++) {
+          const a = (i * 2 * Math.PI) / 36;
+          circle.push(`${w * 0.5 + r * Math.cos(a)} ${h * 0.38 + r * Math.sin(a)}`);
+        }
+        return {
+          d: `M ${circle[0]} ${circle.slice(1).map(p => `L ${p}`).join(' ')} Z M ${w * 0.7} ${h * 0.45} L ${w * 0.5} ${h * 0.8}`,
+        };
+      }
+      case 'Slanting Line':
+        return {
+          d: `M ${w * 0.25} ${h * 0.2} L ${w * 0.75} ${h * 0.8}`,
         };
       default:
         // Square fallback
@@ -349,6 +627,16 @@ export const TracingCanvas: React.FC<TracingCanvasProps> = ({
         };
     }
   };
+
+  const getPointX = (p: Point) => (p.normX !== undefined && width > 0 ? p.normX * width : p.x);
+  const getPointY = (p: Point) => (p.normY !== undefined && height > 0 ? p.normY * height : p.y);
+
+  const makePoint = (x: number, y: number): Point => ({
+    x,
+    y,
+    normX: width > 0 ? x / width : undefined,
+    normY: height > 0 ? y / height : undefined,
+  });
 
   const guide = getGuideDetails();
 
@@ -385,9 +673,9 @@ export const TracingCanvas: React.FC<TracingCanvasProps> = ({
         strokes.forEach((stroke) => {
           if (stroke.length < 2) return;
           ctx.beginPath();
-          ctx.moveTo(stroke[0].x, stroke[0].y);
+          ctx.moveTo(getPointX(stroke[0]), getPointY(stroke[0]));
           for (let i = 1; i < stroke.length; i++) {
-            ctx.lineTo(stroke[i].x, stroke[i].y);
+            ctx.lineTo(getPointX(stroke[i]), getPointY(stroke[i]));
           }
           ctx.stroke();
         });
@@ -395,9 +683,9 @@ export const TracingCanvas: React.FC<TracingCanvasProps> = ({
         // Current ongoing stroke
         if (currentStroke.length >= 2) {
           ctx.beginPath();
-          ctx.moveTo(currentStroke[0].x, currentStroke[0].y);
+          ctx.moveTo(getPointX(currentStroke[0]), getPointY(currentStroke[0]));
           for (let i = 1; i < currentStroke.length; i++) {
-            ctx.lineTo(currentStroke[i].x, currentStroke[i].y);
+            ctx.lineTo(getPointX(currentStroke[i]), getPointY(currentStroke[i]));
           }
           ctx.stroke();
         }
@@ -413,7 +701,7 @@ export const TracingCanvas: React.FC<TracingCanvasProps> = ({
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-    const newStroke = [{ x, y }];
+    const newStroke = [makePoint(x, y)];
     currentStrokeRef.current = newStroke;
     setCurrentStroke(newStroke);
   };
@@ -425,7 +713,7 @@ export const TracingCanvas: React.FC<TracingCanvasProps> = ({
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-    const updated = [...currentStrokeRef.current, { x, y }];
+    const updated = [...currentStrokeRef.current, makePoint(x, y)];
     currentStrokeRef.current = updated;
     setCurrentStroke(updated);
   };
@@ -448,7 +736,7 @@ export const TracingCanvas: React.FC<TracingCanvasProps> = ({
     const touch = e.touches[0];
     const x = touch.clientX - rect.left;
     const y = touch.clientY - rect.top;
-    const newStroke = [{ x, y }];
+    const newStroke = [makePoint(x, y)];
     currentStrokeRef.current = newStroke;
     setCurrentStroke(newStroke);
   };
@@ -461,7 +749,7 @@ export const TracingCanvas: React.FC<TracingCanvasProps> = ({
     const touch = e.touches[0];
     const x = touch.clientX - rect.left;
     const y = touch.clientY - rect.top;
-    const updated = [...currentStrokeRef.current, { x, y }];
+    const updated = [...currentStrokeRef.current, makePoint(x, y)];
     currentStrokeRef.current = updated;
     setCurrentStroke(updated);
   };
@@ -488,7 +776,7 @@ export const TracingCanvas: React.FC<TracingCanvasProps> = ({
 
         const x = pageX - baseRefX;
         const y = pageY - baseRefY;
-        const newStroke = [{ x, y }];
+        const newStroke = [makePoint(x, y)];
         currentStrokeRef.current = newStroke;
         setCurrentStroke(newStroke);
       },
@@ -496,7 +784,7 @@ export const TracingCanvas: React.FC<TracingCanvasProps> = ({
         const { pageX, pageY } = evt.nativeEvent;
         const x = pageX - containerXRef.current;
         const y = pageY - containerYRef.current;
-        const updated = [...currentStrokeRef.current, { x, y }];
+        const updated = [...currentStrokeRef.current, makePoint(x, y)];
         currentStrokeRef.current = updated;
         setCurrentStroke(updated);
       },
@@ -516,16 +804,16 @@ export const TracingCanvas: React.FC<TracingCanvasProps> = ({
     let d = '';
     strokes.forEach((stroke) => {
       if (stroke.length > 0) {
-        d += ` M ${stroke[0].x} ${stroke[0].y}`;
+        d += ` M ${getPointX(stroke[0])} ${getPointY(stroke[0])}`;
         for (let i = 1; i < stroke.length; i++) {
-          d += ` L ${stroke[i].x} ${stroke[i].y}`;
+          d += ` L ${getPointX(stroke[i])} ${getPointY(stroke[i])}`;
         }
       }
     });
     if (currentStroke.length > 0) {
-      d += ` M ${currentStroke[0].x} ${currentStroke[0].y}`;
+      d += ` M ${getPointX(currentStroke[0])} ${getPointY(currentStroke[0])}`;
       for (let i = 1; i < currentStroke.length; i++) {
-        d += ` L ${currentStroke[i].x} ${currentStroke[i].y}`;
+        d += ` L ${getPointX(currentStroke[i])} ${getPointY(currentStroke[i])}`;
       }
     }
     return d;

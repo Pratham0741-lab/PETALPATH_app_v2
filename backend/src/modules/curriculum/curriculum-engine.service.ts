@@ -9,6 +9,7 @@ import { skillHealthRepository } from '../mastery/repositories/skill-health.repo
 import { NotFoundError } from '../../utils/errors.js';
 import { CurriculumNode } from './curriculum.types.js';
 import { ACTIVITY_STARS_CONFIG, GRADE_AGE_GROUP_MAP } from './curriculum.config.js';
+import { normalizeActivityType } from '../../shared/utils/activity-type-normalizer.js';
 
 export interface CurriculumRecommendationDto {
   subjectId: string;
@@ -467,11 +468,12 @@ export class CurriculumEngineService {
     knowledgeState?: { mastery: number }
   ): boolean {
     // 1. Verify all activities defined in node are completed
-    const requiredTypes = node.activities.map((a) => a.type);
-    const hasVideo = requiredTypes.includes('video');
-    const hasListen = requiredTypes.includes('listen');
-    const hasSpeak = requiredTypes.includes('speak');
-    const hasWrite = requiredTypes.includes('write');
+    // Normalize granular types (trace→write, tap→listen, etc.) before checking
+    const normalizedTypes = node.activities.map((a) => normalizeActivityType(a.type));
+    const hasVideo = normalizedTypes.includes('video');
+    const hasListen = normalizedTypes.includes('listen');
+    const hasSpeak = normalizedTypes.includes('speak');
+    const hasWrite = normalizedTypes.includes('write');
 
     if (hasVideo && !progress.videoCompleted) return false;
     if (hasListen && !progress.listenCompleted) return false;

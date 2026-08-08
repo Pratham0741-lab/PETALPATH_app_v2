@@ -3,8 +3,19 @@ node_modules/
 .expo/
 dist/
 web-build/
-android/
-ios/
+.git/
+
+# Exclude ALL build outputs, native C++ object files, and compiled APKs anywhere in the project
+**/build/
+**/build
+**/.cxx/
+**/.cxx
+**/.gradle/
+**/.gradle
+**/*.apk
+**/*.aab
+
+# Logs & temp files
 *.log
 *.tmp
 scratch/

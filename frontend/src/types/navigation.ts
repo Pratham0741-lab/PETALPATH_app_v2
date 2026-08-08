@@ -1,6 +1,7 @@
 import type { NavigatorScreenParams } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import type { DragDropSpec } from '../components/activities/types';
 
 export type AuthStackParamList = {
   Login: undefined;
@@ -82,7 +83,7 @@ export type RootStackParamList = {
   CurriculumExplorer: undefined;
   SkillDetail: { skillId: string };
   Quiz: { activityId: string };
-  Game: { activityId: string };
+  Game: { activityId: string; dragDropSpec?: DragDropSpec; title?: string };
   AITutor: { activityId: string };
   AITutorSession: { sessionId: string; activityId: string };
   AITutorHome: undefined;

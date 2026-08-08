@@ -45,11 +45,14 @@ export function useCameraPermissions() {
           setHasPermission(true);
           setPermissionStatus('granted');
           return true;
-        } else if (granted === PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN || granted === PermissionsAndroid.RESULTS.DENIED) {
-          // If denied or OS blocks dialog, open device settings directly
+        } else if (granted === PermissionsAndroid.RESULTS.NEVER_ASK_AGAIN) {
           setHasPermission(false);
           setPermissionStatus('denied');
           Linking.openSettings();
+          return false;
+        } else {
+          setHasPermission(false);
+          setPermissionStatus('denied');
           return false;
         }
       } else {

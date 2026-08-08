@@ -32,39 +32,25 @@ export const SplashScreen: React.FC = () => {
   const handleHydration = useCallback(async () => {
     try {
       await hydrateSession();
-    } catch {
-      await loadSession();
-    }
+    } catch {}
+    await loadSession();
 
-    if (isAuthenticated) {
-      const token = useAuthStore.getState().token;
-      if (token) {
-        const isValid = !authService.isTokenExpired(token);
-        if (isValid) {
-          const refreshed = await authService.refreshSession();
-          if (refreshed) {
-            const currentUser = useAuthStore.getState().user;
-            const currentToken = useAuthStore.getState().token;
-            const currentRefreshToken = useAuthStore.getState().refreshToken;
-            if (currentUser && currentToken && currentRefreshToken) {
-              await setSessionApp({
-                accessToken: currentToken,
-                refreshToken: currentRefreshToken,
-                user: currentUser,
-              });
-            }
-            try {
-              await refreshChildren();
-            } catch {
-              // children fetch is best-effort on splash
-            }
-          }
+    const currentToken = useAuthStore.getState().token || useAppStore.getState().token;
+    if (currentToken) {
+      const isExpired = authService.isTokenExpired(currentToken);
+      if (isExpired) {
+        const refreshed = await authService.refreshSession();
+        if (!refreshed) {
+          useAuthStore.getState().clearSession();
+          useAppStore.getState().clearSession();
         }
       }
-    }
 
-    useAppStore.getState().loadSession();
-  }, [hydrateSession, isAuthenticated, loadSession, setSessionApp, refreshChildren]);
+      try {
+        await refreshChildren();
+      } catch {}
+    }
+  }, [hydrateSession, loadSession, refreshChildren]);
 
   useEffect(() => {
     Animated.parallel([

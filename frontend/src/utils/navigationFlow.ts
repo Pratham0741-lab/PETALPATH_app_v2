@@ -92,7 +92,11 @@ export const navigateToActivity = async (
     }
   } else if (normalizedType === 'drag_drop') {
     try {
-      navigation.navigate('Game', { activityId: activity.id });
+      navigation.navigate('Game', {
+        activityId: activity.id,
+        dragDropSpec: (activity as any).dragDropSpec,
+        title: activity.title,
+      });
     } catch (err: unknown) {
       Alert.alert('Error', err instanceof Error ? err.message : 'Failed to load drag and drop activity');
     }

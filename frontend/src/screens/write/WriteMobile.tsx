@@ -344,7 +344,7 @@ const styles = StyleSheet.create({
   },
   actionPanel: {
     alignItems: 'center',
-    minHeight: 80,
+    height: 140,
     justifyContent: 'center',
   },
   completePanel: {

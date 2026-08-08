@@ -3,6 +3,7 @@ import { StyleSheet, View, Text, StyleProp, ViewStyle } from 'react-native';
 import { colors, typography, spacing, radius } from '../../theme';
 import { AppCard } from './AppCard';
 import { Ionicons } from '@expo/vector-icons';
+import { normalizeActivityType } from '../../utils/activityNormalization';
 
 export type ActivityType = 'listen' | 'speak' | 'write' | 'video' | 'stories' | 'drag_drop';
 
@@ -23,11 +24,13 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
   style,
   locked = false,
 }) => {
+  const normType = normalizeActivityType(type);
+
   const getThemeColor = () => {
     if (locked) {
       return '#A0A0A0'; // Grayed out for locked state
     }
-    switch (type) {
+    switch (normType) {
       case 'listen':
         return colors.blue;
       case 'speak':
@@ -36,8 +39,6 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
         return colors.green;
       case 'video':
         return '#EF4444'; // Red accent for video
-      case 'stories':
-        return colors.yellow;
       case 'drag_drop':
         return '#F59E0B'; // Vibrant amber for drag & drop games
       default:
@@ -46,7 +47,7 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
   };
 
   const getIconName = (): string => {
-    switch (type) {
+    switch (normType) {
       case 'listen':
         return 'headset';
       case 'speak':
@@ -55,8 +56,6 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
         return 'pencil';
       case 'video':
         return 'play-circle';
-      case 'stories':
-        return 'book';
       case 'drag_drop':
         return 'hand-left';
       default:

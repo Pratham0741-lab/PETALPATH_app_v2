@@ -16,7 +16,7 @@ export const ModuleCompleteScreen: React.FC = () => {
   const { moduleTitle, nextModuleTitle } = route.params || {};
 
   const handleContinue = () => {
-    navigateToTab('Journey');
+    navigateToTab('Home');
   };
 
   return (

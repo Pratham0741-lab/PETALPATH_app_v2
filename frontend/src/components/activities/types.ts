@@ -6,6 +6,7 @@ export type ActivityType =
   | 'story'
   | 'quiz'
   | 'game'
+  | 'drag_drop'
   | 'ai_tutor'
   | 'reading';
 
@@ -80,6 +81,30 @@ export interface GameData {
   gameType: string;
   config: Record<string, unknown>;
   contentUrl?: string;
+}
+
+export interface DragDropItem {
+  id: string;
+  content?: string | number | null;
+  assetRef?: { imageAssetId?: string | null };
+  style?: { backgroundColor?: string; borderRadius?: number };
+  accessibility?: { screenReaderLabel?: string };
+  sortOrder?: number;
+}
+
+export interface DragDropZone {
+  id: string;
+  acceptedDraggableIds: string[];
+  capacity?: number;
+  sortOrder?: number;
+  accessibility?: { screenReaderLabel?: string };
+}
+
+export interface DragDropSpec {
+  metadata?: { title?: string; description?: string; templateRef?: { templateId?: string } };
+  draggables: DragDropItem[];
+  dropZones: DragDropZone[];
+  validation?: { allowRetries?: boolean };
 }
 
 export interface ReadingContent {

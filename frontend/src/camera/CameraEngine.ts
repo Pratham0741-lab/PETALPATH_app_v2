@@ -1,67 +1,53 @@
-import { NativeModules, NativeEventEmitter } from 'react-native';
-import { PoseResultV1, DebugLevel, MotionFilterType, EngineConfigOptions } from './types/PoseResultV1';
+import { CameraEngineAdapter } from './CameraEngineAdapter';
+import { CameraState, DiagnosticMetrics, PoseFrameListener } from './CameraTypes';
+import { ICameraEngine } from './ICameraEngine';
 
-const { CameraEngineModule } = NativeModules;
+export class CameraEngine implements ICameraEngine {
+  private static instance: CameraEngine | null = null;
+  private adapter: CameraEngineAdapter;
 
-class CameraEngineV1 {
-  private eventEmitter: NativeEventEmitter | null = null;
+  private constructor() {
+    this.adapter = new CameraEngineAdapter();
+  }
 
-  constructor() {
-    if (CameraEngineModule) {
-      this.eventEmitter = new NativeEventEmitter(CameraEngineModule);
+  public static getInstance(): CameraEngine {
+    if (!CameraEngine.instance) {
+      CameraEngine.instance = new CameraEngine();
     }
+    return CameraEngine.instance;
   }
 
-  public async start(activityId: string): Promise<boolean> {
-    if (!CameraEngineModule) return false;
-    return await CameraEngineModule.start(activityId);
+  public start(): Promise<boolean> {
+    return this.adapter.start();
   }
 
-  public async stop(): Promise<boolean> {
-    if (!CameraEngineModule) return false;
-    return await CameraEngineModule.stop();
+  public stop(): Promise<boolean> {
+    return this.adapter.stop();
   }
 
-  public async pause(): Promise<boolean> {
-    if (!CameraEngineModule) return false;
-    return await CameraEngineModule.pause();
+  public pause(): Promise<boolean> {
+    return this.adapter.pause();
   }
 
-  public async resume(): Promise<boolean> {
-    if (!CameraEngineModule) return false;
-    return await CameraEngineModule.resume();
+  public resume(): Promise<boolean> {
+    return this.adapter.resume();
   }
 
-  public async switchCamera(): Promise<boolean> {
-    if (!CameraEngineModule) return false;
-    return await CameraEngineModule.switchCamera();
+  public switchCamera(): Promise<boolean> {
+    return this.adapter.switchCamera();
   }
 
-  public async setDebugLevel(level: DebugLevel): Promise<boolean> {
-    if (!CameraEngineModule) return false;
-    return await CameraEngineModule.setDebugLevel(level);
+  public onPoseFrame(listener: PoseFrameListener): () => void {
+    return this.adapter.onPoseFrame(listener);
   }
 
-  public async setFilterType(type: MotionFilterType): Promise<boolean> {
-    if (!CameraEngineModule) return false;
-    return await CameraEngineModule.setFilterType(type);
+  public getMetrics(): Promise<DiagnosticMetrics> {
+    return this.adapter.getMetrics();
   }
 
-  public async updateConfig(config: EngineConfigOptions): Promise<boolean> {
-    if (!CameraEngineModule) return false;
-    return await CameraEngineModule.updateConfig(config);
-  }
-
-  public onPoseResult(callback: (result: PoseResultV1) => void): { remove: () => void } {
-    if (!this.eventEmitter) {
-      return { remove: () => {} };
-    }
-    const subscription = this.eventEmitter.addListener('onPoseResult', callback);
-    return {
-      remove: () => subscription.remove(),
-    };
+  public getState(): CameraState {
+    return this.adapter.getState();
   }
 }
 
-export const cameraEngineV1 = new CameraEngineV1();
-export const cameraEngine = cameraEngineV1;
+export const cameraEngine = CameraEngine.getInstance();

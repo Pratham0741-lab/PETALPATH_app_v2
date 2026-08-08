@@ -106,24 +106,28 @@ describe('Mastery Engine (Phase 5.5.4)', () => {
   });
 
   afterAll(async () => {
-    await prisma.reinforcementQueue.deleteMany({ where: { childId: child.id } });
-    await prisma.skillHealth.deleteMany({ where: { childId: child.id } });
-    await prisma.skillHistory.deleteMany({ where: { childId: child.id } });
-    await prisma.regressionLog.deleteMany({ where: { childId: child.id } });
-    await prisma.childSkillCurriculum.deleteMany({ where: { childId: child.id } });
-    await prisma.dynamicRoadmap.deleteMany({ where: { childId: child.id } });
-    await prisma.skillDependency.deleteMany({
-      where: { OR: [{ childSkillId: dependentSkill.id }, { parentSkillId: rootSkill.id }] },
-    });
-    await prisma.assessmentAttempt.deleteMany({ where: { childId: child.id } });
-    await prisma.assessmentQuestion.deleteMany({ where: { assessmentId: assessment.id } });
-    await prisma.assessment.delete({ where: { id: assessment.id } });
-    await prisma.skill.delete({ where: { id: independentSkill.id } });
-    await prisma.skill.delete({ where: { id: dependentSkill.id } });
-    await prisma.skill.delete({ where: { id: rootSkill.id } });
-    await prisma.subject.delete({ where: { id: subject.id } });
-    await prisma.child.delete({ where: { id: child.id } });
-    await prisma.user.delete({ where: { id: user.id } });
+    try { await prisma.reinforcementQueue.deleteMany({ where: { childId: child.id } }); } catch {}
+    try { await prisma.skillHealth.deleteMany({ where: { childId: child.id } }); } catch {}
+    try { await prisma.skillHistory.deleteMany({ where: { childId: child.id } }); } catch {}
+    try { await prisma.regressionLog.deleteMany({ where: { childId: child.id } }); } catch {}
+    try { await prisma.childSkillCurriculum.deleteMany({ where: { childId: child.id } }); } catch {}
+    try { await prisma.dynamicRoadmap.deleteMany({ where: { childId: child.id } }); } catch {}
+    try {
+      if (dependentSkill && rootSkill) {
+        await prisma.skillDependency.deleteMany({
+          where: { OR: [{ childSkillId: dependentSkill.id }, { parentSkillId: rootSkill.id }] },
+        });
+      }
+    } catch {}
+    try { await prisma.assessmentAttempt.deleteMany({ where: { childId: child.id } }); } catch {}
+    try { if (assessment) await prisma.assessmentQuestion.deleteMany({ where: { assessmentId: assessment.id } }); } catch {}
+    try { if (assessment) await prisma.assessment.delete({ where: { id: assessment.id } }); } catch {}
+    try { if (independentSkill) await prisma.skill.delete({ where: { id: independentSkill.id } }); } catch {}
+    try { if (dependentSkill) await prisma.skill.delete({ where: { id: dependentSkill.id } }); } catch {}
+    try { if (rootSkill) await prisma.skill.delete({ where: { id: rootSkill.id } }); } catch {}
+    try { if (subject) await prisma.subject.delete({ where: { id: subject.id } }); } catch {}
+    try { if (child) await prisma.child.delete({ where: { id: child.id } }); } catch {}
+    try { if (user) await prisma.user.delete({ where: { id: user.id } }); } catch {}
   });
 
   async function cleanupEvaluationData() {

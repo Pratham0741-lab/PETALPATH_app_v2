@@ -37,6 +37,7 @@ export type GuideKey =
   | 'speak'
   | 'write'
   | 'reward'
+  | 'camera'
   | 'lesson_complete'
   | 'great_job'
   | 'try_again';
@@ -48,7 +49,7 @@ export type GuideKey =
 const getGuideFilename = (prefix: string, guideKey: GuideKey): string | null => {
   switch (guideKey) {
     case 'welcome':
-      return `${prefix}_welcome_general_en.mp3`;
+      return prefix === 'toby' ? 'toby_en.mp3' : `${prefix}_welcome_general_en.mp3`;
     case 'roadmap':
       return `${prefix}_roadmap_en.mp3`;
     case 'video':
@@ -59,6 +60,8 @@ const getGuideFilename = (prefix: string, guideKey: GuideKey): string | null => 
       return `mentor_${prefix}_step_speech_en.mp3`;
     case 'write':
       return `mentor_${prefix}_step_writing_en.mp3`;
+    case 'camera':
+      return `mentor_${prefix}_step_camera_en.mp3`;
     case 'reward':
     case 'lesson_complete':
       return `mentor_${prefix}_step_reward_en.mp3`;
@@ -113,6 +116,7 @@ export const ALL_GUIDE_KEYS: GuideKey[] = [
   'listen',
   'speak',
   'write',
+  'camera',
   'reward',
   'lesson_complete',
   'great_job',
@@ -129,6 +133,7 @@ export const GUIDE_LABELS: Record<GuideKey, string> = {
   listen: 'Listen Carefully',
   speak: 'Say It Loud',
   write: 'Trace Slowly',
+  camera: 'Action Pose',
   reward: 'Reward',
   lesson_complete: 'Lesson Complete',
   great_job: 'Great Job',

@@ -17,20 +17,25 @@ import { Skeleton } from '../../components/ui/Skeleton';
 import { ErrorState } from '../../components/common/ErrorState';
 import { EmptyState } from '../../components/common/EmptyState';
 import { activityApi } from '../../services/api/activityApi';
+import { api } from '../../api/client';
 import { useSubmitGameScore } from '../../hooks/useActivityProgress';
 import { useActivitySync } from '../../hooks/useActivitySync';
 import { useTheme } from '../../theme/ThemeContext';
 import type { GameData } from '../../components/activities/types';
+import { DragDropMatch } from '../../components/activities/DragDropMatch';
+import type { DragDropSpec } from '../../components/activities/types';
 import type { ApiResponse } from '../../types/api';
 
+import { getNextActivity, navigateToActivity } from '../../utils/navigationFlow';
+
 type GameRouteParams = {
-  Game: { activityId: string };
+  Game: { activityId: string; dragDropSpec?: DragDropSpec; title?: string };
 };
 
 export const GameScreen: React.FC = () => {
   const navigation = useNavigation<NativeStackNavigationProp<GameRouteParams, 'Game'>>();
   const route = useRoute<RouteProp<GameRouteParams, 'Game'>>();
-  const { activityId } = route.params;
+  const { activityId, dragDropSpec } = route.params;
   const { theme } = useTheme();
   const { width: windowWidth } = useWindowDimensions();
   const isDesktop = windowWidth >= 768;
@@ -38,6 +43,7 @@ export const GameScreen: React.FC = () => {
   const submitScore = useSubmitGameScore();
   const { syncAfterActivity } = useActivitySync();
 
+  const [activeSpec, setActiveSpec] = useState<DragDropSpec | null>(dragDropSpec ?? null);
   const [gameData, setGameData] = useState<GameData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isError, setIsError] = useState(false);
@@ -46,12 +52,34 @@ export const GameScreen: React.FC = () => {
   const [score, setScore] = useState(0);
   const [isCompleted, setIsCompleted] = useState(false);
 
+  const handleNextActivity = useCallback(async () => {
+    const currentId = activityId || (activeSpec as any)?.curriculumRef?.nodeId || (activeSpec as any)?.id || '';
+    const next = getNextActivity(currentId);
+    if (next) {
+      await navigateToActivity(navigation as any, next);
+    } else {
+      (navigation as any).navigate('LessonComplete');
+    }
+  }, [activityId, activeSpec, navigation]);
+
   const fetchGame = useCallback(async () => {
+    if (dragDropSpec) {
+      setActiveSpec(dragDropSpec);
+      setIsLoading(false);
+      return;
+    }
     setIsLoading(true);
     setIsError(false);
     setErrorMessage('');
     setGameData(null);
     try {
+      const actRes = await api.get(`/activities/${activityId}`);
+      if (actRes.success && actRes.data && (actRes.data as any).dragDropSpec) {
+        setActiveSpec((actRes.data as any).dragDropSpec);
+        setIsLoading(false);
+        return;
+      }
+
       const res = await activityApi.getGame(activityId);
       const response = res as unknown as ApiResponse<GameData>;
       if (response.success && response.data) {
@@ -67,7 +95,7 @@ export const GameScreen: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [activityId]);
+  }, [activityId, dragDropSpec]);
 
   useEffect(() => {
     fetchGame();
@@ -132,6 +160,19 @@ export const GameScreen: React.FC = () => {
             onRetry={fetchGame}
           />
         </View>
+      </ScreenContainer>
+    );
+  }
+
+  if (activeSpec || activityId) {
+    return (
+      <ScreenContainer>
+        <DragDropMatch
+          spec={activeSpec as any}
+          activityId={activityId}
+          onExit={() => navigation.goBack()}
+          onNext={handleNextActivity}
+        />
       </ScreenContainer>
     );
   }

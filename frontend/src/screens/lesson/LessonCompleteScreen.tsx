@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { StyleSheet, View, Text, ActivityIndicator } from 'react-native';
 import { ScreenContainer } from '../../components/common/ScreenContainer';
 import { Card, Button } from '../../components/ui';
@@ -77,7 +77,7 @@ export const LessonCompleteScreen: React.FC = () => {
 
   const handleFinish = () => {
     if (!selectedLesson || !completionResult) {
-      navigateToTab('Journey');
+      navigateToTab('Home');
       return;
     }
 
@@ -95,7 +95,7 @@ export const LessonCompleteScreen: React.FC = () => {
         nextModuleTitle: context.nextModule?.title || null,
       });
     } else {
-      navigateToTab('Journey');
+      navigateToTab('Home');
     }
   };
 

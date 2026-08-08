@@ -5,7 +5,8 @@
  * before allowing the user to proceed.
  */
 
-import { API_URL, IS_DEV } from '../config/api';
+import { getApiUrl, setDynamicApiBaseUrl, IS_DEV } from '../config/api';
+import Constants from 'expo-constants';
 
 interface HealthResponse {
   status: string;
@@ -16,51 +17,63 @@ interface HealthResponse {
 
 /**
  * Ping the backend health endpoint.
- * Returns `{ status, isHealthy }`.
- * Never throws — returns `isHealthy: false` on any failure.
+ * Dynamically probes candidate URLs in development mode to ensure connection success
+ * across USB (adb reverse), Emulator (10.0.2.2), and Wi-Fi LAN IP (10.210.56.111).
  */
 export async function checkServerHealth(): Promise<HealthResponse> {
-  const url = `${API_URL}/health`;
+  const primaryUrl = `${getApiUrl()}/health`;
+  const candidates: string[] = [primaryUrl];
 
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8_000);
-
-    const response = await fetch(url, {
-      method: 'GET',
-      signal: controller.signal,
-    });
-
-    clearTimeout(timeoutId);
-
-    if (response.ok) {
-      const json = await response.json();
-      return { status: json.status || 'ok', isHealthy: true, requestedUrl: url };
-    }
-
-    return { 
-      status: `HTTP ${response.status}`, 
-      isHealthy: false, 
-      errorDetails: `HTTP Status Code: ${response.status}`,
-      requestedUrl: url 
-    };
-  } catch (error: unknown) {
-    let errorDetails = 'Unknown network error';
-    if (error) {
-      errorDetails = error instanceof Error ? error.message : String(error);
-      if (error instanceof Error && 'code' in error) {
-        const code = (error as { code?: string }).code;
-        if (code) {
-          errorDetails += ` (code: ${code})`;
-        }
+  if (IS_DEV) {
+    const devHostUri = Constants.expoConfig?.hostUri || (Constants as any).manifest?.debuggerHost;
+    if (devHostUri) {
+      const devIp = devHostUri.split(':')[0];
+      if (devIp) {
+        candidates.push(`http://${devIp}:5000/api/health`);
       }
     }
-
-    return { 
-      status: 'unreachable', 
-      isHealthy: false, 
-      errorDetails,
-      requestedUrl: url
-    };
+    candidates.push('http://127.0.0.1:5000/api/health');
+    candidates.push('http://10.0.2.2:5000/api/health');
+    candidates.push('http://10.210.56.111:5000/api/health');
   }
+
+  const uniqueCandidates = Array.from(new Set(candidates));
+  let lastErrorDetails = 'Unknown network error';
+
+  for (const url of uniqueCandidates) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3_000);
+
+      const response = await fetch(url, {
+        method: 'GET',
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (response.ok) {
+        const json = await response.json();
+        const matchedBaseUrl = url.replace(/\/api\/health$/, '');
+        setDynamicApiBaseUrl(matchedBaseUrl);
+
+        return {
+          status: json.status || 'ok',
+          isHealthy: true,
+          requestedUrl: url,
+        };
+      }
+
+      lastErrorDetails = `HTTP ${response.status} at ${url}`;
+    } catch (err: unknown) {
+      lastErrorDetails = err instanceof Error ? err.message : String(err);
+    }
+  }
+
+  return {
+    status: 'unreachable',
+    isHealthy: false,
+    errorDetails: lastErrorDetails,
+    requestedUrl: primaryUrl,
+  };
 }

@@ -13,7 +13,7 @@
  *   const data = await api.get('/roadmap');
  */
 
-import { API_URL, IS_DEV } from '../config/api';
+import { getApiUrl, IS_DEV } from '../config/api';
 import { useAppStore } from '../store/appStore';
 import { useChildStore } from '../store/childStore';
 import { ApiError } from './errors';
@@ -52,7 +52,7 @@ class ApiClient {
     config.signal = controller.signal;
     const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
-    const url = `${API_URL}${path}`;
+    const url = `${getApiUrl()}${path}`;
     const startTime = IS_DEV ? Date.now() : 0;
 
     if (IS_DEV) {
@@ -147,7 +147,7 @@ class ApiClient {
   private async refreshToken(token: string): Promise<boolean> {
     try {
       const activeChild = useChildStore.getState().activeChild;
-      const response = await fetch(`${API_URL}/auth/refresh`, {
+      const response = await fetch(`${getApiUrl()}/auth/refresh`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

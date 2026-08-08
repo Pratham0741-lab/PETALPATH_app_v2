@@ -2,7 +2,7 @@ import { PoseFrame, ValidationResult } from '../types/pose.types';
 import { CAMERA_CONFIG } from '../config/camera.config';
 
 function isLandmarkValid(pt: { visibility?: number }): boolean {
-  return (pt.visibility ?? 0) >= 0.4; // 40% landmark visibility threshold
+  return (pt.visibility ?? 0) >= 0.25; // 25% landmark visibility threshold
 }
 
 function dist(p1: { x: number; y: number }, p2: { x: number; y: number }): number {

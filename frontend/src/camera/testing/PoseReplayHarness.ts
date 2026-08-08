@@ -1,12 +1,11 @@
-import { PoseResultV1, Landmark3D } from '../types/PoseResultV1';
+import { CameraActivityAdapter } from '../integration/CameraActivityAdapter';
 import { activityEngine } from '../../features/camera/engine/activityEngine';
 import { poseTracker } from '../../features/camera/detection/poseTracker';
-import { nativePoseDetector } from '../../features/camera/native/NativePoseDetector';
-import { ActivityType, ActivityEngineResult } from '../../features/camera/types/pose.types';
+import { ActivityType, ActivityEngineResult, Point3D } from '../../features/camera/types/pose.types';
 
 export interface RecordedPoseFrame {
   timestampOffsetMs: number;
-  landmarks: Landmark3D[];
+  landmarks: Point3D[];
   confidence: number;
   trackingState: 'searching' | 'tracking' | 'lost';
 }
@@ -14,9 +13,6 @@ export interface RecordedPoseFrame {
 export class PoseReplayHarness {
   private isReplaying = false;
 
-  /**
-   * Generates synthetic landmark frames for testing activities without a physical camera.
-   */
   public generateSyntheticRaiseHandsSequence(): RecordedPoseFrame[] {
     const frames: RecordedPoseFrame[] = [];
     const totalFrames = 30;
@@ -24,18 +20,18 @@ export class PoseReplayHarness {
     for (let i = 0; i < totalFrames; i++) {
       const progress = i / totalFrames;
       const shoulderY = 0.5;
-      const wristY = progress < 0.3 ? 0.7 : 0.2; // Hands raised after frame 10
+      const wristY = progress < 0.3 ? 0.7 : 0.2;
 
-      const landmarks: Landmark3D[] = Array.from({ length: 33 }, (_, index) => {
-        if (index === 11) return { x: 0.4, y: shoulderY, z: 0, visibility: 0.95 }; // Left shoulder
-        if (index === 12) return { x: 0.6, y: shoulderY, z: 0, visibility: 0.95 }; // Right shoulder
-        if (index === 15) return { x: 0.35, y: wristY, z: 0, visibility: 0.95 }; // Left wrist
-        if (index === 16) return { x: 0.65, y: wristY, z: 0, visibility: 0.95 }; // Right wrist
+      const landmarks: Point3D[] = Array.from({ length: 33 }, (_, index) => {
+        if (index === 11) return { x: 0.4, y: shoulderY, z: 0, visibility: 0.95 };
+        if (index === 12) return { x: 0.6, y: shoulderY, z: 0, visibility: 0.95 };
+        if (index === 15) return { x: 0.35, y: wristY, z: 0, visibility: 0.95 };
+        if (index === 16) return { x: 0.65, y: wristY, z: 0, visibility: 0.95 };
         return { x: 0.5, y: 0.5, z: 0, visibility: 0.9 };
       });
 
       frames.push({
-        timestampOffsetMs: i * 100, // 10 FPS replay speed
+        timestampOffsetMs: i * 100,
         landmarks,
         confidence: 0.9,
         trackingState: 'tracking',
@@ -45,9 +41,6 @@ export class PoseReplayHarness {
     return frames;
   }
 
-  /**
-   * Replays recorded pose frames directly through nativePoseDetector and activityEngine.
-   */
   public async replaySequence(
     activityId: ActivityType,
     sequence: RecordedPoseFrame[],
@@ -63,33 +56,43 @@ export class PoseReplayHarness {
       feedback: 'Starting replay...',
     };
 
+    const history: any[] = [];
+
     for (let i = 0; i < sequence.length; i++) {
       if (!this.isReplaying) break;
 
       const frame = sequence[i];
-      const points3D = frame.landmarks.map((lm) => ({
-        x: lm.x,
-        y: lm.y,
-        z: lm.z,
-        visibility: lm.visibility,
-      }));
-
-      const rawNativeResult = {
-        poseDetected: frame.trackingState === 'tracking',
-        confidence: frame.confidence,
-        inferenceTimeMs: 15,
-        landmarks: points3D,
+      const poseFrame = {
+        landmarks: {
+          nose: frame.landmarks[0] || { x: 0.5, y: 0.2, z: 0 },
+          leftEye: frame.landmarks[2] || { x: 0.45, y: 0.18, z: 0 },
+          rightEye: frame.landmarks[5] || { x: 0.55, y: 0.18, z: 0 },
+          leftEar: frame.landmarks[7] || { x: 0.4, y: 0.2, z: 0 },
+          rightEar: frame.landmarks[8] || { x: 0.6, y: 0.2, z: 0 },
+          leftShoulder: frame.landmarks[11] || { x: 0.4, y: 0.4, z: 0 },
+          rightShoulder: frame.landmarks[12] || { x: 0.6, y: 0.4, z: 0 },
+          leftElbow: frame.landmarks[13] || { x: 0.35, y: 0.5, z: 0 },
+          rightElbow: frame.landmarks[14] || { x: 0.65, y: 0.5, z: 0 },
+          leftWrist: frame.landmarks[15] || { x: 0.35, y: 0.2, z: 0 },
+          rightWrist: frame.landmarks[16] || { x: 0.65, y: 0.2, z: 0 },
+          leftHip: frame.landmarks[23] || { x: 0.45, y: 0.7, z: 0 },
+          rightHip: frame.landmarks[24] || { x: 0.55, y: 0.7, z: 0 },
+          leftKnee: frame.landmarks[25] || { x: 0.45, y: 0.85, z: 0 },
+          rightKnee: frame.landmarks[26] || { x: 0.55, y: 0.85, z: 0 },
+          leftAnkle: frame.landmarks[27] || { x: 0.45, y: 0.95, z: 0 },
+          rightAnkle: frame.landmarks[28] || { x: 0.55, y: 0.95, z: 0 },
+          rawLandmarks: frame.landmarks,
+        },
         timestamp: Date.now() + frame.timestampOffsetMs,
+        confidence: frame.confidence,
       };
 
-      const detectionRes = nativePoseDetector.processResult(rawNativeResult as any);
-      if (detectionRes.detected && detectionRes.pose) {
-        const smoothedPose = poseTracker.update(detectionRes.pose);
-        lastResult = activityEngine.evaluate(smoothedPose, poseTracker.getHistory());
-        onStep(lastResult, i);
-      }
+      const smoothedPose = poseTracker.update(poseFrame as any);
+      history.push(smoothedPose);
+      lastResult = activityEngine.evaluate(smoothedPose, history);
+      onStep(lastResult, i);
 
-      await new Promise((resolve) => setTimeout(resolve, 50));
+      await new Promise((resolve) => setTimeout(resolve, 30));
     }
 
     this.isReplaying = false;

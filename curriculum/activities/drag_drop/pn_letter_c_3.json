@@ -1,0 +1,26 @@
+{
+  "$schema": "https://petalpath.io/schemas/drag-drop-activity/v2.1.0",
+  "id": "petalpath:activity:0c8c44fa-2391-4cd9-9a87-c2ca3071d4d0",
+  "schemaVersion": "2.1.0",
+  "curriculumRef": {
+    "nodeId": "pn_letter_c",
+    "activityIndex": 3,
+    "activityType": "drag_drop"
+  },
+  "metadata": {
+    "title": "Match the letters",
+    "description": "Match each letter to its word.",
+    "templateRef": { "templateId": "letter-to-word" }
+  },
+  "draggables": [
+    { "id": "letter-c", "content": "C", "style": { "backgroundColor": "#8B5CF6", "borderRadius": 16 }, "sortOrder": 1 },
+    { "id": "letter-a", "content": "A", "style": { "backgroundColor": "#0EA5E9", "borderRadius": 16 }, "sortOrder": 2 },
+    { "id": "letter-b", "content": "B", "style": { "backgroundColor": "#F59E0B", "borderRadius": 16 }, "sortOrder": 3 }
+  ],
+  "dropZones": [
+    { "id": "cat", "acceptedDraggableIds": ["letter-c"], "capacity": 1, "sortOrder": 1, "accessibility": { "screenReaderLabel": "Cat" } },
+    { "id": "apple", "acceptedDraggableIds": ["letter-a"], "capacity": 1, "sortOrder": 2, "accessibility": { "screenReaderLabel": "Apple" } },
+    { "id": "ball", "acceptedDraggableIds": ["letter-b"], "capacity": 1, "sortOrder": 3, "accessibility": { "screenReaderLabel": "Ball" } }
+  ],
+  "validation": { "allowRetries": true }
+}

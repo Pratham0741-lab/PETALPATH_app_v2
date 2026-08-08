@@ -6,6 +6,8 @@ import { getLessonMatchData } from '../utils/lessonActivityMatcher';
 export interface Point {
   x: number;
   y: number;
+  normX?: number;
+  normY?: number;
 }
 
 interface WriteState {

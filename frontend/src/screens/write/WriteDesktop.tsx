@@ -251,6 +251,8 @@ const styles = StyleSheet.create({
   actionSection: {
     alignItems: 'center',
     width: '100%',
+    height: 140,
+    justifyContent: 'center',
   },
   completePanel: {
     width: '100%',

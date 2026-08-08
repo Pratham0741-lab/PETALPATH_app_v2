@@ -30,13 +30,10 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ isLoading: true });
     try {
       const authResponse = await authService.login(email, password);
-      set({
-        user: authResponse.user,
-        token: authResponse.accessToken,
-        refreshToken: authResponse.refreshToken,
-        isAuthenticated: true,
-        isLoading: false,
-      });
+      await useAuthStore.getState().setSession(authResponse);
+      const { useAppStore } = await import('./appStore');
+      await useAppStore.getState().setSession(authResponse);
+      set({ isLoading: false });
     } catch (error) {
       if (IS_DEV) console.warn('[AuthStore] login failed:', error);
       set({ isLoading: false });
@@ -48,13 +45,10 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ isLoading: true });
     try {
       const authResponse = await authService.register(name, email, password);
-      set({
-        user: authResponse.user,
-        token: authResponse.accessToken,
-        refreshToken: authResponse.refreshToken,
-        isAuthenticated: true,
-        isLoading: false,
-      });
+      await useAuthStore.getState().setSession(authResponse);
+      const { useAppStore } = await import('./appStore');
+      await useAppStore.getState().setSession(authResponse);
+      set({ isLoading: false });
     } catch (error) {
       if (IS_DEV) console.warn('[AuthStore] register failed:', error);
       set({ isLoading: false });

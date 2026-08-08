@@ -136,6 +136,12 @@ async function refreshSession(): Promise<boolean> {
 
     if (response.success && response.data) {
       await storeAuthData(response.data);
+
+      // Keep the in-memory stores in sync with rotated tokens before the
+      // app issues authenticated requests such as /children.
+      const { useAppStore } = await import('../../store/appStore');
+      await useAppStore.getState().setSession(response.data);
+
       logger.info('Session refreshed');
       return true;
     }

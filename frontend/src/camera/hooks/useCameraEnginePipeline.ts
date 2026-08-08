@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { cameraEngine } from '../CameraEngine';
-import { PoseResultV1 } from '../types/PoseResultV1';
+import { poseStream } from '../PoseStream';
+import { CameraActivityAdapter } from '../integration/CameraActivityAdapter';
+import { poseDiagnostics, EndToEndMetrics } from '../diagnostics/PoseDiagnostics';
 import { activityEngine } from '../../features/camera/engine/activityEngine';
 import { poseTracker } from '../../features/camera/detection/poseTracker';
-import { nativePoseDetector } from '../../features/camera/native/NativePoseDetector';
 import { ActivityType, ActivityEngineResult } from '../../features/camera/types/pose.types';
 
 export function useCameraEnginePipeline() {
@@ -12,9 +13,22 @@ export function useCameraEnginePipeline() {
     activityType: 'raise_hands',
     state: 'searching',
     confidence: 0,
-    feedback: 'Position yourself in front of the camera',
+    feedback: 'Stand in front of the camera to start!',
   });
-  const [poseResult, setPoseResult] = useState<PoseResultV1 | null>(null);
+  const [e2eMetrics, setE2EMetrics] = useState<EndToEndMetrics>({
+    nativeInferenceMs: 0,
+    bridgeLatencyMs: 0,
+    evaluationMs: 0,
+    totalRoundtripMs: 0,
+  });
+
+  const historyRef = useRef<any[]>([]);
+
+  const activeActivityRef = useRef<ActivityType>(activeActivity);
+
+  useEffect(() => {
+    activeActivityRef.current = activeActivity;
+  }, [activeActivity]);
 
   const setActiveActivity = useCallback((type: ActivityType) => {
     setActiveActivityState(type);
@@ -27,72 +41,78 @@ export function useCameraEnginePipeline() {
     });
   }, []);
 
+  const switchCamera = useCallback(async () => {
+    return await cameraEngine.switchCamera();
+  }, []);
+
   useEffect(() => {
-    cameraEngine.start(activeActivity);
+    let isMounted = true;
+    cameraEngine
+      .start()
+      .then((started) => {
+        if (!started && isMounted) {
+          console.warn('[useCameraEnginePipeline] Failed to start native camera engine.');
+        }
+      })
+      .catch((err) => {
+        console.error('[useCameraEnginePipeline] Error starting camera engine:', err);
+      });
 
-    const subscription = cameraEngine.onPoseResult((result: PoseResultV1) => {
-      setPoseResult(result);
+    const unsubscribe = poseStream.subscribe((frameV1) => {
+      const currentActivity = activeActivityRef.current;
+      const evalStart = Date.now();
+      const adapted = CameraActivityAdapter.adaptToActivityPoseFrame(frameV1);
 
-      const isPoseDetected = (result as any).poseDetected ?? (result.trackingState === 'tracking');
-      const landmarksList = result.landmarks || [];
-      const count = (result as any).landmarkCount ?? landmarksList.length;
-
-      if (__DEV__) {
-        console.log('[CameraEnginePipeline] Received native result:', {
-          poseDetected: isPoseDetected,
-          confidence: result.confidence,
-          landmarkCount: count,
-          timestamp: result.timestamp,
-          firstLandmark: landmarksList.length > 0 ? landmarksList[0] : null,
-          trackingState: result.trackingState,
-          qualityScore: result.qualityScore,
-        });
-      }
-
-      if (!isPoseDetected || landmarksList.length === 0) {
+      if (!adapted) {
         setActivityResult({
-          activityType: activeActivity,
+          activityType: currentActivity,
           state: 'searching',
           confidence: 0,
-          feedback: `Position yourself in front of the camera to ${activeActivity.replace(/_/g, ' ')}`,
+          feedback: 'Stand in front of the camera!',
         });
         return;
       }
 
-      // Convert PoseResultV1 landmarks to PoseFrame for ActivityEngine evaluation
-      const points3D = landmarksList.map((lm) => ({
-        x: lm.x,
-        y: lm.y,
-        z: lm.z,
-        visibility: lm.visibility,
-      }));
-
-      const rawNativeResult = {
-        poseDetected: true,
-        confidence: result.confidence,
-        inferenceTimeMs: result.metrics.inferenceTimeMs,
-        landmarks: points3D,
-        timestamp: result.timestamp,
-      };
-
-      const detectionRes = nativePoseDetector.processResult(rawNativeResult as any);
-      if (detectionRes.detected && detectionRes.pose) {
-        const smoothedPose = poseTracker.update(detectionRes.pose);
-        const evalRes = activityEngine.evaluate(smoothedPose, poseTracker.getHistory());
-        setActivityResult(evalRes);
+      if (adapted.trackingState !== 'TRACKING' && adapted.trackingState !== 'RECOVERING') {
+        setActivityResult({
+          activityType: currentActivity,
+          state: 'searching',
+          confidence: 0,
+          feedback: adapted.feedbackText,
+        });
+        return;
       }
+
+      const smoothedPose = poseTracker.update(adapted.poseFrame);
+      historyRef.current.push(smoothedPose);
+      if (historyRef.current.length > 30) historyRef.current.shift();
+
+      const evalRes = activityEngine.evaluate(smoothedPose, historyRef.current);
+      const evalEnd = Date.now();
+
+      const metrics = poseDiagnostics.recordFrameEvaluation(
+        frameV1.timestamp,
+        frameV1.inferenceTime,
+        evalStart,
+        evalEnd
+      );
+
+      setE2EMetrics(metrics);
+      setActivityResult(evalRes);
     });
 
     return () => {
-      subscription.remove();
-      cameraEngine.stop();
+      isMounted = false;
+      unsubscribe();
+      cameraEngine.stop().catch(() => {});
     };
-  }, [activeActivity]);
+  }, []);
 
   return {
-    poseResult,
     activityResult,
     activeActivity,
     setActiveActivity,
+    switchCamera,
+    e2eMetrics,
   };
 }

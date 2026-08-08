@@ -94,11 +94,13 @@ export function getLessonMatchData(lessonTitle: string | null | undefined, activ
   }
 
   // 5. Specific numbers (e.g. "Number 1", "Numbers 1-50")
+  // For multi-digit numbers, use the last digit for the tracing guide
   const numberMatch = combined.match(/number\s+(\d+)/i);
   if (numberMatch) {
     const num = numberMatch[1];
+    const lastDigit = num.slice(-1);
     return {
-      guideName: `Number ${num}`,
+      guideName: `Number ${lastDigit}`,
       targetPhrase: `Number ${num}`,
       correctAnswer: `Number ${num}`,
     };
@@ -127,6 +129,21 @@ export function getLessonMatchData(lessonTitle: string | null | undefined, activ
   }
   if (combined.includes('lowercase a-z')) {
     return { guideName: 'Letter A', targetPhrase: 'alphabet', correctAnswer: 'alphabet' };
+  }
+
+  // 8. "Lines and Curves", "Trace Lines", "Trace Shapes" → Standing Line default
+  if (combined.includes('lines') || combined.includes('curves') || combined.includes('trace line')) {
+    return { guideName: 'Standing Line', targetPhrase: 'Standing Line', correctAnswer: 'Standing Line' };
+  }
+
+  // 9. "Straight & Slanting" → Standing Line
+  if (combined.includes('straight') || (combined.includes('slanting') && !combined.includes('left') && !combined.includes('right'))) {
+    return { guideName: 'Standing Line', targetPhrase: 'Standing Line', correctAnswer: 'Standing Line' };
+  }
+
+  // 10. "Count-and-Write" → Number 1 default
+  if (combined.includes('count') && combined.includes('write')) {
+    return { guideName: 'Number 1', targetPhrase: 'Number 1', correctAnswer: 'Number 1' };
   }
 
   // Fallbacks: dynamically derive from lesson title

@@ -1,5 +1,5 @@
 import axios, { type AxiosInstance, type AxiosError, type AxiosResponse } from 'axios';
-import { API_URL, IS_DEV } from '../../config/api';
+import { getApiUrl, IS_DEV } from '../../config/api';
 import { ApiError } from '../../api/errors';
 import { useAuthStore } from '../../store/authStore';
 import { useAppStore } from '../../store/appStore';
@@ -34,21 +34,22 @@ export class ApiClient {
 
   constructor() {
     this.instance = axios.create({
-      baseURL: `${API_URL}`,
+      baseURL: getApiUrl(),
       timeout: 20_000,
       headers: { 'Content-Type': 'application/json' },
     });
 
     this.instance.interceptors.request.use(
       (config) => {
-        const token = useAuthStore.getState().token;
+        config.baseURL = getApiUrl();
+        const token = useAuthStore.getState().token || useAppStore.getState().token;
         if (token && config.headers) {
           (config.headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;
         }
 
         if (IS_DEV && config.url) {
           const method = (config.method ?? 'GET').toUpperCase();
-          logger.info(`${method} ${config.url}`);
+          logger.info(`${method} ${config.baseURL}${config.url}`);
           (config as { _startTime?: number })._startTime = Date.now();
         }
 
@@ -137,7 +138,7 @@ export class ApiClient {
   }
 
   private async refreshAuthToken(): Promise<boolean> {
-    const refreshToken = useAuthStore.getState().refreshToken;
+    const refreshToken = useAuthStore.getState().refreshToken || useAppStore.getState().refreshToken;
     if (!refreshToken) {
       useAuthStore.getState().clearSession();
       useAppStore.getState().clearSession();
@@ -146,7 +147,7 @@ export class ApiClient {
 
     try {
       const activeChild = useChildStore.getState().activeChild;
-      const response = await axios.post(`${API_URL}/auth/refresh`, {
+      const response = await axios.post(`${getApiUrl()}/auth/refresh`, {
         refreshToken,
         childId: activeChild?.id ?? undefined,
       });
@@ -171,7 +172,7 @@ export class ApiClient {
     this.refreshQueue = [];
 
     if (error === null) {
-      const token = useAuthStore.getState().token;
+      const token = useAuthStore.getState().token || useAppStore.getState().token;
       queue.forEach(({ resolve, reject, config }) => {
         if (token && config.headers) {
           (config.headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;

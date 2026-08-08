@@ -16,7 +16,7 @@ export const CategoryCompleteScreen: React.FC = () => {
   const { categoryTitle, badgeName } = route.params || {};
 
   const handleContinue = () => {
-    navigateToTab('Journey');
+    navigateToTab('Home');
   };
 
   return (
@@ -51,7 +51,7 @@ export const CategoryCompleteScreen: React.FC = () => {
         />
 
         <AppButton
-          label="Go to Map"
+          label="Go to Home"
           onPress={handleContinue}
           style={styles.button}
         />

@@ -319,15 +319,218 @@ export function getGuidePoints(guideName: string, w: number, h: number): Point[]
       }
       break;
     }
+    // === LETTER GUIDES A-Z ===
     case 'Letter A':
       sampleLinear(w / 2, h * 0.2, w * 0.25, h * 0.8, 12);
       sampleLinear(w / 2, h * 0.2, w * 0.75, h * 0.8, 12);
       sampleLinear(w * 0.35, h * 0.55, w * 0.65, h * 0.55, 8);
       break;
+    case 'Letter B':
+      sampleLinear(w * 0.3, h * 0.2, w * 0.3, h * 0.8, 18);
+      { // top bump
+        const cx = w * 0.3, cy = h * 0.35, rx = w * 0.22, ry = h * 0.15;
+        for (let i = 0; i <= 12; i++) { const a = -Math.PI / 2 + (i * Math.PI) / 12; points.push({ x: cx + rx * Math.cos(a), y: cy + ry * Math.sin(a) }); }
+      }
+      { // bottom bump
+        const cx = w * 0.3, cy = h * 0.65, rx = w * 0.25, ry = h * 0.15;
+        for (let i = 0; i <= 12; i++) { const a = -Math.PI / 2 + (i * Math.PI) / 12; points.push({ x: cx + rx * Math.cos(a), y: cy + ry * Math.sin(a) }); }
+      }
+      break;
+    case 'Letter C': {
+      const cx = w * 0.55, cy = h * 0.5, rx = w * 0.25, ry = h * 0.3;
+      for (let i = 0; i <= 20; i++) { const a = -Math.PI * 0.75 + (i * Math.PI * 1.5) / 20; points.push({ x: cx - rx * Math.cos(a), y: cy + ry * Math.sin(a) }); }
+      break;
+    }
+    case 'Letter D':
+      sampleLinear(w * 0.3, h * 0.2, w * 0.3, h * 0.8, 18);
+      { const cx = w * 0.3, cy = h * 0.5, rx = w * 0.28, ry = h * 0.3;
+        for (let i = 0; i <= 16; i++) { const a = -Math.PI / 2 + (i * Math.PI) / 16; points.push({ x: cx + rx * Math.cos(a), y: cy + ry * Math.sin(a) }); }
+      }
+      break;
+    case 'Letter E':
+      sampleLinear(w * 0.3, h * 0.2, w * 0.3, h * 0.8, 18);
+      sampleLinear(w * 0.3, h * 0.2, w * 0.7, h * 0.2, 10);
+      sampleLinear(w * 0.3, h * 0.5, w * 0.65, h * 0.5, 8);
+      sampleLinear(w * 0.3, h * 0.8, w * 0.7, h * 0.8, 10);
+      break;
+    case 'Letter F':
+      sampleLinear(w * 0.3, h * 0.2, w * 0.3, h * 0.8, 18);
+      sampleLinear(w * 0.3, h * 0.2, w * 0.7, h * 0.2, 10);
+      sampleLinear(w * 0.3, h * 0.5, w * 0.65, h * 0.5, 8);
+      break;
+    case 'Letter G': {
+      const cx = w * 0.5, cy = h * 0.5, rx = w * 0.25, ry = h * 0.3;
+      for (let i = 0; i <= 18; i++) { const a = -Math.PI * 0.4 + (i * Math.PI * 1.8) / 18; points.push({ x: cx + rx * Math.cos(a), y: cy - ry * Math.sin(a) }); }
+      sampleLinear(w * 0.5, h * 0.5, w * 0.75, h * 0.5, 6);
+      break;
+    }
+    case 'Letter H':
+      sampleLinear(w * 0.3, h * 0.2, w * 0.3, h * 0.8, 18);
+      sampleLinear(w * 0.7, h * 0.2, w * 0.7, h * 0.8, 18);
+      sampleLinear(w * 0.3, h * 0.5, w * 0.7, h * 0.5, 10);
+      break;
+    case 'Letter I':
+      sampleLinear(w * 0.35, h * 0.2, w * 0.65, h * 0.2, 8);
+      sampleLinear(w / 2, h * 0.2, w / 2, h * 0.8, 18);
+      sampleLinear(w * 0.35, h * 0.8, w * 0.65, h * 0.8, 8);
+      break;
+    case 'Letter J':
+      sampleLinear(w * 0.35, h * 0.2, w * 0.65, h * 0.2, 8);
+      sampleLinear(w * 0.55, h * 0.2, w * 0.55, h * 0.65, 14);
+      { const cx = w * 0.42, cy = h * 0.65, rx = w * 0.13, ry = h * 0.15;
+        for (let i = 0; i <= 10; i++) { const a = (i * Math.PI) / 10; points.push({ x: cx + rx * Math.cos(a), y: cy + ry * Math.sin(a) }); }
+      }
+      break;
+    case 'Letter K':
+      sampleLinear(w * 0.3, h * 0.2, w * 0.3, h * 0.8, 18);
+      sampleLinear(w * 0.7, h * 0.2, w * 0.3, h * 0.5, 12);
+      sampleLinear(w * 0.3, h * 0.5, w * 0.7, h * 0.8, 12);
+      break;
+    case 'Letter L':
+      sampleLinear(w * 0.3, h * 0.2, w * 0.3, h * 0.8, 18);
+      sampleLinear(w * 0.3, h * 0.8, w * 0.7, h * 0.8, 10);
+      break;
+    case 'Letter M':
+      sampleLinear(w * 0.2, h * 0.8, w * 0.2, h * 0.2, 18);
+      sampleLinear(w * 0.2, h * 0.2, w / 2, h * 0.55, 12);
+      sampleLinear(w / 2, h * 0.55, w * 0.8, h * 0.2, 12);
+      sampleLinear(w * 0.8, h * 0.2, w * 0.8, h * 0.8, 18);
+      break;
+    case 'Letter N':
+      sampleLinear(w * 0.25, h * 0.8, w * 0.25, h * 0.2, 18);
+      sampleLinear(w * 0.25, h * 0.2, w * 0.75, h * 0.8, 18);
+      sampleLinear(w * 0.75, h * 0.8, w * 0.75, h * 0.2, 18);
+      break;
+    case 'Letter O': {
+      const cx = w / 2, cy = h / 2, rx = w * 0.25, ry = h * 0.3;
+      for (let i = 0; i < 36; i++) { const a = (i * 10 * Math.PI) / 180; points.push({ x: cx + rx * Math.cos(a), y: cy + ry * Math.sin(a) }); }
+      break;
+    }
+    case 'Letter P':
+      sampleLinear(w * 0.3, h * 0.2, w * 0.3, h * 0.8, 18);
+      { const cx = w * 0.3, cy = h * 0.35, rx = w * 0.25, ry = h * 0.15;
+        for (let i = 0; i <= 14; i++) { const a = -Math.PI / 2 + (i * Math.PI) / 14; points.push({ x: cx + rx * Math.cos(a), y: cy + ry * Math.sin(a) }); }
+      }
+      break;
+    case 'Letter Q': {
+      const cx = w / 2, cy = h * 0.45, rx = w * 0.25, ry = h * 0.25;
+      for (let i = 0; i < 36; i++) { const a = (i * 10 * Math.PI) / 180; points.push({ x: cx + rx * Math.cos(a), y: cy + ry * Math.sin(a) }); }
+      sampleLinear(w * 0.55, h * 0.6, w * 0.72, h * 0.82, 8);
+      break;
+    }
+    case 'Letter R':
+      sampleLinear(w * 0.3, h * 0.2, w * 0.3, h * 0.8, 18);
+      { const cx = w * 0.3, cy = h * 0.35, rx = w * 0.25, ry = h * 0.15;
+        for (let i = 0; i <= 14; i++) { const a = -Math.PI / 2 + (i * Math.PI) / 14; points.push({ x: cx + rx * Math.cos(a), y: cy + ry * Math.sin(a) }); }
+      }
+      sampleLinear(w * 0.45, h * 0.5, w * 0.7, h * 0.8, 10);
+      break;
+    case 'Letter S': {
+      // top curve
+      const cx1 = w * 0.5, cy1 = h * 0.33, r1 = h * 0.13;
+      for (let i = 0; i <= 12; i++) { const a = -Math.PI * 0.3 + (i * Math.PI * 1.3) / 12; points.push({ x: cx1 - r1 * Math.cos(a), y: cy1 - r1 * Math.sin(a) }); }
+      // bottom curve
+      const cx2 = w * 0.5, cy2 = h * 0.67, r2 = h * 0.13;
+      for (let i = 0; i <= 12; i++) { const a = -Math.PI * 0.3 + (i * Math.PI * 1.3) / 12; points.push({ x: cx2 + r2 * Math.cos(a), y: cy2 + r2 * Math.sin(a) }); }
+      break;
+    }
+    case 'Letter T':
+      sampleLinear(w * 0.2, h * 0.2, w * 0.8, h * 0.2, 14);
+      sampleLinear(w / 2, h * 0.2, w / 2, h * 0.8, 18);
+      break;
+    case 'Letter U': {
+      sampleLinear(w * 0.25, h * 0.2, w * 0.25, h * 0.6, 12);
+      const cx = w * 0.5, cy = h * 0.6, rx = w * 0.25, ry = h * 0.2;
+      for (let i = 0; i <= 14; i++) { const a = Math.PI + (i * Math.PI) / 14; points.push({ x: cx + rx * Math.cos(a), y: cy - ry * Math.sin(a) }); }
+      sampleLinear(w * 0.75, h * 0.6, w * 0.75, h * 0.2, 12);
+      break;
+    }
+    case 'Letter V':
+      sampleLinear(w * 0.2, h * 0.2, w / 2, h * 0.8, 18);
+      sampleLinear(w / 2, h * 0.8, w * 0.8, h * 0.2, 18);
+      break;
+    case 'Letter W':
+      sampleLinear(w * 0.1, h * 0.2, w * 0.3, h * 0.8, 14);
+      sampleLinear(w * 0.3, h * 0.8, w * 0.5, h * 0.45, 10);
+      sampleLinear(w * 0.5, h * 0.45, w * 0.7, h * 0.8, 10);
+      sampleLinear(w * 0.7, h * 0.8, w * 0.9, h * 0.2, 14);
+      break;
+    case 'Letter X':
+      sampleLinear(w * 0.25, h * 0.2, w * 0.75, h * 0.8, 18);
+      sampleLinear(w * 0.75, h * 0.2, w * 0.25, h * 0.8, 18);
+      break;
+    case 'Letter Y':
+      sampleLinear(w * 0.25, h * 0.2, w / 2, h * 0.5, 12);
+      sampleLinear(w * 0.75, h * 0.2, w / 2, h * 0.5, 12);
+      sampleLinear(w / 2, h * 0.5, w / 2, h * 0.8, 10);
+      break;
+    case 'Letter Z':
+      sampleLinear(w * 0.25, h * 0.2, w * 0.75, h * 0.2, 12);
+      sampleLinear(w * 0.75, h * 0.2, w * 0.25, h * 0.8, 18);
+      sampleLinear(w * 0.25, h * 0.8, w * 0.75, h * 0.8, 12);
+      break;
+
+    // === NUMBER GUIDES 0-9 ===
+    case 'Number 0': {
+      const cx = w / 2, cy = h / 2, rx = w * 0.2, ry = h * 0.3;
+      for (let i = 0; i < 36; i++) { const a = (i * 10 * Math.PI) / 180; points.push({ x: cx + rx * Math.cos(a), y: cy + ry * Math.sin(a) }); }
+      break;
+    }
     case 'Number 1':
       sampleLinear(w * 0.4, h * 0.25, w / 2, h * 0.2, 6);
       sampleLinear(w / 2, h * 0.2, w / 2, h * 0.8, 18);
       sampleLinear(w * 0.35, h * 0.8, w * 0.65, h * 0.8, 8);
+      break;
+    case 'Number 2':
+      { const cx = w * 0.5, cy = h * 0.35, r = h * 0.15;
+        for (let i = 0; i <= 14; i++) { const a = -Math.PI + (i * Math.PI * 1.2) / 14; points.push({ x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) }); }
+      }
+      sampleLinear(w * 0.65, h * 0.48, w * 0.3, h * 0.8, 12);
+      sampleLinear(w * 0.3, h * 0.8, w * 0.7, h * 0.8, 10);
+      break;
+    case 'Number 3':
+      { const cx = w * 0.48, cy1 = h * 0.35, cy2 = h * 0.65, r = h * 0.15;
+        for (let i = 0; i <= 12; i++) { const a = -Math.PI * 0.7 + (i * Math.PI * 1.4) / 12; points.push({ x: cx + r * Math.cos(a), y: cy1 + r * Math.sin(a) }); }
+        for (let i = 0; i <= 12; i++) { const a = -Math.PI * 0.7 + (i * Math.PI * 1.4) / 12; points.push({ x: cx + r * Math.cos(a), y: cy2 + r * Math.sin(a) }); }
+      }
+      break;
+    case 'Number 4':
+      sampleLinear(w * 0.6, h * 0.2, w * 0.25, h * 0.55, 14);
+      sampleLinear(w * 0.25, h * 0.55, w * 0.75, h * 0.55, 12);
+      sampleLinear(w * 0.6, h * 0.2, w * 0.6, h * 0.8, 18);
+      break;
+    case 'Number 5':
+      sampleLinear(w * 0.65, h * 0.2, w * 0.3, h * 0.2, 10);
+      sampleLinear(w * 0.3, h * 0.2, w * 0.3, h * 0.48, 10);
+      { const cx = w * 0.48, cy = h * 0.62, r = h * 0.18;
+        for (let i = 0; i <= 14; i++) { const a = -Math.PI * 0.6 + (i * Math.PI * 1.4) / 14; points.push({ x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) }); }
+      }
+      break;
+    case 'Number 6': {
+      const cx = w * 0.5, cy = h * 0.62, r = h * 0.18;
+      sampleLinear(w * 0.6, h * 0.22, w * 0.35, h * 0.5, 12);
+      for (let i = 0; i < 36; i++) { const a = Math.PI + (i * 10 * Math.PI) / 180; points.push({ x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) }); }
+      break;
+    }
+    case 'Number 7':
+      sampleLinear(w * 0.3, h * 0.2, w * 0.7, h * 0.2, 12);
+      sampleLinear(w * 0.7, h * 0.2, w * 0.4, h * 0.8, 18);
+      break;
+    case 'Number 8': {
+      const cx = w * 0.5, cy1 = h * 0.35, cy2 = h * 0.65, r1 = h * 0.13, r2 = h * 0.15;
+      for (let i = 0; i < 24; i++) { const a = (i * 15 * Math.PI) / 180; points.push({ x: cx + r1 * Math.cos(a), y: cy1 + r1 * Math.sin(a) }); }
+      for (let i = 0; i < 24; i++) { const a = (i * 15 * Math.PI) / 180; points.push({ x: cx + r2 * Math.cos(a), y: cy2 + r2 * Math.sin(a) }); }
+      break;
+    }
+    case 'Number 9': {
+      const cx = w * 0.5, cy = h * 0.38, r = h * 0.18;
+      for (let i = 0; i < 36; i++) { const a = (i * 10 * Math.PI) / 180; points.push({ x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) }); }
+      sampleLinear(w * 0.7, h * 0.45, w * 0.5, h * 0.8, 12);
+      break;
+    }
+    // Slanting Line alias (used when lesson title is just "Slanting Line")
+    case 'Slanting Line':
+      sampleLinear(w * 0.25, h * 0.2, w * 0.75, h * 0.8, 20);
       break;
     default:
       // Square fallback

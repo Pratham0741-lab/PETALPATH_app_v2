@@ -9,6 +9,7 @@ import { z } from 'zod';
 import { curriculumService, curriculumEngineService } from '../curriculum/index.js';
 import { curriculumLoader } from '../curriculum/curriculum-loader.js';
 import { lessonAccessService } from '../lessons/lesson-access.service.js';
+import { normalizeActivityType } from '../../shared/utils/activity-type-normalizer.js';
 
 const lessonIdParamSchema = z.object({ lessonId: z.string().min(1, 'lessonId is required') });
 const lessonIdBodySchema = z.object({ lessonId: z.string().min(1, 'lessonId is required') });
@@ -275,7 +276,9 @@ export class ProgressController {
         try {
           const lessonNode = curriculumService.getLessonById(lessonId);
           if (lessonNode) {
-            const hasActivity = lessonNode.activities.some((a) => a.type === activityType);
+            // Normalize both the incoming type and the curriculum types for comparison
+            const normalizedIncoming = normalizeActivityType(activityType);
+            const hasActivity = lessonNode.activities.some((a) => normalizeActivityType(a.type) === normalizedIncoming);
             if (!hasActivity) {
               throw new ValidationError(`Activity type "${activityType}" is not defined for lesson "${lessonId}"`);
             }

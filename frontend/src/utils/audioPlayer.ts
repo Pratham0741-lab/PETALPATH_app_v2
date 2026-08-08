@@ -19,6 +19,7 @@ export class UniversalAudioPlayer {
   private onTimeUpdate: (position: number, duration: number) => void = () => {};
   private interval: any = null;
   private subscription: any = null;
+  private isFinished: boolean = false;
 
   constructor(url: string, onFinished: () => void, onTimeUpdate?: (pos: number, dur: number) => void) {
     this.onFinished = onFinished;
@@ -70,6 +71,7 @@ export class UniversalAudioPlayer {
     if (Platform.OS === 'web') {
       this.webAudio = new window.Audio(cleanUrl);
       this.webAudio.addEventListener('ended', () => {
+        this.isFinished = true;
         this.onFinished();
         this.stopPolling();
       });
@@ -81,6 +83,7 @@ export class UniversalAudioPlayer {
           this.subscription = this.nativeSound.addListener('playbackStatusUpdate', (status: any) => {
             if (status) {
               if (status.didJustFinish) {
+                this.isFinished = true;
                 this.onFinished();
                 this.stopPolling();
               }
@@ -97,12 +100,30 @@ export class UniversalAudioPlayer {
 
   play() {
     if (Platform.OS === 'web' && this.webAudio) {
+      if (
+        this.isFinished ||
+        this.webAudio.ended ||
+        (this.webAudio.duration > 0 && this.webAudio.currentTime >= this.webAudio.duration)
+      ) {
+        try {
+          this.webAudio.currentTime = 0;
+        } catch {}
+      }
+      this.isFinished = false;
       this.webAudio.play().catch(err => {
         if (IS_DEV) console.warn('Web audio play blocked or failed:', err);
       });
       this.startPolling();
     } else if (this.nativeSound) {
       try {
+        if (this.isFinished || (this.nativeSound.duration > 0 && this.nativeSound.currentTime >= this.nativeSound.duration)) {
+          try {
+            this.nativeSound.seekTo(0);
+          } catch (e) {
+            if (IS_DEV) console.warn('Native seekTo failed:', e);
+          }
+        }
+        this.isFinished = false;
         this.nativeSound.play();
         this.startPolling();
       } catch (err: any) {
@@ -126,6 +147,7 @@ export class UniversalAudioPlayer {
   }
 
   stop() {
+    this.isFinished = true;
     if (Platform.OS === 'web' && this.webAudio) {
       this.webAudio.pause();
       this.webAudio.currentTime = 0;
@@ -139,6 +161,25 @@ export class UniversalAudioPlayer {
         if (IS_DEV) console.warn('Native sound stop failed:', err);
       }
       this.stopPolling();
+    }
+  }
+
+  replay() {
+    this.stop();
+    this.play();
+  }
+
+  seek(positionSeconds: number) {
+    if (Platform.OS === 'web' && this.webAudio) {
+      try {
+        this.webAudio.currentTime = positionSeconds;
+      } catch {}
+    } else if (this.nativeSound) {
+      try {
+        this.nativeSound.seekTo(positionSeconds);
+      } catch (err) {
+        if (IS_DEV) console.warn('Native seekTo failed:', err);
+      }
     }
   }
 
