@@ -31,6 +31,11 @@
         "android.permission.RECORD_AUDIO",
         "android.permission.MODIFY_AUDIO_SETTINGS",
         "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.FOREGROUND_SERVICE",
         "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
       ]
     },
@@ -43,7 +48,6 @@
           "iosUrlScheme": "com.googleusercontent.apps.244358134848-cblimclem7n3knhsu6ahu29kd7l0pqve"
         }
       ],
-
       "expo-video",
       "expo-audio",
       [
@@ -76,6 +80,9 @@
       "eas": {
         "projectId": "66d09894-bd76-4c10-9d4a-818fdc82cf5c"
       }
+    },
+    "updates": {
+      "url": "https://u.expo.dev/66d09894-bd76-4c10-9d4a-818fdc82cf5c"
     }
   }
 }
