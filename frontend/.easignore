@@ -5,12 +5,13 @@ dist/
 web-build/
 .git/
 
+# Ignore generated native directories (CNG)
+android/
+ios/
+
 # Exclude ALL build outputs, native C++ object files, and compiled APKs anywhere in the project
-**/build/
 **/build
-**/.cxx/
 **/.cxx
-**/.gradle/
 **/.gradle
 **/*.apk
 **/*.aab
