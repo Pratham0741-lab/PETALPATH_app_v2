@@ -268643,118 +268643,127 @@ __d(function (global, require, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, expor
         var now = Date.now();
         var keypoints = [{
           index: 0,
-          id: 0,
+          name: 'nose',
           x: 0.5,
           y: 0.2,
           score: 0.95
         }, {
           index: 1,
-          id: 1,
+          name: 'left_eye',
           x: 0.48,
           y: 0.18,
           score: 0.95
         }, {
           index: 2,
-          id: 2,
+          name: 'right_eye',
           x: 0.52,
           y: 0.18,
           score: 0.95
         }, {
           index: 3,
-          id: 3,
+          name: 'left_ear',
           x: 0.45,
           y: 0.2,
           score: 0.95
         }, {
           index: 4,
-          id: 4,
+          name: 'right_ear',
           x: 0.55,
           y: 0.2,
           score: 0.95
         }, {
           index: 5,
-          id: 5,
+          name: 'left_shoulder',
           x: 0.4,
           y: 0.45,
           score: 0.95
         }, {
           index: 6,
-          id: 6,
+          name: 'right_shoulder',
           x: 0.6,
           y: 0.45,
           score: 0.95
         }, {
           index: 7,
-          id: 7,
+          name: 'left_elbow',
           x: 0.35,
           y: 0.3,
           score: 0.95
         }, {
           index: 8,
-          id: 8,
+          name: 'right_elbow',
           x: 0.65,
           y: 0.3,
           score: 0.95
         }, {
           index: 9,
-          id: 9,
+          name: 'left_wrist',
           x: 0.35,
           y: 0.15,
           score: 0.95
         }, {
           index: 10,
-          id: 10,
+          name: 'right_wrist',
           x: 0.65,
           y: 0.15,
           score: 0.95
         }, {
           index: 11,
-          id: 11,
+          name: 'left_hip',
           x: 0.42,
           y: 0.7,
           score: 0.95
         }, {
           index: 12,
-          id: 12,
+          name: 'right_hip',
           x: 0.58,
           y: 0.7,
           score: 0.95
         }, {
           index: 13,
-          id: 13,
+          name: 'left_knee',
           x: 0.43,
           y: 0.85,
           score: 0.95
         }, {
           index: 14,
-          id: 14,
+          name: 'right_knee',
           x: 0.57,
           y: 0.85,
           score: 0.95
         }, {
           index: 15,
-          id: 15,
+          name: 'left_ankle',
           x: 0.44,
           y: 0.98,
           score: 0.95
         }, {
           index: 16,
-          id: 16,
+          name: 'right_ankle',
           x: 0.56,
           y: 0.98,
           score: 0.95
         }];
         var frame = {
+          version: 1,
           timestamp: now,
           inferenceTime: 12,
           keypoints,
           confidence: 0.92,
-          overallConfidence: 0.92,
-          acquired: true,
           qualityScore: 90,
           stabilityScore: 90,
           trackingState: 'TRACKING',
-          posture: 'RAISE_HANDS'
+          errorCode: 'NONE',
+          calibration: {
+            bodyScale: 1.0,
+            shoulderWidth: 0.2,
+            armLength: 0.3,
+            torsoLength: 0.25,
+            posture: 'STANDING',
+            estimatedDistanceMeters: 1.8,
+            calibrationConfidence: 0.95,
+            status: 'STABILIZED'
+          }
         };
         this.listeners.forEach(listener => listener(frame));
       }, 66);
