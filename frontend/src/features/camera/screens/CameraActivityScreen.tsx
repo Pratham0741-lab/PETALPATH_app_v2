@@ -1,13 +1,13 @@
-import React, { useEffect, useCallback } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { StyleSheet, View, Text, ScrollView, Pressable } from 'react-native';
 import { ScreenContainer } from '../../../components/common/ScreenContainer';
 import { TopBar } from '../../../components/navigation/TopBar';
 import { useCameraPermissions } from '../hooks/useCameraPermissions';
 import { useCameraLifecycle } from '../hooks/useCameraLifecycle';
-import { useCameraEnginePipeline } from '../../../camera/hooks/useCameraEnginePipeline';
-import { NativeCameraView } from '../../../camera/NativeCameraView';
-import { DebugOverlay } from '../../../camera/DebugOverlay';
+import { useFrameProcessorPipeline } from '../hooks/useFrameProcessorPipeline';
+import { CameraPreview } from '../components/CameraPreview';
 import { CameraPermissionState } from '../components/CameraPermissionState';
+import { DebugOverlay } from '../components/DebugOverlay';
 import { CameraStatus } from '../types/camera.types';
 import { ActivityType } from '../types/pose.types';
 import { colors, spacing, radius, typography } from '../../../theme';
@@ -27,17 +27,24 @@ export const CameraActivityScreen: React.FC = () => {
   const { hasPermission, permissionStatus, requestPermission } = useCameraPermissions();
   const { isActive } = useCameraLifecycle();
   const {
+    frameProcessor,
+    debugMetrics,
+    poseResult,
     activityResult,
     activeActivity,
     setActiveActivity,
-    switchCamera,
-  } = useCameraEnginePipeline();
+  } = useFrameProcessorPipeline();
+  const [deviceFormatText, setDeviceFormatText] = useState<string>('');
 
   useEffect(() => {
     if (permissionStatus === 'not-determined') {
       requestPermission();
     }
   }, [permissionStatus, requestPermission]);
+
+  const handleDeviceFormatReady = useCallback((formatText: string) => {
+    setDeviceFormatText(formatText);
+  }, []);
 
   let cameraStatus: CameraStatus = 'loading';
   if (permissionStatus === 'denied') {
@@ -54,13 +61,11 @@ export const CameraActivityScreen: React.FC = () => {
       <View style={styles.previewContainer}>
         {hasPermission && isActive ? (
           <>
-            <NativeCameraView style={StyleSheet.absoluteFill} />
-            <DebugOverlay isVisible={true} />
-
-            {/* Camera Switch Button */}
-            <Pressable style={styles.switchCameraButton} onPress={switchCamera}>
-              <Text style={styles.switchCameraText}>🔄 Flip Camera</Text>
-            </Pressable>
+            <CameraPreview
+              isActive={isActive}
+              frameProcessor={frameProcessor}
+              onDeviceFormatReady={handleDeviceFormatReady}
+            />
 
             {/* Development-Only Activity Selector Controls */}
             {typeof __DEV__ !== 'undefined' && __DEV__ ? (
@@ -98,7 +103,13 @@ export const CameraActivityScreen: React.FC = () => {
               <Text style={styles.feedbackText}>{activityResult.feedback}</Text>
             </View>
 
-
+            <DebugOverlay
+              metrics={debugMetrics}
+              cameraStatus={cameraStatus}
+              deviceFormatText={deviceFormatText}
+              poseResult={poseResult}
+              activityResult={activityResult}
+            />
           </>
         ) : (
           <CameraPermissionState
@@ -179,22 +190,6 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: 'bold',
     textAlign: 'center',
-  },
-  switchCameraButton: {
-    position: 'absolute',
-    top: spacing.lg,
-    right: spacing.lg,
-    backgroundColor: 'rgba(0, 0, 0, 0.65)',
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderRadius: radius.full,
-    zIndex: 20,
-  },
-  switchCameraText: {
-    fontFamily: typography.families.rounded,
-    fontSize: typography.sizes.xs,
-    color: '#FFFFFF',
-    fontWeight: '600',
   },
 });
 

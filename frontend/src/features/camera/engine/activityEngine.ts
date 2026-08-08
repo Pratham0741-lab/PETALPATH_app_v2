@@ -18,7 +18,7 @@ import {
 export class ActivityEngine {
   private activeActivity: ActivityType = 'raise_hands';
   private holdCount = 0;
-  private readonly REQUIRED_HOLD_FRAMES = 2;
+  private readonly REQUIRED_HOLD_FRAMES = 5;
 
   public setActivity(type: ActivityType): void {
     this.activeActivity = type;

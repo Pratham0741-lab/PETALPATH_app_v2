@@ -15,7 +15,7 @@ export const ActivityTimerRing: React.FC<ActivityTimerRingProps> = ({
   countdownSec = 0,
   isStarting = false,
 }) => {
-  if (isStarting && countdownSec > 0) {
+  if (isStarting) {
     return (
       <View style={styles.countdownContainer}>
         <Text style={styles.countdownText}>{countdownSec}</Text>
@@ -31,11 +31,7 @@ export const ActivityTimerRing: React.FC<ActivityTimerRingProps> = ({
       <View style={styles.backgroundBar}>
         <View style={[styles.fillBar, { width: `${pct}%` }]} />
       </View>
-      <View style={styles.labelBadge}>
-        <Text style={styles.progressText}>
-          {pct === 100 ? '✅ Pose Held!' : `🙌 Hold Pose: ${pct}%`}
-        </Text>
-      </View>
+      <Text style={styles.progressText}>{pct}% Hold</Text>
     </View>
   );
 };
@@ -58,36 +54,26 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   ringContainer: {
-    width: 260,
+    width: 180,
     alignItems: 'center',
   },
   backgroundBar: {
     width: '100%',
-    height: 22,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    height: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
     borderRadius: radius.full,
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
     overflow: 'hidden',
   },
   fillBar: {
     height: '100%',
-    backgroundColor: '#10B981', // Vibrant Emerald Green
-    borderRadius: radius.full,
-  },
-  labelBadge: {
-    marginTop: 8,
-    backgroundColor: 'rgba(0, 0, 0, 0.75)',
-    paddingHorizontal: 16,
-    paddingVertical: 6,
+    backgroundColor: colors.green,
     borderRadius: radius.full,
   },
   progressText: {
     fontFamily: typography.families.rounded,
-    fontSize: typography.sizes.md,
+    fontSize: typography.sizes.xs,
     color: '#FFFFFF',
     fontWeight: 'bold',
+    marginTop: 4,
   },
 });
-
-export default ActivityTimerRing;

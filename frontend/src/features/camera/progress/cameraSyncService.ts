@@ -1,4 +1,5 @@
 import { offlineQueue, CameraCompletionMetadata } from './offlineQueue';
+import { learningApi } from '../../../services/api/learningApi';
 import { apiClient } from '../../../services/api/apiClient';
 import { cameraAnalytics } from '../analytics/cameraAnalytics';
 
@@ -45,7 +46,7 @@ export class CameraSyncService {
   }
 
   /**
-   * Background queue processor with exponential backoff and 404 auto-cleanup.
+   * Background queue processor with exponential backoff.
    */
   public async processQueue(): Promise<void> {
     if (this.isProcessing) return;
@@ -79,23 +80,14 @@ export class CameraSyncService {
             completionId: item.completionId,
             lessonId: item.lessonId,
           });
-        } catch (err: any) {
-          const status = err?.response?.status;
-          if (status === 404 || item.retryCount >= 3) {
-            // Remove invalid/404 or max retried item so it doesn't log infinite 404 errors
-            await offlineQueue.removeItem(item.completionId);
-            cameraAnalytics.logEvent('offline_sync_failed', {
-              completionId: item.completionId,
-              retryCount: item.retryCount,
-            });
-          } else {
-            item.retryCount += 1;
-            await offlineQueue.updateItem(item);
-            cameraAnalytics.logEvent('offline_sync_failed', {
-              completionId: item.completionId,
-              retryCount: item.retryCount,
-            });
-          }
+        } catch (err) {
+          item.retryCount += 1;
+          await offlineQueue.updateItem(item);
+
+          cameraAnalytics.logEvent('offline_sync_failed', {
+            completionId: item.completionId,
+            retryCount: item.retryCount,
+          });
         }
       }
     } finally {

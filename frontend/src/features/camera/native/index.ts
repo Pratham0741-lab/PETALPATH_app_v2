@@ -1,4 +1,4 @@
 export * from './types';
-export * from '../../../camera/CameraTypes';
-export * from '../../../camera/CameraEngine';
-export * from '../../../camera/PoseStream';
+export * from './MediaPipeBridge';
+export * from './NativePoseDetector';
+export * from './useNativePoseDetector';
