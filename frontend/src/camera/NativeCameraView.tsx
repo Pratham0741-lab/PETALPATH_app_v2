@@ -1,12 +1,18 @@
 import React from 'react';
-import { requireNativeComponent, StyleSheet, View, Text, Platform } from 'react-native';
+import { requireNativeComponent, StyleSheet, View, Text, Platform, UIManager } from 'react-native';
+
+const hasNativeCameraViewManager = Platform.OS === 'android' && (
+  typeof UIManager.hasViewManagerConfig === 'function'
+    ? UIManager.hasViewManagerConfig('PetalPathNativeCameraView')
+    : !!(UIManager as any).getViewManagerConfig?.('PetalPathNativeCameraView') || !!(UIManager as any).PetalPathNativeCameraView
+);
 
 let PetalPathNativeCameraView: any = null;
-if (Platform.OS === 'android') {
+if (hasNativeCameraViewManager) {
   try {
     PetalPathNativeCameraView = requireNativeComponent<any>('PetalPathNativeCameraView');
   } catch (error) {
-    console.warn('[NativeCameraView] Native view component not registered:', error);
+    console.warn('[NativeCameraView] Native view component resolution failed:', error);
   }
 }
 
