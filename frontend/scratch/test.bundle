@@ -268624,14 +268624,13 @@ __d(function (global, require, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, expor
   var {
     PetalPathCameraEngine
   } = _reactNative.NativeModules;
-  var cameraEventEmitter = PetalPathCameraEngine ? new _reactNative.NativeEventEmitter(PetalPathCameraEngine) : null;
   class CameraEngineAdapter {
     state = 'UNINITIALIZED';
     listeners = new Set();
     eventSubscription = null;
     constructor() {
-      if (cameraEventEmitter) {
-        this.eventSubscription = cameraEventEmitter.addListener('onPoseFrame', event => {
+      {
+        this.eventSubscription = _reactNative.DeviceEventEmitter.addListener('onPoseFrame', event => {
           this.listeners.forEach(listener => listener(event));
         });
       }
@@ -269613,7 +269612,14 @@ __d(function (global, require, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, expor
   require(_dependencyMap[0]);
   var _reactNative = require(_dependencyMap[1]);
   var _reactJsxRuntime = require(_dependencyMap[2]);
-  var PetalPathNativeCameraView = (0, _reactNative.requireNativeComponent)('PetalPathNativeCameraView');
+  var PetalPathNativeCameraView = null;
+  {
+    try {
+      PetalPathNativeCameraView = (0, _reactNative.requireNativeComponent)('PetalPathNativeCameraView');
+    } catch (error) {
+      console.warn('[NativeCameraView] Native view component not registered:', error);
+    }
+  }
   var NativeCameraView = ({
     style
   }) => {
@@ -302858,13 +302864,13 @@ __d(function (global, require, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, expor
   var _expoVectorIcons = require(_dependencyMap[2]);
   var _theme = require(_dependencyMap[3]);
   var _reactJsxRuntime = require(_dependencyMap[4]);
-  var IS_DEV = false;
   class ErrorBoundary extends React.default.Component {
     constructor(props) {
       super(props);
       this.state = {
         hasError: false,
-        error: null
+        error: null,
+        showDetails: false
       };
     }
     static getDerivedStateFromError(error) {
@@ -302873,12 +302879,20 @@ __d(function (global, require, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, expor
         error
       };
     }
-    componentDidCatch(error, errorInfo) {}
+    componentDidCatch(error, errorInfo) {
+      console.error('[ErrorBoundary caught exception]:', error, errorInfo.componentStack);
+    }
     handleReset = () => {
       this.setState({
         hasError: false,
-        error: null
+        error: null,
+        showDetails: false
       });
+    };
+    toggleDetails = () => {
+      this.setState(prev => ({
+        showDetails: !prev.showDetails
+      }));
     };
     render() {
       if (!this.state.hasError) {
@@ -302888,7 +302902,8 @@ __d(function (global, require, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, expor
         return this.props.fallback;
       }
       var {
-        error
+        error,
+        showDetails
       } = this.state;
       return /*#__PURE__*/(0, _reactJsxRuntime.jsxs)(_reactNative.View, {
         style: styles.container,
@@ -302908,7 +302923,33 @@ __d(function (global, require, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, expor
         }), /*#__PURE__*/(0, _reactJsxRuntime.jsx)(_reactNative.Text, {
           style: styles.message,
           children: "PetalPath hit an unexpected problem. Please try again."
-        }), null, /*#__PURE__*/(0, _reactJsxRuntime.jsxs)(_reactNative.TouchableOpacity, {
+        }), error ? /*#__PURE__*/(0, _reactJsxRuntime.jsx)(_reactNative.TouchableOpacity, {
+          style: styles.detailsToggle,
+          onPress: this.toggleDetails,
+          accessibilityRole: "button",
+          accessibilityLabel: "Show or hide error details",
+          children: /*#__PURE__*/(0, _reactJsxRuntime.jsx)(_reactNative.Text, {
+            style: styles.detailsToggleText,
+            children: showDetails ? 'Hide Technical Details ▲' : 'Show Technical Details ▼'
+          })
+        }) : null, error && showDetails ? /*#__PURE__*/(0, _reactJsxRuntime.jsxs)(_reactNative.ScrollView, {
+          style: styles.stackContainer,
+          contentContainerStyle: styles.stackContent,
+          accessibilityLabel: "Error details",
+          children: [/*#__PURE__*/(0, _reactJsxRuntime.jsx)(_reactNative.Text, {
+            selectable: true,
+            style: styles.stackLabel,
+            children: error.name || 'Error'
+          }), /*#__PURE__*/(0, _reactJsxRuntime.jsx)(_reactNative.Text, {
+            selectable: true,
+            style: styles.stackMessage,
+            children: error.message || String(error)
+          }), error.stack ? /*#__PURE__*/(0, _reactJsxRuntime.jsx)(_reactNative.Text, {
+            selectable: true,
+            style: styles.stackTrace,
+            children: error.stack
+          }) : null]
+        }) : null, /*#__PURE__*/(0, _reactJsxRuntime.jsxs)(_reactNative.TouchableOpacity, {
           style: styles.resetButton,
           onPress: this.handleReset,
           accessibilityRole: "button",
@@ -302958,8 +302999,20 @@ __d(function (global, require, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, expor
       fontFamily: _theme.typography.families.rounded,
       textAlign: 'center',
       lineHeight: _theme.typography.lineHeights.sm,
-      marginBottom: _theme.spacing.xl,
+      marginBottom: _theme.spacing.md,
       maxWidth: 320
+    },
+    detailsToggle: {
+      paddingVertical: _theme.spacing.xs,
+      paddingHorizontal: _theme.spacing.sm,
+      marginBottom: _theme.spacing.md
+    },
+    detailsToggleText: {
+      fontSize: _theme.typography.sizes.caption,
+      color: _theme.colors.textMuted,
+      fontFamily: _theme.typography.families.rounded,
+      fontWeight: '600',
+      textDecorationLine: 'underline'
     },
     stackContainer: {
       maxHeight: 200,

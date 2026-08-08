@@ -17,28 +17,29 @@ interface ErrorBoundaryProps {
 interface ErrorBoundaryState {
   hasError: boolean;
   error: Error | null;
+  showDetails: boolean;
 }
-
-const IS_DEV = typeof __DEV__ !== 'undefined' ? __DEV__ : false;
 
 export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
   constructor(props: ErrorBoundaryProps) {
     super(props);
-    this.state = { hasError: false, error: null };
+    this.state = { hasError: false, error: null, showDetails: false };
   }
 
-  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+  static getDerivedStateFromError(error: Error): Partial<ErrorBoundaryState> {
     return { hasError: true, error };
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo): void {
-    if (IS_DEV) {
-      console.error('[ErrorBoundary]', error, errorInfo.componentStack);
-    }
+    console.error('[ErrorBoundary caught exception]:', error, errorInfo.componentStack);
   }
 
   private handleReset = (): void => {
-    this.setState({ hasError: false, error: null });
+    this.setState({ hasError: false, error: null, showDetails: false });
+  };
+
+  private toggleDetails = (): void => {
+    this.setState((prev) => ({ showDetails: !prev.showDetails }));
   };
 
   render(): React.ReactNode {
@@ -50,7 +51,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
       return this.props.fallback;
     }
 
-    const { error } = this.state;
+    const { error, showDetails } = this.state;
 
     return (
       <View
@@ -67,17 +68,30 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
           PetalPath hit an unexpected problem. Please try again.
         </Text>
 
-        {IS_DEV && error ? (
+        {error ? (
+          <TouchableOpacity
+            style={styles.detailsToggle}
+            onPress={this.toggleDetails}
+            accessibilityRole="button"
+            accessibilityLabel="Show or hide error details"
+          >
+            <Text style={styles.detailsToggleText}>
+              {showDetails ? 'Hide Technical Details ▲' : 'Show Technical Details ▼'}
+            </Text>
+          </TouchableOpacity>
+        ) : null}
+
+        {error && showDetails ? (
           <ScrollView
             style={styles.stackContainer}
             contentContainerStyle={styles.stackContent}
             accessibilityLabel="Error details"
           >
             <Text selectable style={styles.stackLabel}>
-              {error.name}
+              {error.name || 'Error'}
             </Text>
             <Text selectable style={styles.stackMessage}>
-              {error.message}
+              {error.message || String(error)}
             </Text>
             {error.stack ? (
               <Text selectable style={styles.stackTrace}>
@@ -133,8 +147,20 @@ const styles = StyleSheet.create({
     fontFamily: typography.families.rounded,
     textAlign: 'center',
     lineHeight: typography.lineHeights.sm,
-    marginBottom: spacing.xl,
+    marginBottom: spacing.md,
     maxWidth: 320,
+  },
+  detailsToggle: {
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.sm,
+    marginBottom: spacing.md,
+  },
+  detailsToggleText: {
+    fontSize: typography.sizes.caption,
+    color: colors.textMuted,
+    fontFamily: typography.families.rounded,
+    fontWeight: '600',
+    textDecorationLine: 'underline',
   },
   stackContainer: {
     maxHeight: 200,

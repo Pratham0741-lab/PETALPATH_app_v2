@@ -1,9 +1,8 @@
-import { NativeModules, NativeEventEmitter, Platform } from 'react-native';
+import { NativeModules, DeviceEventEmitter, Platform } from 'react-native';
 import { CameraState, DiagnosticMetrics, PoseFrameListener, PoseFrameV1 } from './CameraTypes';
 import { ICameraEngine } from './ICameraEngine';
 
 const { PetalPathCameraEngine } = NativeModules;
-const cameraEventEmitter = PetalPathCameraEngine ? new NativeEventEmitter(PetalPathCameraEngine) : null;
 
 export class CameraEngineAdapter implements ICameraEngine {
   private state: CameraState = 'UNINITIALIZED';
@@ -11,8 +10,8 @@ export class CameraEngineAdapter implements ICameraEngine {
   private eventSubscription: any = null;
 
   constructor() {
-    if (Platform.OS === 'android' && cameraEventEmitter) {
-      this.eventSubscription = cameraEventEmitter.addListener('onPoseFrame', (event: PoseFrameV1) => {
+    if (Platform.OS === 'android') {
+      this.eventSubscription = DeviceEventEmitter.addListener('onPoseFrame', (event: PoseFrameV1) => {
         this.listeners.forEach((listener) => listener(event));
       });
     }

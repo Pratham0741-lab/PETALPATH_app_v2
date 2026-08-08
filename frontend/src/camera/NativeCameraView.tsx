@@ -1,9 +1,14 @@
 import React from 'react';
 import { requireNativeComponent, StyleSheet, View, Text, Platform } from 'react-native';
 
-const PetalPathNativeCameraView = Platform.OS === 'android'
-  ? requireNativeComponent<any>('PetalPathNativeCameraView')
-  : null;
+let PetalPathNativeCameraView: any = null;
+if (Platform.OS === 'android') {
+  try {
+    PetalPathNativeCameraView = requireNativeComponent<any>('PetalPathNativeCameraView');
+  } catch (error) {
+    console.warn('[NativeCameraView] Native view component not registered:', error);
+  }
+}
 
 interface NativeCameraViewProps {
   style?: any;
