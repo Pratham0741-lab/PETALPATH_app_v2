@@ -270640,7 +270640,7 @@ __d(function (global, require, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, expor
       this.currentReps = 0;
       this.remainingTimeoutMs = definition.timeoutMs;
       this.lastFrameTimestamp = Date.now();
-      this.state = 'starting';
+      this.state = countdownSec <= 0 ? 'running' : 'starting';
     }
     tickCountdown() {
       if (this.state !== 'starting') return;

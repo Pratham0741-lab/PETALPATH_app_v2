@@ -38,7 +38,7 @@ export class ActivitySessionEngine {
     this.currentReps = 0;
     this.remainingTimeoutMs = definition.timeoutMs;
     this.lastFrameTimestamp = Date.now();
-    this.state = 'starting';
+    this.state = countdownSec <= 0 ? 'running' : 'starting';
   }
 
   public tickCountdown(): void {
