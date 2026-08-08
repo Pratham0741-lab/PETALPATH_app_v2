@@ -269612,22 +269612,37 @@ __d(function (global, require, _$$_IMPORT_DEFAULT, _$$_IMPORT_ALL, module, expor
   require(_dependencyMap[0]);
   var _reactNative = require(_dependencyMap[1]);
   var _reactJsxRuntime = require(_dependencyMap[2]);
-  var hasNativeCameraViewManager = typeof _reactNative.UIManager.hasViewManagerConfig === 'function' ? _reactNative.UIManager.hasViewManagerConfig('PetalPathNativeCameraView') : !!_reactNative.UIManager.getViewManagerConfig?.('PetalPathNativeCameraView') || !!_reactNative.UIManager.PetalPathNativeCameraView;
-  var PetalPathNativeCameraView = null;
-  if (hasNativeCameraViewManager) {
+  var isNativeViewRegistered = name => {
     try {
-      PetalPathNativeCameraView = (0, _reactNative.requireNativeComponent)('PetalPathNativeCameraView');
-    } catch (error) {
-      console.warn('[NativeCameraView] Native view component resolution failed:', error);
+      if (typeof _reactNative.UIManager.hasViewManagerConfig === 'function') {
+        return _reactNative.UIManager.hasViewManagerConfig(name);
+      }
+      if (typeof _reactNative.UIManager.getViewManagerConfig === 'function') {
+        return !!_reactNative.UIManager.getViewManagerConfig(name);
+      }
+      return !!_reactNative.UIManager[name];
+    } catch {
+      return false;
     }
-  }
+  };
+  var cachedNativeComponent = null;
   var NativeCameraView = ({
     style
   }) => {
-    if (PetalPathNativeCameraView) {
-      return /*#__PURE__*/(0, _reactJsxRuntime.jsx)(PetalPathNativeCameraView, {
-        style: [styles.full, style]
-      });
+    {
+      if (!cachedNativeComponent && isNativeViewRegistered('PetalPathNativeCameraView')) {
+        try {
+          cachedNativeComponent = (0, _reactNative.requireNativeComponent)('PetalPathNativeCameraView');
+        } catch (error) {
+          console.warn('[NativeCameraView] Failed to require native component:', error);
+        }
+      }
+      if (cachedNativeComponent) {
+        var Component = cachedNativeComponent;
+        return /*#__PURE__*/(0, _reactJsxRuntime.jsx)(Component, {
+          style: [styles.full, style]
+        });
+      }
     }
     return /*#__PURE__*/(0, _reactJsxRuntime.jsx)(_reactNative.View, {
       style: [styles.fallback, style],
