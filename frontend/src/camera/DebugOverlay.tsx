@@ -36,6 +36,20 @@ export const DebugOverlay: React.FC<{ isVisible?: boolean }> = ({ isVisible = tr
 
       {metrics ? (
         <View style={styles.content}>
+          {metrics.watchdogAlert === 'NATIVE_MODULE_MISSING' ? (
+            <View style={styles.alertBox}>
+              <Text style={styles.alertTitle}>Native camera engine not in this build</Text>
+              <Text style={styles.alertBody}>
+                The JS bundle loaded, but the PetalPathCameraEngine native module is absent. Native
+                code cannot ship over-the-air, so a JS/OTA update will not fix this.
+              </Text>
+              <Text style={styles.alertBody}>
+                Run a fresh native build: `npx expo prebuild --clean -p android` then
+                `npx expo run:android` (or a new EAS build).
+              </Text>
+            </View>
+          ) : null}
+
           <Text style={styles.row}>
             State: <Text style={styles.val}>{metrics.cameraState}</Text> | Tracking:{' '}
             <Text style={styles.valHighlight}>{metrics.trackingState ?? 'SEARCHING'}</Text> | Posture:{' '}
@@ -117,6 +131,17 @@ const styles = StyleSheet.create({
   valBad: { color: '#FF3366', fontWeight: 'bold' },
   valSub: { color: '#88E0FF', fontSize: 10 },
   loadingText: { color: '#AAAAAA', fontSize: 11, fontStyle: 'italic' },
+  alertBox: {
+    backgroundColor: 'rgba(255, 51, 102, 0.15)',
+    borderColor: '#FF3366',
+    borderWidth: 1,
+    borderRadius: 6,
+    padding: 8,
+    marginBottom: 6,
+    gap: 4,
+  },
+  alertTitle: { color: '#FF3366', fontSize: 11, fontWeight: 'bold' },
+  alertBody: { color: '#FFD6E0', fontSize: 10, lineHeight: 14 },
   metaBox: { marginTop: 6, paddingTop: 6, borderTopWidth: 1, borderTopColor: '#444444' },
   metaTitle: { color: '#FFCC00', fontSize: 11, fontWeight: 'bold' },
   metaSub: { color: '#AAAAAA', fontSize: 10 },

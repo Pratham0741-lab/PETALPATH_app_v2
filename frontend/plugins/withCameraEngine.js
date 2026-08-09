@@ -112,53 +112,59 @@ function withCameraEnginePackage(config) {
     let contents = config.modResults.contents;
 
     const importLine = 'import com.petalpath.camera.bridge.CameraEnginePackage';
-    if (contents.includes(importLine)) {
-      return config; // Already registered
+    const alreadyRegistered = contents.includes(importLine);
+
+    if (!alreadyRegistered) {
+      // Add import after the last existing import
+      const lastImportIndex = contents.lastIndexOf('import ');
+      const endOfLastImport = contents.indexOf('\n', lastImportIndex);
+      contents =
+        contents.slice(0, endOfLastImport + 1) +
+        importLine + '\n' +
+        contents.slice(endOfLastImport + 1);
+
+      // Register the package in the packages list
+      // Look for the PackageList(...).packages pattern and add after it
+      const packagesRegex = /(PackageList\(this\)\.packages)/;
+      if (packagesRegex.test(contents)) {
+        contents = contents.replace(
+          packagesRegex,
+          `$1.apply {\n          add(CameraEnginePackage())\n        }`
+        );
+      }
     }
 
-    // Add import after the last existing import
-    const lastImportIndex = contents.lastIndexOf('import ');
-    const endOfLastImport = contents.indexOf('\n', lastImportIndex);
-    contents =
-      contents.slice(0, endOfLastImport + 1) +
-      importLine + '\n' +
-      contents.slice(endOfLastImport + 1);
-
-    // Register the package in the packages list
-    // Look for the PackageList(...).packages pattern and add after it
-    const packagesRegex = /(PackageList\(this\)\.packages)/;
-    if (packagesRegex.test(contents)) {
-      contents = contents.replace(
-        packagesRegex,
-        `$1.apply {\n          add(CameraEnginePackage())\n        }`
-      );
-    }
-
-    // Enable Fabric + TurboModule interop for the custom native module
-    // Insert ReactNativeFeatureFlags override in onCreate if not present
-    if (!contents.includes('useFabricInterop')) {
-      const featureFlagImports =
-        'import com.facebook.react.internal.featureflags.ReactNativeFeatureFlags\n' +
-        'import com.facebook.react.internal.featureflags.ReactNativeFeatureFlagsDefaults\n';
-
-      // Add feature flag imports after the CameraEnginePackage import
-      contents = contents.replace(
-        importLine + '\n',
-        importLine + '\n' + featureFlagImports
-      );
-
-      // Add the override block at the start of onCreate
-      const onCreateBlock = `    // Enable Fabric + TurboModule interop for custom native modules
-    ReactNativeFeatureFlags.override(object : ReactNativeFeatureFlagsDefaults() {
-      override fun useFabricInterop(): Boolean = true
-      override fun useTurboModuleInterop(): Boolean = true
-    })\n`;
-
-      contents = contents.replace(
-        /(override fun onCreate\(\)\s*\{)\s*\n/,
-        `$1\n${onCreateBlock}`
-      );
-    }
+    // Deliberately NO ReactNativeFeatureFlags.override() here.
+    //
+    // An earlier version of this plugin injected an override enabling
+    // useFabricInterop / useTurboModuleInterop / useNativeViewConfigsInBridgelessMode.
+    // That was both unnecessary and actively harmful:
+    //
+    //  1. Redundant — with newArchEnabled=true, loadReactNative() runs
+    //     DefaultNewArchitectureEntryPoint.load(), which applies
+    //     ReactNativeFeatureFlagsOverrides_RNOSS_Stable_Android. That extends
+    //     ReactNativeNewArchitectureFeatureFlagsDefaults, which already returns true
+    //     for all three flags.
+    //  2. It disabled the New Architecture — the injected object extended the *base*
+    //     ReactNativeFeatureFlagsDefaults, where enableBridgelessArchitecture,
+    //     enableFabricRenderer and useTurboModules are all false. Only the three
+    //     named flags were overridden, so those three silently became false.
+    //  3. It double-overrode — ReactNativeFeatureFlagsAccessor::override() throws
+    //     "Feature flags cannot be overridden more than once", and load() overrides
+    //     after onCreate's call.
+    //  4. It ran before SoLoader.init — ReactNativeFeatureFlagsCxxInterop loads
+    //     "react_featureflagsjni" in its static initializer, and SoLoader is only
+    //     initialized inside loadReactNative().
+    //
+    // Strip the block if a previous prebuild wrote it into an existing android/ project.
+    contents = contents.replace(
+      /[ \t]*\/\/ Enable Fabric \+ TurboModule interop for custom native modules\n[ \t]*ReactNativeFeatureFlags\.override\(object : ReactNativeFeatureFlagsDefaults\(\) \{[\s\S]*?\n[ \t]*\}\)\n/,
+      ''
+    );
+    contents = contents.replace(
+      /import com\.facebook\.react\.internal\.featureflags\.ReactNativeFeatureFlags(Defaults)?\n/g,
+      ''
+    );
 
     config.modResults.contents = contents;
     console.log('[withCameraEngine] Registered CameraEnginePackage in MainApplication');
