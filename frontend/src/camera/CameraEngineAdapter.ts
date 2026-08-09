@@ -1,8 +1,9 @@
-import { NativeModules, DeviceEventEmitter, Platform } from 'react-native';
-import { CameraState, DiagnosticMetrics, PoseFrameListener, PoseFrameV1, PoseKeypoint } from './CameraTypes';
+import { NativeModules, NativeEventEmitter, Platform } from 'react-native';
+import { CameraState, DiagnosticMetrics, PoseFrameListener, PoseFrameV1 } from './CameraTypes';
 import { ICameraEngine } from './ICameraEngine';
 
 const { PetalPathCameraEngine } = NativeModules;
+const cameraEventEmitter = PetalPathCameraEngine ? new NativeEventEmitter(PetalPathCameraEngine) : null;
 
 export class CameraEngineAdapter implements ICameraEngine {
   private state: CameraState = 'UNINITIALIZED';
@@ -10,17 +11,16 @@ export class CameraEngineAdapter implements ICameraEngine {
   private eventSubscription: any = null;
 
   constructor() {
-    if (Platform.OS === 'android') {
-      this.eventSubscription = DeviceEventEmitter.addListener('onPoseFrame', (event: PoseFrameV1) => {
+    if (Platform.OS === 'android' && cameraEventEmitter) {
+      this.eventSubscription = cameraEventEmitter.addListener('onPoseFrame', (event: PoseFrameV1) => {
         this.listeners.forEach((listener) => listener(event));
       });
     }
   }
 
   public async start(): Promise<boolean> {
-    if (!PetalPathCameraEngine) {
-      console.warn('[CameraEngineAdapter] Native MoveNet engine missing (NativeModules.PetalPathCameraEngine is undefined).');
-      this.state = 'ERROR';
+    if (Platform.OS !== 'android' || !PetalPathCameraEngine) {
+      console.warn('[CameraEngineAdapter] Native MoveNet engine only supported on Android in Phase 1.');
       return false;
     }
 
@@ -41,10 +41,7 @@ export class CameraEngineAdapter implements ICameraEngine {
   }
 
   public async stop(): Promise<boolean> {
-    if (!PetalPathCameraEngine) {
-      this.state = 'STOPPED';
-      return true;
-    }
+    if (!PetalPathCameraEngine) return false;
     this.state = 'STOPPING';
     try {
       const success = await PetalPathCameraEngine.stop();
@@ -57,10 +54,7 @@ export class CameraEngineAdapter implements ICameraEngine {
   }
 
   public async pause(): Promise<boolean> {
-    if (!PetalPathCameraEngine) {
-      this.state = 'PAUSED';
-      return true;
-    }
+    if (!PetalPathCameraEngine) return false;
     try {
       const success = await PetalPathCameraEngine.pause();
       if (success) this.state = 'PAUSED';
@@ -71,10 +65,7 @@ export class CameraEngineAdapter implements ICameraEngine {
   }
 
   public async resume(): Promise<boolean> {
-    if (!PetalPathCameraEngine) {
-      this.state = 'RUNNING';
-      return true;
-    }
+    if (!PetalPathCameraEngine) return false;
     try {
       const success = await PetalPathCameraEngine.resume();
       if (success) this.state = 'RUNNING';
@@ -85,7 +76,7 @@ export class CameraEngineAdapter implements ICameraEngine {
   }
 
   public async switchCamera(): Promise<boolean> {
-    if (!PetalPathCameraEngine) return true;
+    if (!PetalPathCameraEngine) return false;
     try {
       return await PetalPathCameraEngine.switchCamera();
     } catch (error) {
@@ -103,21 +94,21 @@ export class CameraEngineAdapter implements ICameraEngine {
   public async getMetrics(): Promise<DiagnosticMetrics> {
     if (!PetalPathCameraEngine) {
       return {
-        framesReceived: 100,
-        framesProcessed: 100,
+        framesReceived: 0,
+        framesProcessed: 0,
         framesDropped: 0,
         queueDepth: 0,
         cameraState: this.state,
-        modelState: 'READY',
-        interpreterState: 'JS_SIMULATION',
-        delegateType: 'CPU_SIMULATION',
-        lastInferenceMs: 12,
-        averageInferenceMs: 12,
-        peakInferenceMs: 15,
-        cameraFps: 15.0,
-        inferenceFps: 15.0,
-        usedMemoryMb: 24,
-        watchdogAlert: 'NORMAL',
+        modelState: 'UNLOADED',
+        interpreterState: 'UNINITIALIZED',
+        delegateType: 'NONE',
+        lastInferenceMs: 0,
+        averageInferenceMs: 0,
+        peakInferenceMs: 0,
+        cameraFps: 0,
+        inferenceFps: 0,
+        usedMemoryMb: 0,
+        watchdogAlert: 'NATIVE_MODULE_MISSING',
       };
     }
 

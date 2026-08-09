@@ -29,10 +29,7 @@ export class CameraActivityAdapter {
     }
 
     const keypointMap = new Map<number, PoseKeypoint>();
-    frameV1.keypoints.forEach((kp) => {
-      const idx = typeof kp.index === 'number' ? kp.index : (kp as any).id;
-      if (typeof idx === 'number') keypointMap.set(idx, kp);
-    });
+    frameV1.keypoints.forEach((kp) => keypointMap.set(kp.index, kp));
 
     const getPt = (idx: number): Point3D => {
       const kp = keypointMap.get(idx);

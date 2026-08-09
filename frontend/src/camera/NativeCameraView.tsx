@@ -1,41 +1,28 @@
 import React from 'react';
 import { requireNativeComponent, StyleSheet, View, Text, Platform, UIManager } from 'react-native';
 
-const isNativeViewRegistered = (name: string): boolean => {
-  if (Platform.OS !== 'android') return false;
+let PetalPathNativeCameraView: any = null;
+if (Platform.OS === 'android') {
   try {
-    if (typeof UIManager.hasViewManagerConfig === 'function') {
-      return UIManager.hasViewManagerConfig(name);
-    }
-    if (typeof (UIManager as any).getViewManagerConfig === 'function') {
-      return !!(UIManager as any).getViewManagerConfig(name);
-    }
-    return !!(UIManager as any)[name];
-  } catch {
-    return false;
-  }
-};
+    const hasConfig = typeof (UIManager as any).getViewManagerConfig === 'function'
+      ? !!(UIManager as any).getViewManagerConfig('PetalPathNativeCameraView')
+      : !!(UIManager as any).PetalPathNativeCameraView;
 
-let cachedNativeComponent: any = null;
+    if (hasConfig) {
+      PetalPathNativeCameraView = requireNativeComponent<any>('PetalPathNativeCameraView');
+    }
+  } catch (error) {
+    console.warn('[NativeCameraView] Native view component not registered:', error);
+  }
+}
 
 interface NativeCameraViewProps {
   style?: any;
 }
 
 export const NativeCameraView: React.FC<NativeCameraViewProps> = ({ style }) => {
-  if (Platform.OS === 'android') {
-    if (!cachedNativeComponent && isNativeViewRegistered('PetalPathNativeCameraView')) {
-      try {
-        cachedNativeComponent = requireNativeComponent<any>('PetalPathNativeCameraView');
-      } catch (error) {
-        console.warn('[NativeCameraView] Failed to require native component:', error);
-      }
-    }
-
-    if (cachedNativeComponent) {
-      const Component = cachedNativeComponent;
-      return <Component style={[styles.full, style]} />;
-    }
+  if (Platform.OS === 'android' && PetalPathNativeCameraView) {
+    return <PetalPathNativeCameraView style={[styles.full, style]} />;
   }
 
   return (

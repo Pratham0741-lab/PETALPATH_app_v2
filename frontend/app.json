@@ -72,7 +72,8 @@
           "cameraPermissionText": "Allow PetalPath to use the camera for live pose and activity detection.",
           "enableMicrophonePermission": false
         }
-      ]
+      ],
+      "./plugins/withCameraEngine"
     ],
     "web": {
       "favicon": "./assets/favicon.png"

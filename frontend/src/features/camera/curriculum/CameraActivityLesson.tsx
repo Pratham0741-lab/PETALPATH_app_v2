@@ -5,12 +5,12 @@ import { ScreenContainer } from '../../../components/common/ScreenContainer';
 import { TopBar } from '../../../components/navigation/TopBar';
 import { useCameraPermissions } from '../hooks/useCameraPermissions';
 import { useCameraLifecycle } from '../hooks/useCameraLifecycle';
-import { useFrameProcessorPipeline } from '../hooks/useFrameProcessorPipeline';
+import { useCameraEnginePipeline } from '../../../camera/hooks/useCameraEnginePipeline';
+import { NativeCameraView } from '../../../camera/NativeCameraView';
+import { DebugOverlay } from '../../../camera/DebugOverlay';
 import { useActivitySession } from '../session/useActivitySession';
 import { getDefaultCurriculumConfig, getActivityDefinition } from '../session/activityDefinitions';
-import { CameraPreview } from '../components/CameraPreview';
 import { CameraPermissionState } from '../components/CameraPermissionState';
-import { DebugOverlay } from '../components/DebugOverlay';
 import { ActivityTimerRing } from '../components/ActivityTimerRing';
 import { RepetitionCounter } from '../components/RepetitionCounter';
 import { ChildFeedbackOverlay } from '../feedback/ChildFeedbackOverlay';
@@ -35,12 +35,10 @@ export const CameraActivityLesson: React.FC = () => {
   const { hasPermission, permissionStatus, requestPermission } = useCameraPermissions();
   const { isActive } = useCameraLifecycle();
   const {
-    frameProcessor,
-    debugMetrics,
-    poseResult,
     activityResult,
     setActiveActivity,
-  } = useFrameProcessorPipeline();
+    switchCamera,
+  } = useCameraEnginePipeline();
 
   const {
     snapshot,
@@ -52,7 +50,6 @@ export const CameraActivityLesson: React.FC = () => {
 
   const { speakInstruction } = useFeedbackVoice();
   const [queueCount, setQueueCount] = useState<number>(0);
-  const [deviceFormatText, setDeviceFormatText] = useState<string>('');
 
   useEffect(() => {
     setActiveActivity(activityType);
@@ -65,12 +62,12 @@ export const CameraActivityLesson: React.FC = () => {
   }, [permissionStatus, requestPermission]);
 
   useEffect(() => {
-    if (hasPermission && isActive && sessionState === 'idle') {
-      startSession(activityType, 3);
+    if (isActive && sessionState === 'idle') {
+      startSession(activityType, 0);
       speakInstruction(config.instruction);
       cameraAnalytics.logEvent('activity_started', { lessonId, activityId, activityType });
     }
-  }, [hasPermission, isActive, sessionState, startSession, activityType, config.instruction, speakInstruction, lessonId, activityId]);
+  }, [isActive, sessionState, startSession, activityType, config.instruction, speakInstruction, lessonId, activityId]);
 
   useEffect(() => {
     if (sessionState === 'running') {
@@ -84,13 +81,12 @@ export const CameraActivityLesson: React.FC = () => {
         .handleActivityCompletion(lessonId, activityId, activityType, 1500)
         .then(() => {
           offlineQueue.getQueue().then((q) => setQueueCount(q.length));
+        })
+        .catch(() => {
+          // Gracefully handle 404 / network errors
         });
     }
   }, [sessionState, lessonId, activityId, activityType]);
-
-  const handleDeviceFormatReady = useCallback((formatText: string) => {
-    setDeviceFormatText(formatText);
-  }, []);
 
   const handleRestart = () => {
     resetSession();
@@ -104,11 +100,12 @@ export const CameraActivityLesson: React.FC = () => {
       <View style={styles.previewContainer}>
         {hasPermission && isActive ? (
           <>
-            <CameraPreview
-              isActive={isActive}
-              frameProcessor={frameProcessor}
-              onDeviceFormatReady={handleDeviceFormatReady}
-            />
+            <NativeCameraView style={StyleSheet.absoluteFill} />
+
+            {/* Camera Switch Button */}
+            <Pressable style={styles.switchCameraButton} onPress={switchCamera}>
+              <Text style={styles.switchCameraText}>🔄 Flip Camera</Text>
+            </Pressable>
 
             {/* Instruction Header */}
             <View style={styles.instructionCard}>
@@ -175,18 +172,12 @@ export const CameraActivityLesson: React.FC = () => {
               />
             )}
 
-            {/* Dev Debug Overlay with Queue Status */}
-            <DebugOverlay
-              metrics={debugMetrics}
-              cameraStatus={hasPermission ? 'ready' : 'loading'}
-              deviceFormatText={deviceFormatText}
-              poseResult={poseResult}
-              activityResult={activityResult}
-            />
+            {/* Phase 3 Diagnostics Overlay */}
+            <DebugOverlay isVisible={true} />
           </>
         ) : (
           <CameraPermissionState
-            status={permissionStatus === 'denied' ? 'permission_denied' : 'loading'}
+            status={hasPermission ? 'ready' : 'permission_denied'}
             onRequestPermission={requestPermission}
           />
         )}
@@ -224,12 +215,50 @@ const styles = StyleSheet.create({
   },
   centerHUD: {
     position: 'absolute',
-    top: '35%',
+    top: '30%',
     left: 0,
     right: 0,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 10,
+  },
+  poseButtonContainer: {
+    position: 'absolute',
+    bottom: 90,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    zIndex: 50,
+  },
+  poseButton: {
+    backgroundColor: 'rgba(139, 120, 216, 0.95)',
+    paddingVertical: 18,
+    paddingHorizontal: 36,
+    borderRadius: 36,
+    borderWidth: 3,
+    borderColor: '#FFFFFF',
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 10,
+  },
+  poseButtonActive: {
+    backgroundColor: '#10B981',
+    borderColor: '#6EE7B7',
+    transform: [{ scale: 1.06 }],
+  },
+  poseButtonEmoji: {
+    fontSize: 28,
+  },
+  poseButtonText: {
+    fontFamily: typography.families.rounded,
+    fontSize: typography.sizes.lg,
+    color: '#FFFFFF',
+    fontWeight: 'bold',
   },
   completionCard: {
     position: 'absolute',
@@ -276,6 +305,22 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.md,
     color: colors.card,
     fontWeight: 'bold',
+  },
+  switchCameraButton: {
+    position: 'absolute',
+    top: spacing.lg,
+    right: spacing.lg,
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.full,
+    zIndex: 30,
+  },
+  switchCameraText: {
+    fontFamily: typography.families.rounded,
+    fontSize: typography.sizes.xs,
+    color: '#FFFFFF',
+    fontWeight: '600',
   },
 });
 
