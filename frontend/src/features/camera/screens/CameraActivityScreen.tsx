@@ -71,7 +71,7 @@ export const CameraActivityScreen: React.FC = () => {
                     return (
                       <Pressable
                         key={act.id}
-                        onPress={() => setActiveActivity(act.id)}
+                        onPress={() => setActiveActivity(act.id, act.label)}
                         style={[styles.chip, isSelected && styles.chipActive]}
                       >
                         <Text style={[styles.chipText, isSelected && styles.chipTextActive]}>

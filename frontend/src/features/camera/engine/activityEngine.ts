@@ -17,16 +17,30 @@ import {
 
 export class ActivityEngine {
   private activeActivity: ActivityType = 'raise_hands';
+  private activityName: string | null = null;
   private holdCount = 0;
   private readonly REQUIRED_HOLD_FRAMES = 2;
 
-  public setActivity(type: ActivityType): void {
+  /**
+   * `displayName` is the catalog title of the activity being performed (e.g.
+   * "Stretch up high"). Several catalog activities share a single pose
+   * primitive, so without it the feedback would name the primitive instead —
+   * "Stretch up high" would tell the child to "Raise Both Hands".
+   * Falls back to the primitive label when omitted.
+   */
+  public setActivity(type: ActivityType, displayName?: string): void {
     this.activeActivity = type;
+    this.activityName = displayName?.trim() || null;
     this.holdCount = 0;
   }
 
   public getActiveActivity(): ActivityType {
     return this.activeActivity;
+  }
+
+  /** The activity name shown to the child. */
+  public getActivityName(): string {
+    return this.activityName ?? this.getActivityLabel(this.activeActivity);
   }
 
   public evaluate(latestPose: PoseFrame | null, history: PoseFrame[]): ActivityEngineResult {
@@ -77,7 +91,7 @@ export class ActivityEngine {
         activityType: this.activeActivity,
         state: isCompleted ? 'completed' : 'detected',
         confidence: result.confidence,
-        feedback: isCompleted ? `Great job! ${this.getActivityLabel(this.activeActivity)}!` : 'Keep going!',
+        feedback: isCompleted ? `Great job! ${this.getActivityName()}` : 'Keep going!',
       };
     }
 
@@ -86,7 +100,7 @@ export class ActivityEngine {
       activityType: this.activeActivity,
       state: 'searching',
       confidence: 0,
-      feedback: `Try to ${this.getActivityLabel(this.activeActivity)}`,
+      feedback: `Try: ${this.getActivityName()}`,
     };
   }
 

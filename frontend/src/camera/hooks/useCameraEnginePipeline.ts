@@ -30,14 +30,14 @@ export function useCameraEnginePipeline() {
     activeActivityRef.current = activeActivity;
   }, [activeActivity]);
 
-  const setActiveActivity = useCallback((type: ActivityType) => {
+  const setActiveActivity = useCallback((type: ActivityType, displayName?: string) => {
     setActiveActivityState(type);
-    activityEngine.setActivity(type);
+    activityEngine.setActivity(type, displayName);
     setActivityResult({
       activityType: type,
       state: 'searching',
       confidence: 0,
-      feedback: `Stand in front of the camera to ${type.replace(/_/g, ' ')}`,
+      feedback: `Stand in front of the camera — ${displayName ?? type.replace(/_/g, ' ')}`,
     });
   }, []);
 

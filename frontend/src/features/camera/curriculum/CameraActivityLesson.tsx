@@ -52,8 +52,8 @@ export const CameraActivityLesson: React.FC = () => {
   const [queueCount, setQueueCount] = useState<number>(0);
 
   useEffect(() => {
-    setActiveActivity(activityType);
-  }, [activityType, setActiveActivity]);
+    setActiveActivity(activityType, config.title);
+  }, [activityType, config.title, setActiveActivity]);
 
   useEffect(() => {
     if (permissionStatus === 'not-determined') {
@@ -96,7 +96,6 @@ export const CameraActivityLesson: React.FC = () => {
   return (
     <ScreenContainer style={styles.container}>
       <TopBar title={config.title} showBack />
-
       <View style={styles.previewContainer}>
         {hasPermission && isActive ? (
           <>
