@@ -1,18 +1,28 @@
+/**
+ * FormInput — the react-hook-form text field used by the auth screens and by
+ * "Add / edit child" in the profile tab.
+ *
+ * Redesign notes (§7, §29, §30):
+ *
+ *  - `Ionicons` and `TouchableOpacity` were imported and never used. Both are
+ *    gone; the icon slots are `leftIcon`/`rightIcon` render props, so the caller
+ *    supplies a `PetalIcon`.
+ *  - Focus used to raise the border from 1px to 2px, which reflows the field and
+ *    nudges the text by a pixel every time it is tapped. The border is 2px in
+ *    both states now and only the colour changes.
+ *  - The disabled state faded the whole field to `opacity: 0.5`, dragging the
+ *    value the parent had already typed below 4.5:1. A disabled field keeps its
+ *    text at full strength and shows its state through the muted surface and
+ *    border instead.
+ *  - The field is at least `MIN_TOUCH_TARGET` tall, and the label and error text
+ *    come from the typography presets rather than ad-hoc size/weight pairs.
+ */
+
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  StyleSheet,
-  TouchableOpacity,
-  type TextInputProps,
-} from 'react-native';
+import { View, Text, TextInput, StyleSheet, type TextInputProps } from 'react-native';
 import { useController, Control } from 'react-hook-form';
-import { Ionicons } from '@expo/vector-icons';
-import { colors } from '../../theme/colors';
-import { spacing } from '../../theme/spacing';
-import { radius } from '../../theme/radius';
-import { typography } from '../../theme/typography';
+
+import { colors, radius, spacing, typography, MIN_TOUCH_TARGET } from '../../theme';
 
 export interface FormInputProps {
   name: string;
@@ -77,12 +87,7 @@ export const FormInput: React.FC<FormInputProps> = ({
   return (
     <View style={styles.container}>
       {label ? (
-        <Text
-          style={[styles.label, disabled && styles.labelDisabled]}
-          accessibilityLabel={label}
-        >
-          {label}
-        </Text>
+        <Text style={[styles.label, disabled && styles.labelDisabled]}>{label}</Text>
       ) : null}
       <View style={styles.inputWrapper}>
         {leftIcon ? (
@@ -113,11 +118,7 @@ export const FormInput: React.FC<FormInputProps> = ({
         ) : null}
       </View>
       {error ? (
-        <Text
-          style={styles.errorText}
-          accessibilityLabel={error.message}
-          accessibilityRole="alert"
-        >
+        <Text style={styles.errorText} accessibilityRole="alert">
           {error.message}
         </Text>
       ) : null}
@@ -130,14 +131,13 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   label: {
-    fontSize: typography.sizes.small,
-    fontWeight: typography.weights.medium,
+    ...typography.presets.subtle,
     color: colors.textSecondary,
+    fontWeight: typography.weights.medium,
     marginBottom: spacing.sm,
-    fontFamily: typography.families.rounded,
   },
   labelDisabled: {
-    opacity: 0.5,
+    color: colors.textMuted,
   },
   inputWrapper: {
     position: 'relative',
@@ -156,13 +156,15 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
+    minHeight: MIN_TOUCH_TARGET,
     backgroundColor: colors.surface,
-    borderWidth: 1,
+    // The width stays at 2 in every state — see the note at the top of the file.
+    borderWidth: 2,
     borderColor: colors.border,
     borderRadius: radius.input,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
-    fontSize: typography.sizes.body,
+    fontSize: typography.sizes.md,
     color: colors.text,
     fontFamily: typography.families.rounded,
   },
@@ -174,23 +176,22 @@ const styles = StyleSheet.create({
   },
   inputFocused: {
     borderColor: colors.primary,
-    borderWidth: 2,
   },
   inputError: {
     borderColor: colors.error,
   },
   inputDisabled: {
-    opacity: 0.5,
     backgroundColor: colors.surfaceSecondary,
+    borderColor: colors.skeleton,
   },
   multiline: {
     minHeight: 80,
     textAlignVertical: 'top',
   },
   errorText: {
-    fontSize: typography.sizes.caption,
+    ...typography.presets.caption,
     color: colors.error,
+    fontWeight: typography.weights.medium,
     marginTop: spacing.xs,
-    fontFamily: typography.families.rounded,
   },
 });

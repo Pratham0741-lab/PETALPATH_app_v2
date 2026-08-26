@@ -1,8 +1,24 @@
+/**
+ * ChallengeList — the day's challenges, stacked.
+ *
+ * Redesign notes: this used to render its own `ScrollView` with `flex: 1`. Both
+ * screens that use it already scroll, so it was a vertical scroll view nested in
+ * a vertical scroll view with no height to flex against — the list collapsed and
+ * whichever challenges did render could not be scrolled to. It is a plain `View`
+ * now and the parent screen does the scrolling.
+ *
+ * The loading and empty states use `StatePanel` for the same reason: both centre
+ * themselves with `flex: 1`, which needs a minimum height inside scrolling
+ * content.
+ */
+
 import React from 'react';
-import { View, ScrollView, StyleSheet } from 'react-native';
-import { colors, spacing, typography, radius } from '../../../theme';
-import { LoadingSpinner } from '../../../components/common/LoadingSpinner';
-import { EmptyState } from '../../../components/common/EmptyState';
+import { StyleSheet, View } from 'react-native';
+
+import { spacing } from '../../../theme';
+import { StatePanel } from '../../design';
+import { LoadingSpinner } from '../../common/LoadingSpinner';
+import { EmptyState } from '../../common/EmptyState';
 import { ChallengeCard } from './ChallengeCard';
 
 interface ChallengeItem {
@@ -25,26 +41,26 @@ interface Props {
 export const ChallengeList: React.FC<Props> = ({ challenges, onChallengePress, isLoading }) => {
   if (isLoading) {
     return (
-      <View style={styles.center}>
-        <LoadingSpinner />
-      </View>
+      <StatePanel minHeight={140}>
+        <LoadingSpinner label="Loading challenges" />
+      </StatePanel>
     );
   }
 
   if (!challenges || challenges.length === 0) {
     return (
-      <View style={styles.center}>
-        <EmptyState title="No challenges available right now" />
-      </View>
+      <StatePanel>
+        <EmptyState
+          icon="sparkle"
+          title="No challenges right now"
+          message="New challenges arrive every day. Check back soon!"
+        />
+      </StatePanel>
     );
   }
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
-      showsVerticalScrollIndicator={false}
-    >
+    <View>
       {challenges.map((challenge) => (
         <ChallengeCard
           key={challenge.id}
@@ -59,24 +75,14 @@ export const ChallengeList: React.FC<Props> = ({ challenges, onChallengePress, i
           style={styles.item}
         />
       ))}
-    </ScrollView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  content: {
-    padding: spacing.md,
-  },
-  center: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: spacing.lg,
-  },
   item: {
     marginBottom: spacing.md,
   },
 });
+
+export default ChallengeList;

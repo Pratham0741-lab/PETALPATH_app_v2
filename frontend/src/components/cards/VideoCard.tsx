@@ -34,7 +34,7 @@ export const VideoCard: React.FC<VideoCardProps> = ({
           <Image source={{ uri: thumbnailUrl }} style={styles.thumbnail} resizeMode="cover" />
         ) : (
           <View style={styles.placeholderThumbnail}>
-            <Ionicons name="videocam" size={48} color={colors.purple} style={styles.placeholderIcon} />
+            <Ionicons name="videocam" size={48} color={colors.primary} style={styles.placeholderIcon} />
           </View>
         )}
         <View style={styles.playOverlay}>
@@ -81,7 +81,7 @@ const styles = StyleSheet.create({
     height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: colors.purple + '10',
+    backgroundColor: colors.primary + '10',
   },
   placeholderIcon: {
     opacity: 0.6,
@@ -100,7 +100,7 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: colors.purple,
+    backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
     ...shadows.md,

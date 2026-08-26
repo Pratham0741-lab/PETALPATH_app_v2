@@ -1,18 +1,52 @@
-import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, Pressable } from 'react-native';
-import { colors, typography, spacing, radius, shadows } from '../../theme';
-import { Ionicons } from '@expo/vector-icons';
-import { navigationRef } from '../../navigation/navigationRef';
+import React, { useEffect, useState } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+
+import { bottomNavSizes, colors, radius, shadows, spacing, typography } from '../../theme';
+import { AvatarGlyph } from '../design';
+import { PetalIcon, PetalIconName } from '../icons';
+import { navigate, navigationRef } from '../../navigation/navigationRef';
 import { useChildStore } from '../../store/childStore';
 import { enhanceMentor } from '../../constants/mentors';
 import type { RootStackParamList } from '../../types/navigation';
+
+/**
+ * SidebarNavigation (spec §9) — the tablet and desktop form of the bottom bar.
+ *
+ * `RootNavigator` renders this instead of `BottomNavigation` once the device is
+ * a tablet or desktop, so it is live UI and had to move onto the design system
+ * with everything else. It mirrors the bottom bar deliberately: the same six
+ * destinations in the same order, the same `PetalIcon` glyphs, the same pink
+ * active treatment, filled icon plus an indicator bar — rotated from the top
+ * edge of a tab to its leading edge (§30: state is never colour alone).
+ *
+ * It was also broken. The sidebar used to be a dark panel, so its icons and
+ * labels were hardcoded cream — `#FFF8ED` and `#E6DAC4`. `colors.sidebar` is
+ * `#FFFFFF` in the redesigned palette, which left cream text on a white panel:
+ * an invisible navigation rail on every tablet. All six colours now come from
+ * tokens, so the panel and its contents can never drift apart again.
+ *
+ * The tablet rail is icons only at 80px wide, so each tab carries an explicit
+ * `accessibilityLabel` — the visible label is the fallback, not the source.
+ */
+
+type TabConfig = { route: keyof RootStackParamList; icon: PetalIconName; label: string };
+
+const TABS: TabConfig[] = [
+  { route: 'Home', icon: 'home', label: 'Home' },
+  // The stack route is called "Journey"; it is the Explore tab to the child.
+  { route: 'Journey', icon: 'explore', label: 'Explore' },
+  { route: 'Camera', icon: 'camera', label: 'Camera' },
+  { route: 'Mentor', icon: 'mentors', label: 'Mentors' },
+  { route: 'Rewards', icon: 'rewards', label: 'Rewards' },
+  { route: 'Profile', icon: 'profile', label: 'Profile' },
+];
 
 interface SidebarNavigationProps {
   deviceType: 'tablet' | 'desktop';
 }
 
 export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ deviceType }) => {
-  const [activeRoute, setActiveRoute] = useState('Home');
+  const [activeRoute, setActiveRoute] = useState<string>('Home');
 
   useEffect(() => {
     const listener = () => {
@@ -35,83 +69,95 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ deviceType
   const activeChild = useChildStore((state) => state.activeChild);
   const activeMentor = activeChild?.mentor ? enhanceMentor(activeChild.mentor) : null;
 
-  const tabs = [
-    { name: 'Home' as const, label: 'Home', icon: 'home' },
-    { name: 'Journey' as const, label: 'Explore', icon: 'compass' },
-    { name: 'Camera' as const, label: 'Camera', icon: 'camera' },
-    { name: 'Mentor' as const, label: 'Mentors', icon: 'flower' },
-    { name: 'Rewards' as const, label: 'Rewards', icon: 'stats-chart' },
-    { name: 'Profile' as const, label: 'Profile', icon: 'person' },
-  ];
-
   const isDesktop = deviceType === 'desktop';
 
   return (
-    <View style={[styles.container, isDesktop ? styles.desktopWidth : styles.tabletWidth]}>
-      <View style={{ flex: 1 }}>
-        {/* Top Header/Logo Area */}
-        <View style={styles.header}>
-          <Ionicons name="flower-outline" size={32} color="#FFF8ED" />
-          {isDesktop && <Text style={[styles.logoText, { fontFamily: typography.families.rounded }]}>PetalPath</Text>}
+    <View
+      style={[styles.container, isDesktop ? styles.desktopWidth : styles.tabletWidth]}
+      accessibilityRole="tablist"
+    >
+      <View style={styles.top}>
+        {/* Brand mark */}
+        <View style={[styles.header, !isDesktop && styles.headerTablet]}>
+          <AvatarGlyph species="flower" size={36} />
+          {isDesktop ? (
+            <Text style={[typography.presets.cardTitle, styles.logoText]} numberOfLines={1}>
+              PetalPath
+            </Text>
+          ) : null}
         </View>
 
-        {/* Navigation Items */}
         <View style={styles.navItems}>
-          {tabs.map((tab) => {
-            const isFocused = activeRoute === tab.name;
-
-            const onPress = () => {
-              if (navigationRef.isReady()) {
-                navigationRef.navigate(tab.name);
-              }
-            };
+          {TABS.map((tab) => {
+            const isFocused = activeRoute === tab.route;
+            const tint = isFocused ? colors.primary : colors.textSecondary;
 
             return (
               <Pressable
-                key={tab.name}
-                onPress={onPress}
+                key={tab.route}
+                onPress={() => navigate(tab.route)}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: isFocused }}
+                accessibilityLabel={tab.label}
+                testID={`sidebar-tab-${tab.route}`}
                 style={({ pressed }) => [
                   styles.tabItem,
+                  isDesktop ? styles.tabItemDesktop : styles.tabItemTablet,
                   isFocused && styles.tabItemFocused,
-                  !isDesktop && styles.tabItemTablet,
-                  { transform: [{ scale: pressed ? 0.95 : 1.0 }] },
+                  pressed && styles.tabItemPressed,
                 ]}
               >
-                <Ionicons
-                  name={tab.icon as any}
-                  size={24}
-                  color={isFocused ? '#FFF8ED' : '#E6DAC4'}
+                {/* Position, not just colour, marks the active tab. */}
+                <View style={[styles.indicator, isFocused && styles.indicatorActive]} />
+                <PetalIcon
+                  name={tab.icon}
+                  size={bottomNavSizes.iconSize}
+                  color={tint}
+                  filled={isFocused}
+                  strokeWidth={isFocused ? 2 : 1.9}
                 />
-                {isDesktop && (
-                  <Text style={[styles.label, isFocused && styles.labelFocused, { fontFamily: typography.families.rounded }]}>
+                {isDesktop ? (
+                  <Text
+                    numberOfLines={1}
+                    style={[
+                      typography.presets.body,
+                      styles.label,
+                      { color: tint, fontWeight: isFocused ? '900' : '600' },
+                    ]}
+                  >
                     {tab.label}
                   </Text>
-                )}
+                ) : null}
               </Pressable>
             );
           })}
         </View>
       </View>
 
-      {/* Footer Area with Mentor indicator */}
-      {activeMentor && (
+      {/* Who is helping today */}
+      {activeMentor ? (
         <View style={[styles.footer, !isDesktop && styles.footerTablet]}>
           <View
+            accessible
+            accessibilityLabel={`Your mentor, ${activeMentor.name}`}
             style={[
               styles.mentorIndicator,
-              { backgroundColor: '#FFF8ED20' },
-              !isDesktop && styles.mentorIndicatorTablet,
+              isDesktop ? styles.mentorIndicatorDesktop : styles.mentorIndicatorTablet,
             ]}
           >
-            <Ionicons name="paw" size={16} color="#FFF8ED" />
-            {isDesktop && (
-              <Text style={[styles.mentorName, { color: '#FFF8ED', fontFamily: typography.families.rounded }]}>
+            <AvatarGlyph
+              species={activeMentor.species}
+              size={isDesktop ? 30 : 34}
+              ringColor={activeMentor.color}
+            />
+            {isDesktop ? (
+              <Text style={[typography.presets.caption, styles.mentorName]} numberOfLines={1}>
                 {activeMentor.name.split(' ')[0]}
               </Text>
-            )}
+            ) : null}
           </View>
         </View>
-      )}
+      ) : null}
     </View>
   );
 };
@@ -119,88 +165,122 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ deviceType
 const styles = StyleSheet.create({
   container: {
     height: '100%',
-    backgroundColor: colors.sidebar,
-    borderRightWidth: 1.5,
-    borderRightColor: colors.sidebarDark,
+    backgroundColor: colors.surface,
+    borderRightWidth: 1,
+    borderRightColor: colors.border,
     paddingVertical: spacing.xl,
     justifyContent: 'space-between',
     ...shadows.lg,
   },
   desktopWidth: {
     width: 240,
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing.md,
   },
   tabletWidth: {
     width: 80,
     paddingHorizontal: spacing.sm,
     alignItems: 'center',
   },
+  top: {
+    flex: 1,
+    alignSelf: 'stretch',
+  },
+
+  // ---------------------------------------------------------------- brand mark
   header: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: spacing.sm,
     paddingHorizontal: spacing.sm,
     marginBottom: spacing.xxl,
   },
-  logoText: {
-    color: '#FFF8ED',
-    fontSize: typography.sizes.xl,
-    fontWeight: typography.weights.black,
-    marginLeft: spacing.sm,
+  headerTablet: {
+    justifyContent: 'center',
+    paddingHorizontal: 0,
   },
+  logoText: {
+    flex: 1,
+    minWidth: 0,
+    color: colors.primary,
+  },
+
+  // --------------------------------------------------------------------- tabs
   navItems: {
-    gap: spacing.md,
+    gap: spacing.sm,
   },
   tabItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.md,
     borderRadius: radius.md,
-    marginBottom: spacing.sm,
+    // Comfortably past the 44px minimum on both widths (§30).
+    minHeight: 52,
   },
-  tabItemFocused: {
-    backgroundColor: colors.sidebarDark,
+  tabItemDesktop: {
+    paddingVertical: spacing.sm,
+    paddingLeft: spacing.md,
+    paddingRight: spacing.sm,
+    gap: spacing.md,
   },
   tabItemTablet: {
+    width: 56,
     justifyContent: 'center',
-    paddingHorizontal: 0,
-    width: 52,
-    height: 52,
+    alignSelf: 'center',
+  },
+  tabItemFocused: {
+    backgroundColor: colors.primaryLight,
+  },
+  tabItemPressed: {
+    opacity: 0.65,
+  },
+  indicator: {
+    position: 'absolute',
+    left: 0,
+    width: 3,
+    height: 24,
+    borderRadius: radius.pill,
+    backgroundColor: colors.transparent,
+  },
+  indicatorActive: {
+    backgroundColor: colors.primary,
   },
   label: {
-    color: '#E6DAC4',
-    fontSize: typography.sizes.body,
-    fontWeight: typography.weights.bold,
-    marginLeft: spacing.md,
+    flex: 1,
+    minWidth: 0,
   },
-  labelFocused: {
-    color: '#FFF8ED',
-  },
+
+  // ------------------------------------------------------------------- mentor
   footer: {
+    alignSelf: 'stretch',
     paddingHorizontal: spacing.sm,
+    paddingTop: spacing.md,
   },
   footerTablet: {
     alignItems: 'center',
+    paddingHorizontal: 0,
   },
   mentorIndicator: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.border,
     borderRadius: radius.full,
+  },
+  mentorIndicatorDesktop: {
+    gap: spacing.sm,
+    paddingLeft: spacing.xs,
+    paddingRight: spacing.md,
+    paddingVertical: spacing.xs,
   },
   mentorIndicatorTablet: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    borderRadius: radius.full,
-    paddingHorizontal: 0,
-    paddingVertical: 0,
+    padding: spacing.xs,
   },
   mentorName: {
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.bold,
-    marginLeft: spacing.sm,
+    flex: 1,
+    minWidth: 0,
+    color: colors.text,
+    fontWeight: '700',
   },
 });
+
 export default SidebarNavigation;

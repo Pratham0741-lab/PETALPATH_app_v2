@@ -1,12 +1,19 @@
 /**
  * Drop Zone View — PetalPath Drag & Drop Presentation
  * Drop target with visual states (default, hover, correct, incorrect).
+ *
+ * Redesign notes: the five states kept their meanings and their thresholds, but
+ * their colours now come from the palette rather than a stray set of Tailwind
+ * slate/emerald/amber hexes (spec §3). Each state also keeps a distinct border
+ * *style* as well as a colour — solid once matched, dashed while empty — so a
+ * child who cannot separate the greens from the greys can still tell a filled
+ * zone from an open one (§30).
  */
 
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { colors, radius, typography } from '../../../theme';
 import { DropZone as DropZoneModel } from '../types';
-import { AccessibilityService } from '../../../core/accessibility/accessibilityService';
 
 export interface DropZoneProps {
   zone: DropZoneModel;
@@ -15,6 +22,43 @@ export interface DropZoneProps {
   isCorrect?: boolean;
   isIncorrect?: boolean;
   isHighlighted?: boolean;
+}
+
+/**
+ * Devanagari combining marks — matras, virama, anusvara. They stack onto the
+ * preceding consonant instead of advancing the pen, so counting them as
+ * characters makes "का" measure twice as wide as it draws. U+0950 (ॐ) is
+ * excluded deliberately: it is a full glyph.
+ */
+function isCombining(code: number): boolean {
+  return (
+    (code >= 0x0900 && code <= 0x0903) ||
+    (code >= 0x093a && code <= 0x094f) ||
+    (code >= 0x0951 && code <= 0x0957) ||
+    (code >= 0x0962 && code <= 0x0963) ||
+    code === 0x200c ||
+    code === 0x200d
+  );
+}
+
+/**
+ * Largest size at which `text` fits the zone. Mirrors `fitFontSize` in the
+ * backend board builder; the two sit in separate packages with no shared module,
+ * so the constants are repeated rather than imported — `0.62` is the rounded
+ * face's average advance-to-size ratio and `1.2` its line height.
+ *
+ * Generated specs carry a precomputed `visualState.fontSize` and never reach
+ * this. It is here for hand-authored specs and for the boards that predate that
+ * field, which would otherwise still be drawn at a flat 72px.
+ */
+function fitSymbolSize(text: string, width: number, height: number): number {
+  let len = 0;
+  for (const ch of text) {
+    if (!isCombining(ch.codePointAt(0) ?? 0)) len += 1;
+  }
+  const byWidth = (width - 24) / (Math.max(len, 1) * 0.62);
+  const byHeight = (height - 24) / 1.2;
+  return Math.max(18, Math.min(72, Math.round(Math.min(byWidth, byHeight))));
 }
 
 export const DropZoneView: React.FC<DropZoneProps> = ({
@@ -31,26 +75,34 @@ export const DropZoneView: React.FC<DropZoneProps> = ({
     .replace(/\s*Outline/i, '')
     .trim();
 
-  let borderColor = '#94A3B8';
-  let backgroundColor = 'rgba(241, 245, 249, 0.4)';
-  let symbolColor = '#94A3B8';
+  const filled = Boolean(isCorrect || placedDraggableId);
 
-  if (isCorrect || placedDraggableId) {
-    borderColor = '#10B981';
-    backgroundColor = 'rgba(16, 185, 129, 0.15)';
-    symbolColor = '#10B981';
+  /*
+   * An empty target now sits on the board's painted sky rather than on flat
+   * white. `surfaceSecondary` (#FFFDFC) against that sky (#FFFDFC) is the same
+   * colour, so the zone would have dissolved into the background; opaque white
+   * plus a stronger dashed edge keeps it legible as "something goes here".
+   */
+  let borderColor = colors.textSecondary;
+  let backgroundColor = colors.white;
+  let symbolColor = colors.textSecondary;
+
+  if (filled) {
+    borderColor = colors.leafGreen;
+    backgroundColor = colors.greenSoft;
+    symbolColor = colors.leafGreen;
   } else if (isIncorrect) {
-    borderColor = '#EF4444';
-    backgroundColor = 'rgba(239, 68, 68, 0.15)';
-    symbolColor = '#EF4444';
+    borderColor = colors.error;
+    backgroundColor = colors.errorLight;
+    symbolColor = colors.error;
   } else if (isHovered) {
-    borderColor = '#3B82F6';
-    backgroundColor = 'rgba(59, 130, 246, 0.2)';
-    symbolColor = '#3B82F6';
+    borderColor = colors.blue;
+    backgroundColor = colors.blueSoft;
+    symbolColor = colors.blue;
   } else if (isHighlighted) {
-    borderColor = '#F59E0B';
-    backgroundColor = 'rgba(245, 158, 11, 0.2)';
-    symbolColor = '#F59E0B';
+    borderColor = colors.warning;
+    backgroundColor = colors.warningLight;
+    symbolColor = colors.warning;
   }
 
   return (
@@ -65,7 +117,13 @@ export const DropZoneView: React.FC<DropZoneProps> = ({
           height: zone.shape.dimensions.height,
           borderColor,
           backgroundColor,
-          borderRadius: zone.shape.type === 'circle' ? zone.shape.dimensions.width / 2 : 24,
+          /* Solid once something lives here, dashed while it is still an
+             invitation — state without relying on colour (§30). */
+          borderStyle: filled ? 'solid' : 'dashed',
+          borderRadius:
+            zone.shape.type === 'circle'
+              ? zone.shape.dimensions.width / 2
+              : radius.illustrationCard,
         },
       ]}
       accessibilityLabel={`Drop Zone: ${symbol || 'Target'}${placedDraggableId ? ', matched' : ''}`}
@@ -74,8 +132,21 @@ export const DropZoneView: React.FC<DropZoneProps> = ({
         <Text
           style={[
             styles.outlineSymbol,
-            { color: symbolColor, opacity: isCorrect || placedDraggableId ? 1 : 0.65 },
+            {
+              color: symbolColor,
+              opacity: filled ? 1 : 0.65,
+              fontSize:
+                zone.visualState?.fontSize ??
+                fitSymbolSize(symbol, zone.shape.dimensions.width, zone.shape.dimensions.height),
+            },
           ]}
+          /* Two lines, matching `fitWrappedFontSize` in the board builder: a
+             two-word label like "Not Helping" is sized on its longest word and
+             wrapped, which reads at 45px instead of being crushed to 29px to fit
+             on one line. Single words are unaffected. */
+          numberOfLines={2}
+          adjustsFontSizeToFit
+          minimumFontScale={0.6}
         >
           {symbol}
         </Text>
@@ -87,14 +158,17 @@ export const DropZoneView: React.FC<DropZoneProps> = ({
 const styles = StyleSheet.create({
   zone: {
     borderWidth: 3,
-    borderStyle: 'dashed',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 4,
   },
   outlineSymbol: {
-    fontSize: 72,
-    fontWeight: '900',
+    /* No fontSize here on purpose — it is computed per zone at the call site,
+       either from the spec's own `visualState.fontSize` or by measuring. This was
+       a flat 72, which fits "C" and overflows "Not Helping". The family and weight
+       are still the app's rounded face (§6). */
+    fontFamily: typography.families.rounded,
+    fontWeight: typography.weights.black,
     textAlign: 'center',
     includeFontPadding: false,
   },

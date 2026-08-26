@@ -13,6 +13,7 @@ export {
   AssessmentAttemptStatus,
   MasteryState,
   CurriculumState,
+  KnowledgeStateType,
   ReinforcementEventType,
   SessionStatus,
   SessionBlockStatus,

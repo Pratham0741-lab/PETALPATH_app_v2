@@ -1,9 +1,19 @@
 import React from 'react';
-import { StyleSheet, View, Text, ViewStyle } from 'react-native';
-import { Card } from '../ui/Card';
+import { StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
 import { Skeleton } from '../ui/Skeleton';
-import { useTheme } from '../../theme/ThemeContext';
-import { spacing, typography, radius } from '../../theme';
+import { ProgressIndicator } from '../design/ProgressIndicator';
+import { colors, progressSizes, spacing } from '../../theme';
+import { MetricCard } from './MetricCard';
+
+/**
+ * Modules and lessons through the current curriculum.
+ *
+ * Both bars used to be hand-rolled track/fill pairs with their own percentage
+ * text and their own "3/8" caption — the same markup twice in one file, and a
+ * third variant of a progress bar in an app that already had one. They are now
+ * the shared `ProgressIndicator`, which also carries the progressbar role and
+ * value that the hand-rolled ones never announced.
+ */
 
 interface CurriculumProgressCardProps {
   modulesCompleted: number;
@@ -11,8 +21,10 @@ interface CurriculumProgressCardProps {
   lessonsCompleted: number;
   lessonsTotal: number;
   loading?: boolean;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
 }
+
+const percent = (done: number, total: number): number => (total > 0 ? (done / total) * 100 : 0);
 
 export function CurriculumProgressCard({
   modulesCompleted,
@@ -22,97 +34,50 @@ export function CurriculumProgressCard({
   loading = false,
   style,
 }: CurriculumProgressCardProps) {
-  const { theme: { colors: themeColors } } = useTheme();
-
-  if (loading) {
-    return (
-      <Card style={style} accessibilityLabel="Loading curriculum progress">
-        <Skeleton width={150} height={22} style={{ marginBottom: spacing.md }} />
-        <Skeleton width="100%" height={14} style={{ marginBottom: spacing.xs }} />
-        <Skeleton variant="rect" width="100%" height={10} style={{ marginBottom: spacing.lg, borderRadius: radius.xs }} />
-        <Skeleton width="100%" height={14} style={{ marginBottom: spacing.xs }} />
-        <Skeleton variant="rect" width="100%" height={10} style={{ borderRadius: radius.xs }} />
-      </Card>
-    );
-  }
-
-  const modulesPercent = modulesTotal > 0 ? (modulesCompleted / modulesTotal) * 100 : 0;
-  const lessonsPercent = lessonsTotal > 0 ? (lessonsCompleted / lessonsTotal) * 100 : 0;
-
   return (
-    <Card
+    <MetricCard
+      title="Curriculum Progress"
+      icon="book"
+      loading={loading}
       style={style}
-      accessibilityLabel={`Curriculum progress: ${modulesCompleted} of ${modulesTotal} modules, ${lessonsCompleted} of ${lessonsTotal} lessons`}
+      accessibilityLabel={`${modulesCompleted} of ${modulesTotal} modules and ${lessonsCompleted} of ${lessonsTotal} lessons complete.`}
+      skeleton={
+        <View style={styles.skeleton}>
+          <Skeleton width="60%" height={14} />
+          <Skeleton variant="rect" width="100%" height={progressSizes.barHeight} />
+          <Skeleton width="60%" height={14} style={styles.skeletonGap} />
+          <Skeleton variant="rect" width="100%" height={progressSizes.barHeight} />
+        </View>
+      }
     >
-      <Text style={[styles.header, { color: themeColors.text }]}>Curriculum Progress</Text>
-
-      <View style={styles.progressSection}>
-        <View style={styles.progressHeader}>
-          <Text style={[styles.progressLabel, { color: themeColors.textSecondary }]}>Modules</Text>
-          <Text style={[styles.progressPercent, { color: themeColors.text }]}>
-            {Math.round(modulesPercent)}%
-          </Text>
-        </View>
-        <View style={[styles.track, { backgroundColor: themeColors.surfaceSecondary }]}>
-          <View style={[styles.fill, { width: `${modulesPercent}%`, backgroundColor: themeColors.secondary }]} />
-        </View>
-        <Text style={[styles.count, { color: themeColors.textMuted }]}>
-          {modulesCompleted}/{modulesTotal}
-        </Text>
-      </View>
-
-      <View style={styles.progressSection}>
-        <View style={styles.progressHeader}>
-          <Text style={[styles.progressLabel, { color: themeColors.textSecondary }]}>Lessons</Text>
-          <Text style={[styles.progressPercent, { color: themeColors.text }]}>
-            {Math.round(lessonsPercent)}%
-          </Text>
-        </View>
-        <View style={[styles.track, { backgroundColor: themeColors.surfaceSecondary }]}>
-          <View style={[styles.fill, { width: `${lessonsPercent}%`, backgroundColor: themeColors.primary }]} />
-        </View>
-        <Text style={[styles.count, { color: themeColors.textMuted }]}>
-          {lessonsCompleted}/{lessonsTotal}
-        </Text>
-      </View>
-    </Card>
+      <ProgressIndicator
+        value={percent(modulesCompleted, modulesTotal)}
+        label="Modules"
+        countOf={{ current: modulesCompleted, total: modulesTotal }}
+        color={colors.secondary}
+        accessibilityLabel="Modules complete"
+      />
+      <ProgressIndicator
+        value={percent(lessonsCompleted, lessonsTotal)}
+        label="Lessons"
+        countOf={{ current: lessonsCompleted, total: lessonsTotal }}
+        color={colors.primary}
+        style={styles.second}
+        accessibilityLabel="Lessons complete"
+      />
+    </MetricCard>
   );
 }
 
 const styles = StyleSheet.create({
-  header: {
-    fontSize: typography.sizes.cardTitle,
-    fontWeight: typography.weights.bold,
-    marginBottom: spacing.md,
+  skeleton: {
+    gap: spacing.xs,
   },
-  progressSection: {
-    marginBottom: spacing.md,
+  skeletonGap: {
+    marginTop: spacing.md,
   },
-  progressHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: spacing.xs,
-  },
-  progressLabel: {
-    fontSize: typography.sizes.small,
-    fontWeight: typography.weights.medium,
-  },
-  progressPercent: {
-    fontSize: typography.sizes.small,
-    fontWeight: typography.weights.bold,
-  },
-  track: {
-    height: 10,
-    borderRadius: radius.xs,
-    overflow: 'hidden',
-    marginBottom: spacing.xs,
-  },
-  fill: {
-    height: '100%',
-    borderRadius: radius.xs,
-  },
-  count: {
-    fontSize: typography.sizes.caption,
+  second: {
+    marginTop: spacing.lg,
   },
 });
 

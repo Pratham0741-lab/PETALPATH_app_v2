@@ -45,8 +45,8 @@ export const ResumeCard: React.FC<ResumeCardProps> = ({
 const styles = StyleSheet.create({
   card: {
     padding: spacing.lg,
-    backgroundColor: colors.purple + '08', // subtle purple tint
-    borderColor: colors.purple + '30',
+    backgroundColor: colors.primary + '08', // subtle purple tint
+    borderColor: colors.primary + '30',
     borderWidth: 1.5,
   },
   contentRow: {
@@ -59,7 +59,7 @@ const styles = StyleSheet.create({
     marginRight: spacing.md,
   },
   badgeText: {
-    color: colors.purple,
+    color: colors.primary,
     fontSize: typography.sizes.xs,
     fontWeight: typography.weights.bold,
     textTransform: 'uppercase',
@@ -78,7 +78,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
   },
   remainingText: {
-    color: colors.purple,
+    color: colors.primary,
     fontSize: typography.sizes.xs,
     fontWeight: typography.weights.bold,
   },
@@ -86,7 +86,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: colors.purple,
+    backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
     ...shadows.md,

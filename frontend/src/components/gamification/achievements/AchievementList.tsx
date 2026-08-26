@@ -1,8 +1,21 @@
+/**
+ * AchievementList — the child's achievements, stacked.
+ *
+ * Redesign notes: this used to render its own `ScrollView` with `flex: 1` while
+ * `AchievementsScreen` already scrolls, so it was a vertical scroll view nested
+ * inside a vertical scroll view with no height to flex against — the list
+ * collapsed. It is a plain `View` now; the screen scrolls.
+ *
+ * Loading and empty use `StatePanel`, which gives their `flex: 1` centring a
+ * minimum height to work with inside scrolling content.
+ */
+
 import React from 'react';
-import { View, StyleSheet, ScrollView } from 'react-native';
-import { colors, spacing, radius, shadows } from '../../../theme';
-import { LoadingSpinner } from '../../../components/common/LoadingSpinner';
-import { EmptyState } from '../../../components/common/EmptyState';
+import { View } from 'react-native';
+
+import { StatePanel } from '../../design';
+import { LoadingSpinner } from '../../common/LoadingSpinner';
+import { EmptyState } from '../../common/EmptyState';
 import AchievementCard from './AchievementCard';
 
 interface AchievementItem {
@@ -28,22 +41,26 @@ const AchievementList: React.FC<AchievementListProps> = ({
 }) => {
   if (isLoading) {
     return (
-      <View style={styles.center}>
-        <LoadingSpinner />
-      </View>
+      <StatePanel minHeight={140}>
+        <LoadingSpinner label="Loading achievements" />
+      </StatePanel>
     );
   }
 
   if (!achievements || achievements.length === 0) {
-    return <EmptyState message="No achievements available yet" />;
+    return (
+      <StatePanel>
+        <EmptyState
+          icon="trophy"
+          title="No achievements yet"
+          message="Keep learning and they will start unlocking."
+        />
+      </StatePanel>
+    );
   }
 
   return (
-    <ScrollView
-      style={styles.container}
-      contentContainerStyle={styles.content}
-      showsVerticalScrollIndicator={false}
-    >
+    <View>
       {achievements.map((item) => (
         <AchievementCard
           key={item.id}
@@ -53,30 +70,11 @@ const AchievementList: React.FC<AchievementListProps> = ({
           target={item.target}
           completed={item.completed}
           category={item.category}
-          onPress={
-            onAchievementPress
-              ? () => onAchievementPress(item.id)
-              : undefined
-          }
+          onPress={onAchievementPress ? () => onAchievementPress(item.id) : undefined}
         />
       ))}
-    </ScrollView>
+    </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  content: {
-    padding: spacing.md,
-  },
-  center: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: spacing.lg,
-  },
-});
 
 export default AchievementList;

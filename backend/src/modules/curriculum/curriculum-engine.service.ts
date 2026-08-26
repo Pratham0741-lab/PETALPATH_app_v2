@@ -8,6 +8,12 @@ import { skillDependencyRepository } from './repositories/skill-dependency.repos
 import { skillHealthRepository } from '../mastery/repositories/skill-health.repository.js';
 import { NotFoundError } from '../../utils/errors.js';
 import { CurriculumNode } from './curriculum.types.js';
+import {
+  evaluateUnlock,
+  type PrerequisiteEvidence,
+  type UnlockDecision,
+  type UnlockPolicyOptions,
+} from './unlock-policy.js';
 import { ACTIVITY_STARS_CONFIG, GRADE_AGE_GROUP_MAP } from './curriculum.config.js';
 import { normalizeActivityType } from '../../shared/utils/activity-type-normalizer.js';
 
@@ -18,6 +24,20 @@ export interface CurriculumRecommendationDto {
   nextSkillName: string;
   priority: number;
   reason: string;
+}
+
+/**
+ * One child's unlock evidence, read in a single pass.
+ *
+ * `live` is the decaying `SkillHealth` score, `highWater` is the best mastery
+ * ever recorded in `KnowledgeState`, and `curriculumState` is the lazily written
+ * `ChildSkillCurriculum` row. Which of the two scores a gate reads is a config
+ * decision — see `masteryFor`.
+ */
+interface UnlockContext {
+  readonly live: Map<string, { masteryScore: number; lastPracticed: Date }>;
+  readonly highWater: Map<string, number>;
+  readonly curriculumState: Map<string, CurriculumState>;
 }
 
 export class CurriculumEngineService {
@@ -40,35 +60,139 @@ export class CurriculumEngineService {
   }
 
   /**
-   * Calculates the unlock ratio of a skill based on parent mastery.
-   * unlockRatio = sum(parent_mastery_scores * weights) / sum(weights)
+   * Everything the unlock policy needs to know about one child, in three
+   * queries.
+   *
+   * Read once per request rather than once per skill: `getAvailableSkills` and
+   * `generateCurriculum` both walk the entire skill table, and the previous
+   * shape issued a query per skill *and a further query per prerequisite of
+   * that skill* — on the order of 3,600 round trips for a 1,200-skill
+   * curriculum.
    */
-  async calculateUnlockRatio(childId: string, skillId: string): Promise<number> {
-    const prerequisites = await this.getPrerequisites(skillId);
-    if (prerequisites.length === 0) {
-      return 100.0;
-    }
+  private async loadUnlockContext(childId: string): Promise<UnlockContext> {
+    const [healthRows, knowledgeRows, curriculumRows] = await Promise.all([
+      prisma.skillHealth.findMany({
+        where: { childId },
+        select: { skillId: true, masteryScore: true, lastPracticed: true },
+      }),
+      prisma.knowledgeState.findMany({
+        where: { childId },
+        select: { topicId: true, mastery: true },
+      }),
+      prisma.childSkillCurriculum.findMany({
+        where: { childId },
+        select: { skillId: true, state: true },
+      }),
+    ]);
 
-    let weightedScoreSum = 0;
-    let weightSum = 0;
-
-    for (const prereq of prerequisites) {
-      const parentHealth = await skillHealthRepository.findByChildAndSkill(childId, prereq.parentSkillId);
-      const parentScore = parentHealth?.masteryScore ?? 0.0;
-
-      weightedScoreSum += parentScore * prereq.weight;
-      weightSum += prereq.weight;
-    }
-
-    if (weightSum === 0) {
-      return 100.0;
-    }
-
-    return Math.max(0, Math.min(100, weightedScoreSum / weightSum));
+    return {
+      live: new Map(healthRows.map((r) => [r.skillId, r])),
+      highWater: new Map(knowledgeRows.map((r) => [r.topicId, r.mastery])),
+      curriculumState: new Map(curriculumRows.map((r) => [r.skillId, r.state])),
+    };
   }
 
   /**
-   * Fetch all skills that are root skills or have unlockRatio >= 70, and are not completed.
+   * The mastery figure a gate should read for a skill.
+   *
+   * `useHighWaterMark` prefers `KnowledgeState.mastery` — the best the child has
+   * ever demonstrated — over `SkillHealth.masteryScore`, which decays with time.
+   * A lesson must not re-lock overnight because retention faded; decay belongs
+   * to the review queue, not to the gate. The two stores are written by
+   * different code paths and either may be absent, so each falls back to the
+   * other.
+   */
+  private masteryFor(ctx: UnlockContext, skillId: string): number {
+    const highWater = ctx.highWater.get(skillId);
+    const live = ctx.live.get(skillId)?.masteryScore;
+    return engineConfig.unified.unlock.useHighWaterMark
+      ? (highWater ?? live ?? 0)
+      : (live ?? highWater ?? 0);
+  }
+
+  /**
+   * Applies the shared unlock policy to one skill's prerequisites.
+   *
+   * Completion is recorded in the evidence but deliberately not required here.
+   * `ChildSkillCurriculum` is written lazily — by `generateCurriculum`, and by
+   * the mastery engine when a skill is first mastered — so a child with no rows
+   * yet would have every prerequisite counted as unfinished and the whole graph
+   * would close. The lesson gate reads `LessonProgress`, which is always
+   * written, and does require completion.
+   */
+  private evaluateSkillUnlockWith(
+    ctx: UnlockContext,
+    prerequisites: readonly { parentSkillId: string; weight: number }[]
+  ): UnlockDecision {
+    const evidence: PrerequisiteEvidence[] = prerequisites.map((prereq) => ({
+      skillId: prereq.parentSkillId,
+      completed: ctx.curriculumState.get(prereq.parentSkillId) === CurriculumState.COMPLETED,
+      mastery: this.masteryFor(ctx, prereq.parentSkillId),
+      weight: prereq.weight,
+    }));
+
+    return evaluateUnlock(evidence, { requirePrerequisiteCompletion: false });
+  }
+
+  /**
+   * Whether a skill's prerequisites are satisfied, and why.
+   */
+  async evaluateSkillUnlock(childId: string, skillId: string): Promise<UnlockDecision> {
+    const [prerequisites, ctx] = await Promise.all([
+      this.getPrerequisites(skillId),
+      this.loadUnlockContext(childId),
+    ]);
+    return this.evaluateSkillUnlockWith(ctx, prerequisites);
+  }
+
+  /**
+   * The same decision for many skills at once, sharing one read of the child's
+   * evidence.
+   */
+  private async evaluateSkillUnlocks(
+    childId: string,
+    skillIds: readonly string[]
+  ): Promise<{ ctx: UnlockContext; decisions: Map<string, UnlockDecision> }> {
+    const [dependencies, ctx] = await Promise.all([
+      skillIds.length > 0
+        ? prisma.skillDependency.findMany({
+            where: { childSkillId: { in: [...skillIds] } },
+            select: { childSkillId: true, parentSkillId: true, weight: true },
+          })
+        : [],
+      this.loadUnlockContext(childId),
+    ]);
+
+    const byChildSkill = new Map<string, { parentSkillId: string; weight: number }[]>();
+    for (const dep of dependencies) {
+      const list = byChildSkill.get(dep.childSkillId) ?? [];
+      list.push({ parentSkillId: dep.parentSkillId, weight: dep.weight });
+      byChildSkill.set(dep.childSkillId, list);
+    }
+
+    const decisions = new Map<string, UnlockDecision>();
+    for (const skillId of skillIds) {
+      decisions.set(skillId, this.evaluateSkillUnlockWith(ctx, byChildSkill.get(skillId) ?? []));
+    }
+
+    return { ctx, decisions };
+  }
+
+  /**
+   * The weighted prerequisite average for a skill, 0-100.
+   *
+   * Retained for callers that only want the number. The arithmetic itself now
+   * lives in `unlock-policy.ts`, so this and the lesson gate can no longer
+   * disagree about the same prerequisites.
+   */
+  async calculateUnlockRatio(childId: string, skillId: string): Promise<number> {
+    const decision = await this.evaluateSkillUnlock(childId, skillId);
+    return decision.weightedScore;
+  }
+
+  /**
+   * Fetch all skills that are root skills or whose prerequisites are satisfied,
+   * and that are not already finished.
    */
   async getAvailableSkills(childId: string, subjectId?: string) {
     const where: any = {};
@@ -77,30 +201,35 @@ export class CurriculumEngineService {
     }
 
     const allSkills = await skillRepository.findAll(where);
+    const { ctx, decisions } = await this.evaluateSkillUnlocks(
+      childId,
+      allSkills.map((skill) => skill.id)
+    );
 
     const availableSkills: any[] = [];
 
     for (const skill of allSkills) {
-      // 1. Check if completed in curriculum or health
-      const curriculumRecord = await childSkillCurriculumRepository.findByChildAndSkill(childId, skill.id);
-      if (curriculumRecord?.state === CurriculumState.COMPLETED) {
+      // 1. Already finished, by either record
+      if (ctx.curriculumState.get(skill.id) === CurriculumState.COMPLETED) {
         continue;
       }
 
-      const health = await skillHealthRepository.findByChildAndSkill(childId, skill.id);
+      const health = ctx.live.get(skill.id);
       if (health && health.masteryScore >= engineConfig.curriculum.skillCompletionMasteryThreshold) {
         continue;
       }
 
-      // 2. Evaluate root skills and unlock ratio
+      // 2. Root skills have nothing to satisfy; everything else asks the policy,
+      //    so the per-prerequisite floor applies here too and not just to
+      //    lessons.
       if (skill.isRootSkill) {
         availableSkills.push({ skill, unlockRatio: 100.0 });
         continue;
       }
 
-      const unlockRatio = await this.calculateUnlockRatio(childId, skill.id);
-      if (unlockRatio >= engineConfig.curriculum.unlockRatioThreshold) {
-        availableSkills.push({ skill, unlockRatio });
+      const decision = decisions.get(skill.id);
+      if (decision?.unlocked) {
+        availableSkills.push({ skill, unlockRatio: decision.weightedScore });
       }
     }
 
@@ -251,30 +380,41 @@ export class CurriculumEngineService {
    */
   async generateCurriculum(childId: string) {
     const allSkills = await skillRepository.findAll({});
+    const { ctx, decisions } = await this.evaluateSkillUnlocks(
+      childId,
+      allSkills.map((skill) => skill.id)
+    );
+    /*
+     * Subject priorities depend on the child, not on the skill, so they are
+     * computed once. They used to be recomputed inside the loop — two extra
+     * queries for every skill in the curriculum.
+     */
+    const subjectPriorities = await this.prioritizeSubjects(childId);
+    const priorityBySubject = new Map(subjectPriorities.map((sp) => [sp.subject.id, sp.priority]));
+
     const updatedRecords: any[] = [];
 
     for (const skill of allSkills) {
-      const health = await skillHealthRepository.findByChildAndSkill(childId, skill.id);
-      const isMastered = health && health.masteryScore >= engineConfig.curriculum.skillCompletionMasteryThreshold;
+      const health = ctx.live.get(skill.id);
+      const isMastered = health !== undefined
+        && health.masteryScore >= engineConfig.curriculum.skillCompletionMasteryThreshold;
+      const decision = decisions.get(skill.id);
+      const unlockRatio = decision?.weightedScore ?? 100.0;
 
       // Calculate state
       let state: CurriculumState = CurriculumState.LOCKED;
-      const unlockRatio = await this.calculateUnlockRatio(childId, skill.id);
 
       if (isMastered) {
         state = CurriculumState.COMPLETED;
-      } else {
-        const existing = await childSkillCurriculumRepository.findByChildAndSkill(childId, skill.id);
-        if (existing?.state === CurriculumState.ACTIVE) {
-          state = CurriculumState.ACTIVE;
-        } else if (skill.isRootSkill || unlockRatio >= engineConfig.curriculum.unlockRatioThreshold) {
-          state = CurriculumState.AVAILABLE;
-        }
+      } else if (ctx.curriculumState.get(skill.id) === CurriculumState.ACTIVE) {
+        state = CurriculumState.ACTIVE;
+      } else if (skill.isRootSkill || decision?.unlocked) {
+        state = CurriculumState.AVAILABLE;
       }
 
       // Compute simple priority for tracking
-      const subjectPriorities = await this.prioritizeSubjects(childId);
-      const subjectPriority = subjectPriorities.find((sp) => sp.subject.id === skill.subjectId)?.priority ?? engineConfig.curriculum.defaultSubjectPriority;
+      const subjectPriority = priorityBySubject.get(skill.subjectId)
+        ?? engineConfig.curriculum.defaultSubjectPriority;
       const masteryGap = 100.0 - (health?.masteryScore ?? 0.0);
       const gw = engineConfig.curriculum.generateCurriculumWeights;
       const priority = gw.masteryGap * masteryGap + gw.subjectPriority * subjectPriority;
@@ -326,6 +466,88 @@ export class CurriculumEngineService {
   }
 
   /**
+   * The thresholds a single node is judged against.
+   *
+   * A node may declare its own `mastery.required_score`, and it is honoured only
+   * when it is *easier* than the configured threshold. Every node in the shipped
+   * curriculum asks for 80 on every prerequisite, which is what made most of the
+   * curriculum unreachable; taking the minimum keeps a node's own number
+   * meaningful in the one direction that cannot re-break reachability. The floor
+   * never exceeds the threshold, so a node can never be harder to open than its
+   * own average demands.
+   */
+  private unlockOptionsFor(node: CurriculumNode): UnlockPolicyOptions {
+    const cfg = engineConfig.unified.unlock;
+    const declared = node.mastery?.required_score;
+    const weightedThreshold = declared === undefined
+      ? cfg.weightedThreshold
+      : Math.min(declared, cfg.weightedThreshold);
+
+    return {
+      weightedThreshold,
+      perPrerequisiteFloor: Math.min(cfg.perPrerequisiteFloor, weightedThreshold),
+    };
+  }
+
+  /**
+   * Decides whether a lesson is open, and returns the reason with it.
+   *
+   * The reason is the point: "Access denied: lesson is currently locked" told a
+   * parent nothing, and the padlock told a child nothing. Callers that only need
+   * the boolean use `isLessonUnlocked`.
+   */
+  public evaluateLessonUnlock(
+    lessonId: string,
+    gradeLessons: readonly CurriculumNode[],
+    progressList: { lessonId: string; status: string }[],
+    knowledgeStates: { topicId: string; mastery: number }[]
+  ): UnlockDecision {
+    const index = gradeLessons.findIndex((n) => n.id === lessonId);
+    if (index === -1) {
+      return { unlocked: false, reason: 'LESSON_NOT_IN_GRADE', weightedScore: 0, blockingSkillIds: [] };
+    }
+
+    const node = gradeLessons[index];
+
+    // First node in the grade is unlocked by default
+    if (index === 0) {
+      return { unlocked: true, reason: 'FIRST_LESSON', weightedScore: 100, blockingSkillIds: [] };
+    }
+
+    const progressMap = new Map(progressList.map((p) => [p.lessonId, p]));
+    const knowledgeMap = new Map(knowledgeStates.map((k) => [k.topicId, k]));
+
+    /*
+     * `KnowledgeState.mastery` is the high-water mark, so a lesson the child has
+     * already opened cannot close again as retention decays — that is what the
+     * review queue is for.
+     */
+    const evidenceFor = (prereqId: string): PrerequisiteEvidence => ({
+      skillId: prereqId,
+      completed: progressMap.get(prereqId)?.status === 'COMPLETED',
+      mastery: knowledgeMap.get(prereqId)?.mastery ?? 0,
+    });
+
+    const declared = node.prerequisites ?? [];
+    if (declared.length > 0) {
+      return evaluateUnlock(declared.map(evidenceFor), this.unlockOptionsFor(node));
+    }
+
+    /*
+     * No declared prerequisites: the curriculum's own ordering is the
+     * prerequisite. This branch used to check completion alone and ignore
+     * mastery entirely, so the gate was strict or lax for the same child
+     * depending on whether the JSON happened to list a prerequisite. It now runs
+     * the same policy against the previous node.
+     */
+    const previousNode = gradeLessons[index - 1];
+    const decision = evaluateUnlock([evidenceFor(previousNode.id)], this.unlockOptionsFor(node));
+    return decision.unlocked
+      ? { ...decision, reason: 'SEQUENTIAL_PREVIOUS_COMPLETE' }
+      : decision;
+  }
+
+  /**
    * Decides if a lesson is unlocked for a child based on prerequisites, completion state, and mastery.
    */
   public isLessonUnlocked(
@@ -334,44 +556,7 @@ export class CurriculumEngineService {
     progressList: { lessonId: string; status: string }[],
     knowledgeStates: { topicId: string; mastery: number }[]
   ): boolean {
-    const index = gradeLessons.findIndex((n) => n.id === lessonId);
-    if (index === -1) {
-      return false;
-    }
-
-    const node = gradeLessons[index];
-
-    // First node in the grade is unlocked by default
-    if (index === 0) {
-      return true;
-    }
-
-    // Evaluate prerequisites if defined and non-empty
-    if (node.prerequisites && node.prerequisites.length > 0) {
-      const progressMap = new Map(progressList.map((p) => [p.lessonId, p]));
-      const knowledgeMap = new Map(knowledgeStates.map((k) => [k.topicId, k]));
-
-      for (const prereqId of node.prerequisites) {
-        const prereqProgress = progressMap.get(prereqId);
-        const prereqCompleted = prereqProgress?.status === 'COMPLETED';
-        if (!prereqCompleted) {
-          return false;
-        }
-
-        if (node.mastery) {
-          const prereqKnowledge = knowledgeMap.get(prereqId);
-          const prereqMastery = prereqKnowledge?.mastery ?? 0.0;
-          if (prereqMastery < node.mastery.required_score) {
-            return false;
-          }
-        }
-      }
-      return true;
-    }
-
-    // Fallback: previous node in grade curriculum completed
-    const prevNode = gradeLessons[index - 1];
-    return this.isPrerequisiteCompleted(prevNode.id, progressList);
+    return this.evaluateLessonUnlock(lessonId, gradeLessons, progressList, knowledgeStates).unlocked;
   }
 
   /**
@@ -455,7 +640,19 @@ export class CurriculumEngineService {
   }
 
   /**
-   * Evaluates all requirements for lesson completion.
+   * Evaluates all requirements for lesson completion: coverage only.
+   *
+   * The mastery clause that used to live here was a deadlock. A lesson's mastery
+   * is scored *from* the completion event, so there was no mastery until the
+   * lesson completed and no completion until there was mastery; with a fresh
+   * `KnowledgeState` absent entirely, `canCompleteLesson` returned false for
+   * every node that declares a required score — which is all of them.
+   *
+   * Completion now means "the child did the work", and how well they did it is
+   * the mastery score's business: a thin pass completes the lesson and scores
+   * low, which is what keeps it in the review queue instead of blocking the
+   * child in place. The gate on *opening* the next lesson is
+   * `evaluateLessonUnlock`.
    */
   public canCompleteLesson(
     node: CurriculumNode,
@@ -464,10 +661,9 @@ export class CurriculumEngineService {
       listenCompleted: boolean;
       speakCompleted: boolean;
       writeCompleted: boolean;
-    },
-    knowledgeState?: { mastery: number }
+    }
   ): boolean {
-    // 1. Verify all activities defined in node are completed
+    // Verify all activities defined in node are completed
     // Normalize granular types (trace→write, tap→listen, etc.) before checking
     const normalizedTypes = node.activities.map((a) => normalizeActivityType(a.type));
     const hasVideo = normalizedTypes.includes('video');
@@ -479,16 +675,6 @@ export class CurriculumEngineService {
     if (hasListen && !progress.listenCompleted) return false;
     if (hasSpeak && !progress.speakCompleted) return false;
     if (hasWrite && !progress.writeCompleted) return false;
-
-    // 2. Verify mastery requirement is satisfied
-    if (node.mastery) {
-      if (!knowledgeState) {
-        return false;
-      }
-      if (knowledgeState.mastery < node.mastery.required_score) {
-        return false;
-      }
-    }
 
     return true;
   }

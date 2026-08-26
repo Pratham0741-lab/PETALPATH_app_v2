@@ -16,16 +16,23 @@ import Animated, {
   interpolateColor,
 } from 'react-native-reanimated';
 import { colors, typography } from '../../theme';
+import { summarizeSeries, useChartWidth } from './useChartWidth';
 
 const AnimatedRect = Animated.createAnimatedComponent(Rect);
+/* Hoisted: created inside the component body this is a *new component type*
+   every render, which throws away and rebuilds the whole bar group each time. */
+const AnimatedG = Animated.createAnimatedComponent(G);
 
 interface BarChartProps {
   data: Array<{ label: string; value: number; color?: string }>;
+  /** Omit to fill the parent — see `useChartWidth`. */
   width?: number;
   height?: number;
   animated?: boolean;
   loading?: boolean;
   showValues?: boolean;
+  /** Overrides the spoken series summary, e.g. to name the unit. */
+  accessibilityLabel?: string;
 }
 
 const MARGIN = { top: 20, right: 10, bottom: 30, left: 40 };
@@ -59,12 +66,17 @@ const BarSkeleton: React.FC<{ w: number; h: number }> = ({ w, h }) => {
 
 export const BarChart: React.FC<BarChartProps> = ({
   data,
-  width = 300,
+  width: widthProp,
   height = 200,
   animated = false,
   loading = false,
   showValues = false,
+  accessibilityLabel,
 }) => {
+  const { width, onLayout, ready } = useChartWidth(widthProp);
+  /* No explicit width → fill the parent. `overflow: hidden` on the container
+     keeps a stray label from spilling while the first measurement lands. */
+  const box = { width: widthProp ?? ('100%' as const), height };
   const chartW = width - MARGIN.left - MARGIN.right;
   const chartH = height - MARGIN.top - MARGIN.bottom;
   const values = data.map(d => d.value);
@@ -102,20 +114,31 @@ export const BarChart: React.FC<BarChartProps> = ({
 
   if (loading) {
     return (
-      <View style={[styles.container, { width, height }]} accessibilityLabel="Loading chart">
-        <BarSkeleton w={width} h={height} />
+      <View style={[styles.container, box]} onLayout={onLayout} accessibilityLabel="Loading chart">
+        {ready ? <BarSkeleton w={width} h={height} /> : null}
       </View>
     );
   }
 
   if (data.length === 0) {
-    return <View style={[styles.container, { width, height }]} accessibilityLabel="No chart data" />;
+    return (
+      <View style={[styles.container, box]} onLayout={onLayout} accessibilityLabel="No chart data" />
+    );
   }
 
-  const AnimatedG = Animated.createAnimatedComponent(G);
+  if (!ready) {
+    /* The first layout pass has not landed yet. An SVG drawn at width 0 is a
+       flash of nothing followed by a jump, so hold the height and wait a frame. */
+    return <View style={[styles.container, box]} onLayout={onLayout} />;
+  }
 
   return (
-    <View style={[styles.container, { width, height }]} accessibilityLabel="Bar chart">
+    <View
+      style={[styles.container, box]}
+      onLayout={onLayout}
+      accessible
+      accessibilityLabel={accessibilityLabel ?? summarizeSeries('Bar chart', data)}
+    >
       <Svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
         {yTicks.map((t, i) => {
           const y = yPos(t);

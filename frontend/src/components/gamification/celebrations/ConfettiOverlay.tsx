@@ -17,7 +17,7 @@ interface Props {
 }
 
 const CONFETTI_COLORS = [
-  colors.purple,
+  colors.primary,
   colors.yellow,
   colors.blue,
   colors.success,

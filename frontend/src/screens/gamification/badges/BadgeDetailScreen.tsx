@@ -1,16 +1,34 @@
+/**
+ * Badge detail — pushed from the badge gallery grid.
+ *
+ * Redesign notes (§7, §35): the unused `Ionicons`, `radius` and `shadows`
+ * imports are gone, the shell keeps `ScreenContainer` + `TopBar`, and the body is
+ * a single `BadgeDetailCard`.
+ *
+ * The screen used to render a `BadgeCard` grid tile and then, for an unearned
+ * badge, a second `LockedBadge` beneath it — the same badge twice at two sizes,
+ * with two different medals. One card covers both states now.
+ *
+ * `showBack` was added to the top bar: this screen is only ever reached by a
+ * push, so the sole way out was the hardware button or an edge swipe, neither of
+ * which a five-year-old reaches for. The states are wrapped in `StatePanel`
+ * because `LoadingSpinner`, `ErrorState` and `EmptyState` all centre themselves
+ * with `flex: 1`, which resolves to zero height between a top bar and nothing.
+ */
+
 import React from 'react';
-import { StyleSheet, ScrollView, View, Text, Pressable } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { colors, spacing, typography, radius, shadows } from '../../../theme';
+import { ScrollView, StyleSheet, Text } from 'react-native';
+import { useRoute, RouteProp } from '@react-navigation/native';
+
+import { colors, spacing, typography } from '../../../theme';
+import { StatePanel } from '../../../components/design';
 import { ScreenContainer } from '../../../components/common/ScreenContainer';
 import { TopBar } from '../../../components/navigation/TopBar';
 import { LoadingSpinner } from '../../../components/common/LoadingSpinner';
 import { ErrorState } from '../../../components/common/ErrorState';
 import { EmptyState } from '../../../components/common/EmptyState';
-import { BadgeCard } from '../../../components/gamification/badges/BadgeCard';
-import { LockedBadge } from '../../../components/gamification/badges/LockedBadge';
+import { BadgeDetailCard } from '../../../components/gamification/badges/BadgeDetailCard';
 import { useBadges } from '../../../hooks/useRewards';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 
 interface Badge {
   id: string;
@@ -26,7 +44,6 @@ interface Badge {
 type BadgeDetailRouteProp = RouteProp<{ BadgeDetail: { badgeId: string } }, 'BadgeDetail'>;
 
 export const BadgeDetailScreen: React.FC = () => {
-  const navigation = useNavigation<any>();
   const route = useRoute<BadgeDetailRouteProp>();
   const { badgeId } = route.params;
   const { data, isLoading, isError, error, refetch } = useBadges();
@@ -36,40 +53,41 @@ export const BadgeDetailScreen: React.FC = () => {
 
   return (
     <ScreenContainer>
-      <TopBar title={badge?.name ?? 'Badge'} />
+      <TopBar title={badge?.name ?? 'Badge'} showBack />
       {isLoading ? (
-        <LoadingSpinner />
+        <StatePanel bare minHeight={280}>
+          <LoadingSpinner label="Loading badge" />
+        </StatePanel>
       ) : isError ? (
-        <ErrorState
-          message={error instanceof Error ? error.message : 'Failed to load badge'}
-          onRetry={refetch}
-        />
+        <StatePanel bare minHeight={280}>
+          <ErrorState
+            message={error instanceof Error ? error.message : 'Failed to load badge'}
+            onRetry={refetch}
+          />
+        </StatePanel>
       ) : !badge ? (
-        <EmptyState message="Badge not found" />
+        <StatePanel bare minHeight={280}>
+          <EmptyState
+            icon="medal"
+            title="Badge not found"
+            message="This badge is no longer available."
+          />
+        </StatePanel>
       ) : (
-        <ScrollView contentContainerStyle={styles.content}>
-          <View style={styles.cardWrap}>
-            <BadgeCard
-              name={badge.name}
-              description={badge.description}
-              imagePath={badge.imagePath}
-              earned={badge.earned}
-              earnedAt={badge.earnedAt}
-            />
-          </View>
-          {badge.earned ? (
-            <Text style={styles.earnedText}>
-              Earned on {new Date(badge.earnedAt ?? '').toLocaleDateString()}
-            </Text>
-          ) : (
-            <View style={styles.lockedWrap}>
-              <LockedBadge
-                name={badge.name}
-                description={badge.description}
-                imagePath={badge.imagePath}
-              />
-              <Text style={styles.hint}>Keep learning to unlock this badge!</Text>
-            </View>
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.content}
+          showsVerticalScrollIndicator={false}
+        >
+          <BadgeDetailCard
+            name={badge.name}
+            description={badge.description}
+            imagePath={badge.imagePath}
+            earned={badge.earned}
+            earnedAt={badge.earnedAt}
+          />
+          {badge.earned ? null : (
+            <Text style={styles.hint}>Keep learning to unlock this badge!</Text>
           )}
         </ScrollView>
       )}
@@ -78,31 +96,20 @@ export const BadgeDetailScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
+  scroll: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
   content: {
-    padding: spacing.md,
-    alignItems: 'center',
-  },
-  cardWrap: {
-    width: '100%',
-    alignItems: 'center',
-    marginTop: spacing.md,
-  },
-  earnedText: {
-    fontFamily: typography.families.rounded,
-    fontSize: typography.sizes.md,
-    fontWeight: typography.weights.medium,
-    color: colors.success,
-    marginTop: spacing.md,
-  },
-  lockedWrap: {
-    alignItems: 'center',
-    marginTop: spacing.md,
+    padding: spacing.lg,
+    paddingBottom: spacing.xxl,
   },
   hint: {
-    fontFamily: typography.families.rounded,
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.regular,
+    ...typography.presets.body,
     color: colors.textSecondary,
-    marginTop: spacing.sm,
+    textAlign: 'center',
+    marginTop: spacing.lg,
   },
 });
+
+export default BadgeDetailScreen;

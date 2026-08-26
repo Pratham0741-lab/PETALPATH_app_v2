@@ -33,7 +33,7 @@ export const LessonCard: React.FC<LessonCardProps> = ({
       case 'completed':
         return { backgroundColor: colors.green + '20', color: colors.green };
       case 'in_progress':
-        return { backgroundColor: colors.purple + '20', color: colors.purple };
+        return { backgroundColor: colors.primary + '20', color: colors.primary };
       case 'locked':
         return { backgroundColor: colors.background, color: colors.textMuted };
     }
@@ -58,7 +58,7 @@ export const LessonCard: React.FC<LessonCardProps> = ({
         </View>
         <View style={[styles.statusBadge, { backgroundColor: badge.backgroundColor }]}>
           {status === 'completed' && <Ionicons name="checkmark-circle" size={16} color={colors.green} />}
-          {status === 'in_progress' && <Ionicons name="play" size={16} color={colors.purple} />}
+          {status === 'in_progress' && <Ionicons name="play" size={16} color={colors.primary} />}
           {status === 'locked' && <Ionicons name="lock-closed" size={16} color={colors.textMuted} />}
           <Text style={[styles.badgeText, { color: badge.color }]}>
             {status === 'completed' && 'Done'}
@@ -70,7 +70,7 @@ export const LessonCard: React.FC<LessonCardProps> = ({
 
       <View style={styles.footer}>
         <View style={styles.progressArea}>
-          <ProgressBar progress={progress} height={8} style={styles.progressBar} color={status === 'completed' ? colors.green : colors.purple} />
+          <ProgressBar progress={progress} height={8} style={styles.progressBar} color={status === 'completed' ? colors.green : colors.primary} />
         </View>
         <View style={styles.starValueContainer}>
           <Ionicons name="star" size={14} color={status === 'locked' ? colors.textMuted : colors.yellow} style={styles.starIcon} />
@@ -88,7 +88,7 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
   },
   inProgressCard: {
-    borderColor: colors.purple,
+    borderColor: colors.primary,
     borderWidth: 2,
   },
   lockedCard: {

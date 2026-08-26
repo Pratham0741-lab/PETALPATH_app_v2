@@ -83,7 +83,7 @@ export const NotificationPermissionScreen: React.FC = () => {
           {BENEFITS.map((benefit, index) => (
             <View key={index} style={styles.benefitRow}>
               <View style={styles.benefitIconWrapper}>
-                <Ionicons name={benefit.icon} size={24} color={colors.purple} />
+                <Ionicons name={benefit.icon} size={24} color={colors.primary} />
               </View>
               <View style={styles.benefitContent}>
                 <Text style={styles.benefitTitle}>{benefit.title}</Text>
@@ -137,7 +137,7 @@ const styles = StyleSheet.create({
     width: 96,
     height: 96,
     borderRadius: radius.full,
-    backgroundColor: colors.purple,
+    backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
     ...shadows.md,

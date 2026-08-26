@@ -474,7 +474,7 @@ export const QuizScreen: React.FC = () => {
               </View>
               {reward.newBadges?.length > 0 && (
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md, marginBottom: spacing.sm }}>
-                  {reward.newBadges.map(b => <View key={b.id} style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}><Text style={{ fontSize: 20 }}>{b.icon}</Text><Text style={{ color: theme.colors.text, fontFamily: typography.families.rounded, fontSize: typography.sizes.sm }}>{b.name}</Text></View>)}
+                  {reward.newBadges.map(b => <View key={b.id} style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs, flexShrink: 1 }}><Text style={{ fontSize: 20 }}>{b.icon}</Text><Text numberOfLines={1} style={{ color: theme.colors.text, fontFamily: typography.families.rounded, fontSize: typography.sizes.sm, flexShrink: 1 }}>{b.name}</Text></View>)}
                 </View>
               )}
               {reward.levelUp && <Text style={{ color: theme.colors.primary, fontWeight: typography.weights.bold, fontSize: typography.sizes.md, textAlign: 'center', marginTop: spacing.sm, fontFamily: typography.families.rounded }}>Level Up! You are now Level {reward.newLevel}</Text>}

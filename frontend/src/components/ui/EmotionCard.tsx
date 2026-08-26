@@ -40,7 +40,7 @@ export const EmotionCard: React.FC<EmotionCardProps> = ({
           width: size,
           height: size + 20,
           backgroundColor: color,
-          borderColor: selected ? colors.purple : colors.border,
+          borderColor: selected ? colors.primary : colors.border,
           borderWidth: selected ? 3 : 1.5,
         },
         { transform: [{ scale: pressed ? 0.95 : 1 }] },

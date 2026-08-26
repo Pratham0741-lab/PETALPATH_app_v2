@@ -1,19 +1,53 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { StyleSheet, View, Text, ScrollView, RefreshControl } from 'react-native';
+import { StyleSheet, View, Text, RefreshControl } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import { Ionicons } from '@expo/vector-icons';
 
-import { ScreenContainer } from '../../components/common/ScreenContainer';
-import { AppCard } from '../../components/cards/AppCard';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { EmptyState } from '../../components/common/EmptyState';
 import { ErrorState } from '../../components/common/ErrorState';
-import { SearchBar, Chip, Badge } from '../../components/ui';
+import { SearchBar } from '../../components/ui';
+import {
+  AppShell,
+  Card,
+  IconWell,
+  PageHeader,
+  PetalIcon,
+  SegmentedTabs,
+} from '../../components/design';
+import type { SegmentedTabItem } from '../../components/design';
 import { useStories } from '../../hooks/useStories';
 import { toUserMessage } from '../../api/errors';
-import { colors, spacing, typography, radius } from '../../theme';
+import { cardSizes, colors, spacing, typography } from '../../theme';
+
+/**
+ * Story Library (spec §35) — search, filter by category, pick something to read.
+ *
+ * The query, the focus refetch and the client-side title/description filter are
+ * unchanged. The chrome moves onto the design system: `PageHeader` instead of a
+ * hand-rolled icon-and-title block, `SegmentedTabs` instead of `Chip`s in a
+ * nested horizontal `ScrollView`, `Card` rows with an `IconWell` instead of
+ * `AppCard` with an Ionicons cover, and the empty state's 📚 becomes the `book`
+ * glyph (§7).
+ *
+ * Two fixes in passing: the category filter printed "Non_fiction" — the label
+ * only lower-cased the tail and left the underscore — and each row's three meta
+ * fragments were separate spoken items, so the row announced "Cloudy Day", "5",
+ * "min", "Fiction", "Lv", "2". The card is now one button that says the whole
+ * thing, with a chevron because it really does open something (§30, §33).
+ */
 
 const CATEGORIES = ['All', 'FICTION', 'NON_FICTION', 'POEM', 'FABLE'] as const;
+
+/** FICTION → "Fiction", NON_FICTION → "Non fiction". */
+const humanize = (value: string) => {
+  const s = value.replace(/_/g, ' ').toLowerCase();
+  return s.charAt(0).toUpperCase() + s.slice(1);
+};
+
+const CATEGORY_TABS: SegmentedTabItem[] = CATEGORIES.map((cat) => ({
+  key: cat,
+  label: cat === 'All' ? 'All' : humanize(cat),
+}));
 
 export const StoriesScreen: React.FC = () => {
   const navigation = useNavigation<any>();
@@ -49,19 +83,27 @@ export const StoriesScreen: React.FC = () => {
     );
   }, [stories, search]);
 
+  const header = (
+    <PageHeader
+      title="Story Library"
+      subtitle="Discover and read magical stories"
+      centered={false}
+    />
+  );
+
   if (isLoading) {
     return (
-      <ScreenContainer>
+      <AppShell scroll={false} header={header}>
         <View style={styles.center}>
-          <LoadingSpinner label="Loading stories..." />
+          <LoadingSpinner label="Loading stories…" />
         </View>
-      </ScreenContainer>
+      </AppShell>
     );
   }
 
   if (isError) {
     return (
-      <ScreenContainer>
+      <AppShell scroll={false} header={header}>
         <View style={styles.center}>
           <ErrorState
             title="Couldn't load stories"
@@ -69,102 +111,108 @@ export const StoriesScreen: React.FC = () => {
             onRetry={onRefresh}
           />
         </View>
-      </ScreenContainer>
+      </AppShell>
     );
   }
 
   return (
-    <ScreenContainer>
-      <ScrollView
-        contentContainerStyle={styles.scrollContainer}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={isFetching} onRefresh={onRefresh} tintColor={colors.purple} />
-        }
-      >
-        <View style={styles.header}>
-          <View style={styles.headerIconWrap}>
-            <Ionicons name="book" size={26} color={colors.purple} />
-          </View>
-          <Text style={styles.headerTitle}>Story Library</Text>
-          <Text style={styles.headerSubtitle}>Discover and read magical stories.</Text>
-        </View>
+    <AppShell
+      petals="light"
+      header={header}
+      refreshControl={
+        <RefreshControl refreshing={isFetching} onRefresh={onRefresh} tintColor={colors.primary} />
+      }
+    >
+      <SearchBar
+        value={search}
+        onChangeText={setSearch}
+        placeholder="Search stories"
+        style={styles.searchBar}
+      />
 
-        <SearchBar
-          value={search}
-          onChangeText={setSearch}
-          placeholder="Search stories..."
-          style={styles.searchBar}
-        />
+      <SegmentedTabs
+        items={CATEGORY_TABS}
+        selected={activeCategory}
+        onSelect={setActiveCategory}
+        layout="scroll"
+        accessibilityLabel="Story categories"
+        style={styles.tabs}
+      />
 
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.chipsRow}
-        >
-          {CATEGORIES.map((cat) => (
-            <Chip
-              key={cat}
-              label={cat === 'All' ? 'All' : cat.charAt(0) + cat.slice(1).toLowerCase()}
-              active={activeCategory === cat}
-              onPress={() => setActiveCategory(cat)}
-              style={styles.chip}
-            />
-          ))}
-        </ScrollView>
-
-        {filteredStories.length === 0 ? (
+      {filteredStories.length === 0 ? (
+        <StatePanel>
           <EmptyState
-            icon="📚"
+            icon="book"
             title="No stories found"
             message={search ? 'Try a different search term.' : 'No stories available right now.'}
           />
-        ) : (
-          filteredStories.map((story: any) => (
-            <AppCard
-              key={story.id}
-              style={styles.storyCard}
-              onPress={() => navigation.navigate('StoryDetail', { storyId: story.id })}
-            >
-              <View style={styles.cardRow}>
-                <View style={styles.coverPlaceholder}>
-                  <Ionicons name="book-outline" size={32} color={colors.purple} />
-                </View>
-                <View style={styles.cardContent}>
-                  <View style={styles.cardTitleRow}>
-                    <Text style={styles.cardTitle} numberOfLines={1}>{story.title}</Text>
-                  </View>
-                  {story.description ? (
-                    <Text style={styles.cardDescription} numberOfLines={2}>{story.description}</Text>
-                  ) : null}
-                  <View style={styles.cardMeta}>
-                    <View style={styles.metaItem}>
-                      <Ionicons name="time-outline" size={14} color={colors.textMuted} />
-                      <Text style={styles.metaText}>{story.estimatedDuration ?? 5} min</Text>
-                    </View>
-                    {story.category ? (
-                      <Badge
-                        label={story.category.charAt(0) + story.category.slice(1).toLowerCase()}
-                        color={colors.blue}
-                        style={styles.categoryBadge}
-                      />
-                    ) : null}
-                    {story.readingLevel ? (
-                      <View style={styles.metaItem}>
-                        <Ionicons name="trending-up" size={14} color={colors.textMuted} />
-                        <Text style={styles.metaText}>Lv {story.readingLevel}</Text>
-                      </View>
-                    ) : null}
-                  </View>
-                </View>
-              </View>
-            </AppCard>
-          ))
-        )}
-      </ScrollView>
-    </ScreenContainer>
+        </StatePanel>
+      ) : (
+        filteredStories.map((story: any) => (
+          <StoryRow
+            key={story.id}
+            story={story}
+            onPress={() => navigation.navigate('StoryDetail', { storyId: story.id })}
+          />
+        ))
+      )}
+    </AppShell>
   );
 };
+
+/** One story in the library. The whole card is the button. */
+const StoryRow: React.FC<{ story: any; onPress: () => void }> = ({ story, onPress }) => {
+  const minutes = story.estimatedDuration ?? 5;
+  const meta = [
+    story.category ? humanize(story.category) : null,
+    `${minutes} min`,
+    story.readingLevel ? `Level ${story.readingLevel}` : null,
+  ].filter(Boolean) as string[];
+
+  return (
+    <Card
+      variant="raised"
+      padding="normal"
+      onPress={onPress}
+      style={styles.storyCard}
+      accessibilityLabel={`${story.title}. ${meta.join(', ')}`}
+      accessibilityHint="Opens this story"
+    >
+      <View style={styles.cardRow}>
+        <IconWell
+          icon="book"
+          color={colors.primary}
+          soft={colors.primaryLight}
+          size={cardSizes.iconWell}
+        />
+        <View style={styles.cardContent}>
+          <Text style={[typography.presets.cardTitle, styles.cardTitle]} numberOfLines={1}>
+            {story.title}
+          </Text>
+          {story.description ? (
+            <Text style={[typography.presets.caption, styles.cardDescription]} numberOfLines={2}>
+              {story.description}
+            </Text>
+          ) : null}
+          <Text style={[typography.presets.caption, styles.cardMeta]} numberOfLines={1}>
+            {meta.join(' · ')}
+          </Text>
+        </View>
+        <PetalIcon name="forward" size={20} color={colors.textSecondary} />
+      </View>
+    </Card>
+  );
+};
+
+/**
+ * `EmptyState` centres itself with `flex: 1`, which collapses inside a scroll
+ * view's auto-height content — the minimum height gives it room.
+ */
+const StatePanel: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <Card variant="flat" padding="none">
+    <View style={styles.panel}>{children}</View>
+  </Card>
+);
 
 const styles = StyleSheet.create({
   center: {
@@ -173,98 +221,40 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: spacing.xl,
   },
-  scrollContainer: {
-    padding: spacing.lg,
-    paddingBottom: spacing.xxl,
-  },
-  header: {
-    marginBottom: spacing.lg,
-    alignItems: 'flex-start',
-  },
-  headerIconWrap: {
-    width: 48,
-    height: 48,
-    borderRadius: radius.full,
-    backgroundColor: colors.background,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: spacing.sm,
-  },
-  headerTitle: {
-    fontSize: typography.sizes.xl,
-    fontWeight: typography.weights.bold,
-    color: colors.text,
-  },
-  headerSubtitle: {
-    fontSize: typography.sizes.sm,
-    color: colors.textMuted,
-    marginTop: spacing.xs,
+  panel: {
+    minHeight: 240,
+    paddingVertical: spacing.md,
   },
   searchBar: {
     marginBottom: spacing.md,
   },
-  chipsRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
+  tabs: {
     marginBottom: spacing.lg,
   },
-  chip: {
-    marginRight: spacing.xs,
-  },
+
   storyCard: {
-    marginBottom: spacing.md,
+    marginBottom: cardSizes.gap,
   },
   cardRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-  },
-  coverPlaceholder: {
-    width: 64,
-    height: 64,
-    borderRadius: radius.md,
-    backgroundColor: `${colors.purple}15`,
-    justifyContent: 'center',
     alignItems: 'center',
-    marginRight: spacing.md,
+    gap: spacing.md,
   },
   cardContent: {
     flex: 1,
-  },
-  cardTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: spacing.xs,
+    minWidth: 0,
+    gap: 2,
   },
   cardTitle: {
-    fontSize: typography.sizes.md,
-    fontWeight: typography.weights.bold,
     color: colors.text,
-    flex: 1,
   },
   cardDescription: {
-    fontSize: typography.sizes.sm,
-    color: colors.textMuted,
-    lineHeight: 20,
-    marginBottom: spacing.sm,
+    color: colors.textSecondary,
+    lineHeight: 18,
   },
   cardMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-  },
-  metaItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  metaText: {
-    fontSize: typography.sizes.xs,
     color: colors.textMuted,
-  },
-  categoryBadge: {
-    paddingVertical: 2,
-    paddingHorizontal: spacing.sm,
+    marginTop: 2,
   },
 });
 

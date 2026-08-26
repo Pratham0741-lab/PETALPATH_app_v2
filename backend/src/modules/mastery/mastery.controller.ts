@@ -3,6 +3,7 @@ import { AuthenticatedRequest } from '../../middleware/auth.middleware.js';
 import { masteryEngineService } from './mastery.service.js';
 import { updateMasterySchema } from './mastery.validator.js';
 import { skillHealthRepository } from './repositories/skill-health.repository.js';
+import { toSkillMasteryView, toSkillMasteryViews } from './mastery.view.js';
 import { ValidationError, UnauthorizedError, NotFoundError } from '../../utils/errors.js';
 import { prisma } from '../../config/database.js';
 import { z } from 'zod';
@@ -61,7 +62,7 @@ export class MasteryController {
 
       return res.status(200).json({
         success: true,
-        data: health,
+        data: health ? toSkillMasteryView(health) : null,
       });
     } catch (error) {
       next(error);
@@ -86,9 +87,16 @@ export class MasteryController {
 
       const skills = await skillHealthRepository.findByChild(parsed.data.childId);
 
+      /*
+       * Projected, not raw. The rows are ordered by stored score in the
+       * repository; `toSkillMasteryViews` re-orders by the engine's own priority
+       * on today's decayed scores, which is a different — and more useful —
+       * order: a skill recorded at 86 a month ago outranks one recorded at 72
+       * yesterday only until the decay is applied.
+       */
       return res.status(200).json({
         success: true,
-        data: skills,
+        data: toSkillMasteryViews(skills),
       });
     } catch (error) {
       next(error);
@@ -106,7 +114,7 @@ export class MasteryController {
 
       return res.status(200).json({
         success: true,
-        data: weakSkills,
+        data: toSkillMasteryViews(weakSkills),
       });
     } catch (error) {
       next(error);

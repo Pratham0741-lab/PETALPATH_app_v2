@@ -120,7 +120,9 @@ export const RewardOverlay: React.FC<RewardOverlayProps> = ({ visible, reward, o
                   {reward.newBadges.map((badge) => (
                     <View key={badge.id} style={styles.badgeItem}>
                       <Ionicons name="trophy" size={28} color={colors.yellow} />
-                      <Text style={styles.badgeName}>{badge.name}</Text>
+                      <Text style={styles.badgeName} numberOfLines={2}>
+                        {badge.name}
+                      </Text>
                     </View>
                   ))}
                 </View>
@@ -254,11 +256,17 @@ const styles = StyleSheet.create({
   badgeItem: {
     alignItems: 'center',
     gap: spacing.xs,
+    /* Badge names run long ("Curious Explorer"). The row wraps, so capping each
+       item lets a long name break onto a second line instead of stretching the
+       item past the overlay's edge. */
+    maxWidth: 104,
   },
   badgeName: {
     fontSize: typography.sizes.caption,
     color: colors.text,
     fontFamily: typography.families.rounded,
+    textAlign: 'center',
+    flexShrink: 1,
   },
   levelUpSection: {
     flexDirection: 'row',

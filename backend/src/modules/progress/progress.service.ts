@@ -8,7 +8,14 @@ import { curriculumService, curriculumEngineService } from '../curriculum/index.
 import { masteryEngineService } from '../mastery-engine/mastery-engine.service.js';
 import { Prisma } from '@prisma/client';
 import { NotFoundError } from '../../utils/errors.js';
+import { logger } from '../../utils/logger.js';
 import { normalizeActivityType } from '../../shared/utils/activity-type-normalizer.js';
+import {
+  computeLessonEvidence,
+  expectedModalitiesOf,
+  gatherModalitySignals,
+} from './lesson-evidence.js';
+import { projectMasteryToKnowledgeState } from './knowledge-state.writer.js';
 
 export class ProgressService {
   async getAllProgress() {
@@ -109,14 +116,16 @@ export class ProgressService {
         writeCompleted: updateData.writeCompleted ?? progress.writeCompleted,
       };
 
-      const knowledgeState = await client.knowledgeState.findFirst({
-        where: { childId, topicId: lessonId },
-      });
-
+      /*
+       * Completion is coverage only. It used to also require
+       * `KnowledgeState.mastery >= node.mastery.required_score`, which no child
+       * could satisfy: the mastery is scored *from* this completion, so the
+       * lesson could never finish and therefore never be scored. A thin pass now
+       * completes and scores low, which is what puts it in the review queue.
+       */
       const isEligibleForCompletion = curriculumEngineService.canCompleteLesson(
         lessonNode,
-        mergedProgress,
-        knowledgeState || undefined
+        mergedProgress
       );
 
       let becameCompleted = false;
@@ -137,25 +146,101 @@ export class ProgressService {
 
       await starService.updateTotalStars(childId, client);
 
-      // Trigger adaptive mastery evaluation for the corresponding skill
-      try {
-        const skillExists = await client.skill.findUnique({ where: { id: lessonId } });
-        if (skillExists) {
-          const accuracy = Math.min(100, Math.max(0, stars > 0 ? (stars / 3) * 100 : 0));
-          await masteryEngineService.evaluateMastery({
+      /*
+       * Score the skill once the lesson's whole activity set has been satisfied.
+       *
+       * This used to fire on *every* activity completion, with six of its eight
+       * inputs hardcoded (`responseTime: 15`, `attempts: 1`, `helpRequests: 0`,
+       * `sessionDuration: 120`, `retries: 3 - stars`, and `engagementScore` set
+       * to the accuracy it was already passing). Two problems: three of the five
+       * scoring dimensions could never move, and writing a `SkillHistory` row per
+       * activity meant the five-row consistency window filled up with rows from a
+       * single lesson — so "consistency" measured variation *within* one sitting
+       * rather than across days, which is the only thing it can usefully mean.
+       *
+       * Now there is one scoring event per completed pass through a lesson, from
+       * whichever path finishes it, and its inputs are measured rather than
+       * assumed. A repeat pass (a review) scores again, which is exactly what the
+       * consistency window wants to see.
+       */
+      if (isEligibleForCompletion) {
+        try {
+          const refreshedProgress = await client.lessonProgress.findUnique({ where: { id: progress.id } });
+          const expectedModalities = expectedModalitiesOf(lessonNode.activities);
+          const signals = await gatherModalitySignals(
             childId,
-            skillId: lessonId,
-            accuracy,
-            responseTime: 15,
-            attempts: 1,
-            retries: Math.max(0, 3 - stars),
-            engagementScore: accuracy,
-            helpRequests: 0,
-            sessionDuration: 120,
+            lessonId,
+            expectedModalities,
+            refreshedProgress,
+            client
+          );
+          const previousHealth = await client.skillHealth.findUnique({
+            where: { childId_skillId: { childId, skillId: lessonId } },
           });
+          const evidence = computeLessonEvidence({
+            expectedModalities,
+            signals,
+            priorAttemptTotal: previousHealth?.attemptCount ?? 0,
+            priorSessions: previousHealth?.reviewCount ?? 0,
+            requiredAttempts: lessonNode.mastery?.attempts ?? null,
+            // Must be passed here too, or this path and `lesson-completion`
+            // disagree about how many sessions prove mastery for the same lesson.
+            difficulty: lessonNode.difficulty ?? null,
+            estimatedMinutes: lessonNode.estimated_minutes,
+          });
+
+          // The engine keys on `Skill`; `prisma/seed.ts` mirrors each curriculum
+          // lesson to a same-id Skill, so this normally exists.
+          const skillExists = await client.skill.findUnique({ where: { id: lessonId }, select: { id: true } });
+          const masteryResult = skillExists
+            ? await masteryEngineService.evaluateMastery(
+                {
+                  childId,
+                  skillId: lessonId,
+                  accuracy: evidence.accuracy,
+                  responseTime: evidence.responseTime,
+                  attempts: evidence.attempts,
+                  retries: evidence.retries,
+                  engagementScore: evidence.engagementScore,
+                  helpRequests: evidence.helpRequests,
+                  sessionDuration: evidence.sessionDuration,
+                  masteryProven: evidence.masteryProven,
+                },
+                client
+              )
+            : null;
+
+          /*
+           * Project onto `KnowledgeState` — the store the unlock gate reads.
+           *
+           * Without this, a lesson finished entirely through the activity path
+           * (which is what the camera and every in-lesson activity use) left the
+           * gate's store untouched, so the engine's verdict never reached the
+           * thing deciding what opens next. Same writer as
+           * `lessonCompletionService`, so the two paths cannot diverge.
+           */
+          await projectMasteryToKnowledgeState(
+            {
+              childId,
+              topicId: lessonId,
+              evidence,
+              signals,
+              masteryScore: masteryResult?.masteryScore ?? null,
+              masteryState: masteryResult?.currentState ?? null,
+              confidenceScore: masteryResult?.confidenceScore ?? null,
+              now: new Date(),
+            },
+            client
+          );
+        } catch (err) {
+          // Previously an empty catch, which made a broken engine look exactly
+          // like a working one. Still non-blocking — a scoring failure must not
+          // cost the child their finished lesson — but no longer silent.
+          logger.error(
+            { childId, lessonId, activityType, err },
+            'Adaptive mastery evaluation failed during activity completion'
+          );
         }
-      } catch (err) {
-        // Non-blocking background log
       }
 
       if (becameCompleted) {
@@ -205,6 +290,18 @@ export class ProgressService {
   /**
    * Admin/Testing/Recovery method to complete a lesson.
    * Bypasses standard interactive learner flows.
+   *
+   * **Not the learner path.** `POST /progress/complete` now routes to
+   * `lessonCompletionService`, which measures what the child actually did and
+   * runs the adaptive engine. This method remains for genuine recovery — a lesson
+   * wedged by bad data, or a passed assessment that should open the lesson it
+   * belongs to — and it necessarily fabricates: it forces all four activity flags
+   * true, substitutes default stars for activities the child never opened, and
+   * asserts the curriculum's `required_score` as mastery.
+   *
+   * Every fabricated row is therefore stamped with a `transitionReason` of
+   * `force-complete`, so that data arriving from this method can be told apart
+   * from data a child earned.
    */
   async forceCompleteLesson(childId: string, lessonId: string, tx?: any) {
     const executeForce = async (client: any) => {
@@ -246,7 +343,11 @@ export class ProgressService {
         if (existingKS) {
           await client.knowledgeState.update({
             where: { id: existingKS.id },
-            data: { mastery: Math.max(existingKS.mastery, lessonNode.mastery.required_score) },
+            data: {
+              mastery: Math.max(existingKS.mastery, lessonNode.mastery.required_score),
+              lastTransitionAt: new Date(),
+              transitionReason: 'force-complete',
+            },
           });
         } else {
           await client.knowledgeState.create({
@@ -256,6 +357,7 @@ export class ProgressService {
               mastery: lessonNode.mastery.required_score,
               confidence: 1.0,
               lastTransitionAt: new Date(),
+              transitionReason: 'force-complete',
             },
           });
         }

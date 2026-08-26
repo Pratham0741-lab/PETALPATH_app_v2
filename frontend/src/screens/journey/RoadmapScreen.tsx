@@ -163,8 +163,8 @@ export const RoadmapScreen: React.FC = () => {
             <RefreshControl
               refreshing={isFetching}
               onRefresh={refetch}
-              tintColor={colors.purple}
-              colors={[colors.purple]}
+              tintColor={colors.primary}
+              colors={[colors.primary]}
             />
           }
         >

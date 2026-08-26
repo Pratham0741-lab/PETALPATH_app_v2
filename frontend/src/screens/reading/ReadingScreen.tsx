@@ -453,6 +453,9 @@ const styles = StyleSheet.create({
     fontWeight: typography.weights.black,
     color: colors.text,
     fontFamily: typography.families.rounded,
+    /* Shares a row with the close button; a long word would otherwise push the
+       button off the tooltip rather than wrapping. */
+    flexShrink: 1,
   },
   tooltipDefinition: {
     fontSize: typography.sizes.body,

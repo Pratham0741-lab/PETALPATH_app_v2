@@ -3,11 +3,20 @@ import { api } from '../api/client';
 import { useRoadmapStore } from './roadmapStore';
 import { getLessonMatchData } from '../utils/lessonActivityMatcher';
 
+/**
+ * A point in the canvas's drawing space.
+ *
+ * There is exactly one such space per tracing activity and it never changes
+ * size — `TracingCanvas` freezes it at the first measurement of the board and
+ * fits it to the frame with an SVG `viewBox` from then on. That is why these are
+ * plain pixels and not fractions: the guide geometry, the strokes and
+ * `calculateTracingAccuracy`'s 35/55px thresholds all have to be in the same
+ * units, and a stroke that gets re-projected every time the board resizes drifts
+ * off the guide it was drawn on.
+ */
 export interface Point {
   x: number;
   y: number;
-  normX?: number;
-  normY?: number;
 }
 
 interface WriteState {

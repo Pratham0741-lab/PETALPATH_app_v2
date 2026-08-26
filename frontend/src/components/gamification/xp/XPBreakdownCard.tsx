@@ -82,7 +82,7 @@ const styles = StyleSheet.create({
     fontFamily: typography.families.rounded,
     fontSize: typography.sizes.md,
     fontWeight: typography.weights.bold,
-    color: colors.purple,
+    color: colors.primary,
   },
   totalRow: {
     flexDirection: 'row',

@@ -3,7 +3,17 @@ import { ActivitySessionEngine, SessionEngineSnapshot, SessionState } from './Ac
 import { ActivityDefinition, getActivityDefinition } from './activityDefinitions';
 import { ActivityType, ActivityEngineResult } from '../types/pose.types';
 
-export function useActivitySession(initialActivityType: ActivityType = 'raise_hands') {
+/**
+ * @param initialActivityType Coarse activity type used when `startSession` is
+ *   called without one.
+ * @param initialActivityId The catalog id of the activity being played. Passing
+ *   it is what lets the session use that activity's own reps and timings —
+ *   without it "Clap three times" resolved to the `clap` entry and asked for one.
+ */
+export function useActivitySession(
+  initialActivityType: ActivityType = 'raise_hands',
+  initialActivityId?: string,
+) {
   const engineRef = useRef<ActivitySessionEngine>(new ActivitySessionEngine());
   const [snapshot, setSnapshot] = useState<SessionEngineSnapshot>(
     engineRef.current.getSnapshot(),
@@ -16,8 +26,8 @@ export function useActivitySession(initialActivityType: ActivityType = 'raise_ha
   }, []);
 
   const startSession = useCallback(
-    (activityType: ActivityType = initialActivityType, countdownSec = 3) => {
-      const def = getActivityDefinition(activityType);
+    (activityType: ActivityType = initialActivityType, countdownSec = 3, activityId?: string) => {
+      const def = getActivityDefinition(activityType, activityId ?? initialActivityId);
       engineRef.current.startSession(def, countdownSec);
       updateSnapshot();
 
@@ -36,7 +46,7 @@ export function useActivitySession(initialActivityType: ActivityType = 'raise_ha
         }
       }, 1000);
     },
-    [initialActivityType, updateSnapshot],
+    [initialActivityType, initialActivityId, updateSnapshot],
   );
 
   const processFrameResult = useCallback(

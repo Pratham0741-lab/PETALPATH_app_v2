@@ -47,7 +47,7 @@ export const StatsRow: React.FC<StatsRowProps> = ({
     ...(typeof xp === 'number' ? [{ label: 'XP', value: xp, icon: 'flash' as const, color: colors.accent }] : []),
     ...(typeof coins === 'number' ? [{ label: 'Coins', value: coins, icon: 'wallet' as const, color: colors.accent }] : []),
     ...(typeof hearts === 'number' ? [{ label: 'Hearts', value: hearts, icon: 'heart' as const, color: colors.coral }] : []),
-    ...(typeof level === 'number' ? [{ label: 'Level', value: level, icon: 'trophy' as const, color: colors.purple }] : []),
+    ...(typeof level === 'number' ? [{ label: 'Level', value: level, icon: 'trophy' as const, color: colors.primary }] : []),
   ];
 
   if (stats.length === 0) {

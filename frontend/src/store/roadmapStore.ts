@@ -35,7 +35,22 @@ export interface Lesson {
   title: string;
   description: string | null;
   displayOrder: number;
-  difficulty: 'EASY' | 'MEDIUM' | 'HARD';
+  /**
+   * Curriculum difficulty, 1 (easiest) to 5. Optional because it is only
+   * present once the server includes it in the roadmap projection — the field
+   * exists on every curriculum node, but `roadmap.service.ts` used to drop it
+   * while building each lesson.
+   *
+   * This was previously declared as a required `'EASY' | 'MEDIUM' | 'HARD'`,
+   * which was wrong twice over: the payload never carried the field at all, and
+   * the underlying value is a number, not one of those words. Because the type
+   * claimed otherwise, nothing flagged the two places that consumed it — the
+   * Lesson Overview printed "Level undefined" and the Journey roadmap's
+   * difficulty colour silently defaulted to green for every lesson. Keep it
+   * optional so the app degrades to hiding the value rather than printing
+   * "undefined" when talking to a server that predates the fix.
+   */
+  difficulty?: number;
   createdAt: string;
   updatedAt: string;
   isCompleted: boolean;

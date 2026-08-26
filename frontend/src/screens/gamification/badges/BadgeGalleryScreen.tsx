@@ -1,7 +1,21 @@
+/**
+ * Badge gallery — reached from the Rewards tab's quick links.
+ *
+ * Redesign notes (§35): keeps the `ScreenContainer` + `TopBar` shell and the
+ * category grouping, drops the unused `Ionicons` and `radius`/`shadows` imports,
+ * and moves the section headings and states onto the design system.
+ *
+ * `showBack` was added to the top bar. The screen is pushed onto the stack from
+ * Rewards, so there was previously no on-screen way back — only the hardware
+ * button or an edge swipe, neither of which a five-year-old reaches for.
+ */
+
 import React from 'react';
-import { StyleSheet, ScrollView, View, Text } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { colors, spacing, typography, radius, shadows } from '../../../theme';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+
+import { colors, spacing, typography } from '../../../theme';
+import { StatePanel } from '../../../components/design';
 import { ScreenContainer } from '../../../components/common/ScreenContainer';
 import { TopBar } from '../../../components/navigation/TopBar';
 import { LoadingSpinner } from '../../../components/common/LoadingSpinner';
@@ -10,7 +24,6 @@ import { EmptyState } from '../../../components/common/EmptyState';
 import { BadgeGrid } from '../../../components/gamification/badges/BadgeGrid';
 import { BadgeProgress } from '../../../components/gamification/badges/BadgeProgress';
 import { useBadges } from '../../../hooks/useRewards';
-import { useNavigation } from '@react-navigation/native';
 
 interface Badge {
   id: string;
@@ -24,11 +37,12 @@ interface Badge {
 }
 
 export const BadgeGalleryScreen: React.FC = () => {
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation<{
+    navigate: (screen: string, params?: Record<string, unknown>) => void;
+  }>();
   const { data, isLoading, isError, error, refetch } = useBadges();
 
   const badges: Badge[] = data?.data ?? [];
-
   const earnedCount = badges.filter((b) => b.earned).length;
   const total = badges.length;
 
@@ -45,48 +59,78 @@ export const BadgeGalleryScreen: React.FC = () => {
 
   return (
     <ScreenContainer>
-      <TopBar title="Badges" />
-      {isLoading ? (
-        <LoadingSpinner />
-      ) : isError ? (
-        <ErrorState
-          message={error instanceof Error ? error.message : 'Failed to load badges'}
-          onRetry={refetch}
-        />
-      ) : total === 0 ? (
-        <EmptyState message="No badges yet" />
-      ) : (
-        <ScrollView contentContainerStyle={styles.content}>
-          <BadgeProgress earnedCount={earnedCount} totalCount={total} />
-          {categories.map((category) => (
-            <View key={category} style={styles.section}>
-              <Text style={styles.sectionHeader}>{category}</Text>
-              <BadgeGrid
-                badges={grouped[category]}
-                onBadgePress={(badgeId: string) =>
-                  navigation.navigate('BadgeDetail', { badgeId })
-                }
-              />
-            </View>
-          ))}
-        </ScrollView>
-      )}
+      <TopBar title="Badges" showBack />
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
+        {isLoading ? (
+          <StatePanel>
+            <LoadingSpinner label="Loading badges" />
+          </StatePanel>
+        ) : isError ? (
+          <StatePanel>
+            <ErrorState
+              message={error instanceof Error ? error.message : 'Failed to load badges'}
+              onRetry={refetch}
+            />
+          </StatePanel>
+        ) : total === 0 ? (
+          <StatePanel>
+            <EmptyState
+              icon="medal"
+              title="No badges yet"
+              message="Complete activities to earn your first badge."
+            />
+          </StatePanel>
+        ) : (
+          <>
+            <BadgeProgress
+              earnedCount={earnedCount}
+              totalCount={total}
+              style={styles.progress}
+            />
+            {categories.map((category) => (
+              <View key={category} style={styles.section}>
+                <Text style={styles.sectionHeader} accessibilityRole="header">
+                  {category}
+                </Text>
+                <BadgeGrid
+                  badges={grouped[category]}
+                  onBadgePress={(badgeId: string) =>
+                    navigation.navigate('BadgeDetail', { badgeId })
+                  }
+                />
+              </View>
+            ))}
+          </>
+        )}
+      </ScrollView>
     </ScreenContainer>
   );
 };
 
 const styles = StyleSheet.create({
+  scroll: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
   content: {
-    padding: spacing.md,
+    padding: spacing.lg,
+    paddingBottom: spacing.xxl,
+  },
+  progress: {
+    marginBottom: spacing.lg,
   },
   section: {
-    marginTop: spacing.lg,
+    marginBottom: spacing.xl,
   },
   sectionHeader: {
-    fontFamily: typography.families.rounded,
-    fontSize: typography.sizes.lg,
-    fontWeight: typography.weights.bold,
+    ...typography.presets.section,
     color: colors.text,
     marginBottom: spacing.sm,
   },
 });
+
+export default BadgeGalleryScreen;

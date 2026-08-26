@@ -200,14 +200,14 @@ export const AssessmentCenterScreen: React.FC = () => {
           <RefreshControl
             refreshing={assessments.isFetching || attempts.isFetching}
             onRefresh={onRefresh}
-            tintColor={colors.purple}
+            tintColor={colors.primary}
           />
         }
         ListHeaderComponent={
           <>
             <View style={styles.header}>
               <View style={styles.headerIconWrap}>
-                <Ionicons name="clipboard" size={26} color={colors.purple} />
+                <Ionicons name="clipboard" size={26} color={colors.primary} />
               </View>
               <Text style={styles.headerTitle}>Assessment Center</Text>
               <Text style={styles.headerSubtitle}>

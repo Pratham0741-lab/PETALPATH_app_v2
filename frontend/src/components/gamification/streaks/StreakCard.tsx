@@ -1,12 +1,31 @@
+/**
+ * StreakCard — current streak and personal best.
+ *
+ * Redesign notes (§7, §33): the number used to read "🔥 5" — a literal emoji
+ * inside the headline figure, sitting right next to an Ionicons flame that said
+ * the same thing twice. The emoji is gone and the flame is a single `IconWell`
+ * with the `flame` glyph.
+ *
+ * It is a design-system `Card` rather than an `AppCard`, and it no longer sets
+ * its own `margin: spacing.md` — a card that decides its own outer spacing fights
+ * whatever lays it out. `DailyChallengesScreen` positions it now.
+ */
+
 import React from 'react';
-import { View, Text, StyleSheet, StyleProp, ViewStyle } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { colors, spacing, typography, radius, shadows } from '../../../theme';
-import { AppCard } from '../../cards/AppCard';
+import { StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native';
+
+import { colors, spacing, typography } from '../../../theme';
+import { Card, IconWell } from '../../design';
+import FlameAnimation from './FlameAnimation';
 
 interface StreakCardProps {
   currentStreak: number;
   longestStreak: number;
+  /**
+   * Use the animated flame instead of the static icon well. The screens that
+   * feature the streak turn this on; a streak shown incidentally leaves it off.
+   */
+  animated?: boolean;
   onPress?: () => void;
   style?: StyleProp<ViewStyle>;
 }
@@ -14,69 +33,70 @@ interface StreakCardProps {
 const StreakCard: React.FC<StreakCardProps> = ({
   currentStreak,
   longestStreak,
+  animated = false,
   onPress,
   style,
 }) => {
+  const alive = currentStreak > 0;
+
   return (
-    <AppCard onPress={onPress} style={[styles.card, style]}>
-      <View style={styles.left}>
-        <Ionicons name="flame" size={32} color={colors.warning} />
+    <Card
+      onPress={onPress}
+      style={style}
+      accessibilityLabel={`${currentStreak} day streak. Personal best ${longestStreak} days.`}
+    >
+      <View style={styles.row}>
+        {animated ? (
+          <FlameAnimation active={alive} size={44} />
+        ) : (
+          <IconWell
+            icon="flame"
+            color={alive ? colors.warningDark : colors.textMuted}
+            soft={alive ? colors.warningLight : colors.skeleton}
+            filled={alive}
+          />
+        )}
         <View style={styles.textWrap}>
-          <Text style={styles.number}>🔥 {currentStreak}</Text>
+          <Text style={styles.number}>{currentStreak}</Text>
           <Text style={styles.label}>day streak</Text>
         </View>
+        <View style={styles.right}>
+          <Text style={styles.bestLabel}>Best</Text>
+          <Text style={styles.bestValue}>{longestStreak}</Text>
+        </View>
       </View>
-      <View style={styles.right}>
-        <Text style={styles.bestLabel}>Best</Text>
-        <Text style={styles.bestValue}>{longestStreak}</Text>
-      </View>
-    </AppCard>
+    </Card>
   );
 };
 
 const styles = StyleSheet.create({
-  card: {
-    margin: spacing.md,
-  },
-  content: {
+  row: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: spacing.lg,
-  },
-  left: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    gap: spacing.md,
   },
   textWrap: {
-    marginLeft: spacing.sm,
+    flex: 1,
+    minWidth: 0,
   },
   number: {
-    fontFamily: typography.families.rounded,
-    fontSize: typography.sizes.xxl,
-    fontWeight: typography.weights.black,
+    ...typography.presets.display,
     color: colors.text,
   },
   label: {
-    fontFamily: typography.families.rounded,
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.medium,
-    color: colors.textMuted,
+    ...typography.presets.subtle,
+    color: colors.textSecondary,
   },
   right: {
     alignItems: 'flex-end',
   },
   bestLabel: {
-    fontFamily: typography.families.rounded,
-    fontSize: typography.sizes.xs,
-    fontWeight: typography.weights.regular,
-    color: colors.textMuted,
+    ...typography.presets.caption,
+    color: colors.textSecondary,
   },
   bestValue: {
-    fontFamily: typography.families.rounded,
-    fontSize: typography.sizes.lg,
-    fontWeight: typography.weights.bold,
-    color: colors.orange,
+    ...typography.presets.section,
+    color: colors.warningDark,
   },
 });
 

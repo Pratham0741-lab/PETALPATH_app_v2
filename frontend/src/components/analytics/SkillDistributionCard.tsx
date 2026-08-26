@@ -1,14 +1,22 @@
 import React from 'react';
-import { StyleSheet, View, Text, ViewStyle } from 'react-native';
-import { Card } from '../ui/Card';
+import { StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native';
 import { Skeleton } from '../ui/Skeleton';
-import { useTheme } from '../../theme/ThemeContext';
-import { spacing, typography, radius } from '../../theme';
+import { colors, progressSizes, radius, spacing, typography } from '../../theme';
+import { MetricCard } from './MetricCard';
+
+/**
+ * How the child's skills are spread across mastery levels.
+ *
+ * Stays a stacked bar — it is the right shape for parts of a whole — but on the
+ * shared bar height and pill radius rather than its own, and the legend now
+ * reads "Mastered 12" as one unit so the count is never orphaned from its
+ * colour.
+ */
 
 interface SkillDistributionCardProps {
   masteryGroups: Array<{ label: string; count: number; color: string }>;
   loading?: boolean;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
 }
 
 export function SkillDistributionCard({
@@ -16,77 +24,78 @@ export function SkillDistributionCard({
   loading = false,
   style,
 }: SkillDistributionCardProps) {
-  const { theme: { colors: themeColors } } = useTheme();
-
-  if (loading) {
-    return (
-      <Card style={style} accessibilityLabel="Loading skill distribution">
-        <Skeleton width={130} height={22} style={{ marginBottom: spacing.md }} />
-        <Skeleton variant="rect" width="100%" height={28} style={{ marginBottom: spacing.md, borderRadius: radius.sm }} />
-        <View style={{ flexDirection: 'row', gap: spacing.md }}>
-          {[1, 2, 3, 4].map((i) => (
-            <View key={i} style={{ alignItems: 'center', gap: spacing.xs }}>
-              <Skeleton variant="circle" width={12} height={12} />
-              <Skeleton width={30} height={12} />
-            </View>
-          ))}
-        </View>
-      </Card>
-    );
-  }
-
   const total = masteryGroups.reduce((sum, g) => sum + g.count, 0);
 
   return (
-    <Card
+    <MetricCard
+      title="Skill Distribution"
+      icon="medal"
+      loading={loading}
       style={style}
-      accessibilityLabel={`Skill distribution: ${masteryGroups.map((g) => `${g.label}: ${g.count}`).join(', ')}`}
+      footnote={total > 0 ? `${total} skills tracked` : undefined}
+      accessibilityLabel={
+        total > 0
+          ? `Skill distribution. ${masteryGroups.map((g) => `${g.label}: ${g.count}`).join(', ')}.`
+          : 'Skill distribution. No skills tracked yet.'
+      }
+      skeleton={
+        <View style={styles.skeleton}>
+          <Skeleton variant="rect" width="100%" height={progressSizes.barHeightThick} />
+          <View style={styles.skeletonLegend}>
+            {[0, 1, 2, 3].map((i) => (
+              <Skeleton key={i} width={70} height={12} />
+            ))}
+          </View>
+        </View>
+      }
     >
-      <Text style={[styles.header, { color: themeColors.text }]}>Skill Distribution</Text>
-      <View style={[styles.stackedBar, { backgroundColor: themeColors.surfaceSecondary }]}>
+      <View style={styles.stack}>
         {masteryGroups.map((group) => {
-          const widthPercent = total > 0 ? (group.count / total) * 100 : 0;
+          const share = total > 0 ? (group.count / total) * 100 : 0;
+          if (share <= 0) return null;
           return (
             <View
               key={group.label}
-              style={[styles.barSegment, { width: `${widthPercent}%`, backgroundColor: group.color }]}
+              style={{ width: `${share}%`, height: '100%', backgroundColor: group.color }}
             />
           );
         })}
       </View>
+
       <View style={styles.legend}>
         {masteryGroups.map((group) => (
           <View key={group.label} style={styles.legendItem}>
             <View style={[styles.dot, { backgroundColor: group.color }]} />
-            <Text style={[styles.legendLabel, { color: themeColors.textSecondary }]}>{group.label}</Text>
-            <Text style={[styles.legendCount, { color: themeColors.text }]}>{group.count}</Text>
+            <Text style={[typography.presets.caption, styles.legendLabel]}>{group.label}</Text>
+            <Text style={[typography.presets.caption, styles.legendCount]}>{group.count}</Text>
           </View>
         ))}
       </View>
-    </Card>
+    </MetricCard>
   );
 }
 
 const styles = StyleSheet.create({
-  header: {
-    fontSize: typography.sizes.cardTitle,
-    fontWeight: typography.weights.bold,
-    marginBottom: spacing.md,
+  skeleton: {
+    gap: spacing.md,
   },
-  stackedBar: {
+  skeletonLegend: {
     flexDirection: 'row',
-    height: 28,
-    borderRadius: radius.full,
-    overflow: 'hidden',
-    marginBottom: spacing.md,
+    flexWrap: 'wrap',
+    gap: spacing.md,
   },
-  barSegment: {
-    height: '100%',
+  stack: {
+    flexDirection: 'row',
+    height: progressSizes.barHeightThick,
+    borderRadius: radius.pill,
+    backgroundColor: colors.skeleton,
+    overflow: 'hidden',
   },
   legend: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: spacing.md,
+    marginTop: spacing.md,
   },
   legendItem: {
     flexDirection: 'row',
@@ -94,16 +103,16 @@ const styles = StyleSheet.create({
     gap: spacing.xs,
   },
   dot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
+    width: 10,
+    height: 10,
+    borderRadius: radius.full,
   },
   legendLabel: {
-    fontSize: typography.sizes.caption,
+    color: colors.textSecondary,
   },
   legendCount: {
-    fontSize: typography.sizes.caption,
-    fontWeight: typography.weights.bold,
+    color: colors.text,
+    fontWeight: '900',
   },
 });
 

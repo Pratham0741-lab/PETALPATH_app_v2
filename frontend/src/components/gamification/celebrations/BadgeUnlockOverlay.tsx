@@ -30,7 +30,7 @@ export const BadgeUnlockOverlay: React.FC<Props> = ({
           {imagePath ? (
             <Image source={{ uri: imagePath }} style={styles.badgeImage} />
           ) : (
-            <Ionicons name="medal" size={72} color={colors.purple} />
+            <Ionicons name="medal" size={72} color={colors.primary} />
           )}
         </View>
         <Text style={styles.title}>Badge Unlocked!</Text>
@@ -53,7 +53,7 @@ const styles = StyleSheet.create({
     width: 96,
     height: 96,
     borderRadius: radius.full,
-    backgroundColor: colors.purple + '1A',
+    backgroundColor: colors.primary + '1A',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing.md,
@@ -74,7 +74,7 @@ const styles = StyleSheet.create({
     fontFamily: typography.families.rounded,
     fontSize: typography.sizes.lg,
     fontWeight: typography.weights.black,
-    color: colors.purple,
+    color: colors.primary,
     textAlign: 'center',
     marginTop: spacing.xs,
   },

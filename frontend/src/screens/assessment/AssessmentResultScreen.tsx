@@ -102,7 +102,7 @@ export const AssessmentResultScreen: React.FC = () => {
         contentContainerStyle={styles.scrollContainer}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={isFetching} onRefresh={onRefresh} tintColor={colors.purple} />
+          <RefreshControl refreshing={isFetching} onRefresh={onRefresh} tintColor={colors.primary} />
         }
       >
         <AssessmentResultHeader

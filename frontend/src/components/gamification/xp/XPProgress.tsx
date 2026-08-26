@@ -26,7 +26,7 @@ const XPProgress: React.FC<XPProgressProps> = ({
           {xpForCurrentLevel} / {remaining} XP
         </Text>
       </View>
-      <ProgressBar progress={progressToNext} color={colors.purple} />
+      <ProgressBar progress={progressToNext} color={colors.primary} />
     </View>
   );
 };

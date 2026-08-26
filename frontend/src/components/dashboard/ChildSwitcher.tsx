@@ -2,7 +2,7 @@ import React from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { colors, spacing, typography, radius, shadows } from '../../theme';
 import { Skeleton } from '../ui/Skeleton';
-import { getAvatarEmoji, getAvatarBgColor } from '../../screens/profile/ChildSelectionScreen';
+import { getAvatarEmoji, getAvatarBgColor } from '../../constants/avatars';
 
 interface ChildItem {
   id: string;
@@ -120,7 +120,7 @@ const styles = StyleSheet.create({
     borderColor: colors.transparent,
   },
   avatarCircleActive: {
-    borderColor: colors.purple,
+    borderColor: colors.primary,
   },
   avatarEmoji: {
     fontSize: 22,
@@ -140,7 +140,7 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: radius.full,
-    backgroundColor: colors.purple,
+    backgroundColor: colors.primary,
     marginTop: spacing.xs,
   },
 });

@@ -7,7 +7,7 @@ import {
   StyleProp,
   ViewStyle,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { PetalIcon } from '../icons';
 import { colors, radius, spacing, typography } from '../../theme';
 
 interface SearchBarProps {
@@ -29,7 +29,9 @@ export const SearchBar: React.FC<SearchBarProps> = ({
 }) => {
   return (
     <View style={[styles.container, style]}>
-      <Ionicons name="search" size={20} color={colors.textSecondary} style={styles.icon} />
+      <View style={styles.icon}>
+        <PetalIcon name="search" size={20} color={colors.textSecondary} />
+      </View>
       <TextInput
         value={value}
         onChangeText={onChangeText}
@@ -38,15 +40,17 @@ export const SearchBar: React.FC<SearchBarProps> = ({
         style={styles.input}
         returnKeyType="search"
         onSubmitEditing={onSubmit}
+        accessibilityLabel={placeholder}
       />
       {value.length > 0 && (
         <Pressable
           onPress={onClear ?? (() => onChangeText(''))}
-          hitSlop={8}
+          hitSlop={10}
+          style={styles.clear}
           accessibilityRole="button"
           accessibilityLabel="Clear search"
         >
-          <Ionicons name="close-circle" size={20} color={colors.textMuted} />
+          <PetalIcon name="close" size={18} color={colors.textMuted} />
         </Pressable>
       )}
     </View>
@@ -67,6 +71,9 @@ const styles = StyleSheet.create({
   },
   icon: {
     marginRight: spacing.sm,
+  },
+  clear: {
+    padding: spacing.xs,
   },
   input: {
     flex: 1,

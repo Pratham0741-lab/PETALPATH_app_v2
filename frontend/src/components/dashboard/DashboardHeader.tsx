@@ -9,7 +9,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { colors, spacing, typography, radius } from '../../theme';
 import { NotificationBell } from '../notifications/NotificationBell';
-import { getAvatarEmoji, getAvatarBgColor } from '../../screens/profile/ChildSelectionScreen';
+import { getAvatarEmoji, getAvatarBgColor } from '../../constants/avatars';
 
 interface DashboardHeaderProps {
   greeting: string;
@@ -58,7 +58,7 @@ export const DashboardHeader: React.FC<DashboardHeaderProps> = ({
               accessibilityRole="button"
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <Ionicons name="swap-horizontal" size={isCompact ? 14 : 16} color={colors.purple} />
+              <Ionicons name="swap-horizontal" size={isCompact ? 14 : 16} color={colors.primary} />
               <Text style={[styles.switchText, isCompact && { fontSize: typography.sizes.xs }]}>
                 Switch
               </Text>
@@ -134,7 +134,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   switchText: {
-    color: colors.purple,
+    color: colors.primary,
     fontSize: typography.sizes.sm,
     fontWeight: typography.weights.bold,
     marginLeft: spacing.xs,

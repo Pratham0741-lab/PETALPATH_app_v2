@@ -1,10 +1,19 @@
 import React from 'react';
-import { StyleSheet, View, Text, ViewStyle } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { Card } from '../ui/Card';
+import { StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
 import { Skeleton } from '../ui/Skeleton';
-import { useTheme } from '../../theme/ThemeContext';
-import { spacing, typography } from '../../theme';
+import { ParentRow } from '../design/ParentSection';
+import { colors, spacing } from '../../theme';
+import { MetricCard } from './MetricCard';
+import type { PetalIconName } from '../icons';
+
+/**
+ * Time spent, per window.
+ *
+ * These four label/value rows were a private row style repeated inline; they are
+ * `ParentRow` now, which is the same row used by every settings and detail list
+ * in the parent section and which guarantees the 48px minimum height the old
+ * 30px rows missed (§30).
+ */
 
 interface LearningTimeCardProps {
   dailyMinutes: number;
@@ -12,7 +21,7 @@ interface LearningTimeCardProps {
   monthlyMinutes: number;
   averageSessionMinutes: number;
   loading?: boolean;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
 }
 
 function formatMinutes(minutes: number): string {
@@ -30,80 +39,56 @@ export function LearningTimeCard({
   loading = false,
   style,
 }: LearningTimeCardProps) {
-  const { theme: { colors: themeColors } } = useTheme();
-
-  if (loading) {
-    return (
-      <Card style={style} accessibilityLabel="Loading learning time">
-        <Skeleton width={120} height={22} style={{ marginBottom: spacing.md }} />
-        {[1, 2, 3, 4].map((i) => (
-          <Skeleton key={i} width="100%" height={18} style={{ marginBottom: spacing.sm }} />
-        ))}
-      </Card>
-    );
-  }
-
-  const rows: Array<{ label: string; minutes: number; icon: React.ComponentProps<typeof Ionicons>['name'] }> = [
-    { label: 'Today', minutes: dailyMinutes, icon: 'time-outline' },
-    { label: 'This Week', minutes: weeklyMinutes, icon: 'calendar-outline' },
-    { label: 'This Month', minutes: monthlyMinutes, icon: 'calendar-outline' },
+  const rows: Array<{ label: string; minutes: number; icon: PetalIconName }> = [
+    { label: 'Today', minutes: dailyMinutes, icon: 'clock' },
+    { label: 'This Week', minutes: weeklyMinutes, icon: 'calendar' },
+    { label: 'This Month', minutes: monthlyMinutes, icon: 'calendar' },
   ];
 
   return (
-    <Card
+    <MetricCard
+      title="Learning Time"
+      icon="clock"
+      loading={loading}
       style={style}
-      accessibilityLabel={`Learning time: Today ${formatMinutes(dailyMinutes)}, this week ${formatMinutes(weeklyMinutes)}, this month ${formatMinutes(monthlyMinutes)}, average session ${formatMinutes(averageSessionMinutes)}`}
+      accessibilityLabel={`Learning time. Today ${formatMinutes(dailyMinutes)}, this week ${formatMinutes(weeklyMinutes)}, this month ${formatMinutes(monthlyMinutes)}. Average session ${formatMinutes(averageSessionMinutes)}.`}
+      skeleton={
+        <View style={styles.skeleton}>
+          {[0, 1, 2, 3].map((i) => (
+            <Skeleton key={i} width="100%" height={20} />
+          ))}
+        </View>
+      }
     >
-      <Text style={[styles.header, { color: themeColors.text }]}>Learning Time</Text>
-      {rows.map((row) => (
-        <View key={row.label} style={styles.row}>
-          <View style={styles.rowLeft}>
-            <Ionicons name={row.icon} size={18} color={themeColors.textMuted} />
-            <Text style={[styles.rowLabel, { color: themeColors.textSecondary }]}>{row.label}</Text>
-          </View>
-          <Text style={[styles.rowValue, { color: themeColors.text }]}>{formatMinutes(row.minutes)}</Text>
-        </View>
+      {rows.map((row, i) => (
+        <ParentRow
+          key={row.label}
+          label={row.label}
+          icon={row.icon}
+          value={formatMinutes(row.minutes)}
+          divided={i > 0}
+        />
       ))}
-      <View style={[styles.divider, { backgroundColor: themeColors.divider }]} />
-      <View style={styles.row}>
-        <View style={styles.rowLeft}>
-          <Ionicons name="timer-outline" size={18} color={themeColors.textMuted} />
-          <Text style={[styles.rowLabel, { color: themeColors.textSecondary }]}>Average Session</Text>
-        </View>
-        <Text style={[styles.rowValue, { color: themeColors.text }]}>{formatMinutes(averageSessionMinutes)}</Text>
-      </View>
-    </Card>
+      <ParentRow
+        label="Average Session"
+        icon="clock"
+        value={formatMinutes(averageSessionMinutes)}
+        divided
+        style={styles.average}
+      />
+    </MetricCard>
   );
 }
 
 const styles = StyleSheet.create({
-  header: {
-    fontSize: typography.sizes.cardTitle,
-    fontWeight: typography.weights.bold,
-    marginBottom: spacing.md,
+  skeleton: {
+    gap: spacing.md,
   },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: spacing.sm,
-  },
-  rowLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  rowLabel: {
-    fontSize: typography.sizes.body,
-  },
-  rowValue: {
-    fontSize: typography.sizes.body,
-    fontWeight: typography.weights.medium,
-  },
-  divider: {
-    height: 1,
-    marginVertical: spacing.xs,
-    marginBottom: spacing.sm,
+  average: {
+    /* The one row that is a derived figure rather than a window of time, so it
+       gets a heavier separator than the hairlines above it. */
+    borderTopColor: colors.border,
+    marginTop: spacing.sm,
   },
 });
 

@@ -83,7 +83,10 @@ function getDragDropSpecForLesson(lessonId: string): any | null {
     || getDragDropSpec(lessonId);
   if (spec) return spec;
   if (node) {
-    return generateDynamicDragDropSpec(lessonId, node.title);
+    // `original_topic` is where the real lesson content lives — "classify objects
+    // into 3 bins by category (animals/fruits/vehicles)" and the like. Without it
+    // the generator can only fall back to a generic letter board.
+    return generateDynamicDragDropSpec(lessonId, node.title, node.curriculum?.original_topic);
   }
   return null;
 }

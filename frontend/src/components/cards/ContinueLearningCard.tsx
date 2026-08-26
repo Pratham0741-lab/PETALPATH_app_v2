@@ -143,7 +143,7 @@ const styles = StyleSheet.create({
   },
   playButton: {
     flexDirection: 'row',
-    backgroundColor: colors.purple,
+    backgroundColor: colors.primary,
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.xl,
     borderRadius: radius.lg,

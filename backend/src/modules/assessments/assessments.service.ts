@@ -122,19 +122,30 @@ export class AssessmentsService {
       // Update Mastery/KnowledgeState if linked to a curriculum lesson
       if (lessonNode) {
         const requiredScore = lessonNode.mastery?.required_score ?? 80;
-        const state = percentage >= requiredScore ? 'MASTERED' : 'LEARNING';
+        const passed = percentage >= requiredScore;
 
         const existingKS = await tx.knowledgeState.findFirst({
           where: { childId, topicId: lessonNode.id },
         });
 
         if (existingKS) {
+          /*
+           * `KnowledgeState.mastery` is the unlock gate's high-water mark, so an
+           * assessment can raise it but must not lower it. Writing the raw
+           * percentage used to mean one weak attempt could drop a child below the
+           * threshold and re-lock lessons they had already been working through —
+           * a re-assessment silently taking progress away.
+           */
           await tx.knowledgeState.update({
             where: { id: existingKS.id },
             data: {
-              mastery: percentage,
-              state,
+              mastery: Math.max(existingKS.mastery, percentage),
+              // Likewise, only ever revise the classification upward here; the
+              // adaptive engine owns downgrades, where they are accompanied by a
+              // regression log and a review.
+              state: passed && existingKS.state !== 'MASTERED' ? 'STABLE' : existingKS.state,
               lastTransitionAt: new Date(),
+              transitionReason: `assessment:${percentage}%`,
             },
           });
         } else {
@@ -143,9 +154,10 @@ export class AssessmentsService {
               childId,
               topicId: lessonNode.id,
               mastery: percentage,
-              state,
+              state: passed ? 'STABLE' : 'LEARNING',
               confidence: 1.0,
               lastTransitionAt: new Date(),
+              transitionReason: `assessment:${percentage}%`,
             },
           });
         }
@@ -158,7 +170,7 @@ export class AssessmentsService {
           await progressService.updateActivityCompletion(childId, lessonNode.id, 'assessment', stars, tx);
         } else {
           // If no assessment activity is explicitly defined in the activities array,
-          // check if we should complete the lesson now that the mastery requirement is satisfied
+          // check whether every activity the lesson asks for has now been covered
           let progress = await tx.lessonProgress.findUnique({
             where: {
               childId_lessonId: { childId, lessonId: lessonNode.id },
@@ -182,14 +194,11 @@ export class AssessmentsService {
             writeCompleted: progress.writeCompleted,
           };
 
-          const updatedKS = await tx.knowledgeState.findFirst({
-            where: { childId, topicId: lessonNode.id },
-          });
-
+          // Completion is coverage only: the mastery this assessment just wrote
+          // is what the lesson *scored*, not permission to have finished it.
           const isEligibleForCompletion = curriculumEngineService.canCompleteLesson(
             lessonNode,
-            mergedProgress,
-            updatedKS || undefined
+            mergedProgress
           );
 
           if (isEligibleForCompletion && progress.status !== 'COMPLETED') {

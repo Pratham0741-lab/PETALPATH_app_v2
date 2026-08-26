@@ -27,7 +27,7 @@ interface SlideData {
 const SLIDES: SlideData[] = [
   {
     icon: 'map-outline',
-    iconColor: colors.purple,
+    iconColor: colors.primary,
     iconBg: '#F5ECFF',
     title: 'Explore the Roadmap',
     description: 'Learn at your own pace through a structured learning path designed just for your child.',
@@ -229,7 +229,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.full,
   },
   dotActive: {
-    backgroundColor: colors.purple,
+    backgroundColor: colors.primary,
     width: 24,
     borderRadius: radius.full,
   },

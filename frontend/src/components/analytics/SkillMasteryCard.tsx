@@ -1,112 +1,122 @@
 import React from 'react';
-import { StyleSheet, View, Text, ViewStyle } from 'react-native';
-import { Card } from '../ui/Card';
+import { StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
 import { Skeleton } from '../ui/Skeleton';
-import { useTheme } from '../../theme/ThemeContext';
-import { spacing, typography, radius } from '../../theme';
+import { ProgressIndicator } from '../design/ProgressIndicator';
+import { SecondaryButton } from '../design/Buttons';
+import { colors, progressSizes, spacing } from '../../theme';
+import { MetricCard } from './MetricCard';
+
+/**
+ * Per-skill mastery, top few.
+ *
+ * Two things were wrong here beyond the styling. The four state colours were
+ * hardcoded hexes that existed nowhere else in the app (§29) — they are theme
+ * tokens now. And "View All" was a centred blue `Text` with no `onPress`: a
+ * control that looks tappable and does nothing (§33). It is a real button when
+ * the screen supplies `onViewAll`, and absent when it does not.
+ *
+ * The state is also written out next to the skill name, because a bar that is
+ * orange rather than green is not a difference every parent can see (§30).
+ */
 
 interface SkillMasteryCardProps {
   skills: Array<{ name: string; score: number; state: string }>;
   loading?: boolean;
   maxItems?: number;
-  style?: ViewStyle;
+  /** Supply to show a real "View All" button; omitted, no button is drawn. */
+  onViewAll?: () => void;
+  style?: StyleProp<ViewStyle>;
 }
 
 const STATE_COLORS: Record<string, string> = {
-  mastered: '#8DBB75',
-  in_progress: '#5D8FD7',
-  needs_practice: '#F2A15F',
-  locked: '#A09A95',
+  mastered: colors.success,
+  in_progress: colors.blue,
+  needs_practice: colors.warning,
+  locked: colors.textMuted,
 };
+
+/** `needs_practice` → `Needs practice`. Unknown states pass through readably. */
+function humanizeState(state: string): string {
+  const words = state.replace(/[_-]+/g, ' ').trim();
+  if (words.length === 0) return '';
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
 
 export function SkillMasteryCard({
   skills,
   loading = false,
   maxItems = 5,
+  onViewAll,
   style,
 }: SkillMasteryCardProps) {
-  const { theme: { colors: themeColors } } = useTheme();
-
-  if (loading) {
-    return (
-      <Card style={style} accessibilityLabel="Loading skill mastery">
-        <Skeleton width={110} height={22} style={{ marginBottom: spacing.md }} />
-        {[1, 2, 3, 4].map((i) => (
-          <View key={i} style={{ marginBottom: spacing.sm }}>
-            <Skeleton width="100%" height={14} style={{ marginBottom: spacing.xs }} />
-            <Skeleton variant="rect" width="100%" height={8} style={{ borderRadius: radius.xs }} />
-          </View>
-        ))}
-      </Card>
-    );
-  }
-
-  const visibleSkills = skills.slice(0, maxItems);
-  const hasMore = skills.length > maxItems;
+  const visible = skills.slice(0, maxItems);
+  const hidden = Math.max(0, skills.length - maxItems);
+  const mastered = skills.filter((s) => s.state === 'mastered').length;
 
   return (
-    <Card
+    <MetricCard
+      title="Skill Mastery"
+      icon="medal"
+      loading={loading}
       style={style}
-      accessibilityLabel={`Skill mastery: ${skills.length} skills, ${skills.filter((s) => s.state === 'mastered').length} mastered`}
+      accessibilityLabel={
+        skills.length > 0
+          ? `Skill mastery. ${mastered} of ${skills.length} skills mastered. ${visible
+              .map((s) => `${s.name}, ${humanizeState(s.state)}, ${Math.round(s.score)} percent`)
+              .join('. ')}.`
+          : 'Skill mastery. No skills tracked yet.'
+      }
+      footer={
+        hidden > 0 && onViewAll ? (
+          <SecondaryButton
+            label={`View all ${skills.length} skills`}
+            icon="chart"
+            size="sm"
+            onPress={onViewAll}
+            style={styles.viewAll}
+          />
+        ) : null
+      }
+      footnote={hidden > 0 && !onViewAll ? `${hidden} more not shown` : undefined}
+      skeleton={
+        <View style={styles.skeleton}>
+          {[0, 1, 2, 3].map((i) => (
+            <View key={i} style={styles.skeletonRow}>
+              <Skeleton width="70%" height={12} />
+              <Skeleton variant="rect" width="100%" height={progressSizes.barHeightThin} />
+            </View>
+          ))}
+        </View>
+      }
     >
-      <Text style={[styles.header, { color: themeColors.text }]}>Skill Mastery</Text>
-      {visibleSkills.map((skill) => {
-        const barColor = STATE_COLORS[skill.state] ?? themeColors.textMuted;
-        return (
-          <View key={skill.name} style={styles.skillRow}>
-            <View style={styles.skillHeader}>
-              <Text style={[styles.skillName, { color: themeColors.text }]}>{skill.name}</Text>
-              <Text style={[styles.skillScore, { color: barColor }]}>{Math.round(skill.score)}%</Text>
-            </View>
-            <View style={[styles.progressTrack, { backgroundColor: themeColors.surfaceSecondary }]}>
-              <View style={[styles.progressFill, { width: `${skill.score}%`, backgroundColor: barColor }]} />
-            </View>
-          </View>
-        );
-      })}
-      {hasMore && (
-        <Text style={[styles.viewAll, { color: themeColors.textLink }]}>View All</Text>
-      )}
-    </Card>
+      {visible.map((skill, i) => (
+        <ProgressIndicator
+          key={skill.name}
+          value={skill.score}
+          height={progressSizes.barHeightThin}
+          color={STATE_COLORS[skill.state] ?? colors.textMuted}
+          label={`${skill.name} · ${humanizeState(skill.state)}`}
+          showPercentage
+          style={i > 0 ? styles.row : undefined}
+          accessibilityLabel={`${skill.name}, ${humanizeState(skill.state)}`}
+        />
+      ))}
+    </MetricCard>
   );
 }
 
 const styles = StyleSheet.create({
-  header: {
-    fontSize: typography.sizes.cardTitle,
-    fontWeight: typography.weights.bold,
-    marginBottom: spacing.md,
+  skeleton: {
+    gap: spacing.md,
   },
-  skillRow: {
-    marginBottom: spacing.sm,
+  skeletonRow: {
+    gap: spacing.xs,
   },
-  skillHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: spacing.xs,
-  },
-  skillName: {
-    fontSize: typography.sizes.small,
-    fontWeight: typography.weights.medium,
-  },
-  skillScore: {
-    fontSize: typography.sizes.caption,
-    fontWeight: typography.weights.bold,
-  },
-  progressTrack: {
-    height: 8,
-    borderRadius: radius.xs,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    borderRadius: radius.xs,
+  row: {
+    marginTop: spacing.md,
   },
   viewAll: {
-    fontSize: typography.sizes.small,
-    fontWeight: typography.weights.medium,
-    textAlign: 'center',
-    marginTop: spacing.xs,
+    marginTop: spacing.lg,
   },
 });
 

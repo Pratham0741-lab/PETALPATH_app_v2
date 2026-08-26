@@ -8,7 +8,6 @@ import { useAppStore } from '../store/appStore';
 
 // Screens
 import HomeScreen from '../screens/home';
-import { ParentDashboardScreen } from '../screens/dashboard/ParentDashboardScreen';
 import MentorScreen from '../screens/mentor';
 import RewardsScreen from '../screens/rewards';
 import ProfileScreen from '../screens/profile';
@@ -31,7 +30,6 @@ import TutorialScreen from '../screens/onboarding/TutorialScreen';
 import LessonOverviewScreen from '../screens/lesson';
 import { LessonScreen } from '../screens/lesson/LessonScreen';
 import { ModuleScreen } from '../screens/curriculum/ModuleScreen';
-import { RoadmapScreen } from '../screens/journey/RoadmapScreen';
 import LessonCompleteScreen from '../screens/lesson/LessonCompleteScreen';
 import ModuleCompleteScreen from '../screens/lesson/ModuleCompleteScreen';
 import CategoryCompleteScreen from '../screens/lesson/CategoryCompleteScreen';

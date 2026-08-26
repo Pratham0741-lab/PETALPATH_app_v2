@@ -20,7 +20,7 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({
     const lowerTitle = title.toLowerCase();
     if (lowerTitle.includes('line')) {
       return {
-        color: colors.purple,
+        color: colors.primary,
         icon: 'git-commit-outline',
       };
     } else if (lowerTitle.includes('curve')) {
@@ -45,7 +45,7 @@ export const CategoryCard: React.FC<CategoryCardProps> = ({
       };
     }
     return {
-      color: colors.purple,
+      color: colors.primary,
       icon: 'book-outline',
     };
   };

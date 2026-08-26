@@ -89,7 +89,7 @@ export class RecommendationRepository {
 
   /**
    * Priority 3 — the child's weakest skill (lowest masteryScore among
-   * non-mastered/non-strong states). Practising it yields the highest
+   * non-mastered/non-strong states). Practicing it yields the highest
    * learning gain.
    */
   async findWeakestSkill(childId: string): Promise<WeakSkillResult | null> {

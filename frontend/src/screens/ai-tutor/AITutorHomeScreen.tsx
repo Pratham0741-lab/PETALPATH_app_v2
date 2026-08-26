@@ -150,8 +150,19 @@ export const AITutorHomeScreen: React.FC = () => {
     });
   }, [topic, createSession, navigation]);
 
+  /*
+   * `MasteryScreen` is not a route name. Nothing in `RootNavigator` registers
+   * it, so this press has always thrown "The action 'NAVIGATE' with payload
+   * {"name":"MasteryScreen"} was not handled by any navigator" and the "View
+   * All" link next to Weak Skills did nothing.
+   *
+   * `SkillMastery` is the registered name, and it is the surface that reads the
+   * same `/mastery/child/:childId` projection these cards are built from — so
+   * "View All" now lands on the full, grouped, searchable list of exactly what
+   * this section is showing the top five of.
+   */
   const handleViewAllWeakSkills = useCallback(() => {
-    navigation.navigate('MasteryScreen');
+    navigation.navigate('SkillMastery');
   }, [navigation]);
 
   const handleViewAllHistory = useCallback(() => {

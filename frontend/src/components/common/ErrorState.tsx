@@ -6,10 +6,15 @@
  *
  * Both render child-safe, friendly messaging. They are presentational only
  * and receive messages/retries from callers (often via the ApiError helper).
+ *
+ * Icons are SVG rather than emoji (spec §7) and the retry uses the shared
+ * button so it matches every other action in the app.
  */
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { colors } from '../../theme';
+import { View, Text, StyleSheet } from 'react-native';
+import { colors, radius, spacing, typography } from '../../theme';
+import { PetalIcon, PetalIconName } from '../icons';
+import { PrimaryButton } from '../design/Buttons';
 
 interface ErrorStateProps {
   title?: string;
@@ -18,80 +23,70 @@ interface ErrorStateProps {
   retryLabel?: string;
 }
 
+const Base: React.FC<ErrorStateProps & { icon: PetalIconName }> = ({
+  icon,
+  title,
+  message,
+  onRetry,
+  retryLabel = 'Try Again',
+}) => (
+  <View style={styles.container} accessibilityRole="alert" accessibilityLiveRegion="assertive">
+    <View style={styles.iconWell}>
+      <PetalIcon name={icon} size={32} color={colors.error} />
+    </View>
+    <Text style={styles.title}>{title}</Text>
+    <Text style={styles.message}>{message}</Text>
+    {onRetry ? (
+      <PrimaryButton
+        label={retryLabel}
+        icon="replay"
+        onPress={onRetry}
+        fullWidth={false}
+        accessibilityHint="Attempts the action again"
+      />
+    ) : null}
+  </View>
+);
+
 export const ErrorState: React.FC<ErrorStateProps> = ({
   title = 'Something went wrong',
   message = 'Please try again.',
-  onRetry,
-  retryLabel = 'Try Again',
-}) => {
-  return (
-    <View
-      style={styles.container}
-      accessibilityRole="alert"
-      accessibilityLiveRegion="assertive"
-    >
-      <Text style={styles.emoji}>⚠️</Text>
-      <Text style={styles.title}>{title}</Text>
-      <Text style={styles.message}>{message}</Text>
-      {onRetry ? (
-        <TouchableOpacity
-          style={styles.retryButton}
-          onPress={onRetry}
-          accessibilityRole="button"
-          accessibilityLabel={retryLabel}
-          accessibilityHint="Attempts the action again"
-        >
-          <Text style={styles.retryText}>{retryLabel}</Text>
-        </TouchableOpacity>
-      ) : null}
-    </View>
-  );
-};
+  ...rest
+}) => <Base icon="warning" title={title} message={message} {...rest} />;
 
-export const NetworkError: React.FC<Omit<ErrorStateProps, 'title'>> = (props) => {
-  return (
-    <ErrorState
-      title="Unable to connect"
-      message="Check your internet connection and try again."
-      {...props}
-    />
-  );
-};
+export const NetworkError: React.FC<Omit<ErrorStateProps, 'title'>> = ({
+  message = 'Check your internet connection and try again.',
+  ...rest
+}) => <Base icon="warning" title="Unable to connect" message={message} {...rest} />;
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: colors.background,
-    padding: 32,
+    backgroundColor: 'transparent',
+    padding: spacing.xxl,
   },
-  emoji: {
-    fontSize: 40,
-    marginBottom: 12,
+  iconWell: {
+    width: 72,
+    height: 72,
+    borderRadius: radius.pill,
+    backgroundColor: colors.errorLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.lg,
   },
   title: {
-    fontSize: 20,
-    fontWeight: '700',
+    ...typography.presets.section,
     color: colors.text,
-    marginBottom: 8,
+    textAlign: 'center',
+    marginBottom: spacing.sm,
   },
   message: {
-    fontSize: 15,
+    ...typography.presets.body,
     color: colors.textSecondary,
     textAlign: 'center',
-    lineHeight: 22,
-    marginBottom: 20,
-  },
-  retryButton: {
-    backgroundColor: colors.primary,
-    paddingHorizontal: 28,
-    paddingVertical: 12,
-    borderRadius: 12,
-  },
-  retryText: {
-    color: colors.white,
-    fontSize: 15,
-    fontWeight: '600',
+    maxWidth: 300,
+    marginBottom: spacing.xl,
   },
 });

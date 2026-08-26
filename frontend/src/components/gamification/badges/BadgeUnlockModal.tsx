@@ -41,7 +41,7 @@ export const BadgeUnlockModal: React.FC<BadgeUnlockModalProps> = ({
           {imagePath ? (
             <Image source={{ uri: imagePath }} style={styles.image} />
           ) : (
-            <Ionicons name="medal" size={44} color={colors.purple} />
+            <Ionicons name="medal" size={44} color={colors.primary} />
           )}
         </Animated.View>
         <Text style={styles.name}>{name}</Text>

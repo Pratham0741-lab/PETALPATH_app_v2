@@ -1,6 +1,6 @@
 {
   "$schema": "https://petalpath.io/schemas/drag-drop-activity/v2.1.0",
-  "id": "petalpath:activity:09a99361-1539-4af9-b2b0-247e793d8f18",
+  "id": "petalpath:activity:generated:ukg_asc_desc",
   "schemaVersion": "2.1.0",
   "engine": {
     "engineId": "petalpath:engine:drag-drop",
@@ -17,62 +17,48 @@
     "activityType": "drag_drop"
   },
   "metadata": {
-    "title": "l10n:activity:ukg_asc_desc_3:title",
-    "description": "l10n:activity:ukg_asc_desc_3:description",
+    "title": "Ascending and Descending Order",
+    "description": "Smallest first. Drag the numbers into growing order.",
     "templateRef": {
-      "templateId": "story-ordering",
-      "templateVersion": "1.0.0"
+      "templateId": "ascending-order",
+      "templateVersion": "2.0.0"
     },
-    "activityType": "drag-and-drop",
     "primaryLanguage": "en-IN",
     "supportedLanguages": [
-      "en-IN",
-      "hi-IN"
+      "en-IN"
     ],
     "tags": [
-      "ukg",
-      "story-ordering",
-      "maths",
+      "ascending-order",
       "drag-and-drop"
     ],
     "status": "published",
-    "createdAt": "2026-07-27T00:00:00.000Z",
-    "updatedAt": "2026-07-27T00:00:00.000Z"
+    "generatedAt": "2026-08-21"
   },
   "canvas": {
-    "width": 1000,
-    "height": 750,
-    "orientation": "landscape"
+    "width": 760,
+    "height": 980,
+    "orientation": "portrait"
   },
   "draggables": [
     {
       "id": "drag-item-1",
-      "contentType": "image",
-      "content": null,
+      "contentType": "text",
+      "content": "47",
       "contentLocalizationKey": null,
-      "assetRef": {
-        "imageAssetId": "petalpath:asset:placeholder:ukg_asc_desc_3-item-1-image",
-        "audioAssetId": "petalpath:asset:placeholder:ukg_asc_desc_3-item-1-sound"
-      },
       "position": {
-        "x": 100,
-        "y": 550,
-        "randomizePosition": true,
-        "sourceRegion": {
-          "x": 50,
-          "y": 500,
-          "width": 900,
-          "height": 200
-        }
+        "x": 168,
+        "y": 543
       },
       "dimensions": {
-        "width": 140,
-        "height": 140
+        "width": 200,
+        "height": 150
       },
       "style": {
-        "backgroundColor": "#4A90E2",
-        "borderRadius": 12,
-        "elevation": 2
+        "backgroundColor": "#E8386A",
+        "borderRadius": 24,
+        "textColor": "#FFFFFF",
+        "fontSize": 72,
+        "fontWeight": "800"
       },
       "behavior": {
         "draggable": true,
@@ -80,38 +66,30 @@
         "lockAfterCorrectDrop": true
       },
       "accessibility": {
-        "screenReaderLabel": "l10n:drag:ukg_asc_desc_3:item-1:sr-label"
+        "screenReaderLabel": "47",
+        "hintText": "Drag this onto the box it belongs in"
       },
       "sortOrder": 1
     },
     {
       "id": "drag-item-2",
-      "contentType": "image",
-      "content": null,
+      "contentType": "text",
+      "content": "25",
       "contentLocalizationKey": null,
-      "assetRef": {
-        "imageAssetId": "petalpath:asset:placeholder:ukg_asc_desc_3-item-2-image",
-        "audioAssetId": "petalpath:asset:placeholder:ukg_asc_desc_3-item-2-sound"
-      },
       "position": {
-        "x": 320,
-        "y": 550,
-        "randomizePosition": true,
-        "sourceRegion": {
-          "x": 50,
-          "y": 500,
-          "width": 900,
-          "height": 200
-        }
+        "x": 392,
+        "y": 543
       },
       "dimensions": {
-        "width": 140,
-        "height": 140
+        "width": 200,
+        "height": 150
       },
       "style": {
-        "backgroundColor": "#4A90E2",
-        "borderRadius": 12,
-        "elevation": 2
+        "backgroundColor": "#3F7FC4",
+        "borderRadius": 24,
+        "textColor": "#FFFFFF",
+        "fontSize": 72,
+        "fontWeight": "800"
       },
       "behavior": {
         "draggable": true,
@@ -119,38 +97,30 @@
         "lockAfterCorrectDrop": true
       },
       "accessibility": {
-        "screenReaderLabel": "l10n:drag:ukg_asc_desc_3:item-2:sr-label"
+        "screenReaderLabel": "25",
+        "hintText": "Drag this onto the box it belongs in"
       },
       "sortOrder": 2
     },
     {
       "id": "drag-item-3",
-      "contentType": "image",
-      "content": null,
+      "contentType": "text",
+      "content": "12",
       "contentLocalizationKey": null,
-      "assetRef": {
-        "imageAssetId": "petalpath:asset:placeholder:ukg_asc_desc_3-item-3-image",
-        "audioAssetId": "petalpath:asset:placeholder:ukg_asc_desc_3-item-3-sound"
-      },
       "position": {
-        "x": 540,
-        "y": 550,
-        "randomizePosition": true,
-        "sourceRegion": {
-          "x": 50,
-          "y": 500,
-          "width": 900,
-          "height": 200
-        }
+        "x": 168,
+        "y": 715
       },
       "dimensions": {
-        "width": 140,
-        "height": 140
+        "width": 200,
+        "height": 150
       },
       "style": {
-        "backgroundColor": "#4A90E2",
-        "borderRadius": 12,
-        "elevation": 2
+        "backgroundColor": "#D9741F",
+        "borderRadius": 24,
+        "textColor": "#FFFFFF",
+        "fontSize": 72,
+        "fontWeight": "800"
       },
       "behavior": {
         "draggable": true,
@@ -158,9 +128,41 @@
         "lockAfterCorrectDrop": true
       },
       "accessibility": {
-        "screenReaderLabel": "l10n:drag:ukg_asc_desc_3:item-3:sr-label"
+        "screenReaderLabel": "12",
+        "hintText": "Drag this onto the box it belongs in"
       },
       "sortOrder": 3
+    },
+    {
+      "id": "drag-item-4",
+      "contentType": "text",
+      "content": "38",
+      "contentLocalizationKey": null,
+      "position": {
+        "x": 392,
+        "y": 715
+      },
+      "dimensions": {
+        "width": 200,
+        "height": 150
+      },
+      "style": {
+        "backgroundColor": "#7B5BD6",
+        "borderRadius": 24,
+        "textColor": "#FFFFFF",
+        "fontSize": 72,
+        "fontWeight": "800"
+      },
+      "behavior": {
+        "draggable": true,
+        "returnToOriginOnFailure": true,
+        "lockAfterCorrectDrop": true
+      },
+      "accessibility": {
+        "screenReaderLabel": "38",
+        "hintText": "Drag this onto the box it belongs in"
+      },
+      "sortOrder": 4
     }
   ],
   "dropZones": [
@@ -169,74 +171,12 @@
       "shape": {
         "type": "rectangle",
         "position": {
-          "x": 150,
-          "y": 200
+          "x": 147,
+          "y": 115
         },
         "dimensions": {
-          "width": 160,
-          "height": 160
-        }
-      },
-      "acceptedDraggableIds": [
-        "drag-item-1"
-      ],
-      "capacity": 1,
-      "visualState": {
-        "defaultAppearance": "visible",
-        "hoverHighlight": "glow",
-        "correctHighlight": "glow-green",
-        "incorrectHighlight": "glow-red"
-      },
-      "snapping": {
-        "enabled": true
-      },
-      "sortOrder": 1,
-      "accessibility": {
-        "screenReaderLabel": "l10n:zone:ukg_asc_desc_3:target-1:sr-label"
-      }
-    },
-    {
-      "id": "zone-target-2",
-      "shape": {
-        "type": "rectangle",
-        "position": {
-          "x": 400,
-          "y": 200
-        },
-        "dimensions": {
-          "width": 160,
-          "height": 160
-        }
-      },
-      "acceptedDraggableIds": [
-        "drag-item-2"
-      ],
-      "capacity": 1,
-      "visualState": {
-        "defaultAppearance": "visible",
-        "hoverHighlight": "glow",
-        "correctHighlight": "glow-green",
-        "incorrectHighlight": "glow-red"
-      },
-      "snapping": {
-        "enabled": true
-      },
-      "sortOrder": 2,
-      "accessibility": {
-        "screenReaderLabel": "l10n:zone:ukg_asc_desc_3:target-2:sr-label"
-      }
-    },
-    {
-      "id": "zone-target-3",
-      "shape": {
-        "type": "rectangle",
-        "position": {
-          "x": 650,
-          "y": 200
-        },
-        "dimensions": {
-          "width": 160,
-          "height": 160
+          "width": 220,
+          "height": 170
         }
       },
       "acceptedDraggableIds": [
@@ -247,26 +187,139 @@
         "defaultAppearance": "visible",
         "hoverHighlight": "glow",
         "correctHighlight": "glow-green",
-        "incorrectHighlight": "glow-red"
+        "incorrectHighlight": "shake",
+        "labelText": "1st",
+        "targetContent": "1st",
+        "fontSize": 72
       },
       "snapping": {
-        "enabled": true
+        "enabled": true,
+        "snapAlignment": "center"
+      },
+      "sortOrder": 1,
+      "accessibility": {
+        "screenReaderLabel": "First place, the smallest",
+        "dropHintText": "Drop the matching piece into 1st"
+      }
+    },
+    {
+      "id": "zone-target-2",
+      "shape": {
+        "type": "rectangle",
+        "position": {
+          "x": 393,
+          "y": 115
+        },
+        "dimensions": {
+          "width": 220,
+          "height": 170
+        }
+      },
+      "acceptedDraggableIds": [
+        "drag-item-2"
+      ],
+      "capacity": 1,
+      "visualState": {
+        "defaultAppearance": "visible",
+        "hoverHighlight": "glow",
+        "correctHighlight": "glow-green",
+        "incorrectHighlight": "shake",
+        "labelText": "2nd",
+        "targetContent": "2nd",
+        "fontSize": 72
+      },
+      "snapping": {
+        "enabled": true,
+        "snapAlignment": "center"
+      },
+      "sortOrder": 2,
+      "accessibility": {
+        "screenReaderLabel": "Second place",
+        "dropHintText": "Drop the matching piece into 2nd"
+      }
+    },
+    {
+      "id": "zone-target-3",
+      "shape": {
+        "type": "rectangle",
+        "position": {
+          "x": 147,
+          "y": 309
+        },
+        "dimensions": {
+          "width": 220,
+          "height": 170
+        }
+      },
+      "acceptedDraggableIds": [
+        "drag-item-4"
+      ],
+      "capacity": 1,
+      "visualState": {
+        "defaultAppearance": "visible",
+        "hoverHighlight": "glow",
+        "correctHighlight": "glow-green",
+        "incorrectHighlight": "shake",
+        "labelText": "3rd",
+        "targetContent": "3rd",
+        "fontSize": 72
+      },
+      "snapping": {
+        "enabled": true,
+        "snapAlignment": "center"
       },
       "sortOrder": 3,
       "accessibility": {
-        "screenReaderLabel": "l10n:zone:ukg_asc_desc_3:target-3:sr-label"
+        "screenReaderLabel": "Third place",
+        "dropHintText": "Drop the matching piece into 3rd"
+      }
+    },
+    {
+      "id": "zone-target-4",
+      "shape": {
+        "type": "rectangle",
+        "position": {
+          "x": 393,
+          "y": 309
+        },
+        "dimensions": {
+          "width": 220,
+          "height": 170
+        }
+      },
+      "acceptedDraggableIds": [
+        "drag-item-1"
+      ],
+      "capacity": 1,
+      "visualState": {
+        "defaultAppearance": "visible",
+        "hoverHighlight": "glow",
+        "correctHighlight": "glow-green",
+        "incorrectHighlight": "shake",
+        "labelText": "4th",
+        "targetContent": "4th",
+        "fontSize": 72
+      },
+      "snapping": {
+        "enabled": true,
+        "snapAlignment": "center"
+      },
+      "sortOrder": 4,
+      "accessibility": {
+        "screenReaderLabel": "Fourth place, the biggest",
+        "dropHintText": "Drop the matching piece into 4th"
       }
     }
   ],
   "validation": {
-    "strategy": "ordered-sequence",
+    "strategy": "one-to-one",
     "evaluationTiming": "on-drop",
     "allowRetries": true,
     "maxAttempts": 0,
     "scoringModel": {
       "type": "per-item",
       "basePointsPerItem": 10,
-      "maxScore": 100,
+      "maxScore": 40,
       "starThresholds": {
         "oneStar": 0.4,
         "twoStars": 0.7,
@@ -278,16 +331,12 @@
     "snapping": {
       "preset": "easy",
       "snapRadius": 100,
-      "magneticAttraction": 0.7,
-      "snapAnimationDurationMs": 300,
-      "returnAnimationDurationMs": 500
+      "magneticAttraction": 0.7
     },
     "dragBehavior": {
       "touchMode": "offset",
       "dragFeedback": "both",
-      "dragScaleFactor": 1.1,
-      "multiTouch": false,
-      "boundToCanvas": true
+      "dragScaleFactor": 1.1
     },
     "inputModes": {
       "touch": true,
@@ -321,11 +370,6 @@
         {
           "type": "confetti",
           "durationMs": 2000
-        },
-        {
-          "type": "stars",
-          "durationMs": 1500,
-          "delay": 500
         }
       ]
     }
@@ -337,22 +381,7 @@
         "level": 1,
         "triggerAfterAttempts": 2,
         "hintType": "highlight-target",
-        "durationMs": 3000,
-        "repeatable": true
-      },
-      {
-        "level": 2,
-        "triggerAfterAttempts": 3,
-        "hintType": "pulse-target",
-        "durationMs": 3000,
-        "repeatable": true
-      },
-      {
-        "level": 3,
-        "triggerAfterAttempts": 4,
-        "hintType": "show-arrow",
-        "durationMs": 4000,
-        "repeatable": true
+        "durationMs": 3000
       }
     ],
     "idleHint": {
@@ -364,124 +393,39 @@
   "accessibility": {
     "screenReader": {
       "enabled": true,
-      "activityInstructionKey": "l10n:activity:ukg_asc_desc_3:instruction"
+      "announceDrops": true,
+      "announceErrors": true
     },
     "narration": {
       "enabled": true,
-      "autoPlayOnLoad": true
+      "autoPlayOnLoad": false
     },
     "visual": {
-      "highContrast": false
-    },
-    "motor": {
-      "reducedPrecision": {
-        "enabled": false
-      }
+      "colorBlindSafe": true
     }
   },
   "localization": {
-    "keyNamespace": "l10n:activity:ukg_asc_desc_3",
+    "keyNamespace": "l10n:drag:ukg_asc_desc",
     "fallbackLanguage": "en-IN",
-    "stringKeys": {
-      "title": "l10n:activity:ukg_asc_desc_3:title",
-      "description": "l10n:activity:ukg_asc_desc_3:description",
-      "sr-label": "l10n:zone:ukg_asc_desc_3:target-3:sr-label",
-      "instruction": "l10n:activity:ukg_asc_desc_3:instruction",
-      "ukg_asc_desc_3": "l10n:activity:ukg_asc_desc_3"
-    },
+    "stringKeys": {},
     "textDirection": "ltr"
   },
   "assets": {
-    "required": [
-      {
-        "assetId": "petalpath:asset:placeholder:ukg_asc_desc_3-bg",
-        "assetType": "image",
-        "purpose": "background"
-      }
-    ],
+    "required": [],
     "optional": [],
-    "preloadStrategy": "progressive"
-  },
-  "analytics": {
-    "trackingEnabled": true,
-    "metricsToCollect": {
-      "attempts": {
-        "collect": true,
-        "aggregation": "sum"
-      },
-      "correctDrops": {
-        "collect": true,
-        "aggregation": "sum"
-      },
-      "incorrectDrops": {
-        "collect": true,
-        "aggregation": "sum"
-      },
-      "accuracy": {
-        "collect": true,
-        "aggregation": "calculated",
-        "formula": "correctDrops / attempts"
-      },
-      "completionTimeMs": {
-        "collect": true,
-        "aggregation": "value"
-      },
-      "averageResponseTimeMs": {
-        "collect": true,
-        "aggregation": "average"
-      },
-      "hintUsageCount": {
-        "collect": true,
-        "aggregation": "sum"
-      },
-      "hintLevelsReached": {
-        "collect": true,
-        "aggregation": "max"
-      },
-      "retryCount": {
-        "collect": true,
-        "aggregation": "sum"
-      },
-      "dragDistanceTotal": {
-        "collect": true,
-        "aggregation": "sum"
-      },
-      "idleTimeMs": {
-        "collect": true,
-        "aggregation": "sum"
-      },
-      "score": {
-        "collect": true,
-        "aggregation": "value"
-      }
-    }
+    "preloadStrategy": "immediate"
   },
   "completionSignals": {
     "signals": [
       {
         "signalId": "activity.completed",
         "condition": "always",
-        "description": "Emitted whenever the activity is completed."
-      },
-      {
-        "signalId": "activity.perfect",
-        "condition": "all-correct-first-attempt",
-        "description": "Every item correct on first try."
+        "description": "Emitted on completion"
       },
       {
         "signalId": "activity.threeStars",
         "condition": "score-gte:starThresholds.threeStars",
-        "description": "Score meets three-star threshold."
-      },
-      {
-        "signalId": "activity.twoStars",
-        "condition": "score-gte:starThresholds.twoStars",
-        "description": "Score meets two-star threshold."
-      },
-      {
-        "signalId": "activity.oneStar",
-        "condition": "score-gte:starThresholds.oneStar",
-        "description": "Score meets one-star threshold."
+        "description": "Three stars"
       }
     ]
   }

@@ -38,6 +38,10 @@ yarn-error.*
 # typescript
 *.tsbuildinfo
 
+# compiled output of the one-off scripts in scripts/ (see their header comments
+# for the tsc invocation that produces it)
+scripts/.build/
+
 # generated native folders (CNG - Continuous Native Generation)
 **/android/
 **/ios/

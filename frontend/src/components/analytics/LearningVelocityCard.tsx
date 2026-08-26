@@ -1,16 +1,14 @@
 import React from 'react';
-import { StyleSheet, View, Text, ViewStyle } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { Card } from '../ui/Card';
+import { StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
 import { Skeleton } from '../ui/Skeleton';
-import { useTheme } from '../../theme/ThemeContext';
-import { spacing, typography } from '../../theme';
+import { colors, spacing } from '../../theme';
+import { MetricCard, MetricFigure, TrendPill } from './MetricCard';
 
 interface LearningVelocityCardProps {
   velocity: number;
   trend: 'up' | 'down' | 'stable';
   loading?: boolean;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
 }
 
 export function LearningVelocityCard({
@@ -19,66 +17,39 @@ export function LearningVelocityCard({
   loading = false,
   style,
 }: LearningVelocityCardProps) {
-  const { theme: { colors: themeColors } } = useTheme();
-
-  if (loading) {
-    return (
-      <Card style={style} accessibilityLabel="Loading learning velocity">
-        <Skeleton width={140} height={22} style={{ marginBottom: spacing.md }} />
-        <Skeleton width={80} height={40} style={{ alignSelf: 'center', marginBottom: spacing.xs }} />
-        <Skeleton width={110} height={14} style={{ alignSelf: 'center', marginBottom: spacing.sm }} />
-        <Skeleton width={60} height={12} style={{ alignSelf: 'center' }} />
-      </Card>
-    );
-  }
-
-  const isUp = trend === 'up';
-  const isDown = trend === 'down';
-  const trendIcon = isUp ? 'arrow-up' : isDown ? 'arrow-down' : 'remove';
-  const trendColor = isUp ? themeColors.success : isDown ? themeColors.error : themeColors.textMuted;
-
   return (
-    <Card
+    <MetricCard
+      title="Learning Velocity"
+      icon="flame"
+      loading={loading}
       style={style}
-      accessibilityLabel={`Learning velocity: ${velocity} lessons per week, trend ${trend}`}
+      accessibilityLabel={`Learning velocity ${velocity} lessons per week, ${trendPhrase(trend)}.`}
+      skeleton={
+        <View style={styles.skeleton}>
+          <Skeleton width={90} height={40} />
+          <Skeleton width={130} height={14} />
+          <Skeleton width={90} height={22} />
+        </View>
+      }
     >
-      <Text style={[styles.header, { color: themeColors.text }]}>Learning Velocity</Text>
-      <Text style={[styles.velocityValue, { color: themeColors.primary }]}>{velocity}</Text>
-      <Text style={[styles.velocityLabel, { color: themeColors.textSecondary }]}>Lessons per week</Text>
-      <View style={styles.trendRow}>
-        <Ionicons name={trendIcon as 'arrow-up' | 'arrow-down' | 'remove'} size={18} color={trendColor} />
-        <Text style={[styles.trendText, { color: trendColor, textTransform: 'capitalize' }]}>{trend}</Text>
-      </View>
-    </Card>
+      <MetricFigure
+        value={String(velocity)}
+        valueColor={colors.primary}
+        large
+        caption="Lessons per week"
+        below={<TrendPill direction={trend} />}
+      />
+    </MetricCard>
   );
 }
 
+const trendPhrase = (trend: 'up' | 'down' | 'stable'): string =>
+  trend === 'up' ? 'speeding up' : trend === 'down' ? 'slowing down' : 'holding steady';
+
 const styles = StyleSheet.create({
-  header: {
-    fontSize: typography.sizes.cardTitle,
-    fontWeight: typography.weights.bold,
-    marginBottom: spacing.md,
-  },
-  velocityValue: {
-    fontSize: typography.sizes.display,
-    fontWeight: typography.weights.black,
-    textAlign: 'center',
-    lineHeight: typography.sizes.display * 1.1,
-  },
-  velocityLabel: {
-    fontSize: typography.sizes.small,
-    textAlign: 'center',
-    marginBottom: spacing.sm,
-  },
-  trendRow: {
-    flexDirection: 'row',
+  skeleton: {
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.xs,
-  },
-  trendText: {
-    fontSize: typography.sizes.small,
-    fontWeight: typography.weights.medium,
+    gap: spacing.sm,
   },
 });
 

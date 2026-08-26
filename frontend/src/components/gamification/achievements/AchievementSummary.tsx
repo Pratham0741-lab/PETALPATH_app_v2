@@ -1,7 +1,18 @@
+/**
+ * AchievementSummary — the "n of m unlocked" header on the Achievements screen.
+ *
+ * Redesign notes (§5, §7): a hand-rolled surface with an Ionicons trophy on a
+ * solid `accent` circle becomes a design-system `Card` with an `IconWell` and a
+ * real progress bar, so the child can see how far along they are rather than
+ * having to compare two numbers. Yellow on yellow was also unreadable, so the
+ * glyph uses the darkened amber on the yellow tint (§30).
+ */
+
 import React from 'react';
-import { View, Text, StyleSheet, StyleProp, ViewStyle } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { colors, spacing, typography, radius, shadows } from '../../../theme';
+import { StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native';
+
+import { colors, spacing, typography } from '../../../theme';
+import { Card, IconWell, ProgressIndicator } from '../../design';
 
 interface AchievementSummaryProps {
   total: number;
@@ -9,57 +20,57 @@ interface AchievementSummaryProps {
   style?: StyleProp<ViewStyle>;
 }
 
-export const AchievementSummary: React.FC<AchievementSummaryProps> = ({ total, completed, style }) => {
+export const AchievementSummary: React.FC<AchievementSummaryProps> = ({
+  total,
+  completed,
+  style,
+}) => {
+  const percent = total > 0 ? (completed / total) * 100 : 0;
+
   return (
-    <View style={[styles.card, style]}>
+    <Card style={style}>
       <View style={styles.row}>
-        <View style={styles.iconWrap}>
-          <Ionicons name="trophy" size={28} color={colors.yellow} />
-        </View>
+        <IconWell icon="trophy" color={colors.warningDark} soft={colors.yellowSoft} filled />
         <View style={styles.info}>
-          <Text style={styles.title}>Achievements</Text>
-          <Text style={styles.count}>{completed} of {total} unlocked</Text>
+          <Text style={styles.title} accessibilityRole="header">
+            Achievements
+          </Text>
+          <Text style={styles.count}>
+            {completed} of {total} unlocked
+          </Text>
         </View>
       </View>
-    </View>
+      <ProgressIndicator
+        value={percent}
+        color={colors.accent}
+        style={styles.progress}
+        accessibilityLabel={`${completed} of ${total} achievements unlocked`}
+      />
+    </Card>
   );
 };
 
 const styles = StyleSheet.create({
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.card,
-    padding: spacing.lg,
-    ...shadows.md,
-  },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  iconWrap: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: colors.accent,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: spacing.md,
+    gap: spacing.md,
   },
   info: {
-    flexDirection: 'column',
+    flex: 1,
+    minWidth: 0,
   },
   title: {
-    fontSize: typography.sizes.lg,
-    fontWeight: typography.weights.bold,
+    ...typography.presets.section,
     color: colors.text,
-    fontFamily: typography.families.rounded,
   },
   count: {
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.medium,
+    ...typography.presets.body,
     color: colors.textSecondary,
-    fontFamily: typography.families.rounded,
-    marginTop: spacing.xs,
+    marginTop: 2,
+  },
+  progress: {
+    marginTop: spacing.md,
   },
 });
 

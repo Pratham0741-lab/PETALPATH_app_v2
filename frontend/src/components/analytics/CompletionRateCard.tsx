@@ -1,18 +1,16 @@
 import React from 'react';
-import { StyleSheet, View, Text, ViewStyle } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { Card } from '../ui/Card';
+import { StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native';
 import { Skeleton } from '../ui/Skeleton';
-import { ProgressRing } from '../charts/ProgressRing';
-import { useTheme } from '../../theme/ThemeContext';
-import { spacing, typography } from '../../theme';
+import { ProgressRing } from '../design/ProgressIndicator';
+import { colors, progressSizes, spacing, typography } from '../../theme';
+import { MetricCard, MetricFigure, TrendPill } from './MetricCard';
 
 interface CompletionRateCardProps {
   rate: number;
   trend: 'up' | 'down' | 'stable';
   change: number;
   loading?: boolean;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
 }
 
 export function CompletionRateCard({
@@ -22,69 +20,47 @@ export function CompletionRateCard({
   loading = false,
   style,
 }: CompletionRateCardProps) {
-  const { theme: { colors: themeColors } } = useTheme();
-
-  if (loading) {
-    return (
-      <Card style={style} accessibilityLabel="Loading completion rate">
-        <Skeleton width={130} height={22} style={{ marginBottom: spacing.md }} />
-        <Skeleton variant="circle" width={100} height={100} style={{ alignSelf: 'center', marginBottom: spacing.sm }} />
-        <Skeleton width={80} height={14} style={{ alignSelf: 'center' }} />
-      </Card>
-    );
-  }
-
-  const isUp = trend === 'up';
-  const isDown = trend === 'down';
-  const trendColor = isUp ? themeColors.success : isDown ? themeColors.error : themeColors.textMuted;
-  const trendIcon = isUp ? 'arrow-up' : isDown ? 'arrow-down' : 'remove';
-  const sign = change >= 0 ? '+' : '';
+  const pct = Math.round(rate);
 
   return (
-    <Card
+    <MetricCard
+      title="Completion Rate"
+      icon="check"
+      loading={loading}
       style={style}
-      accessibilityLabel={`Completion rate: ${Math.round(rate)}%, ${sign}${change}% ${trend}`}
+      accessibilityLabel={`Completion rate ${pct} percent, ${change >= 0 ? 'up' : 'down'} ${Math.abs(Math.round(change))} percent.`}
+      skeleton={
+        <View style={styles.skeleton}>
+          <Skeleton variant="circle" width={progressSizes.ringSize} height={progressSizes.ringSize} />
+          <Skeleton width={90} height={22} />
+        </View>
+      }
     >
-      <Text style={[styles.header, { color: themeColors.text }]}>Completion Rate</Text>
-      <View style={styles.ringContainer}>
-        <ProgressRing progress={rate / 100} size={100} strokeWidth={8} color={themeColors.success} />
-        <Text style={[styles.rateText, { color: themeColors.text }]}>{Math.round(rate)}%</Text>
-      </View>
-      <View style={styles.trendRow}>
-        <Ionicons name={trendIcon as 'arrow-up' | 'arrow-down' | 'remove'} size={16} color={trendColor} />
-        <Text style={[styles.changeText, { color: trendColor }]}>
-          {sign}{change}%
-        </Text>
-      </View>
-    </Card>
+      <MetricFigure
+        above={
+          <ProgressRing
+            value={rate}
+            size={progressSizes.ringSizeLarge}
+            stroke={progressSizes.ringStrokeLarge}
+            color={colors.success}
+            accessibilityLabel="Completion rate"
+          >
+            <Text style={[typography.presets.stat, styles.ringValue]}>{pct}%</Text>
+          </ProgressRing>
+        }
+        below={<TrendPill direction={trend} change={change} />}
+      />
+    </MetricCard>
   );
 }
 
 const styles = StyleSheet.create({
-  header: {
-    fontSize: typography.sizes.cardTitle,
-    fontWeight: typography.weights.bold,
-    marginBottom: spacing.md,
-  },
-  ringContainer: {
+  skeleton: {
     alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.sm,
+    gap: spacing.sm,
   },
-  rateText: {
-    fontSize: typography.sizes.xxl,
-    fontWeight: typography.weights.black,
-    position: 'absolute',
-  },
-  trendRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.xs,
-  },
-  changeText: {
-    fontSize: typography.sizes.small,
-    fontWeight: typography.weights.medium,
+  ringValue: {
+    color: colors.text,
   },
 });
 

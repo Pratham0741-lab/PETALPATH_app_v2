@@ -21,7 +21,7 @@ export const LevelProgress: React.FC<LevelProgressProps> = ({
     <View style={styles.container}>
       <Text style={styles.endLabel}>Level {level}</Text>
       <View style={styles.middle}>
-        <ProgressBar progress={progressToNext} color={colors.purple} style={styles.bar} />
+        <ProgressBar progress={progressToNext} color={colors.primary} style={styles.bar} />
         <Text style={styles.percent}>{percent}%</Text>
       </View>
       <Text style={styles.endLabel}>Level {level + 1}</Text>
@@ -51,7 +51,7 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.sm,
     fontWeight: typography.weights.medium,
     fontFamily: typography.families.rounded,
-    color: colors.purple,
+    color: colors.primary,
   },
   endLabel: {
     fontSize: typography.sizes.sm,

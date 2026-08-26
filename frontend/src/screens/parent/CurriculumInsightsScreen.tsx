@@ -1,43 +1,61 @@
 import React, { useCallback, useState } from 'react';
-import {
-  StyleSheet,
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  RefreshControl,
-  useWindowDimensions,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { RefreshControl, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useCurriculumInsights } from '../../hooks/useParentAnalytics';
-import { ProgressRing } from '../../components/charts/ProgressRing';
-import { CurriculumProgressCard } from '../../components/analytics/CurriculumProgressCard';
-import { ScreenContainer } from '../../components/common/ScreenContainer';
-import { Card } from '../../components/ui/Card';
-import { Skeleton } from '../../components/ui/Skeleton';
-import { ErrorState } from '../../components/common/ErrorState';
+import {
+  AppShell,
+  PageHeader,
+  ParentRow,
+  ParentSection,
+  PetalIcon,
+  ProgressRing,
+  StatePanel,
+} from '../../components/design';
+import type { PetalIconName } from '../../components/design';
+import { CurriculumProgressCard, DataSection } from '../../components/analytics';
 import { EmptyState } from '../../components/common/EmptyState';
-import { useTheme } from '../../theme/ThemeContext';
-import { spacing, typography, radius, breakpoints } from '../../theme';
+import { ErrorState } from '../../components/common/ErrorState';
+import { Skeleton } from '../../components/ui/Skeleton';
+import { badgeSizes, breakpoints, colors, progressSizes, radius, spacing, typography, layoutSizes } from '../../theme';
 import type { CurriculumInsight } from '../../services/api/analyticsApi';
 
-function healthConfig(health: CurriculumInsight['curriculumHealth']) {
-  switch (health) {
-    case 'good':
-      return { label: 'Good', color: '#8DBB75', bg: '#E8F3E0', icon: 'checkmark-circle' as const };
-    case 'needs_attention':
-      return { label: 'Needs Attention', color: '#F2A15F', bg: '#FDF0E0', icon: 'alert-circle' as const };
-    case 'behind':
-      return { label: 'Behind', color: '#E57373', bg: '#FCE4E4', icon: 'warning' as const };
-  }
+/**
+ * Curriculum Insights (spec §26) — where the child is in the curriculum, how
+ * fast they are moving through it, and what is next.
+ *
+ * The previous version said several things twice: the roadmap ring appeared at
+ * 100px near the top and again at 140px at the bottom (plus a bar underneath
+ * repeating the same percentage), and the modules/lessons counts appeared both in
+ * `CurriculumProgressCard` and in a hand-rolled "Progress Summary" card with its
+ * own track-and-fill bars. One ring, one pair of bars, same numbers.
+ *
+ * The three health colours were also hardcoded hexes (#8DBB75, #F2A15F, #E57373)
+ * that belong to no palette in the app — tokens now, with the label in near-black
+ * on the tint and the state carried by an icon as well as a colour (§7, §30).
+ */
+
+type Health = CurriculumInsight['curriculumHealth'];
+
+interface HealthVisual {
+  label: string;
+  icon: PetalIconName;
+  tint: string;
+  fg: string;
 }
 
+const HEALTH: Record<Health, HealthVisual> = {
+  good: { label: 'Good', icon: 'check', tint: colors.greenSoft, fg: colors.successDark },
+  needs_attention: { label: 'Needs Attention', icon: 'info', tint: colors.warningLight, fg: colors.warning },
+  behind: { label: 'Behind', icon: 'warning', tint: colors.errorLight, fg: colors.errorDark },
+};
+
+const MILESTONE_ICON: Record<'module' | 'category', PetalIconName> = {
+  module: 'explore',
+  category: 'book',
+};
+
 export const CurriculumInsightsScreen: React.FC = () => {
-  const navigation = useNavigation<{ goBack: () => void }>();
   const { width: screenWidth } = useWindowDimensions();
   const isTabletOrDesktop = screenWidth >= breakpoints.mobileMax;
-  const { theme: { colors: themeColors } } = useTheme();
 
   const curriculum = useCurriculumInsights();
   const [refreshing, setRefreshing] = useState(false);
@@ -50,374 +68,209 @@ export const CurriculumInsightsScreen: React.FC = () => {
 
   const data: CurriculumInsight | undefined = curriculum.data?.data;
 
-  const modulesTotal = data
-    ? data.modulesCompleted + data.modulesRemaining
-    : 0;
-  const lessonsTotal = data
-    ? data.lessonsCompleted + data.lessonsRemaining
-    : 0;
+  const modulesTotal = data ? data.modulesCompleted + data.modulesRemaining : 0;
+  const lessonsTotal = data ? data.lessonsCompleted + data.lessonsRemaining : 0;
+
+  const header = (
+    <PageHeader
+      title="Curriculum Insights"
+      subtitle={data?.currentCurriculum ?? 'Progress through the curriculum'}
+      centered={false}
+    />
+  );
 
   if (curriculum.isLoading) {
     return (
-      <ScreenContainer>
-        <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
-          <View style={styles.header}>
-            <Skeleton variant="circle" width={40} height={40} />
-            <Skeleton width={200} height={28} style={{ marginLeft: spacing.md }} />
-          </View>
-          <Skeleton variant="card" style={{ marginBottom: spacing.lg }} />
-          <Skeleton variant="card" style={{ marginBottom: spacing.lg }} />
-          <Skeleton variant="card" />
-        </ScrollView>
-      </ScreenContainer>
+      <AppShell petals="light" header={header}>
+        <Skeleton variant="card" height={152} style={styles.block} />
+        <Skeleton variant="card" height={188} style={styles.block} />
+        <Skeleton variant="card" height={200} style={styles.block} />
+      </AppShell>
     );
   }
 
   if (curriculum.error) {
     return (
-      <ScreenContainer>
-        <ErrorState
-          title="Could not load curriculum insights"
-          message={curriculum.error.message}
-          onRetry={() => curriculum.refetch()}
-        />
-      </ScreenContainer>
+      <AppShell petals="light" header={header}>
+        <StatePanel minHeight={220}>
+          <ErrorState
+            title="Could not load curriculum insights"
+            message={curriculum.error.message}
+            onRetry={() => curriculum.refetch()}
+          />
+        </StatePanel>
+      </AppShell>
     );
   }
 
   if (!data) {
     return (
-      <ScreenContainer>
-        <View style={styles.header}>
-          <TouchableOpacity
-            onPress={() => navigation.goBack()}
-            accessibilityRole="button"
-            accessibilityLabel="Go back"
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <Ionicons name="arrow-back" size={28} color={themeColors.text} />
-          </TouchableOpacity>
-          <Ionicons name="book" size={28} color={themeColors.primary} style={{ marginLeft: spacing.md }} />
-          <Text style={[styles.headerTitle, { color: themeColors.text }]}>Curriculum Insights</Text>
-        </View>
-        <EmptyState
-          icon="📚"
-          title="No curriculum data"
-          message="Curriculum insights will appear once your child starts a curriculum."
-        />
-      </ScreenContainer>
+      <AppShell petals="light" header={header}>
+        <StatePanel minHeight={220}>
+          <EmptyState
+            icon="book"
+            title="No curriculum data"
+            message="Curriculum insights will appear once your child starts a curriculum."
+          />
+        </StatePanel>
+      </AppShell>
     );
   }
 
-  const health = healthConfig(data.curriculumHealth);
-  const modulesPercent = modulesTotal > 0 ? (data.modulesCompleted / modulesTotal) * 100 : 0;
-  const lessonsPercent = lessonsTotal > 0 ? (data.lessonsCompleted / lessonsTotal) * 100 : 0;
+  const health = HEALTH[data.curriculumHealth];
 
   return (
-    <ScreenContainer>
-      <ScrollView
-        contentContainerStyle={[
-          styles.scrollContainer,
-          isTabletOrDesktop && styles.scrollContainerTablet,
-        ]}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={themeColors.primary} />
-        }
+    <AppShell
+      petals="light"
+      header={header}
+      contentContainerStyle={isTabletOrDesktop ? styles.contentTablet : undefined}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
+      }
+    >
+      <ParentSection title="Current Curriculum" icon="book" boxed>
+        <View style={styles.curriculumRow}>
+          <View style={styles.curriculumInfo}>
+            <Text style={typography.presets.section}>{data.currentCurriculum}</Text>
+            <Text style={[typography.presets.caption, styles.muted]}>
+              {modulesTotal} modules · {lessonsTotal} lessons
+            </Text>
+          </View>
+          <View style={styles.ringWrap}>
+            <ProgressRing
+              value={data.roadmapCompletion}
+              size={progressSizes.ringSizeLarge}
+              stroke={progressSizes.ringStrokeLarge}
+              color={colors.secondary}
+              accessibilityLabel={`Roadmap ${Math.round(data.roadmapCompletion)} percent complete`}
+            >
+              <Text style={[typography.presets.cardTitle, styles.ringValue]}>
+                {Math.round(data.roadmapCompletion)}%
+              </Text>
+            </ProgressRing>
+            <Text style={[typography.presets.caption, styles.muted]}>Roadmap</Text>
+          </View>
+        </View>
+      </ParentSection>
+
+      <CurriculumProgressCard
+        modulesCompleted={data.modulesCompleted}
+        modulesTotal={modulesTotal}
+        lessonsCompleted={data.lessonsCompleted}
+        lessonsTotal={lessonsTotal}
+        style={styles.block}
+      />
+
+      <ParentSection title="Pace" subtitle="How the current curriculum is going" icon="clock" boxed>
+        <ParentRow
+          label="Average lesson completion"
+          value={`${Math.round(data.averageLessonCompletion)}%`}
+          icon="chart"
+          iconColor={colors.primary}
+        />
+        <ParentRow
+          label="Estimated to finish"
+          value={`${data.estimatedCompletionDays} days`}
+          icon="calendar"
+          iconColor={colors.secondary}
+          divided
+        />
+        <ParentRow
+          label="Curriculum health"
+          icon="heart"
+          iconColor={health.fg}
+          divided
+          right={
+            <View
+              style={[styles.healthPill, { backgroundColor: health.tint }]}
+              accessible
+              accessibilityLabel={`Curriculum health: ${health.label}`}
+            >
+              <PetalIcon name={health.icon} size={badgeSizes.sm.iconSize} color={health.fg} />
+              <Text
+                style={[typography.presets.caption, styles.healthLabel]}
+                numberOfLines={1}
+              >
+                {health.label}
+              </Text>
+            </View>
+          }
+        />
+      </ParentSection>
+
+      <DataSection
+        title="Next Milestones"
+        subtitle="Coming up, soonest first"
+        icon="star"
+        boxed
+        empty={data.nextMilestones.length === 0}
+        emptyTitle="No upcoming milestones"
+        emptyMessage="Complete more lessons to unlock milestones."
+        emptyIcon="star"
       >
-        <View style={styles.header}>
-          <TouchableOpacity
-            onPress={() => navigation.goBack()}
-            accessibilityRole="button"
-            accessibilityLabel="Go back"
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <Ionicons name="arrow-back" size={28} color={themeColors.text} />
-          </TouchableOpacity>
-          <Ionicons name="book" size={28} color={themeColors.primary} style={{ marginLeft: spacing.md }} />
-          <Text style={[styles.headerTitle, { color: themeColors.text }]}>Curriculum Insights</Text>
-        </View>
-
-        <Card style={styles.section} accessibilityLabel="Current curriculum">
-          <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Current Curriculum</Text>
-          <View style={styles.curriculumRow}>
-            <View style={styles.curriculumInfo}>
-              <Text style={[styles.curriculumName, { color: themeColors.text }]}>
-                {data.currentCurriculum}
-              </Text>
-              <Text style={[styles.curriculumSub, { color: themeColors.textSecondary }]}>
-                {data.modulesCompleted + data.modulesRemaining} modules
-              </Text>
-            </View>
-            <ProgressRing
-              progress={data.roadmapCompletion}
-              size={100}
-              strokeWidth={8}
-              label="Roadmap"
-            />
-          </View>
-        </Card>
-
-        <View style={styles.dualCardsRow}>
-          <CurriculumProgressCard
-            modulesCompleted={data.modulesCompleted}
-            modulesTotal={modulesTotal}
-            lessonsCompleted={data.lessonsCompleted}
-            lessonsTotal={lessonsTotal}
-            style={styles.halfCard}
+        {data.nextMilestones.map((milestone, index) => (
+          <ParentRow
+            key={`milestone-${index}`}
+            label={milestone.title}
+            description={milestone.type === 'module' ? 'Module' : 'Category'}
+            value={`~${milestone.etaDays}d`}
+            icon={MILESTONE_ICON[milestone.type]}
+            iconColor={colors.primary}
+            divided={index > 0}
           />
-          <Card style={[styles.halfCard, styles.statCard]} accessibilityLabel="Average lesson completion">
-            <Text style={[styles.statLabel, { color: themeColors.textSecondary }]}>Avg Lesson</Text>
-            <Text style={[styles.statValue, { color: themeColors.primary }]}>
-              {data.averageLessonCompletion}%
-            </Text>
-            <Text style={[styles.statSublabel, { color: themeColors.textMuted }]}>Completion</Text>
-          </Card>
-        </View>
-
-        <Card style={styles.section} accessibilityLabel="Progress summary">
-          <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Progress Summary</Text>
-          <View style={styles.progressBlock}>
-            <View style={styles.progressRow}>
-              <Text style={[styles.progressLabel, { color: themeColors.textSecondary }]}>Modules</Text>
-              <Text style={[styles.progressCount, { color: themeColors.text }]}>
-                {data.modulesCompleted}/{modulesTotal}
-              </Text>
-            </View>
-            <View style={[styles.progressTrack, { backgroundColor: themeColors.surfaceSecondary }]}>
-              <View style={[styles.progressFill, { width: `${Math.min(modulesPercent, 100)}%`, backgroundColor: themeColors.secondary }]} />
-            </View>
-          </View>
-          <View style={styles.progressBlock}>
-            <View style={styles.progressRow}>
-              <Text style={[styles.progressLabel, { color: themeColors.textSecondary }]}>Lessons</Text>
-              <Text style={[styles.progressCount, { color: themeColors.text }]}>
-                {data.lessonsCompleted}/{lessonsTotal}
-              </Text>
-            </View>
-            <View style={[styles.progressTrack, { backgroundColor: themeColors.surfaceSecondary }]}>
-              <View style={[styles.progressFill, { width: `${Math.min(lessonsPercent, 100)}%`, backgroundColor: themeColors.primary }]} />
-            </View>
-          </View>
-        </Card>
-
-        <View style={styles.dualCardsRow}>
-          <Card style={styles.halfCard} accessibilityLabel="Estimated completion">
-            <Ionicons name="calendar-outline" size={24} color={themeColors.primary} />
-            <Text style={[styles.estDays, { color: themeColors.text }]}>
-              Estimated {data.estimatedCompletionDays} days remaining
-            </Text>
-          </Card>
-          <Card style={styles.halfCard} accessibilityLabel={`Curriculum health: ${health.label}`}>
-            <View style={[styles.healthBadge, { backgroundColor: health.bg }]}>
-              <Ionicons name={health.icon} size={20} color={health.color} />
-              <Text style={[styles.healthLabel, { color: health.color }]}>{health.label}</Text>
-            </View>
-            <Text style={[styles.statSublabel, { color: themeColors.textMuted, marginTop: spacing.sm }]}>
-              Curriculum Health
-            </Text>
-          </Card>
-        </View>
-
-        <Card style={styles.section} accessibilityLabel="Next milestones">
-          <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Next Milestones</Text>
-          {data.nextMilestones.length === 0 ? (
-            <EmptyState
-              icon="🏁"
-              title="No upcoming milestones"
-              message="Complete more lessons to unlock milestones."
-            />
-          ) : (
-            <View style={styles.milestonesList}>
-              {data.nextMilestones.map((milestone, index) => (
-                <View
-                  key={`milestone-${index}`}
-                  style={[
-                    styles.milestoneRow,
-                    index < data.nextMilestones.length - 1 && {
-                      borderBottomWidth: 1,
-                      borderBottomColor: themeColors.divider,
-                    },
-                  ]}
-                >
-                  <View style={styles.milestoneLeft}>
-                    <Ionicons
-                      name={milestone.type === 'module' ? 'cube-outline' : 'folder-outline'}
-                      size={20}
-                      color={themeColors.primary}
-                    />
-                    <Text style={[styles.milestoneTitle, { color: themeColors.text }]}>
-                      {milestone.title}
-                    </Text>
-                  </View>
-                  <Text style={[styles.milestoneEta, { color: themeColors.textSecondary }]}>
-                    ~{milestone.etaDays}d
-                  </Text>
-                </View>
-              ))}
-            </View>
-          )}
-        </Card>
-
-        <Card style={styles.section} accessibilityLabel="Roadmap completion">
-          <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Roadmap Completion</Text>
-          <View style={styles.roadmapCenter}>
-            <ProgressRing
-              progress={data.roadmapCompletion}
-              size={140}
-              strokeWidth={10}
-              label="Complete"
-            />
-          </View>
-          <View style={[styles.progressTrack, { backgroundColor: themeColors.surfaceSecondary, marginTop: spacing.lg }]}>
-            <View style={[styles.progressFill, { width: `${Math.min(data.roadmapCompletion, 100)}%`, backgroundColor: themeColors.secondary }]} />
-          </View>
-        </Card>
-      </ScrollView>
-    </ScreenContainer>
+        ))}
+      </DataSection>
+    </AppShell>
   );
 };
 
 const styles = StyleSheet.create({
-  scrollContainer: {
-    padding: spacing.lg,
-    paddingBottom: spacing.xxxl,
-  },
-  scrollContainerTablet: {
-    maxWidth: 720,
+  contentTablet: {
+    maxWidth: layoutSizes.report,
     alignSelf: 'center',
+    width: '100%',
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  block: {
     marginBottom: spacing.xl,
   },
-  headerTitle: {
-    fontSize: typography.sizes.xxl,
-    fontWeight: typography.weights.bold,
-    marginLeft: spacing.sm,
-    flex: 1,
+  muted: {
+    color: colors.textSecondary,
   },
-  section: {
-    marginBottom: spacing.lg,
-  },
-  sectionTitle: {
-    fontSize: typography.sizes.lg,
-    fontWeight: typography.weights.bold,
-    marginBottom: spacing.md,
-  },
+
+  // -------------------------------------------------------- current curriculum
   curriculumRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: spacing.md,
   },
   curriculumInfo: {
+    // Wraps to two lines rather than shoving the ring off the card at 360px.
     flex: 1,
-    marginRight: spacing.md,
-  },
-  curriculumName: {
-    fontSize: typography.sizes.xl,
-    fontWeight: typography.weights.bold,
-    marginBottom: spacing.xs,
-  },
-  curriculumSub: {
-    fontSize: typography.sizes.sm,
-  },
-  dualCardsRow: {
-    flexDirection: 'row',
-    gap: spacing.md,
-    marginBottom: spacing.lg,
-  },
-  halfCard: {
-    flex: 1,
-  },
-  statCard: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  statLabel: {
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.medium,
-    marginBottom: spacing.xs,
-  },
-  statValue: {
-    fontSize: typography.sizes.xxl,
-    fontWeight: typography.weights.bold,
-  },
-  statSublabel: {
-    fontSize: typography.sizes.caption,
-    marginTop: spacing.xs,
-  },
-  progressBlock: {
-    marginBottom: spacing.md,
-  },
-  progressRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.xs,
-  },
-  progressLabel: {
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.medium,
-  },
-  progressCount: {
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.bold,
-  },
-  progressTrack: {
-    height: 10,
-    borderRadius: radius.xs,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    borderRadius: radius.xs,
-  },
-  estDays: {
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.bold,
-    marginTop: spacing.sm,
-  },
-  healthBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: radius.chip,
+    minWidth: 0,
     gap: spacing.xs,
   },
+  ringWrap: {
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  ringValue: {
+    color: colors.text,
+  },
+
+  // -------------------------------------------------------------------- health
+  healthPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    height: badgeSizes.sm.height,
+    paddingHorizontal: badgeSizes.sm.paddingHorizontal,
+    borderRadius: radius.pill,
+  },
   healthLabel: {
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.bold,
-  },
-  milestonesList: {
-    gap: 0,
-  },
-  milestoneRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: spacing.md,
-  },
-  milestoneLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    flex: 1,
-  },
-  milestoneTitle: {
-    fontSize: typography.sizes.body,
-    fontWeight: typography.weights.medium,
-    flex: 1,
-  },
-  milestoneEta: {
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.medium,
-    marginLeft: spacing.md,
-  },
-  roadmapCenter: {
-    alignItems: 'center',
+    color: colors.text,
+    fontWeight: '800',
+    flexShrink: 1,
   },
 });
+
+export default CurriculumInsightsScreen;

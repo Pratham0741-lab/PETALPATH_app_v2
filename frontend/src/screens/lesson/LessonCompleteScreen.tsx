@@ -1,17 +1,55 @@
+/**
+ * Lesson Completed — reference screen 11 (spec §34 phase 6).
+ *
+ * The completion pipeline is untouched (§1). `completionStartedRef` still fires
+ * `completeLessonBackend` exactly once per lesson id, `findLessonContext` still
+ * walks categories → modules → lessons, `categoryBadgeMap` keeps the same four
+ * entries and `handleFinish` still branches category → module → Home in that
+ * order. Only the chrome is rebuilt:
+ *
+ *  - `ScreenContainer` becomes `AppShell`, so this screen gets the same warm
+ *    background, petals and safe areas as every other one.
+ *  - The 100px `Ionicons name="star"` circle becomes `IconWell`, the row of
+ *    eight `Ionicons` becomes the shared `StarRating`, and the purple-tinted
+ *    "Total Stars" chip becomes `RewardBadge kind="stars"` — purple is reserved
+ *    for selection and progress (§3), and stars are yellow everywhere else in
+ *    the app, so the chip was the odd one out.
+ *  - The `sparkles` glyph standing in for the mentor becomes the child's actual
+ *    buddy, drawn with `AvatarGlyph` (§7, §8).
+ *  - The two `height: 50` / `height: 54` buttons become `SecondaryButton` and
+ *    `PrimaryButton` in `AppShell`'s sticky footer, so "Continue" is reachable
+ *    without scrolling on a short screen (§27).
+ *  - `NavigationGuide` moves *outside* the shell. It positions itself
+ *    absolutely, and inside a ScrollView that anchors it to the scrolled
+ *    content rather than to the screen.
+ *
+ * The "8 stars" denominator is the shipped contract (three stars per activity
+ * is not what the backend reports here), so it is carried across as-is rather
+ * than invented anew.
+ */
+
 import React, { useEffect, useState, useRef } from 'react';
-import { StyleSheet, View, Text, ActivityIndicator } from 'react-native';
-import { ScreenContainer } from '../../components/common/ScreenContainer';
-import { Card, Button } from '../../components/ui';
-import { colors, typography, spacing, radius, shadows } from '../../theme';
-import { useAppNavigation } from '../../hooks/useAppNavigation';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useIsFocused } from '@react-navigation/native';
+
+import { colors, spacing, typography } from '../../theme';
+import { useAppNavigation } from '../../hooks/useAppNavigation';
 import { useRoadmapStore } from '../../store/roadmapStore';
 import { useProgressStore } from '../../store/progressStore';
-import { Ionicons } from '@expo/vector-icons';
 import { useChildStore } from '../../store/childStore';
 import { enhanceMentor, MENTORS } from '../../constants/mentors';
 import { useDeviceType } from '../../hooks/useDeviceType';
 import { NavigationGuide } from '../../components/tutorial/NavigationGuide';
+import {
+  AppShell,
+  AvatarGlyph,
+  Card,
+  PrimaryButton,
+  RewardBadge,
+  SecondaryButton,
+  StarRating,
+} from '../../components/design';
+import { CelebrationScaffold } from './CelebrationScaffold';
 
 const categoryBadgeMap: Record<string, string> = {
   'Shapes': 'Shape Master',
@@ -20,8 +58,14 @@ const categoryBadgeMap: Record<string, string> = {
   'Reading Readiness': 'Reading Champion',
 };
 
+/** Stars a single lesson can award — the value the backend scores against. */
+const STARS_PER_LESSON = 8;
+
+const MENTOR_MESSAGE =
+  'You worked so hard today! Watching the tutorial, listening, speaking, and drawing. You are an absolute superstar!';
+
 export const LessonCompleteScreen: React.FC = () => {
-  const { navigateToTab, navigateTo, navigation } = useAppNavigation();
+  const { navigateToTab, navigateTo } = useAppNavigation();
   const activeChild = useChildStore((state) => state.activeChild);
   const activeMentor = enhanceMentor(activeChild?.mentor) || enhanceMentor(MENTORS[0])!;
   const { selectedLesson, completeLesson, loadCategories, categories } = useRoadmapStore();
@@ -101,234 +145,128 @@ export const LessonCompleteScreen: React.FC = () => {
 
   if (loading) {
     return (
-      <ScreenContainer style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={colors.purple} />
-        <Text style={[styles.loadingText, { fontFamily: typography.families.rounded }]}>Saving your progress...</Text>
-      </ScreenContainer>
+      <AppShell scroll={false} petals="light">
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={[typography.presets.caption, styles.loadingText]}>
+            Saving your progress…
+          </Text>
+        </View>
+      </AppShell>
     );
   }
 
   const starsEarned = completionResult?.starsEarned ?? 0;
   const totalStars = completionResult?.totalStars ?? 0;
+  const mentorFirstName = activeMentor.name.split(' ')[0];
 
   return (
-    <ScreenContainer style={styles.container}>
-      <View style={styles.content}>
-        
-        {/* Celebration Header */}
-        <View style={styles.celebrationHeader}>
-          <View style={styles.starCircle}>
-            <Ionicons name="star" size={56} color={colors.yellow} />
-          </View>
-          <Text style={[styles.title, { fontFamily: typography.families.rounded }]}>Lesson Completed!</Text>
-          <Text style={[styles.subtitle, { fontFamily: typography.families.rounded }]}>
-            Outstanding job, {activeChild?.name}! You finished all the activities in "{selectedLesson?.title || 'this lesson'}"!
-          </Text>
-        </View>
-
-        {/* Stars Earned Card */}
-        <Card style={styles.starsCard}>
-          <View style={styles.starsRow}>
-            {Array.from({ length: 8 }).map((_, i) => (
-              <Ionicons
-                key={i}
-                name="star"
-                size={24}
-                color={i < starsEarned ? colors.yellow : colors.border}
-                style={styles.starIcon}
-              />
-            ))}
-          </View>
-          <Text style={[styles.starsText, { fontFamily: typography.families.rounded }]}>
-            You earned <Text style={styles.boldText}>{starsEarned} / 8</Text> stars in this lesson!
-          </Text>
-          <View style={styles.totalStarsContainer}>
-            <Ionicons name="trophy" size={16} color={colors.purple} />
-            <Text style={[styles.totalStarsText, { fontFamily: typography.families.rounded }]}>
-              Total Stars: <Text style={styles.boldText}>{totalStars}</Text>
-            </Text>
-          </View>
-        </Card>
-
-        {/* Success Card with Mentor feedback */}
-        <Card style={styles.nextCard}>
-          <View style={styles.mentorRow}>
-            <View style={styles.mentorIcon}>
-              <Ionicons name="sparkles" size={20} color={colors.yellow} />
-            </View>
-            <View style={styles.mentorInfo}>
-              <Text style={[styles.mentorTalkTitle, { fontFamily: typography.families.rounded }]}>Message from {activeMentor.name.split(' ')[0]}</Text>
-              <Text style={[styles.mentorText, { fontFamily: typography.families.rounded }]}>
-                "You worked so hard today! Watching the tutorial, listening, speaking, and drawing. You are an absolute superstar!"
-              </Text>
-            </View>
-          </View>
-        </Card>
-
-        {/* Action Buttons */}
-        <View style={styles.buttonContainer}>
-          <Button
+    <CelebrationScaffold
+      icon="star"
+      iconColor={colors.yellow}
+      iconSoft={colors.yellowSoft}
+      title="Amazing!"
+      message={`Outstanding job${activeChild?.name ? `, ${activeChild.name}` : ''}! You finished all the activities in “${selectedLesson?.title || 'this lesson'}”!`}
+      footer={
+        <View style={styles.footer}>
+          <SecondaryButton
             label="View Rewards"
-            variant="secondary"
+            icon="trophy"
             onPress={() => navigateToTab('Rewards')}
-            style={styles.rewardsBtn}
           />
-          <Button
+          <PrimaryButton
             label="Continue"
-            variant="primary"
+            iconRight="forward"
+            tone="green"
             onPress={handleFinish}
-            style={styles.doneBtn}
+            accessibilityHint="Saves this lesson and goes back to your journey"
           />
         </View>
-      </View>
-      {isTablet && (
-        <NavigationGuide
-          screenKey="lesson_complete"
-          guideKey="lesson_complete"
-          message="Lesson completed! You did an amazing job!"
-        />
-      )}
-    </ScreenContainer>
+      }
+      overlay={
+        isTablet ? (
+          <NavigationGuide
+            screenKey="lesson_complete"
+            guideKey="lesson_complete"
+            message="Lesson completed! You did an amazing job!"
+          />
+        ) : null
+      }
+    >
+      {/* Stars earned */}
+      <Card variant="raised" padding="normal" accent={colors.yellow} style={styles.starsCard}>
+        <StarRating value={starsEarned} max={STARS_PER_LESSON} size="md" animate />
+        <Text style={[typography.presets.body, styles.starsText]}>
+          You earned{' '}
+          <Text style={styles.starsCount}>
+            {starsEarned} / {STARS_PER_LESSON}
+          </Text>{' '}
+          stars in this lesson!
+        </Text>
+        <RewardBadge kind="stars" value={totalStars} showUnit size="md" />
+      </Card>
+
+      {/* Message from the child's learning buddy */}
+      <Card variant="raised" padding="normal" accent={activeMentor.color} rail>
+        <View style={styles.mentorRow}>
+          <AvatarGlyph
+            species={activeMentor.species}
+            size={48}
+            ringColor={activeMentor.color}
+            accessibilityLabel={`${activeMentor.name}, your learning buddy`}
+          />
+          <View style={styles.mentorText}>
+            <Text style={[typography.presets.eyebrow, { color: activeMentor.color }]}>
+              Message from {mentorFirstName}
+            </Text>
+            <Text style={[typography.presets.subtle, styles.quote]}>“{MENTOR_MESSAGE}”</Text>
+          </View>
+        </View>
+      </Card>
+    </CelebrationScaffold>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    backgroundColor: colors.background,
-  },
-  loadingContainer: {
-    backgroundColor: colors.background,
+  center: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     gap: spacing.md,
   },
   loadingText: {
     color: colors.textSecondary,
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.bold,
-  },
-  content: {
-    flex: 1,
-    padding: spacing.xl,
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: spacing.lg,
-    maxWidth: 500,
-    width: '100%',
-    alignSelf: 'center',
-  },
-  celebrationHeader: {
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  starCircle: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: 'rgba(247, 201, 75, 0.12)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: 'rgba(247, 201, 75, 0.3)',
-    marginBottom: spacing.xs,
-    ...shadows.sm,
-  },
-  title: {
-    color: colors.textPrimary,
-    fontSize: typography.sizes.largeTitle,
-    fontWeight: typography.weights.black,
-    textAlign: 'center',
-  },
-  subtitle: {
-    color: colors.textSecondary,
-    fontSize: typography.sizes.small,
-    textAlign: 'center',
-    paddingHorizontal: spacing.md,
-    lineHeight: 18,
   },
   starsCard: {
-    width: '100%',
     alignItems: 'center',
     gap: spacing.md,
   },
-  starsRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: spacing.xs,
-    flexWrap: 'wrap',
-  },
-  starIcon: {
-    marginHorizontal: 1,
-  },
   starsText: {
-    color: colors.textPrimary,
-    fontSize: typography.sizes.small,
+    color: colors.text,
+    textAlign: 'center',
   },
-  boldText: {
-    fontWeight: typography.weights.bold,
-  },
-  totalStarsContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-    backgroundColor: 'rgba(139, 120, 216, 0.1)',
-    paddingVertical: 4,
-    paddingHorizontal: 10,
-    borderRadius: radius.chip,
-    borderWidth: 1.5,
-    borderColor: 'rgba(139, 120, 216, 0.2)',
-  },
-  totalStarsText: {
-    color: colors.purple,
-    fontSize: 11,
-    fontWeight: 'bold',
-  },
-  nextCard: {
-    width: '100%',
+  starsCount: {
+    fontWeight: typography.weights.black,
+    color: colors.text,
   },
   mentorRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: spacing.md,
   },
-  mentorIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.md,
-    backgroundColor: 'rgba(247, 201, 75, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: 'rgba(247, 201, 75, 0.25)',
-  },
-  mentorInfo: {
-    flex: 1,
-    gap: 2,
-  },
-  mentorTalkTitle: {
-    color: colors.purple,
-    fontSize: typography.sizes.caption,
-    fontWeight: typography.weights.bold,
-  },
   mentorText: {
+    /* `flexShrink` keeps a long quote from pushing the avatar off-screen. */
+    flexShrink: 1,
+    flexGrow: 1,
+    gap: 3,
+  },
+  quote: {
     color: colors.textSecondary,
-    fontSize: typography.sizes.small,
-    lineHeight: 16,
     fontStyle: 'italic',
   },
-  buttonContainer: {
-    width: '100%',
+  footer: {
     gap: spacing.sm,
-    marginTop: spacing.xs,
-  },
-  rewardsBtn: {
-    width: '100%',
-    height: 50,
-  },
-  doneBtn: {
-    width: '100%',
-    height: 54,
   },
 });
-export default LessonCompleteScreen;
 
+export default LessonCompleteScreen;

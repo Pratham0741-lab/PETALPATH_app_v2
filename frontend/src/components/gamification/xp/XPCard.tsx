@@ -20,7 +20,7 @@ const XPCard: React.FC<XPCardProps> = ({ xp, level, progressToNext, nextLevelXP,
       <View style={styles.header}>
         <View style={styles.xpBlock}>
           <View style={styles.xpLabelRow}>
-            <Ionicons name="star" size={16} color={colors.purple} />
+            <Ionicons name="star" size={16} color={colors.primary} />
             <Text style={styles.xpLabel}>XP</Text>
           </View>
           <Text style={styles.xpValue}>{xp}</Text>
@@ -33,7 +33,7 @@ const XPCard: React.FC<XPCardProps> = ({ xp, level, progressToNext, nextLevelXP,
         <Text style={styles.progressLabel}>Level {level}</Text>
         <Text style={styles.progressTarget}>{nextLevelXP} XP</Text>
       </View>
-      <ProgressBar progress={progressToNext} color={colors.purple} />
+      <ProgressBar progress={progressToNext} color={colors.primary} />
     </AppCard>
   );
 };
@@ -78,7 +78,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: colors.purple,
+    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },

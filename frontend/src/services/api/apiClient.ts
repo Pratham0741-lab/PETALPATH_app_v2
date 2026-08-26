@@ -221,7 +221,13 @@ export class ApiClient {
       case 401:
         return 'Please login again.';
       case 403:
-        return "You don't have permission to do that.";
+        /*
+         * The server's own sentence, when it wrote one. A 403 raised by the
+         * review gate carries a line already written for the child; replacing it
+         * with "You don't have permission to do that." turned a piece of
+         * teaching into a bureaucratic no.
+         */
+        return serverMessage || "You don't have permission to do that.";
       case 404:
         return 'The requested resource was not found.';
       case 422:

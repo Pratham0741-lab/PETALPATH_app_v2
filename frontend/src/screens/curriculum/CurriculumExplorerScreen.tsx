@@ -1,24 +1,42 @@
-import React, { useState, useCallback } from 'react';
-import { StyleSheet, View, Text, ScrollView, Pressable, RefreshControl } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import React, { useCallback, useMemo, useState } from 'react';
+import { Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { ScreenContainer } from '../../components/common/ScreenContainer';
-import { TopBar } from '../../components/navigation/TopBar';
-import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { EmptyState } from '../../components/common/EmptyState';
 import { ErrorState } from '../../components/common/ErrorState';
+import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { useCurriculum } from '../../hooks/useCurriculum';
 import { toUserMessage } from '../../api/errors';
-import { colors, spacing, typography, radius } from '../../theme';
+import { colors, spacing, typography, progressSizes } from '../../theme';
+import {
+  AppShell,
+  Card,
+  IconButton,
+  LessonStatus,
+  PageHeader,
+  PetalIcon,
+  ProgressIndicator,
+  SceneBand,
+  StatusBadge,
+  SubjectCard,
+} from '../../components/design';
 
-const stateConfig: Record<string, { label: string; icon: React.ComponentProps<typeof Ionicons>['name']; color: string }> = {
-  LOCKED: { label: 'Locked', icon: 'lock-closed', color: colors.textMuted },
-  AVAILABLE: { label: 'Available', icon: 'lock-open', color: colors.blue },
-  ACTIVE: { label: 'Active', icon: 'flame', color: colors.coral },
-  COMPLETED: { label: 'Completed', icon: 'checkmark-circle', color: colors.green },
+/**
+ * Explore (spec §14) — subjects, each expanding to its skills.
+ *
+ * Unchanged behaviour: `useCurriculum()` is still the only data source, and
+ * tapping "View" still navigates to `SkillDetail`. The one structural change
+ * is that the View button is now a sibling of the row's toggle instead of a
+ * Pressable nested inside another Pressable, which is unreliable on Android —
+ * both the toggle and the navigation keep working, more predictably.
+ */
+
+/** Backend skill states -> the design system's badge vocabulary. */
+const STATE_TO_STATUS: Record<string, LessonStatus> = {
+  LOCKED: 'locked',
+  AVAILABLE: 'available',
+  ACTIVE: 'current',
+  COMPLETED: 'completed',
 };
-
-const subjectIcons: string[] = ['book', 'calculator', 'pencil', 'color-palette', 'puzzle', 'musical-notes'];
 
 const CurriculumExplorerScreen: React.FC = () => {
   const navigation = useNavigation<any>();
@@ -27,6 +45,36 @@ const CurriculumExplorerScreen: React.FC = () => {
   const [expandedSkills, setExpandedSkills] = useState<Set<string>>(new Set());
 
   const subjects = data?.data ?? [];
+
+  /**
+   * Skills finished across the whole curriculum, as a percentage — what the
+   * garden at the foot of the screen is drawn from.
+   *
+   * Every subject row already counts its own `COMPLETED` skills for its progress
+   * bar, so this is the same figure summed rather than a new claim. Curriculum-
+   * wide rather than per-subject on purpose: the band is the long view, and a
+   * garden that changed every time a subject was expanded would be a chart, not a
+   * place.
+   */
+  const gardenProgress = useMemo(() => {
+    let total = 0;
+    let done = 0;
+    subjects.forEach((subject: any) => {
+      const skills = subject.skills ?? [];
+      total += skills.length;
+      done += skills.filter((s: any) => s.state === 'COMPLETED').length;
+    });
+    return total > 0 ? (done / total) * 100 : 0;
+  }, [subjects]);
+
+  // Rendered as a bottom tab (no back arrow) and also pushed as a stack screen.
+  const showBack = useMemo(() => {
+    try {
+      return navigation.getState?.()?.type !== 'tab';
+    } catch {
+      return false;
+    }
+  }, [navigation]);
 
   const toggleSubject = useCallback((subjectId: string) => {
     setExpandedSubject((prev) => (prev === subjectId ? null : subjectId));
@@ -52,25 +100,28 @@ const CurriculumExplorerScreen: React.FC = () => {
     [navigation],
   );
 
-  const getSubjectIcon = (index: number): React.ComponentProps<typeof Ionicons>['name'] => {
-    return subjectIcons[index % subjectIcons.length] as any;
-  };
+  const header = (
+    <PageHeader
+      title="Explore"
+      subtitle="Pick a subject to see its skills"
+      showBack={showBack}
+      centered={false}
+    />
+  );
 
   if (isLoading) {
     return (
-      <ScreenContainer>
-        <TopBar title="Curriculum Explorer" showBack />
+      <AppShell withBottomNav petals="light" scroll={false} header={header}>
         <View style={styles.center}>
           <LoadingSpinner label="Loading curriculum…" />
         </View>
-      </ScreenContainer>
+      </AppShell>
     );
   }
 
   if (isError) {
     return (
-      <ScreenContainer>
-        <TopBar title="Curriculum Explorer" showBack />
+      <AppShell withBottomNav petals="light" scroll={false} header={header}>
         <View style={styles.center}>
           <ErrorState
             title="Couldn't load curriculum"
@@ -78,333 +129,237 @@ const CurriculumExplorerScreen: React.FC = () => {
             onRetry={refetch}
           />
         </View>
-      </ScreenContainer>
+      </AppShell>
     );
   }
 
   if (subjects.length === 0) {
     return (
-      <ScreenContainer>
-        <TopBar title="Curriculum Explorer" showBack />
+      <AppShell withBottomNav petals="light" scroll={false} header={header}>
         <View style={styles.center}>
           <EmptyState
-            icon="🌿"
             title="No curriculum available"
             message="Curriculum content will appear here when it's ready."
           />
         </View>
-      </ScreenContainer>
+      </AppShell>
     );
   }
 
   return (
-    <ScreenContainer>
-      <TopBar title="Curriculum Explorer" showBack />
-      <ScrollView
-        contentContainerStyle={styles.scrollContainer}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={isFetching} onRefresh={refetch} tintColor={colors.purple} />
-        }
-      >
-        <Text style={styles.header}>Learning Subjects</Text>
-        <Text style={styles.subheader}>Explore skills and track your progress across subjects.</Text>
+    <AppShell
+      withBottomNav
+      petals="light"
+      sky
+      /* The same garden as Home, drawn from the same kind of number — skills
+         finished rather than lessons — so the two tabs read as one world. */
+      scene={
+        <SceneBand
+          progress={gardenProgress}
+          caption="Every skill you finish opens a flower"
+        />
+      }
+      header={header}
+      refreshControl={
+        <RefreshControl refreshing={isFetching} onRefresh={refetch} tintColor={colors.primary} />
+      }
+    >
+      {subjects.map((subject: any, subjectIdx: number) => {
+        const isSubjectOpen = expandedSubject === subject.id;
+        const skills = subject.skills ?? [];
+        const completedCount = skills.filter((s: any) => s.state === 'COMPLETED').length;
 
-        {subjects.map((subject: any, subjectIdx: number) => {
-          const isSubjectOpen = expandedSubject === subject.id;
-          const skills = subject.skills ?? [];
-          const completedCount = skills.filter((s: any) => s.state === 'COMPLETED').length;
-          const iconName = getSubjectIcon(subjectIdx);
+        return (
+          <SubjectCard
+            key={subject.id}
+            name={subject.name}
+            skillCount={skills.length}
+            completedCount={completedCount}
+            index={subjectIdx}
+            expanded={isSubjectOpen}
+            onPress={() => toggleSubject(subject.id)}
+          >
+            {skills.length === 0 ? (
+              <Text style={[typography.presets.caption, styles.emptySkills]}>
+                No skills in this subject yet.
+              </Text>
+            ) : (
+              skills.map((skill: any, skillIdx: number) => {
+                const status = STATE_TO_STATUS[skill.state] ?? 'locked';
+                const isSkillOpen = expandedSkills.has(skill.id);
+                const locked = status === 'locked';
 
-          return (
-            <View key={subject.id} style={styles.subjectCard}>
-              <Pressable
-                onPress={() => toggleSubject(subject.id)}
-                style={({ pressed }) => [
-                  styles.subjectHeader,
-                  pressed && styles.subjectHeaderPressed,
-                ]}
-              >
-                <View style={[styles.subjectIcon, { backgroundColor: colors.purple + '18' }]}>
-                  <Ionicons name={iconName} size={24} color={colors.purple} />
-                </View>
-                <View style={styles.subjectInfo}>
-                  <Text style={styles.subjectName}>{subject.name}</Text>
-                  <Text style={styles.subjectMeta}>
-                    {skills.length} skill{skills.length !== 1 ? 's' : ''} · {completedCount} completed
-                  </Text>
-                </View>
-                <Ionicons
-                  name={isSubjectOpen ? 'chevron-up' : 'chevron-down'}
-                  size={22}
-                  color={colors.textMuted}
-                />
-              </Pressable>
-
-              {isSubjectOpen && (
-                <View style={styles.skillsList}>
-                  {skills.length === 0 ? (
-                    <Text style={styles.emptySkills}>No skills in this subject yet.</Text>
-                  ) : (
-                    skills.map((skill: any) => {
-                      const cfg = stateConfig[skill.state] ?? stateConfig.LOCKED;
-                      const isSkillOpen = expandedSkills.has(skill.id);
-
-                      return (
-                        <View key={skill.id}>
-                          <Pressable
-                            onPress={() => toggleSkill(skill.id)}
-                            style={({ pressed }) => [
-                              styles.skillItem,
-                              pressed && styles.skillItemPressed,
+                return (
+                  <View
+                    key={skill.id}
+                    style={[styles.skillBlock, skillIdx > 0 && styles.skillDivided]}
+                  >
+                    {/* Toggle and "View" are siblings, never nested pressables. */}
+                    <View style={styles.skillRow}>
+                      <Pressable
+                        onPress={() => toggleSkill(skill.id)}
+                        accessibilityRole="button"
+                        accessibilityLabel={skill.name}
+                        accessibilityState={{ expanded: isSkillOpen }}
+                        style={({ pressed }) => [styles.skillTap, pressed && styles.pressed]}
+                      >
+                        <View style={styles.skillText}>
+                          <Text
+                            numberOfLines={2}
+                            style={[
+                              typography.presets.subtle,
+                              { color: locked ? colors.textMuted : colors.text },
                             ]}
                           >
-                            <View
-                              style={[
-                                styles.skillStateIcon,
-                                { backgroundColor: cfg.color + '18' },
-                              ]}
-                            >
-                              <Ionicons name={cfg.icon} size={18} color={cfg.color} />
-                            </View>
-                            <View style={styles.skillInfo}>
-                              <Text style={styles.skillName}>{skill.name}</Text>
-                              <View style={styles.skillMeta}>
-                                <View style={[styles.stateBadge, { backgroundColor: cfg.color + '15' }]}>
-                                  <Text style={[styles.stateLabel, { color: cfg.color }]}>{cfg.label}</Text>
-                                </View>
-                                {skill.difficulty > 0 && (
-                                  <Text style={styles.skillDifficulty}>Lv.{skill.difficulty}</Text>
-                                )}
-                              </View>
-                            </View>
-                            <Pressable
-                              onPress={() => handleSkillPress(skill.id)}
-                              style={styles.viewButton}
-                            >
-                              <Text style={styles.viewButtonText}>View</Text>
-                              <Ionicons name="chevron-forward" size={16} color={colors.purple} />
-                            </Pressable>
-                          </Pressable>
-
-                          {isSkillOpen && skill.description && (
-                            <View style={styles.skillDetail}>
-                              <Text style={styles.skillDescription}>{skill.description}</Text>
-                              {skill.masteryScore > 0 && (
-                                <View style={styles.masteryRow}>
-                                  <Text style={styles.masteryLabel}>Mastery:</Text>
-                                  <View style={styles.masteryBarBg}>
-                                    <View
-                                      style={[
-                                        styles.masteryBarFill,
-                                        { width: `${Math.min(skill.masteryScore, 100)}%` },
-                                      ]}
-                                    />
-                                  </View>
-                                  <Text style={styles.masteryValue}>{Math.round(skill.masteryScore)}%</Text>
-                                </View>
-                              )}
-                              {skill.masteryState && (
-                                <Text style={styles.masteryState}>State: {skill.masteryState}</Text>
-                              )}
-                            </View>
-                          )}
+                            {skill.name}
+                          </Text>
+                          <View style={styles.skillMeta}>
+                            <StatusBadge status={status} size="sm" />
+                            {skill.difficulty > 0 ? (
+                              <Text style={[typography.presets.caption, styles.difficulty]}>
+                                Level {skill.difficulty}
+                              </Text>
+                            ) : null}
+                          </View>
                         </View>
-                      );
-                    })
-                  )}
-                </View>
-              )}
-            </View>
-          );
-        })}
-      </ScrollView>
-    </ScreenContainer>
+                        <PetalIcon
+                          name={isSkillOpen ? 'arrowUp' : 'arrowDown'}
+                          size={16}
+                          color={colors.textMuted}
+                        />
+                      </Pressable>
+
+                      <IconButton
+                        icon="forward"
+                        size="sm"
+                        variant="soft"
+                        onPress={() => handleSkillPress(skill.id)}
+                        accessibilityLabel={`View ${skill.name}`}
+                        accessibilityHint="Opens the skill details"
+                      />
+                    </View>
+
+                    {isSkillOpen && (skill.description || skill.masteryScore > 0) ? (
+                      <Card variant="muted" padding="compact" style={styles.skillDetail}>
+                        {skill.description ? (
+                          <Text style={[typography.presets.caption, styles.description]}>
+                            {skill.description}
+                          </Text>
+                        ) : null}
+
+                        {skill.masteryScore > 0 ? (
+                          <View style={styles.masteryBlock}>
+                            <View style={styles.masteryHead}>
+                              <Text style={[typography.presets.caption, styles.masteryLabel]}>
+                                Mastery
+                              </Text>
+                              <Text style={[typography.presets.caption, styles.masteryValue]}>
+                                {Math.round(skill.masteryScore)}%
+                              </Text>
+                            </View>
+                            <ProgressIndicator
+                              value={Math.min(skill.masteryScore, 100)}
+                              height={progressSizes.barHeightThin}
+                              color={colors.purple}
+                              accessibilityLabel={`${skill.name} mastery`}
+                            />
+                          </View>
+                        ) : null}
+
+                        {skill.masteryState ? (
+                          <Text style={[typography.presets.caption, styles.masteryState]}>
+                            {String(skill.masteryState).replace(/_/g, ' ').toLowerCase()}
+                          </Text>
+                        ) : null}
+                      </Card>
+                    ) : null}
+                  </View>
+                );
+              })
+            )}
+          </SubjectCard>
+        );
+      })}
+    </AppShell>
   );
 };
 
 const styles = StyleSheet.create({
   center: {
     flex: 1,
-    justifyContent: 'center',
     alignItems: 'center',
+    justifyContent: 'center',
     padding: spacing.xl,
   },
-  scrollContainer: {
-    padding: spacing.lg,
-    paddingBottom: spacing.xxl * 2,
-  },
-  header: {
-    fontSize: typography.sizes.xxl,
-    fontWeight: typography.weights.black,
-    color: colors.text,
-    fontFamily: typography.families.rounded,
-    marginBottom: spacing.xs,
-  },
-  subheader: {
-    fontSize: typography.sizes.sm,
-    color: colors.textMuted,
-    fontFamily: typography.families.rounded,
-    marginBottom: spacing.lg,
-  },
-  subjectCard: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    marginBottom: spacing.md,
-    overflow: 'hidden',
-  },
-  subjectHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: spacing.lg,
-  },
-  subjectHeaderPressed: {
+  pressed: {
     opacity: 0.7,
   },
-  subjectIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: radius.md,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: spacing.md,
-  },
-  subjectInfo: {
-    flex: 1,
-    marginRight: spacing.sm,
-  },
-  subjectName: {
-    fontSize: typography.sizes.lg,
-    fontWeight: typography.weights.bold,
-    color: colors.text,
-    fontFamily: typography.families.rounded,
-    marginBottom: 2,
-  },
-  subjectMeta: {
-    fontSize: typography.sizes.xs,
-    color: colors.textMuted,
-    fontFamily: typography.families.rounded,
-  },
-  skillsList: {
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-  },
   emptySkills: {
-    fontSize: typography.sizes.sm,
     color: colors.textMuted,
-    fontFamily: typography.families.rounded,
     textAlign: 'center',
     paddingVertical: spacing.md,
   },
-  skillItem: {
+  skillBlock: {
+    paddingVertical: spacing.xs,
+  },
+  skillDivided: {
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    marginTop: spacing.xs,
+    paddingTop: spacing.sm,
+  },
+  skillRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: spacing.sm,
+    gap: spacing.sm,
   },
-  skillItemPressed: {
-    opacity: 0.7,
-  },
-  skillStateIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: radius.full,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: spacing.md,
-  },
-  skillInfo: {
+  skillTap: {
     flex: 1,
-    marginRight: spacing.sm,
+    minWidth: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    minHeight: 48,
   },
-  skillName: {
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.bold,
-    color: colors.text,
-    fontFamily: typography.families.rounded,
-    marginBottom: 2,
+  skillText: {
+    flex: 1,
+    minWidth: 0,
   },
   skillMeta: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
+    marginTop: 4,
   },
-  stateBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 1,
-    borderRadius: radius.sm,
-  },
-  stateLabel: {
-    fontSize: 10,
-    fontWeight: typography.weights.bold,
-  },
-  skillDifficulty: {
-    fontSize: 10,
+  difficulty: {
     color: colors.textMuted,
-    fontFamily: typography.families.rounded,
-  },
-  viewButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingLeft: spacing.sm,
-  },
-  viewButtonText: {
-    fontSize: typography.sizes.sm,
-    color: colors.purple,
-    fontWeight: typography.weights.medium,
-    fontFamily: typography.families.rounded,
-    marginRight: 2,
   },
   skillDetail: {
-    backgroundColor: colors.background,
-    borderRadius: radius.md,
-    padding: spacing.md,
-    marginVertical: spacing.sm,
-    marginHorizontal: spacing.md,
+    marginTop: spacing.sm,
   },
-  skillDescription: {
-    fontSize: typography.sizes.sm,
+  description: {
     color: colors.textSecondary,
-    fontFamily: typography.families.rounded,
     lineHeight: 18,
-    marginBottom: spacing.sm,
   },
-  masteryRow: {
+  masteryBlock: {
+    marginTop: spacing.sm,
+  },
+  masteryHead: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    gap: spacing.sm,
-    marginBottom: spacing.xs,
+    marginBottom: 5,
   },
   masteryLabel: {
-    fontSize: typography.sizes.xs,
-    color: colors.textMuted,
-    fontFamily: typography.families.rounded,
-  },
-  masteryBarBg: {
-    flex: 1,
-    height: 6,
-    backgroundColor: colors.border,
-    borderRadius: 3,
-    overflow: 'hidden',
-  },
-  masteryBarFill: {
-    height: '100%',
-    backgroundColor: colors.purple,
-    borderRadius: 3,
+    color: colors.textSecondary,
   },
   masteryValue: {
-    fontSize: typography.sizes.xs,
     color: colors.purple,
-    fontWeight: typography.weights.bold,
-    fontFamily: typography.families.rounded,
   },
   masteryState: {
-    fontSize: typography.sizes.xs,
     color: colors.textMuted,
-    fontFamily: typography.families.rounded,
+    marginTop: spacing.sm,
+    textTransform: 'capitalize',
   },
 });
 

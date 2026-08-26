@@ -11,6 +11,7 @@ import {
 import { colors, spacing, radius, typography } from '../../../theme';
 import { Ionicons } from '@expo/vector-icons';
 import { Module, Lesson } from '../../../store/roadmapStore';
+import { difficultyBand } from '../../../utils/difficulty';
 
 interface ModuleLessonsModalProps {
   visible: boolean;
@@ -27,18 +28,13 @@ export const ModuleLessonsModal: React.FC<ModuleLessonsModalProps> = ({
 }) => {
   if (!module) return null;
 
-  const getDifficultyColor = (diff?: string) => {
-    switch (diff) {
-      case 'EASY':
-        return colors.green;
-      case 'MEDIUM':
-        return colors.yellow;
-      case 'HARD':
-        return '#EF4444';
-      default:
-        return colors.green;
-    }
-  };
+  /*
+   * Difficulty came in as a 1-5 number, never as 'EASY' / 'MEDIUM' / 'HARD', so
+   * the local switch this replaces matched nothing and returned green for every
+   * lesson — and the badge below printed the raw value, which was `undefined`
+   * while the roadmap payload omitted the field. `difficultyBand` is shared with
+   * the Journey roadmap and the lesson screens so all four agree.
+   */
 
   return (
     <Modal
@@ -73,7 +69,8 @@ export const ModuleLessonsModal: React.FC<ModuleLessonsModalProps> = ({
                 {module.lessons.map((lesson, index) => {
                   const isLocked = !lesson.isUnlocked;
                   const isCompleted = lesson.isCompleted;
-                  const diffColor = getDifficultyColor(lesson.difficulty);
+                  const band = difficultyBand(lesson.difficulty);
+                  const diffColor = band ? colors[band.tone] : colors.green;
 
                   return (
                     <View
@@ -122,15 +119,15 @@ export const ModuleLessonsModal: React.FC<ModuleLessonsModalProps> = ({
                         <Text style={styles.lessonDesc} numberOfLines={2}>
                           {isLocked ? 'Complete preceding lessons to unlock!' : lesson.description || 'Learn and practice.'}
                         </Text>
-                        {!isLocked && (
+                        {!isLocked && band && (
                           <View
                             style={[
                               styles.diffBadge,
                               { backgroundColor: diffColor + '20', borderColor: diffColor },
                             ]}
                           >
-                            <Text style={[styles.diffText, { color: diffColor }]}>
-                              {lesson.difficulty}
+                            <Text style={[styles.diffText, { color: diffColor }]} numberOfLines={1}>
+                              {band.label}
                             </Text>
                           </View>
                         )}
@@ -256,7 +253,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(16, 185, 129, 0.15)',
   },
   statusUnlocked: {
-    backgroundColor: colors.purple,
+    backgroundColor: colors.primary,
   },
   lessonInfo: {
     flex: 1,
@@ -303,7 +300,7 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   startBtn: {
-    backgroundColor: colors.purple,
+    backgroundColor: colors.primary,
   },
   reviewBtn: {
     backgroundColor: '#34D399',

@@ -2,7 +2,9 @@ import { prisma } from '../../config/database.js';
 import { adaptationRepository } from './adaptation.repository.js';
 import { skillRoadmapService } from '../skill-roadmap/skill-roadmap.service.js';
 import { logger } from '../../utils/logger.js';
-import { ActivityType, AdaptationEventType } from '../../shared/enums.js';
+import { ActivityType, AdaptationEventType, MasteryState } from '../../shared/enums.js';
+import { engineConfig } from '../../shared/config/engine.config.js';
+import { nextReviewDateFor } from '../mastery/review-cadence.js';
 import type {
   PersonalizationFactors,
   LearnerProfile,
@@ -174,6 +176,8 @@ export class AdaptationService {
   private computePersonalization(
     healths: Array<{
       skillId: string;
+      /** Needed so review cadence is keyed on the band the mastery engine assigned. */
+      masteryState: MasteryState;
       knowledgeScore: number;
       confidenceScore: number;
       retentionScore: number;
@@ -358,28 +362,46 @@ export class AdaptationService {
       learningVelocity: Math.round(learningVelocity * 10) / 10,
     };
 
-    // Adjust review parameters per skill
+    /**
+     * Per-skill review parameters.
+     *
+     * What used to be here was a fourth cadence implementation, and a mutating
+     * one — it rewrote `frequencyDays`, `decayFactor` and `nextReviewDate` on
+     * every `SkillHealth` row of the child:
+     *
+     *   adjustedFrequency = knowledge >= 80 && confidence >= 70
+     *     ? min(30, base + 2)          // walk it out towards a month
+     *     : max(1, base - 1)           // or pull it in
+     *   newDecayFactor = knowledge >= 80
+     *     ? min(0.95, decay + 0.02)
+     *     : max(0.7, decay - 0.02)
+     *   nextReviewDate = now + adjustedFrequency * 24h
+     *
+     * Three problems. First, it drifted: `base + 2` reads the value it wrote
+     * last time, so the interval depended on how many times anyone had POSTed
+     * `/adaptation/:childId/analyze` rather than on the child — repeated calls
+     * walked every healthy skill to the 30-day ceiling Stage 4 deleted. Second,
+     * it decided from `knowledgeScore`/`confidenceScore` what `masteryState`
+     * already decides from the same numbers, so it was a second, worse banding.
+     * Third, the decay clamp `[0.7, 0.95]` could never reach the engine's 0.995,
+     * so one call permanently replaced a gentle forgetting curve (14% retention
+     * lost in a month) with a severe one (79%) — and it accelerated forgetting
+     * for precisely the child who was already struggling.
+     *
+     * Cadence is now read from the one table, keyed on the state the mastery
+     * engine assigned. That is not less adaptive: `masteryState` *is* the
+     * per-skill, per-child signal. `decayFactor` is written as the shared
+     * constant so rows created by older code paths (placement's 0.9, the
+     * repository's old 0.5 default) converge onto one curve instead of keeping
+     * whichever value their provenance gave them.
+     */
     const nowDate = new Date();
     const reviewUpdates = healths.map((h) => {
-      const baseFrequency = h.frequencyDays;
-      let adjustedFrequency = baseFrequency;
-
-      if (h.knowledgeScore >= 80 && h.confidenceScore >= 70) {
-        adjustedFrequency = Math.min(30, baseFrequency + 2);
-      } else if (h.knowledgeScore < 50 || h.confidenceScore < 40) {
-        adjustedFrequency = Math.max(1, baseFrequency - 1);
-      } else if (h.retentionScore < 40) {
-        adjustedFrequency = Math.max(1, baseFrequency - 1);
-      }
-
-      const newDecayFactor = h.knowledgeScore >= 80 ? Math.min(0.95, h.decayFactor + 0.02) : Math.max(0.7, h.decayFactor - 0.02);
-
-      const nextReviewDate = new Date(nowDate.getTime() + adjustedFrequency * MILLIS_PER_DAY);
-
+      const { nextReviewDate, frequencyDays } = nextReviewDateFor(h.masteryState, nowDate);
       return {
         skillId: h.skillId,
-        frequencyDays: adjustedFrequency,
-        decayFactor: Math.round(newDecayFactor * 100) / 100,
+        frequencyDays,
+        decayFactor: engineConfig.mastery.retention.decayFactor,
         nextReviewDate,
       };
     });
@@ -451,6 +473,22 @@ export class AdaptationService {
     return slope;
   }
 
+  /**
+   * NOTE: this is **not** the shared modality formula, and it disagrees with it.
+   * `Math.min(m.attempts, 20) * 0.2` stands in for the confidence term, so a
+   * much-practiced modality reads as preferred merely because it was much
+   * practiced. It also returns the literal `'GAME'` for a child with no rows,
+   * while every other fallback in the system is VIDEO.
+   *
+   * Left as-is rather than quietly re-pointed, because this method is reached
+   * only through `POST /api/adaptation/:childId/analyze` — which the app never
+   * calls, and which also overwrites the real per-modality measurements with the
+   * constants 60 and 50 a few lines earlier. Fixing the formula without fixing
+   * that would just compute a better answer from fabricated inputs.
+   *
+   * The one to trust: `modules/adaptive/modality-profile.ts::profileModalities`,
+   * the single reader of `engineConfig.adaptive.modalityScoreWeights`.
+   */
   private determinePreferredModality(
     modalities: Array<{ activityType: string; attempts: number; averageAccuracy: number; averageEngagement: number; lastUsedAt: Date }>,
   ): string {

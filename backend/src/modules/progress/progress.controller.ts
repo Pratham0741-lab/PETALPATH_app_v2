@@ -2,6 +2,7 @@ import { Response, NextFunction } from 'express';
 import { prisma } from '../../config/database.js';
 import { AuthenticatedRequest } from '../../middleware/auth.middleware.js';
 import { progressService } from './progress.service.js';
+import { lessonCompletionService } from './lesson-completion.service.js';
 import { moduleProgressService } from './module-progress.service.js';
 import { categoryProgressService } from './category-progress.service.js';
 import { UnauthorizedError, ValidationError, NotFoundError } from '../../utils/errors.js';
@@ -326,7 +327,17 @@ export class ProgressController {
       // Validate access to the lesson
       await lessonAccessService.validateLessonAccess(childId, parsed.data.lessonId);
 
-      const progress = await progressService.forceCompleteLesson(childId, parsed.data.lessonId);
+      /*
+       * Learner completions go through `lessonCompletionService`, which measures
+       * what the child actually did and runs the adaptive engine.
+       *
+       * This used to call `progressService.forceCompleteLesson` — the
+       * "Admin/Testing/Recovery" method — so every completion invented stars for
+       * unfinished activities and wrote the same flat mastery of 80 for every
+       * lesson in the curriculum. `forceCompleteLesson` still exists for genuine
+       * recovery (see the admin route), it is simply no longer the learner path.
+       */
+      const progress = await lessonCompletionService.completeLesson(childId, parsed.data.lessonId);
       return res.status(200).json({
         success: true,
         data: progress,

@@ -1,23 +1,55 @@
 import React from 'react';
-import { StyleSheet, View, Text, Pressable } from 'react-native';
-import { colors, typography, spacing, shadows, radius } from '../../theme';
-import { Ionicons } from '@expo/vector-icons';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
+import { colors, radius, shadows, spacing, typography, bottomNavSizes } from '../../theme';
+import { PetalIcon, PetalIconName } from '../icons';
 
-export const BottomNavigation: React.FC<BottomTabBarProps> = ({ state, descriptors, navigation }) => {
-  const tabs = [
-    { name: 'Home', icon: 'home', label: 'Home' },
-    { name: 'Journey', icon: 'compass', label: 'Explore' },
-    { name: 'Camera', icon: 'camera', label: 'Camera' },
-    { name: 'Mentor', icon: 'flower', label: 'Mentors' },
-    { name: 'Rewards', icon: 'stats-chart', label: 'Rewards' },
-    { name: 'Profile', icon: 'person', label: 'Profile' },
-  ];
+/**
+ * BottomNavigation (spec §9).
+ *
+ * Six destinations, each an SVG icon plus a always-visible label. The active
+ * item is pink — filled icon, pink label, and a pink indicator bar above it —
+ * so the selected state is carried by shape and position as well as colour
+ * (§30). Sticky, with the bottom safe-area inset respected; screens reserve
+ * matching space via `AppShell withBottomNav`.
+ *
+ * Route names come from `MobileTabs` in RootNavigator and must stay in step.
+ */
+
+type TabConfig = { route: string; icon: PetalIconName; label: string };
+
+const TABS: TabConfig[] = [
+  { route: 'Home', icon: 'home', label: 'Home' },
+  // The stack route is called "Journey"; it is the Explore tab to the child.
+  { route: 'Journey', icon: 'explore', label: 'Explore' },
+  { route: 'Camera', icon: 'camera', label: 'Camera' },
+  { route: 'Mentor', icon: 'mentors', label: 'Mentors' },
+  { route: 'Rewards', icon: 'rewards', label: 'Rewards' },
+  { route: 'Profile', icon: 'profile', label: 'Profile' },
+];
+
+const FALLBACK: Omit<TabConfig, 'route'> = { icon: 'sparkle', label: '' };
+
+export const BottomNavigation: React.FC<BottomTabBarProps> = ({
+  state,
+  descriptors,
+  navigation,
+}) => {
+  const insets = useSafeAreaInsets();
 
   return (
-    <View style={styles.container}>
+    <View
+      style={[styles.container, { paddingBottom: Math.max(insets.bottom, spacing.sm) }]}
+      accessibilityRole="tablist"
+    >
       {state.routes.map((route, index) => {
         const isFocused = state.index === index;
+        const cfg = TABS.find((t) => t.route === route.name);
+        const icon = cfg?.icon ?? FALLBACK.icon;
+        const label = cfg?.label || route.name;
+
+        const options = descriptors[route.key]?.options;
 
         const onPress = () => {
           const event = navigation.emit({
@@ -31,32 +63,41 @@ export const BottomNavigation: React.FC<BottomTabBarProps> = ({ state, descripto
           }
         };
 
-        const tab = tabs.find((t) => t.name === route.name) || { name: route.name, icon: 'help-circle', label: route.name };
-        const activeColor = colors.purple; // #8B78D8
-        const inactiveColor = '#8F8A82';
+        const onLongPress = () => {
+          navigation.emit({ type: 'tabLongPress', target: route.key });
+        };
+
+        const tint = isFocused ? colors.primary : colors.textSecondary;
 
         return (
           <Pressable
             key={route.key}
             onPress={onPress}
-            style={({ pressed }) => [
-              styles.tabItem,
-              { transform: [{ scale: pressed ? 0.92 : 1.0 }] }
-            ]}
+            onLongPress={onLongPress}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: isFocused }}
+            accessibilityLabel={options?.tabBarAccessibilityLabel ?? label}
+            testID={options?.tabBarButtonTestID ?? `tab-${route.name}`}
+            style={({ pressed }) => [styles.tab, pressed && styles.tabPressed]}
           >
-            <Ionicons
-              name={tab.icon as any}
-              size={26}
-              color={isFocused ? activeColor : inactiveColor}
+            {/* Position, not just colour, marks the active tab. */}
+            <View style={[styles.indicator, isFocused && styles.indicatorActive]} />
+            <PetalIcon
+              name={icon}
+              size={bottomNavSizes.iconSize}
+              color={tint}
+              filled={isFocused}
+              strokeWidth={isFocused ? 2 : 1.9}
             />
-            <Text style={[
-              styles.label, 
-              { 
-                color: isFocused ? activeColor : inactiveColor,
-                fontFamily: typography.families.rounded,
-              }
-            ]}>
-              {tab.label}
+            <Text
+              numberOfLines={1}
+              style={[
+                typography.presets.navLabel,
+                styles.label,
+                { color: tint, fontWeight: isFocused ? '900' : '600' },
+              ]}
+            >
+              {label}
             </Text>
           </Pressable>
         );
@@ -68,29 +109,45 @@ export const BottomNavigation: React.FC<BottomTabBarProps> = ({ state, descripto
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    height: 85,
+    alignItems: 'stretch',
+    justifyContent: 'space-between',
+    paddingTop: spacing.xs,
+    paddingHorizontal: spacing.xs,
     backgroundColor: colors.surface,
     borderTopLeftRadius: radius.bottomNav,
     borderTopRightRadius: radius.bottomNav,
-    borderTopWidth: 1.5,
-    borderLeftWidth: 1.5,
-    borderRightWidth: 1.5,
+    borderTopWidth: 1,
     borderColor: colors.border,
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    paddingBottom: spacing.sm,
     ...shadows.lg,
+    // The bar must sit above page content on both platforms.
+    ...Platform.select({ android: { elevation: 12 }, default: null }),
   },
-  tabItem: {
+  tab: {
+    flex: 1,
+    minHeight: bottomNavSizes.height,
     alignItems: 'center',
     justifyContent: 'center',
-    flex: 1,
-    paddingVertical: spacing.xs,
+    paddingTop: 6,
+    gap: 3,
+  },
+  tabPressed: {
+    opacity: 0.65,
+  },
+  indicator: {
+    position: 'absolute',
+    top: 0,
+    width: 24,
+    height: 3,
+    borderRadius: radius.pill,
+    backgroundColor: 'transparent',
+  },
+  indicatorActive: {
+    backgroundColor: colors.primary,
   },
   label: {
-    fontSize: typography.sizes.caption,
-    fontWeight: typography.weights.bold,
-    marginTop: 4,
+    fontSize: bottomNavSizes.labelSize,
+    textAlign: 'center',
   },
 });
+
 export default BottomNavigation;

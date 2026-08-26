@@ -68,7 +68,7 @@ export const VideoCompletedScreen: React.FC = () => {
                 <Ionicons
                   name={ACTIVITY_ICONS[nextActivity.activityType] ?? 'bulb'}
                   size={24}
-                  color={colors.purple}
+                  color={colors.primary}
                 />
               </View>
               <View style={styles.activityInfo}>
@@ -140,7 +140,7 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
   },
   nextLabel: {
-    color: colors.purple,
+    color: colors.primary,
     fontSize: typography.sizes.xs,
     fontWeight: typography.weights.bold,
     textTransform: 'uppercase',
@@ -156,7 +156,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: radius.md,
-    backgroundColor: colors.purple + '10',
+    backgroundColor: colors.primary + '10',
     justifyContent: 'center',
     alignItems: 'center',
   },

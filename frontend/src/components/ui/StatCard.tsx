@@ -1,24 +1,45 @@
+/**
+ * StatCard — a single headline figure with an optional trend.
+ *
+ * Redesign notes (§7, §28, §30): this is exported from the `components/ui` barrel
+ * and so ships in the bundle, but nothing renders it today. It was the last file
+ * in the navigable app still importing Ionicons, so it is on the design system
+ * now rather than left as a trap for whoever imports it next.
+ *
+ * What changed beyond the styling:
+ *
+ *  - `icon` was `React.ReactNode` that the body then tested with `typeof icon ===
+ *    'string'` and fed to `Ionicons name={icon as any}` — an untyped string
+ *    channel into a second icon library. It is a `PetalIconName` now, so a bad
+ *    name is a compile error.
+ *  - The trend arrows were the text characters `↑ ↓ →`, which screen readers
+ *    announce as "up arrow" or skip entirely depending on the voice. They are
+ *    `arrowUp`/`arrowDown`/`forward` glyphs, and the direction is also in the
+ *    accessible label.
+ *  - The trend badge drew `colors.success` on a 12%-alpha wash of itself, about
+ *    2:1. Each direction now pairs a dark foreground with its soft token.
+ *  - `onPress` wrapped a styled `View` in a `Pressable` with a hand-rolled scale
+ *    transform. `Card` already is a semantic, animated pressable.
+ */
+
 import React from 'react';
-import {
-  StyleSheet,
-  View,
-  Text,
-  Pressable,
-  StyleProp,
-  ViewStyle,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { colors, radius, spacing, typography, shadows } from '../../theme';
+import { StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native';
+
+import { colors, radius, spacing, typography } from '../../theme';
+import { Card, IconWell } from '../design';
+import { PetalIcon, PetalIconName } from '../icons';
 
 type StatCardVariant = 'elevated' | 'outlined' | 'flat';
 type TrendDirection = 'up' | 'down' | 'neutral';
 
-interface StatCardProps {
+export interface StatCardProps {
   title: string;
   value: string | number;
   unit?: string;
-  icon?: React.ReactNode;
+  icon?: PetalIconName;
+  /** Tints the icon well. Defaults to the brand pink. */
   iconColor?: string;
+  iconSoft?: string;
   trend?: TrendDirection;
   trendValue?: string;
   variant?: StatCardVariant;
@@ -26,16 +47,19 @@ interface StatCardProps {
   style?: StyleProp<ViewStyle>;
 }
 
-const trendColors: Record<TrendDirection, string> = {
-  up: colors.success,
-  down: colors.error,
-  neutral: colors.textMuted,
+const CARD_VARIANT: Record<StatCardVariant, 'raised' | 'flat' | 'muted'> = {
+  elevated: 'raised',
+  outlined: 'flat',
+  flat: 'muted',
 };
 
-const trendIcons: Record<TrendDirection, string> = {
-  up: '↑',
-  down: '↓',
-  neutral: '→',
+const TREND: Record<
+  TrendDirection,
+  { icon: PetalIconName; color: string; soft: string; word: string }
+> = {
+  up: { icon: 'arrowUp', color: colors.successDark, soft: colors.greenSoft, word: 'up' },
+  down: { icon: 'arrowDown', color: colors.error, soft: colors.errorLight, word: 'down' },
+  neutral: { icon: 'forward', color: colors.textSecondary, soft: colors.skeleton, word: 'steady' },
 };
 
 export const StatCard: React.FC<StatCardProps> = ({
@@ -44,133 +68,103 @@ export const StatCard: React.FC<StatCardProps> = ({
   unit,
   icon,
   iconColor,
+  iconSoft,
   trend,
   trendValue,
   variant = 'elevated',
   onPress,
   style,
 }) => {
-  const containerStyle = [
-    styles.container,
-    variant === 'outlined' && {
-      borderWidth: 1.5,
-      borderColor: colors.border,
-    },
-    variant === 'flat' && {
-      backgroundColor: colors.surfaceSecondary,
-      ...shadows.sm,
-    },
-    variant === 'elevated' && {
-      ...shadows.md,
-    },
-    style,
-  ];
+  const t = trend ? TREND[trend] : null;
 
-  const content = (
-    <View style={containerStyle}>
+  const label = [
+    `${title}: ${value}${unit ? ` ${unit}` : ''}`,
+    t ? `Trending ${t.word}${trendValue ? ` by ${trendValue}` : ''}` : null,
+  ]
+    .filter(Boolean)
+    .join('. ');
+
+  return (
+    <Card
+      variant={CARD_VARIANT[variant]}
+      onPress={onPress}
+      style={style}
+      accessibilityLabel={label}
+    >
       <View style={styles.topRow}>
-        {icon && (
-          <View style={styles.iconWrap}>
-            {typeof icon === 'string' ? (
-              <Ionicons name={icon as any} size={20} color={iconColor ?? colors.textSecondary} />
-            ) : (
-              icon
-            )}
-          </View>
-        )}
-        <Text style={styles.title}>{title}</Text>
-      </View>
-      <View style={styles.valueRow}>
-        <Text style={styles.value}>
-          {value}
-          {unit && <Text style={styles.unit}> {unit}</Text>}
+        {icon ? (
+          <IconWell
+            icon={icon}
+            color={iconColor ?? colors.primary}
+            soft={iconSoft ?? colors.primaryLight}
+            size={36}
+          />
+        ) : null}
+        <Text style={styles.title} numberOfLines={2}>
+          {title}
         </Text>
-        {trend && (
-          <View style={[styles.trendBadge, { backgroundColor: `${trendColors[trend]}20` }]}>
-            <Text style={[styles.trendIcon, { color: trendColors[trend] }]}>
-              {trendIcons[trend]}
-            </Text>
-            {trendValue && (
-              <Text style={[styles.trendValue, { color: trendColors[trend] }]}>
+      </View>
+
+      <View style={styles.valueRow}>
+        <Text style={styles.value} numberOfLines={1}>
+          {value}
+          {unit ? <Text style={styles.unit}> {unit}</Text> : null}
+        </Text>
+
+        {t ? (
+          <View style={[styles.trendBadge, { backgroundColor: t.soft }]}>
+            <PetalIcon name={t.icon} size={12} color={t.color} strokeWidth={2.4} />
+            {trendValue ? (
+              <Text style={[styles.trendValue, { color: t.color }]} numberOfLines={1}>
                 {trendValue}
               </Text>
-            )}
+            ) : null}
           </View>
-        )}
+        ) : null}
       </View>
-    </View>
+    </Card>
   );
-
-  if (onPress) {
-    return (
-      <Pressable
-        onPress={onPress}
-        accessibilityRole="button"
-        accessibilityLabel={`${title}: ${value}`}
-        style={({ pressed }) => [
-          { transform: [{ scale: pressed ? 0.97 : 1 }] },
-        ]}
-      >
-        {content}
-      </Pressable>
-    );
-  }
-
-  return content;
 };
 
 const styles = StyleSheet.create({
-  container: {
-    backgroundColor: colors.card,
-    borderRadius: radius.card,
-    padding: spacing.lg,
-  },
   topRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: spacing.sm,
     marginBottom: spacing.sm,
   },
-  iconWrap: {
-    marginRight: spacing.sm,
-  },
   title: {
-    fontSize: typography.sizes.small,
+    ...typography.presets.subtle,
     color: colors.textSecondary,
-    fontFamily: typography.families.rounded,
     fontWeight: typography.weights.medium,
+    flexShrink: 1,
   },
   valueRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     justifyContent: 'space-between',
+    gap: spacing.sm,
   },
   value: {
-    fontSize: typography.sizes.xxxl,
-    fontWeight: typography.weights.bold,
-    color: colors.textPrimary,
-    fontFamily: typography.families.rounded,
+    ...typography.presets.stat,
+    color: colors.text,
+    flexShrink: 1,
   },
   unit: {
-    fontSize: typography.sizes.body,
-    fontWeight: typography.weights.regular,
-    color: colors.textMuted,
+    ...typography.presets.body,
+    color: colors.textSecondary,
   },
   trendBadge: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 2,
     paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: radius.chip,
-  },
-  trendIcon: {
-    fontSize: typography.sizes.small,
-    fontWeight: typography.weights.bold,
+    paddingVertical: 3,
+    borderRadius: radius.full,
   },
   trendValue: {
-    fontSize: typography.sizes.caption,
-    fontWeight: typography.weights.medium,
-    marginLeft: spacing.xs,
-    fontFamily: typography.families.rounded,
+    ...typography.presets.caption,
+    fontWeight: typography.weights.bold,
   },
 });
 

@@ -63,4 +63,19 @@ export interface ActivityEngineResult {
   state: ActivityState;
   confidence: number;
   feedback: string;
+  /**
+   * Coaching detail from the pose primitive ("Lift a hand up above your
+   * shoulder!"). `feedback` names the activity the child was asked to do; this
+   * says what the camera is actually waiting to see. Optional — every existing
+   * construction site predates it.
+   */
+  hint?: string;
+  /** Which primitive produced this result. Useful for debugging and telemetry. */
+  validatorName?: string;
+  /**
+   * True when the active validator only checks presence and engagement rather
+   * than a specific pose (facial expressions and finger gestures, which MoveNet
+   * cannot see). UI should avoid claiming the pose itself was verified.
+   */
+  participationOnly?: boolean;
 }

@@ -1,3 +1,18 @@
+import { colors } from '../theme';
+
+/**
+ * The five learning buddies.
+ *
+ * Each mentor's `color` is used as a card accent, avatar ring and eyebrow tint
+ * all over the app, so it has to come from the palette in spec §3. The five
+ * values here were Tailwind defaults (#10B981, #FBBF24, #EC4899, #8B5CF6,
+ * #F97316) which read colder and more saturated than everything around them —
+ * emerald beside PetalPath's soft #8FC27A green was the most obvious mismatch.
+ * The mentor-to-hue mapping is unchanged (Penny green, Barnaby yellow, Cleo
+ * pink, Finn purple, Toby orange); only the hex values move onto the tokens, so
+ * every screen that reads `mentor.color` becomes palette-correct at once
+ * instead of each one patching it locally.
+ */
 export interface Mentor {
   id?: string;
   name: string;
@@ -20,7 +35,7 @@ export const MENTORS: Mentor[] = [
     voiceStyle: 'soft and cheerful',
     description: 'Kind and patient, always cheering you on.',
     imagePath: 'storage/icons/penny_panda.png',
-    color: '#10B981', // Emerald Green
+    color: colors.leafGreen,
     species: 'Panda',
     funFact: 'Pandas spend 12 hours a day eating bamboo!',
   },
@@ -31,7 +46,7 @@ export const MENTORS: Mentor[] = [
     voiceStyle: 'excited',
     description: "Let's hop into a new adventure!",
     imagePath: 'storage/icons/barnaby_bunny.png',
-    color: '#FBBF24', // Amber/Yellow
+    color: colors.yellow,
     species: 'Rabbit',
     funFact: 'Bunnies can hop up to 3 feet high!',
   },
@@ -42,7 +57,7 @@ export const MENTORS: Mentor[] = [
     voiceStyle: 'friendly',
     description: 'Curious minds discover amazing things.',
     imagePath: 'storage/icons/cleo_cat.png',
-    color: '#EC4899', // Pink
+    color: colors.primary,
     species: 'Cat',
     funFact: 'Cats can jump up to six times their height!',
   },
@@ -53,7 +68,7 @@ export const MENTORS: Mentor[] = [
     voiceStyle: 'energetic',
     description: "Ready for today's adventure?",
     imagePath: 'storage/icons/finn_fox.png',
-    color: '#8B5CF6', // Purple
+    color: colors.purple,
     species: 'Fox',
     funFact: 'Foxes can hear a watch ticking 40 yards away!',
   },
@@ -64,7 +79,7 @@ export const MENTORS: Mentor[] = [
     voiceStyle: 'enthusiastic',
     description: "Let's roar with confidence and learn together!",
     imagePath: 'storage/icons/toby_tiger.png',
-    color: '#F97316', // Orange
+    color: colors.orange,
     species: 'Tiger',
     funFact: "Toby's stripes are unique, just like fingerprints!",
   },
@@ -72,7 +87,7 @@ export const MENTORS: Mentor[] = [
 
 export const getMentorColor = (characterType: string): string => {
   const mentor = MENTORS.find((m) => m.characterType === characterType);
-  return mentor ? mentor.color : '#6B7280';
+  return mentor ? mentor.color : colors.textSecondary;
 };
 
 export const getMentorIcon = (characterType: string): string => {

@@ -83,7 +83,7 @@ export const PlacementAssessmentIntroScreen: React.FC = () => {
       <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <View style={styles.headerIconWrap}>
-            <Ionicons name="compass" size={28} color={colors.purple} />
+            <Ionicons name="compass" size={28} color={colors.primary} />
           </View>
           <Text style={styles.title}>Placement Assessment</Text>
           <Text style={styles.description}>

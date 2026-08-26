@@ -23,7 +23,7 @@ export const LevelRewardCard: React.FC<LevelRewardCardProps> = ({
     <AppCard style={style}>
       <View style={styles.row}>
         <View style={styles.iconWrap}>
-          <Ionicons name="gift" size={28} color={colors.purple} />
+          <Ionicons name="gift" size={28} color={colors.primary} />
         </View>
         <View style={styles.info}>
           <Text style={styles.title}>

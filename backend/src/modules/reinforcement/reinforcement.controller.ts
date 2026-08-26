@@ -5,8 +5,15 @@ import { ValidationError, UnauthorizedError } from '../../utils/errors.js';
 import { ActivityType } from '../../shared/enums.js';
 import { z } from 'zod';
 
+/**
+ * `skillId` was `z.string().uuid()`, which no real skill id satisfies:
+ * `prisma/seed.ts` mirrors every curriculum lesson to a `Skill` row carrying the
+ * lesson's own slug (`nursery_theme1_lesson1`), and `lesson-completion.service`
+ * looks skills up by exactly that. So this endpoint rejected every id the rest of
+ * the system uses — which is part of why nothing ever called it.
+ */
 const processReinforcementSchema = z.object({
-  skillId: z.string().uuid(),
+  skillId: z.string().min(1),
   beforeScore: z.number().min(0).max(100),
   afterScore: z.number().min(0).max(100),
   activityType: z.nativeEnum(ActivityType),

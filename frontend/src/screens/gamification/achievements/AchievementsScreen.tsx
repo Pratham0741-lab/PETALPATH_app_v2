@@ -1,7 +1,22 @@
+/**
+ * Achievements screen — reached from the Rewards tab's quick links.
+ *
+ * Redesign notes (§35): the screen keeps its `ScreenContainer` + `TopBar` shell
+ * (the container carries the tutorial interaction hook, and the top bar carries
+ * the child's star total), but the body is now design-system cards, and the
+ * unused `Ionicons`, `radius`, `shadows` and `typography` imports are gone.
+ *
+ * The `listWrap` box also went. It wrapped the whole list in a second card
+ * surface, so every achievement was a card inside a card; the cards carry their
+ * own surface. And the loading and error states are wrapped in `StatePanel`,
+ * because inside a scroll view their `flex: 1` centring has no height to fill.
+ */
+
 import React from 'react';
-import { StyleSheet, ScrollView, View } from 'react-native';
-import { colors, spacing, typography, radius, shadows } from '../../../theme';
-import { Ionicons } from '@expo/vector-icons';
+import { ScrollView, StyleSheet } from 'react-native';
+
+import { colors, spacing } from '../../../theme';
+import { StatePanel } from '../../../components/design';
 import { ScreenContainer } from '../../../components/common/ScreenContainer';
 import { TopBar } from '../../../components/navigation/TopBar';
 import { LoadingSpinner } from '../../../components/common/LoadingSpinner';
@@ -14,33 +29,42 @@ import AchievementSummary from '../../../components/gamification/achievements/Ac
 export const AchievementsScreen: React.FC = () => {
   const { data, isLoading, isError, error, refetch } = useAchievements();
 
+  const isEmpty = !data || !data.earned || data.earned.length === 0;
+
   return (
     <ScreenContainer>
-      <TopBar title="Achievements" />
-      {isLoading ? (
-        <LoadingSpinner />
-      ) : isError ? (
-        <ErrorState
-          message={error instanceof Error ? error.message : 'Could not load achievements.'}
-          onRetry={refetch}
-        />
-      ) : !data || !data.earned || data.earned.length === 0 ? (
-        <EmptyState
-          icon="trophy-outline"
-          title="No achievements yet"
-          message="Complete activities to earn achievements!"
-        />
-      ) : (
-        <ScrollView
-          style={styles.scroll}
-          contentContainerStyle={styles.content}
-          showsVerticalScrollIndicator={false}
-        >
-          <AchievementSummary
-            total={data.total}
-            completed={data.completedCount}
-          />
-          <View style={styles.listWrap}>
+      <TopBar title="Achievements" showBack />
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
+        {isLoading ? (
+          <StatePanel>
+            <LoadingSpinner label="Loading achievements" />
+          </StatePanel>
+        ) : isError ? (
+          <StatePanel>
+            <ErrorState
+              message={error instanceof Error ? error.message : 'Could not load achievements.'}
+              onRetry={refetch}
+            />
+          </StatePanel>
+        ) : isEmpty ? (
+          <StatePanel>
+            <EmptyState
+              icon="trophy"
+              title="No achievements yet"
+              message="Complete activities to earn achievements!"
+            />
+          </StatePanel>
+        ) : (
+          <>
+            <AchievementSummary
+              total={data.total}
+              completed={data.completedCount}
+              style={styles.summary}
+            />
             <AchievementList
               achievements={data.earned.map((item) => ({
                 id: item.id,
@@ -52,9 +76,9 @@ export const AchievementsScreen: React.FC = () => {
                 category: item.category,
               }))}
             />
-          </View>
-        </ScrollView>
-      )}
+          </>
+        )}
+      </ScrollView>
     </ScreenContainer>
   );
 };
@@ -68,11 +92,9 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     paddingBottom: spacing.xxl,
   },
-  listWrap: {
-    marginTop: spacing.lg,
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    padding: spacing.md,
-    ...shadows.sm,
+  summary: {
+    marginBottom: spacing.lg,
   },
 });
+
+export default AchievementsScreen;

@@ -4,6 +4,7 @@ import { colors, typography, spacing, radius } from '../../theme';
 import { AppCard } from './AppCard';
 import { Ionicons } from '@expo/vector-icons';
 import { Lesson } from '../../store/roadmapStore';
+import { difficultyBand } from '../../utils/difficulty';
 
 interface LessonNodeProps {
   lesson: Lesson;
@@ -20,20 +21,17 @@ export const LessonNode: React.FC<LessonNodeProps> = ({
   onPress,
   style,
 }) => {
-  const getDifficultyColor = () => {
-    switch (lesson.difficulty) {
-      case 'EASY':
-        return colors.green;
-      case 'MEDIUM':
-        return colors.yellow;
-      case 'HARD':
-        return colors.coral;
-      default:
-        return colors.green;
-    }
-  };
-
-  const difficultyColor = getDifficultyColor();
+  /*
+   * Difficulty is a 1-5 number from the curriculum, not one of the words
+   * 'EASY' / 'MEDIUM' / 'HARD' this used to switch on. Since the roadmap
+   * payload also omitted the field entirely, every case missed and every
+   * lesson — easy or hard — was drawn in the green default, while the badge
+   * below printed the value straight out and so rendered an empty bordered pill
+   * on every unlocked lesson. `difficultyBand` is shared with the lesson screens
+   * so the colour and the word can't drift apart again.
+   */
+  const band = difficultyBand(lesson.difficulty);
+  const bandColor = band ? colors[band.tone] : colors.green;
 
   return (
     <AppCard
@@ -94,18 +92,26 @@ export const LessonNode: React.FC<LessonNodeProps> = ({
             </Text>
           ) : null}
 
-          {/* Difficulty badge (unlocked only) */}
+          {/* Difficulty badge (unlocked only, and only when we know it) */}
           {!isLocked ? (
-            <View
-              style={[
-                styles.badge,
-                { backgroundColor: difficultyColor + '20', borderColor: difficultyColor },
-              ]}
-            >
-              <Text style={[styles.badgeText, { color: difficultyColor, fontFamily: typography.families.rounded }]}>
-                {lesson.difficulty}
-              </Text>
-            </View>
+            band ? (
+              <View
+                style={[
+                  styles.badge,
+                  { backgroundColor: bandColor + '20', borderColor: bandColor },
+                ]}
+              >
+                <Text
+                  numberOfLines={1}
+                  style={[
+                    styles.badgeText,
+                    { color: bandColor, fontFamily: typography.families.rounded },
+                  ]}
+                >
+                  {band.label}
+                </Text>
+              </View>
+            ) : null
           ) : (
             <Text style={[styles.lockedText, { fontFamily: typography.families.rounded }]}>Locked</Text>
           )}

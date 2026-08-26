@@ -15,6 +15,23 @@ import { useMasteryDetail, useWeakSkills } from '../../hooks/useIntelligence';
 import { useAppNavigation } from '../../hooks/useAppNavigation';
 import type { MasteryData, WeakSkill } from '../../services/api/intelligenceApi';
 
+/**
+ * Mastery — a second, older view of `/mastery/child/:childId`.
+ *
+ * This is a duplicate. `screens/parent/SkillMasteryScreen` reads the same
+ * endpoint, is the one with a route a user can reach, and is the one carried
+ * onto the redesigned components; this file is still on pre-redesign primitives
+ * (`ScreenContainer`, `components/ui/Card`, Ionicons) and has no entry point —
+ * the only `navigate` aimed at it, in `AITutorHomeScreen`, used a screen name
+ * that was never registered.
+ *
+ * It is corrected rather than restyled: the state comparisons below were wrong
+ * in a way that made every count read zero, and leaving them would have hidden
+ * that behind a screen nobody opens. Treat the file as a deletion candidate. If
+ * it is ever wanted back, the work is to move it onto `components/design` and
+ * decide which of the two mastery surfaces survives — not to keep both.
+ */
+
 function StatsSkeleton() {
   return (
     <View style={styles.statsRow}>
@@ -121,16 +138,51 @@ export function MasteryScreen() {
     return total / skills.length;
   }, [skills]);
 
+  /*
+   * The engine's five states, not the four this screen used to invent.
+   *
+   * It compared `masteryState` against 'mastered', 'in_progress' and 'locked';
+   * the server sends `NEW | LEARNING | WEAK | STRONG | MASTERED` in uppercase,
+   * so all three filters matched nothing and the strip read 0 / 0 / 0 forever
+   * beside a total that was right.
+   *
+   * "Locked" is gone because mastery has no such state — the padlock belongs to
+   * the roadmap, which gates lessons, not skills. WEAK took the slot, since it
+   * is the one figure worth acting on. STRONG folds into "In progress" with
+   * LEARNING: both mean started and not finished. NEW is counted only in the
+   * total, which is what keeps the four numbers honest without a fifth tile.
+   */
   const stats = useMemo(() => {
     const total = skills.length;
-    const mastered = skills.filter((s) => s.masteryState === 'mastered').length;
-    const inProgress = skills.filter((s) => s.masteryState === 'in_progress').length;
-    const locked = skills.filter((s) => s.masteryState === 'locked').length;
-    return { total, mastered, inProgress, locked };
+    const mastered = skills.filter((s) => s.masteryState === 'MASTERED').length;
+    /*
+     * STRONG (60-84) is the only band that is genuinely "on its way". LEARNING
+     * is not a midpoint despite the name — it is everything below 40, the worst
+     * band there is — so it belongs with WEAK (40-59) under practice, not
+     * alongside STRONG. Counting it as progress made the two tiles flatter the
+     * child in opposite directions at once.
+     */
+    const inProgress = skills.filter((s) => s.masteryState === 'STRONG').length;
+    const needsPractice = skills.filter(
+      (s) => s.masteryState === 'LEARNING' || s.masteryState === 'WEAK',
+    ).length;
+    return { total, mastered, inProgress, needsPractice };
   }, [skills]);
 
+  /*
+   * Recently, in the order the heading promises. This was an unsorted filter, so
+   * "Recently Mastered" showed whichever five skills the query happened to
+   * return first — usually the oldest. `lastAssessed` is the last time the child
+   * actually worked the skill; a null sorts last rather than jumping the queue.
+   */
   const recentlyMastered = useMemo(() => {
-    return skills.filter((s) => s.masteryState === 'mastered');
+    return skills
+      .filter((s) => s.masteryState === 'MASTERED')
+      .sort((a, b) => {
+        const left = a.lastAssessed ? Date.parse(a.lastAssessed) : 0;
+        const right = b.lastAssessed ? Date.parse(b.lastAssessed) : 0;
+        return right - left;
+      });
   }, [skills]);
 
   const handlePractice = useCallback((skillId: string) => {
@@ -197,7 +249,7 @@ export function MasteryScreen() {
             <Text style={[styles.headerTitle, { color: themeColors.text }]}>Skill Mastery</Text>
           </View>
           <EmptyState
-            icon="🏆"
+            icon="trophy"
             title="No skills tracked yet"
             message="Start learning activities to build your mastery data."
           />
@@ -246,8 +298,10 @@ export function MasteryScreen() {
             <Text style={[styles.statLabel, { color: themeColors.textMuted }]}>In Progress</Text>
           </View>
           <View style={styles.statItem}>
-            <Text style={[styles.statValue, { color: themeColors.textMuted }]}>{stats.locked}</Text>
-            <Text style={[styles.statLabel, { color: themeColors.textMuted }]}>Locked</Text>
+            <Text style={[styles.statValue, { color: themeColors.warning }]}>{stats.needsPractice}</Text>
+            <Text style={[styles.statLabel, { color: themeColors.textMuted }]} numberOfLines={2}>
+              Needs practice
+            </Text>
           </View>
         </View>
 
@@ -324,6 +378,9 @@ const styles = StyleSheet.create({
   },
   statItem: {
     alignItems: 'center',
+    /* Equal quarters rather than intrinsic widths, so a two-word label wraps
+       inside its own column instead of shouldering the other three sideways. */
+    flex: 1,
   },
   statValue: {
     fontSize: typography.sizes.xxl,
@@ -332,6 +389,7 @@ const styles = StyleSheet.create({
   statLabel: {
     fontSize: typography.sizes.xs,
     marginTop: spacing.xs,
+    textAlign: 'center',
   },
   sectionTitle: {
     fontSize: typography.sizes.lg,

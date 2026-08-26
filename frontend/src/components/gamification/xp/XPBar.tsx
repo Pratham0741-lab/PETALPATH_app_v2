@@ -16,7 +16,7 @@ const XPBar: React.FC<XPBarProps> = ({ progress, height, showLabel, color }) => 
       <ProgressBar
         progress={progress}
         height={height}
-        color={color ?? colors.purple}
+        color={color ?? colors.primary}
         showPercentage={showLabel}
       />
     </View>

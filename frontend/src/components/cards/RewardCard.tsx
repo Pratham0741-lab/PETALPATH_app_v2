@@ -22,7 +22,7 @@ export const RewardCard: React.FC<RewardCardProps> = ({
   return (
     <AppCard style={[styles.card, style]} outlined={!unlocked}>
       <View style={styles.container}>
-        <View style={[styles.iconBox, { backgroundColor: unlocked ? colors.purple + '20' : colors.background }]}>
+        <View style={[styles.iconBox, { backgroundColor: unlocked ? colors.primary + '20' : colors.background }]}>
           <Ionicons
             name={unlocked ? 'trophy' : 'lock-closed'}
             size={28}

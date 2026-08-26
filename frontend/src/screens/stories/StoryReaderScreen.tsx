@@ -1,18 +1,46 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { StyleSheet, View, Text, ScrollView } from 'react-native';
+import { StyleSheet, View, Text } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import { Ionicons } from '@expo/vector-icons';
 
-import { ScreenContainer } from '../../components/common/ScreenContainer';
-import { TopBar } from '../../components/navigation/TopBar';
-import { AppCard } from '../../components/cards/AppCard';
-import { AppButton } from '../../components/buttons/AppButton';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { ErrorState } from '../../components/common/ErrorState';
-import { ProgressBar } from '../../components/ui';
+import {
+  AppShell,
+  Card,
+  PageHeader,
+  PetalIcon,
+  PrimaryButton,
+  ProgressIndicator,
+  SecondaryButton,
+} from '../../components/design';
 import { useStory, useStoryProgress, useStartStory, useUpdateStoryPage, useCompleteStory } from '../../hooks/useStories';
 import { toUserMessage } from '../../api/errors';
-import { colors, spacing, typography, radius } from '../../theme';
+import { colors, progressSizes, radius, spacing, typography, layoutSizes } from '../../theme';
+
+/**
+ * Story Reader (spec §35) — one page of a story at a time.
+ *
+ * The reading logic is untouched: the same five hooks, the same one-second
+ * reading timer in a ref, the same `completionPercent`, the same save-then-
+ * advance in `handleNext`, and `handleFinish` still replaces the route with
+ * StoryCompletion after `completeStory`.
+ *
+ * What changed is the chrome. The title, progress bar and page readout are now a
+ * pinned `AppShell` header and the Back/Next pair a pinned footer, so the page
+ * text scrolls on its own instead of the whole screen moving — long pages used to
+ * carry the controls off the bottom. Body text is 18px on a 28px line, which is
+ * the point of a reading screen and was 16/26 before.
+ *
+ * The dashed 160px "Illustration" box is gone. `StoryPage.imageKey` exists in the
+ * schema but nothing in the app resolves it to a URL, so the box was a promise of
+ * artwork that cannot arrive (§33) — it took a third of the first screenful away
+ * from the words. When illustrations are wired up they belong here, as an `Image`.
+ *
+ * One dead end is fixed: opening the reader with no progress id and no saved
+ * progress left it on "Preparing story…" indefinitely, because the mutation that
+ * would have created the progress record was written but never reachable. It is
+ * now behind a Start Reading button.
+ */
 
 type RouteParams = { storyId: string; progressId?: string };
 
@@ -22,7 +50,11 @@ export const StoryReaderScreen: React.FC = () => {
   const { storyId, progressId: initialProgressId } = route.params;
 
   const { data: storyRes, isLoading, isError, error } = useStory(storyId);
-  const { data: progressRes, refetch: refetchProgress } = useStoryProgress(storyId);
+  const {
+    data: progressRes,
+    isLoading: progressLoading,
+    refetch: refetchProgress,
+  } = useStoryProgress(storyId);
   const startStory = useStartStory();
   const updatePage = useUpdateStoryPage();
   const completeStory = useCompleteStory();
@@ -109,32 +141,58 @@ export const StoryReaderScreen: React.FC = () => {
     }
   }, [storyId, startStory]);
 
+  /**
+   * Arrived without a progress id and the server has no progress to resume. The
+   * screen used to sit on "Preparing story…" for ever in this state — the
+   * `handleStartReading` mutation it needed was written but never reachable from
+   * the UI. It has a button now.
+   */
+  const needsStart = !initialProgressId && initializing && !progressLoading && !progress;
+
+  if (needsStart) {
+    return (
+      <AppShell scroll={false} header={<PageHeader title={story?.title ?? 'Story'} />}>
+        <View style={styles.center}>
+          <Card variant="raised" padding="roomy" style={styles.startCard}>
+            <Text style={[typography.presets.cardTitle, styles.startTitle]}>Ready to read?</Text>
+            <Text style={[typography.presets.caption, styles.startBody]}>
+              This story has not been started yet. Open it and we'll keep your place.
+            </Text>
+            <PrimaryButton
+              label="Start Reading"
+              icon="play"
+              onPress={handleStartReading}
+              loading={startStory.isPending}
+            />
+          </Card>
+        </View>
+      </AppShell>
+    );
+  }
+
   if (!initialProgressId && initializing) {
     return (
-      <ScreenContainer>
-        <TopBar title="Story Reader" showBack />
+      <AppShell scroll={false} header={<PageHeader title="Story" />}>
         <View style={styles.center}>
-          <LoadingSpinner label="Preparing story..." />
+          <LoadingSpinner label="Preparing story…" />
         </View>
-      </ScreenContainer>
+      </AppShell>
     );
   }
 
   if (isLoading || initializing) {
     return (
-      <ScreenContainer>
-        <TopBar title="Story Reader" showBack />
+      <AppShell scroll={false} header={<PageHeader title="Story" />}>
         <View style={styles.center}>
-          <LoadingSpinner label="Loading story..." />
+          <LoadingSpinner label="Loading story…" />
         </View>
-      </ScreenContainer>
+      </AppShell>
     );
   }
 
   if (isError || !story || totalPages === 0) {
     return (
-      <ScreenContainer>
-        <TopBar title="Story Reader" showBack />
+      <AppShell scroll={false} header={<PageHeader title="Story" />}>
         <View style={styles.center}>
           <ErrorState
             title="Couldn't load story"
@@ -142,7 +200,7 @@ export const StoryReaderScreen: React.FC = () => {
             onRetry={refetchProgress}
           />
         </View>
-      </ScreenContainer>
+      </AppShell>
     );
   }
 
@@ -150,84 +208,90 @@ export const StoryReaderScreen: React.FC = () => {
 
   if (!page) {
     return (
-      <ScreenContainer>
-        <TopBar title="Story Reader" showBack />
+      <AppShell scroll={false} header={<PageHeader title="Story" />}>
         <View style={styles.center}>
           <ErrorState title="Page not found" message="This page could not be loaded." />
         </View>
-      </ScreenContainer>
+      </AppShell>
     );
   }
 
+  const minutes = Math.floor(readingSeconds / 60);
+  const seconds = (readingSeconds % 60).toString().padStart(2, '0');
+  const pageReadout = `Page ${currentPage + 1} of ${totalPages}`;
+
   return (
-    <ScreenContainer>
-      <TopBar title={story.title ?? 'Story'} showBack />
-      <View style={styles.container}>
-        <View style={styles.progressSection}>
-          <ProgressBar
-            progress={completionPercent}
-            color={colors.purple}
-            style={styles.readerProgress}
-          />
-          <View style={styles.progressInfo}>
-            <Text style={styles.pageIndicator}>
-              Page {currentPage + 1} of {totalPages}
-            </Text>
-            <View style={styles.timerRow}>
-              <Ionicons name="time-outline" size={14} color={colors.textMuted} />
-              <Text style={styles.timerText}>
-                {Math.floor(readingSeconds / 60)}:{(readingSeconds % 60).toString().padStart(2, '0')}
-              </Text>
+    <AppShell
+      petals="light"
+      header={
+        <View>
+          <PageHeader title={story.title ?? 'Story'} />
+          <View style={styles.progressSection}>
+            <ProgressIndicator
+              value={completionPercent}
+              height={progressSizes.barHeightThin}
+              color={colors.primary}
+              accessibilityLabel={`${pageReadout}, ${completionPercent} percent read`}
+            />
+            <View style={styles.progressInfo}>
+              <Text style={[typography.presets.caption, styles.pageIndicator]}>{pageReadout}</Text>
+              <View style={styles.timerRow}>
+                <PetalIcon name="clock" size={14} color={colors.textSecondary} />
+                <Text style={[typography.presets.caption, styles.muted]}>
+                  {minutes}:{seconds}
+                </Text>
+              </View>
             </View>
           </View>
         </View>
-
-        <ScrollView style={styles.contentScroll} showsVerticalScrollIndicator={false}>
-          <View style={styles.illustrationPlaceholder}>
-            <Ionicons name="image-outline" size={48} color={colors.textMuted} />
-            <Text style={styles.illustrationLabel}>Illustration</Text>
-          </View>
-
-          <AppCard style={styles.contentCard}>
-            <Text style={styles.pageContent}>{page.content}</Text>
-          </AppCard>
-
-          {page.hint ? (
-            <View style={styles.hintRow}>
-              <Ionicons name="bulb-outline" size={16} color={colors.yellow} />
-              <Text style={styles.hintText}>{page.hint}</Text>
-            </View>
-          ) : null}
-        </ScrollView>
-
+      }
+      footer={
         <View style={styles.controls}>
-          <AppButton
+          <SecondaryButton
             label="Back"
+            icon="back"
             onPress={handlePrev}
-            variant="secondary"
             disabled={isFirstPage}
+            fullWidth={false}
             style={styles.navBtn}
+            accessibilityLabel="Previous page"
           />
           {isLastPage ? (
-            <AppButton
+            <PrimaryButton
               label="Finish"
+              icon="check"
+              tone="green"
               onPress={handleFinish}
-              variant="success"
               loading={completeStory.isPending}
+              fullWidth={false}
               style={styles.navBtn}
+              accessibilityLabel="Finish story"
             />
           ) : (
-            <AppButton
+            <PrimaryButton
               label="Next"
+              iconRight="forward"
               onPress={handleNext}
-              variant="primary"
               loading={updatePage.isPending}
+              fullWidth={false}
               style={styles.navBtn}
+              accessibilityLabel="Next page"
             />
           )}
         </View>
-      </View>
-    </ScreenContainer>
+      }
+    >
+      <Card variant="raised" padding="roomy" style={styles.contentCard}>
+        <Text style={[typography.presets.body, styles.pageContent]}>{page.content}</Text>
+      </Card>
+
+      {page.hint ? (
+        <View style={styles.hintRow}>
+          <PetalIcon name="info" size={16} color={colors.warning} />
+          <Text style={[typography.presets.caption, styles.hintText]}>{page.hint}</Text>
+        </View>
+      ) : null}
+    </AppShell>
   );
 };
 
@@ -238,81 +302,74 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: spacing.xl,
   },
-  container: {
-    flex: 1,
-    padding: spacing.lg,
+  startCard: {
+    alignItems: 'center',
+    gap: spacing.md,
+    maxWidth: layoutSizes.reading,
   },
+  startTitle: {
+    color: colors.text,
+    textAlign: 'center',
+  },
+  startBody: {
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  muted: {
+    color: colors.textSecondary,
+  },
+
+  // -------------------------------------------------- pinned progress readout
+  /* Matches `PageHeader`'s own gutter so the bar lines up with the title. */
   progressSection: {
-    marginBottom: spacing.lg,
-  },
-  readerProgress: {
-    marginBottom: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.md,
   },
   progressInfo: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginTop: spacing.sm,
   },
   pageIndicator: {
-    fontSize: typography.sizes.sm,
-    color: colors.textMuted,
-    fontWeight: typography.weights.medium,
+    color: colors.text,
+    fontWeight: '700',
   },
   timerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
   },
-  timerText: {
-    fontSize: typography.sizes.sm,
-    color: colors.textMuted,
-  },
-  contentScroll: {
-    flex: 1,
-  },
-  illustrationPlaceholder: {
-    height: 160,
-    borderRadius: radius.card,
-    backgroundColor: `${colors.purple}08`,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: spacing.md,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    borderStyle: 'dashed',
-  },
-  illustrationLabel: {
-    fontSize: typography.sizes.sm,
-    color: colors.textMuted,
-    marginTop: spacing.xs,
-  },
+
+  // ------------------------------------------------------------------ the page
   contentCard: {
     marginBottom: spacing.md,
   },
   pageContent: {
-    fontSize: typography.sizes.body,
     color: colors.text,
-    lineHeight: 26,
+    // A reading screen, so the words get the room: 18 on 28 rather than 16 on 26.
+    fontSize: typography.sizes.lg,
+    lineHeight: 28,
   },
   hintRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: spacing.sm,
     padding: spacing.md,
-    backgroundColor: `${colors.yellow}15`,
+    backgroundColor: colors.warningLight,
     borderRadius: radius.md,
-    marginBottom: spacing.md,
   },
   hintText: {
-    fontSize: typography.sizes.sm,
-    color: colors.text,
     flex: 1,
+    minWidth: 0,
+    color: colors.text,
     lineHeight: 20,
   },
+
   controls: {
     flexDirection: 'row',
     gap: spacing.md,
-    paddingTop: spacing.md,
   },
   navBtn: {
     flex: 1,

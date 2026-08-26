@@ -1,25 +1,27 @@
 import React from 'react';
-import { StyleSheet, View, Text, ViewStyle } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { Card } from '../ui/Card';
+import { StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
 import { Skeleton } from '../ui/Skeleton';
-import { useTheme } from '../../theme/ThemeContext';
-import { spacing, typography } from '../../theme';
+import { IconWell } from '../design/Cards';
+import { spacing } from '../../theme';
+import { MetricCard, MetricFigure, trendVisual } from './MetricCard';
+
+/**
+ * Which way things are going.
+ *
+ * The direction used to be a bare 44px Ionicon plus two lines of text, all three
+ * coloured the same and each restating the other. Now the glyph sits in a tinted
+ * well, the word is the headline, and the percentage is the caption underneath —
+ * one fact, said once, with a shape as well as a colour behind it (§30).
+ */
 
 interface LearningTrendCardProps {
   trend: 'improving' | 'declining' | 'stable';
   changePercent: number;
   loading?: boolean;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
 }
 
-type TrendIconName = 'trending-up' | 'trending-down' | 'remove-circle';
-
-const TREND_ICON: Record<LearningTrendCardProps['trend'], TrendIconName> = {
-  improving: 'trending-up',
-  declining: 'trending-down',
-  stable: 'remove-circle',
-};
+const WELL_SIZE = 56;
 
 export function LearningTrendCard({
   trend,
@@ -27,64 +29,39 @@ export function LearningTrendCard({
   loading = false,
   style,
 }: LearningTrendCardProps) {
-  const { theme: { colors: themeColors } } = useTheme();
-
-  if (loading) {
-    return (
-      <Card style={style} accessibilityLabel="Loading learning trend">
-        <Skeleton width={120} height={22} style={{ marginBottom: spacing.md }} />
-        <Skeleton variant="circle" width={48} height={48} style={{ alignSelf: 'center', marginBottom: spacing.sm }} />
-        <Skeleton width={100} height={18} style={{ alignSelf: 'center', marginBottom: spacing.xs }} />
-        <Skeleton width={60} height={14} style={{ alignSelf: 'center' }} />
-      </Card>
-    );
-  }
-
-  const isImproving = trend === 'improving';
-  const isDeclining = trend === 'declining';
-  const trendColor = isImproving ? themeColors.success : isDeclining ? themeColors.error : themeColors.textMuted;
+  const v = trendVisual(trend);
   const sign = changePercent >= 0 ? '+' : '';
+  const change = `${sign}${Math.round(changePercent)}%`;
 
   return (
-    <Card
+    <MetricCard
+      title="Learning Trend"
+      icon="chart"
+      loading={loading}
       style={style}
-      accessibilityLabel={`Learning trend: ${trend}, ${sign}${changePercent}% change`}
+      accessibilityLabel={`Learning trend ${v.word.toLowerCase()}, ${change} change.`}
+      skeleton={
+        <View style={styles.skeleton}>
+          <Skeleton variant="circle" width={WELL_SIZE} height={WELL_SIZE} />
+          <Skeleton width={110} height={20} />
+          <Skeleton width={70} height={14} />
+        </View>
+      }
     >
-      <Text style={[styles.header, { color: themeColors.text }]}>Learning Trend</Text>
-      <View style={styles.iconContainer}>
-        <Ionicons name={TREND_ICON[trend]} size={44} color={trendColor} />
-      </View>
-      <Text style={[styles.trendLabel, { color: trendColor }]}>
-        {isImproving ? 'Improving' : isDeclining ? 'Declining' : 'Stable'}
-      </Text>
-      <Text style={[styles.changeText, { color: trendColor }]}>
-        {sign}{changePercent}%
-      </Text>
-    </Card>
+      <MetricFigure
+        above={<IconWell icon={v.icon} color={v.fg} soft={v.bg} size={WELL_SIZE} />}
+        value={v.word}
+        valueColor={v.fg}
+        caption={`${change} vs. the previous period`}
+      />
+    </MetricCard>
   );
 }
 
 const styles = StyleSheet.create({
-  header: {
-    fontSize: typography.sizes.cardTitle,
-    fontWeight: typography.weights.bold,
-    marginBottom: spacing.md,
-  },
-  iconContainer: {
+  skeleton: {
     alignItems: 'center',
-    marginBottom: spacing.sm,
-  },
-  trendLabel: {
-    fontSize: typography.sizes.lg,
-    fontWeight: typography.weights.bold,
-    textAlign: 'center',
-    textTransform: 'capitalize',
-    marginBottom: spacing.xs,
-  },
-  changeText: {
-    fontSize: typography.sizes.small,
-    fontWeight: typography.weights.medium,
-    textAlign: 'center',
+    gap: spacing.sm,
   },
 });
 

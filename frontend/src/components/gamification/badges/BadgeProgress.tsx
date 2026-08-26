@@ -1,7 +1,16 @@
+/**
+ * BadgeProgress — the "Earned n / m" summary above the badge grid.
+ *
+ * Redesign notes (§5, §29): a hand-rolled surface with its own radius and shadow
+ * becomes a design-system `Card` with an `IconWell` and `ProgressIndicator`, so
+ * it matches `AchievementSummary` on the sibling screen (§35).
+ */
+
 import React from 'react';
-import { View, Text, StyleSheet, StyleProp, ViewStyle } from 'react-native';
-import { colors, spacing, typography, radius, shadows } from '../../../theme';
-import { ProgressBar } from '../../../components/ui';
+import { StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native';
+
+import { colors, spacing, typography } from '../../../theme';
+import { Card, IconWell, ProgressIndicator } from '../../design';
 
 interface BadgeProgressProps {
   earnedCount: number;
@@ -9,41 +18,58 @@ interface BadgeProgressProps {
   style?: StyleProp<ViewStyle>;
 }
 
-export const BadgeProgress: React.FC<BadgeProgressProps> = ({ earnedCount, totalCount, style }) => {
+export const BadgeProgress: React.FC<BadgeProgressProps> = ({
+  earnedCount,
+  totalCount,
+  style,
+}) => {
   const progress = totalCount > 0 ? (earnedCount / totalCount) * 100 : 0;
+
   return (
-    <View style={[styles.card, style]}>
-      <Text style={styles.title}>Badge Progress</Text>
-      <Text style={styles.count}>
-        Earned {earnedCount} / {totalCount}
-      </Text>
-      <View style={styles.bar}>
-        <ProgressBar progress={progress} color={colors.purple} />
+    <Card style={style}>
+      <View style={styles.row}>
+        <IconWell icon="medal" color={colors.primary} soft={colors.primaryLight} filled />
+        <View style={styles.info}>
+          <Text style={styles.title} accessibilityRole="header">
+            Badge Progress
+          </Text>
+          <Text style={styles.count}>
+            Earned {earnedCount} of {totalCount}
+          </Text>
+        </View>
       </View>
-    </View>
+      <ProgressIndicator
+        value={progress}
+        color={colors.primary}
+        style={styles.bar}
+        accessibilityLabel={`${earnedCount} of ${totalCount} badges earned`}
+      />
+    </Card>
   );
 };
 
 const styles = StyleSheet.create({
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.card,
-    padding: spacing.lg,
-    ...shadows.md,
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  info: {
+    flex: 1,
+    minWidth: 0,
   },
   title: {
-    fontSize: typography.sizes.lg,
-    fontWeight: typography.weights.bold,
-    color: colors.textPrimary,
-    fontFamily: typography.families.rounded,
+    ...typography.presets.section,
+    color: colors.text,
   },
   count: {
-    fontSize: typography.sizes.md,
+    ...typography.presets.body,
     color: colors.textSecondary,
-    fontFamily: typography.families.rounded,
-    marginVertical: spacing.sm,
+    marginTop: 2,
   },
   bar: {
-    width: '100%',
+    marginTop: spacing.md,
   },
 });
+
+export default BadgeProgress;

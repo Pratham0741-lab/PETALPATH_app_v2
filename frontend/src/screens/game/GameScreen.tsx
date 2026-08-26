@@ -1,44 +1,64 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import {
-  View,
-  Text,
-  ScrollView,
-  StyleSheet,
-  useWindowDimensions,
-} from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Ionicons } from '@expo/vector-icons';
 
-import { ScreenContainer } from '../../components/common/ScreenContainer';
-import { Button } from '../../components/ui/Button';
-import { Card } from '../../components/ui/Card';
-import { Skeleton } from '../../components/ui/Skeleton';
+import { colors, radius, spacing, typography, cardSizes } from '../../theme';
 import { ErrorState } from '../../components/common/ErrorState';
 import { EmptyState } from '../../components/common/EmptyState';
 import { activityApi } from '../../services/api/activityApi';
 import { api } from '../../api/client';
 import { useSubmitGameScore } from '../../hooks/useActivityProgress';
 import { useActivitySync } from '../../hooks/useActivitySync';
-import { useTheme } from '../../theme/ThemeContext';
 import type { GameData } from '../../components/activities/types';
 import { DragDropMatch } from '../../components/activities/DragDropMatch';
 import type { DragDropSpec } from '../../components/activities/types';
 import type { ApiResponse } from '../../types/api';
+import {
+  AppShell,
+  Card,
+  IconWell,
+  PageHeader,
+  PrimaryButton,
+  SecondaryButton,
+  StarRating,
+} from '../../components/design';
 
 import { getNextActivity, navigateToActivity } from '../../utils/navigationFlow';
 
+/**
+ * Game — the host screen for Match & Learn, reference screen 9 (spec §34 phase 5).
+ *
+ * Every real route into here (`navigationFlow`, `LessonScreen`) passes an
+ * `activityId`, so the drag & drop branch is the one children actually see and
+ * `DragDropRenderer` owns that screen's chrome end to end. This file therefore
+ * hands it the whole viewport — no wrapper shell, or the safe areas and warm
+ * background would be applied twice.
+ *
+ * The generic "game" branches below (a Play card, a placeholder play area and a
+ * five-star self-rating) only run when there is no activity id at all. They are
+ * kept rather than deleted (§1) — the score submission through
+ * `useSubmitGameScore` is real — but they are re-skinned so they cannot look
+ * like a different app if they ever surface (§33).
+ */
+
 type GameRouteParams = {
   Game: { activityId: string; dragDropSpec?: DragDropSpec; title?: string };
+};
+
+/** Badge tint per game type, on the palette rather than raw theme roles (§3). */
+const GAME_TYPE_COLORS: Record<string, { main: string; soft: string }> = {
+  puzzle: { main: colors.leafGreen, soft: colors.greenSoft },
+  memory: { main: colors.primary, soft: colors.primaryLight },
+  adventure: { main: colors.secondary, soft: colors.secondaryLight },
+  quiz: { main: colors.warning, soft: colors.warningLight },
+  arcade: { main: colors.coral, soft: colors.errorLight },
 };
 
 export const GameScreen: React.FC = () => {
   const navigation = useNavigation<NativeStackNavigationProp<GameRouteParams, 'Game'>>();
   const route = useRoute<RouteProp<GameRouteParams, 'Game'>>();
   const { activityId, dragDropSpec } = route.params;
-  const { theme } = useTheme();
-  const { width: windowWidth } = useWindowDimensions();
-  const isDesktop = windowWidth >= 768;
 
   const submitScore = useSubmitGameScore();
   const { syncAfterActivity } = useActivitySync();
@@ -125,438 +145,336 @@ export const GameScreen: React.FC = () => {
     }
   }, [activityId, score, submitScore, syncAfterActivity, navigation]);
 
-  const gameTypeColorMap: Record<string, string> = {
-    puzzle: theme.colors.success,
-    memory: theme.colors.primary,
-    adventure: theme.colors.secondary,
-    quiz: theme.colors.warning,
-    arcade: theme.colors.error,
-  };
-
-  const gameBadgeColor = gameTypeColorMap[gameData?.gameType ?? ''] ?? theme.colors.primary;
-
-  const styles = createStyles(theme);
-
   if (isLoading) {
     return (
-      <ScreenContainer>
+      <AppShell scroll={false} header={<PageHeader title="Match & Learn" />}>
         <View style={styles.center}>
-          <Skeleton variant="card" width="90%" height={220} style={styles.skeletonCard} />
-          <Skeleton variant="text" width="60%" style={styles.skeletonText} />
-          <Skeleton variant="text" width="40%" style={styles.skeletonText} />
-          <Skeleton variant="rect" width={160} height={48} borderRadius={24} style={styles.skeletonButton} />
+          <ActivityIndicator size="large" color={colors.orange} />
+          <Text style={[typography.presets.caption, styles.loadingText]}>
+            Setting up the board…
+          </Text>
         </View>
-      </ScreenContainer>
+      </AppShell>
     );
   }
 
   if (isError) {
     return (
-      <ScreenContainer>
+      <AppShell
+        scroll={false}
+        header={<PageHeader title="Match & Learn" />}
+        footer={<SecondaryButton label="Go Back" icon="back" onPress={() => navigation.goBack()} />}
+      >
         <View style={styles.center}>
           <ErrorState
-            title="Couldn't load game"
+            title="Couldn't load this activity"
             message={errorMessage}
             onRetry={fetchGame}
           />
         </View>
-      </ScreenContainer>
+      </AppShell>
     );
   }
 
+  // The drag & drop renderer brings its own AppShell, header and footer, so it
+  // gets the full viewport rather than being nested inside a second shell.
   if (activeSpec || activityId) {
     return (
-      <ScreenContainer>
-        <DragDropMatch
-          spec={activeSpec as any}
-          activityId={activityId}
-          onExit={() => navigation.goBack()}
-          onNext={handleNextActivity}
-        />
-      </ScreenContainer>
+      <DragDropMatch
+        spec={activeSpec as any}
+        activityId={activityId}
+        onExit={() => navigation.goBack()}
+        onNext={handleNextActivity}
+      />
     );
   }
 
   if (!gameData) {
     return (
-      <ScreenContainer>
+      <AppShell scroll={false} header={<PageHeader title="Match & Learn" />}>
         <View style={styles.center}>
           <EmptyState
-            icon="🎮"
+            icon="match"
             title="Game not found"
             message="This game activity is not available right now."
           />
         </View>
-      </ScreenContainer>
+      </AppShell>
     );
   }
 
   if (isPlaying) {
     return (
-      <ScreenContainer>
-        <View style={styles.playingContainer}>
-          <View style={styles.topBar}>
-            <Button
-              variant="ghost"
-              size="sm"
-              leftIcon={<Ionicons name="arrow-back" size={20} color={theme.colors.text} />}
-              label="Back"
-              onPress={() => setIsPlaying(false)}
-              accessibilityLabel="Exit game and go back"
-            />
-            <Text style={styles.playingTitle} accessibilityRole="header">{gameData.title}</Text>
-          </View>
-
-          <View style={styles.gameArea}>
-            {gameData.contentUrl ? (
-              <View
-                style={styles.gameFrame}
-                accessibilityLabel="Game content area"
-                accessibilityHint="The game is running in this area"
-              >
-                <Ionicons name="game-controller" size={72} color={theme.colors.primary} />
-                <Text style={styles.gameFrameText}>
-                  {gameData.title}
-                </Text>
-                <Text style={styles.gameFrameHint}>
-                  Game content loaded from activity source
-                </Text>
-              </View>
-            ) : (
-              <View style={styles.gameAreaPlaceholder}>
-                <Ionicons name="play-circle" size={72} color={theme.colors.textMuted} />
-                <Text style={styles.gameAreaPlaceholderText}>Interactive game area</Text>
-                <Text style={styles.gameAreaPlaceholderHint}>
-                  Complete the activity and tap Finish when done
-                </Text>
-              </View>
-            )}
-          </View>
-
-          <View style={styles.bottomBar}>
-            <Button
-              label="Finish Game"
-              variant="primary"
-              size="lg"
-              onPress={handleFinish}
-              leftIcon={<Ionicons name="checkmark-circle" size={20} color={theme.colors.textInverse} />}
-              fullWidth
-              accessibilityLabel="Complete the game and rate it"
-            />
-          </View>
+      <AppShell
+        scroll={false}
+        contentContainerStyle={styles.readable}
+        header={
+          <PageHeader
+            title={gameData.title}
+            onBack={() => setIsPlaying(false)}
+            centered={false}
+          />
+        }
+        footer={
+          <PrimaryButton
+            label="Finish Game"
+            icon="check"
+            tone="green"
+            onPress={handleFinish}
+            accessibilityHint="Completes the game and asks you to rate it"
+          />
+        }
+      >
+        <View style={styles.stage}>
+          {gameData.contentUrl ? (
+            <View
+              style={styles.gameFrame}
+              accessibilityLabel="Game content area"
+              accessibilityHint="The game is running in this area"
+            >
+              <IconWell
+                icon="match"
+                color={colors.orange}
+                soft={colors.warningLight}
+                size={cardSizes.iconWellLarge}
+              />
+              <Text style={[typography.presets.cardTitle, styles.frameTitle]}>
+                {gameData.title}
+              </Text>
+              <Text style={[typography.presets.caption, styles.frameHint]}>
+                Game content loaded from activity source
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.gameFrame}>
+              <IconWell
+                icon="play"
+                color={colors.textMuted}
+                soft={colors.surfaceSecondary}
+                size={cardSizes.iconWellLarge}
+              />
+              <Text style={[typography.presets.cardTitle, styles.frameTitle]}>
+                Interactive game area
+              </Text>
+              <Text style={[typography.presets.caption, styles.frameHint]}>
+                Complete the activity and tap Finish when done
+              </Text>
+            </View>
+          )}
         </View>
-      </ScreenContainer>
+      </AppShell>
     );
   }
 
   if (isCompleted) {
     return (
-      <ScreenContainer>
-        <ScrollView
-          contentContainerStyle={[
-            styles.scrollContent,
-            isDesktop && styles.scrollContentDesktop,
-          ]}
-          showsVerticalScrollIndicator={false}
-        >
-          <View style={[styles.contentInner, isDesktop && styles.contentInnerDesktop]}>
-            <Card variant="elevated" padding="xl" style={styles.scoreCard}>
-              <View style={styles.scoreIconRow}>
-                <Ionicons name="star" size={52} color={theme.colors.accent} />
-              </View>
-              <Text style={styles.scoreTitle} accessibilityRole="header">
-                How many stars?
-              </Text>
-              <Text style={styles.scoreSubtitle}>Rate your performance</Text>
+      <AppShell
+        contentContainerStyle={styles.readable}
+        header={<PageHeader title="How did it go?" showBack={false} />}
+        footer={
+          <PrimaryButton
+            label={score > 0 ? `Submit ${score} Star${score > 1 ? 's' : ''}` : 'Pick a rating first'}
+            icon="star"
+            tone="green"
+            loading={submitScore.isPending}
+            disabled={score < 1}
+            onPress={handleSubmitScore}
+            accessibilityHint="Saves your rating for this game"
+          />
+        }
+      >
+        <Card variant="raised" padding="roomy" accent={colors.yellow} style={styles.scoreCard}>
+          <IconWell icon="star" color={colors.yellow} soft={colors.yellowSoft} filled />
+          <Text style={[typography.presets.title, styles.scoreTitle]} accessibilityRole="header">
+            How many stars?
+          </Text>
+          <Text style={[typography.presets.subtle, styles.scoreSubtitle]}>
+            Tap a star to rate how the game went.
+          </Text>
 
-              <View style={styles.starRow} accessibilityLabel="Star rating: tap to select score">
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <View key={star}>
-                    <Ionicons
-                      name={score >= star ? 'star' : 'star-outline'}
-                      size={44}
-                      color={score >= star ? theme.colors.accent : theme.colors.textMuted}
-                      onPress={() => handleStarPress(star)}
-                      accessibilityRole="button"
-                      accessibilityLabel={`${star} star${star > 1 ? 's' : ''}`}
-                      accessibilityState={{ selected: score >= star }}
-                    />
-                  </View>
-                ))}
-              </View>
-
-              <Button
-                label={score > 0 ? `Submit ${score} Star${score > 1 ? 's' : ''}` : 'Select a rating'}
-                variant="primary"
-                size="lg"
-                onPress={handleSubmitScore}
-                loading={submitScore.isPending}
-                disabled={score < 1}
-                fullWidth
-                style={styles.submitButton}
-                accessibilityLabel="Submit your game score"
-              />
-            </Card>
-          </View>
-        </ScrollView>
-      </ScreenContainer>
+          <StarRating
+            value={score}
+            max={5}
+            size="lg"
+            onSelect={handleStarPress}
+            selectLabel="Rate this game out of five stars"
+            style={styles.stars}
+          />
+        </Card>
+      </AppShell>
     );
   }
 
+  const badge = GAME_TYPE_COLORS[gameData.gameType] ?? {
+    main: colors.primary,
+    soft: colors.primaryLight,
+  };
+
   return (
-    <ScreenContainer>
-      <ScrollView
-        contentContainerStyle={[
-          styles.scrollContent,
-          isDesktop && styles.scrollContentDesktop,
-        ]}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={[styles.contentInner, isDesktop && styles.contentInnerDesktop]}>
-          <View style={styles.backRow}>
-            <Button
-              variant="ghost"
-              size="sm"
-              leftIcon={<Ionicons name="arrow-back" size={20} color={theme.colors.text} />}
-              label="Back"
-              onPress={() => navigation.goBack()}
-              accessibilityLabel="Go back to previous screen"
-            />
-          </View>
+    <AppShell
+      contentContainerStyle={styles.readable}
+      header={<PageHeader title="Match & Learn" />}
+      footer={
+        <PrimaryButton
+          label="Play"
+          icon="play"
+          onPress={handlePlay}
+          accessibilityHint="Starts the game"
+        />
+      }
+    >
+      <Card variant="raised" padding="roomy" accent={badge.main} style={styles.gameCard}>
+        <IconWell
+          icon="match"
+          color={badge.main}
+          soft={badge.soft}
+          size={cardSizes.iconWellLarge}
+        />
 
-          <Card variant="elevated" padding="xl" style={styles.gameCard}>
-            <View style={styles.iconContainer}>
-              <Ionicons name="game-controller" size={60} color={theme.colors.primary} />
-            </View>
+        <Text style={[typography.presets.title, styles.gameTitle]} accessibilityRole="header">
+          {gameData.title}
+        </Text>
 
-            <Text style={styles.title} accessibilityRole="header">
-              {gameData.title}
-            </Text>
+        <View style={[styles.typePill, { backgroundColor: badge.soft }]}>
+          <Text style={[typography.presets.eyebrow, styles.typePillText, { color: badge.main }]}>
+            {gameData.gameType}
+          </Text>
+        </View>
 
-            <View style={styles.badgeRow}>
-              <View style={[styles.badge, { backgroundColor: gameBadgeColor + '20' }]}>
-                <Text style={[styles.badgeText, { color: gameBadgeColor }]}>
-                  {gameData.gameType}
+        {gameData.config && Object.keys(gameData.config).length > 0 && (
+          <View style={styles.configSection}>
+            <Text style={[typography.presets.eyebrow, styles.configLabel]}>Game Settings</Text>
+            {Object.entries(gameData.config).map(([key, value]) => (
+              <View key={key} style={styles.configRow}>
+                <Text style={[typography.presets.caption, styles.configKey]}>{key}</Text>
+                <Text style={[typography.presets.caption, styles.configValue]}>
+                  {String(value)}
                 </Text>
               </View>
-            </View>
-
-            {gameData.config && Object.keys(gameData.config).length > 0 && (
-              <View style={styles.configSection}>
-                <Text style={styles.configLabel}>Game Settings</Text>
-                {Object.entries(gameData.config).map(([key, value]) => (
-                  <View key={key} style={styles.configRow}>
-                    <Text style={styles.configKey}>{key}</Text>
-                    <Text style={styles.configValue}>{String(value)}</Text>
-                  </View>
-                ))}
-              </View>
-            )}
-
-            <Button
-              label="Play"
-              variant="primary"
-              size="lg"
-              onPress={handlePlay}
-              leftIcon={<Ionicons name="play" size={22} color={theme.colors.textInverse} />}
-              fullWidth
-              style={styles.playButton}
-              accessibilityLabel="Start playing the game"
-            />
-          </Card>
-        </View>
-      </ScrollView>
-    </ScreenContainer>
+            ))}
+          </View>
+        )}
+      </Card>
+    </AppShell>
   );
 };
 
-const createStyles = (theme: ReturnType<typeof useTheme>['theme']) =>
-  StyleSheet.create({
-    center: {
-      flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
-      padding: theme.spacing.xl,
-    },
-    scrollContent: {
-      paddingBottom: theme.spacing.xxl * 2,
-    },
-    scrollContentDesktop: {
-      alignItems: 'center',
-    },
-    contentInner: {
-      padding: theme.spacing.lg,
-    },
-    contentInnerDesktop: {
-      maxWidth: 640,
-      width: '100%',
-    },
-    backRow: {
-      marginBottom: theme.spacing.md,
-    },
-    skeletonCard: {
-      marginBottom: theme.spacing.lg,
-    },
-    skeletonText: {
-      marginBottom: theme.spacing.sm,
-    },
-    skeletonButton: {
-      marginTop: theme.spacing.md,
-    },
-    gameCard: {
-      alignItems: 'center',
-    },
-    iconContainer: {
-      width: 100,
-      height: 100,
-      borderRadius: theme.radius.xl,
-      backgroundColor: theme.colors.primary + '10',
-      justifyContent: 'center',
-      alignItems: 'center',
-      marginBottom: theme.spacing.lg,
-    },
-    title: {
-      fontSize: theme.typography.sizes.xxl,
-      fontWeight: theme.typography.weights.black,
-      color: theme.colors.text,
-      textAlign: 'center',
-      marginBottom: theme.spacing.md,
-    },
-    badgeRow: {
-      flexDirection: 'row',
-      marginBottom: theme.spacing.lg,
-    },
-    badge: {
-      paddingHorizontal: theme.spacing.lg,
-      paddingVertical: theme.spacing.xs,
-      borderRadius: theme.radius.chip,
-    },
-    badgeText: {
-      fontSize: theme.typography.sizes.sm,
-      fontWeight: theme.typography.weights.bold,
-      textTransform: 'capitalize',
-    },
-    configSection: {
-      width: '100%',
-      backgroundColor: theme.colors.surfaceSecondary,
-      borderRadius: theme.radius.md,
-      padding: theme.spacing.md,
-      marginBottom: theme.spacing.lg,
-    },
-    configLabel: {
-      fontSize: theme.typography.sizes.sm,
-      fontWeight: theme.typography.weights.bold,
-      color: theme.colors.textSecondary,
-      marginBottom: theme.spacing.sm,
-    },
-    configRow: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      paddingVertical: theme.spacing.xs,
-    },
-    configKey: {
-      fontSize: theme.typography.sizes.sm,
-      color: theme.colors.textMuted,
-      textTransform: 'capitalize',
-    },
-    configValue: {
-      fontSize: theme.typography.sizes.sm,
-      color: theme.colors.text,
-      fontWeight: theme.typography.weights.medium,
-    },
-    playButton: {
-      marginTop: theme.spacing.sm,
-    },
-    playingContainer: {
-      flex: 1,
-    },
-    topBar: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingHorizontal: theme.spacing.sm,
-      paddingVertical: theme.spacing.xs,
-    },
-    playingTitle: {
-      fontSize: theme.typography.sizes.lg,
-      fontWeight: theme.typography.weights.bold,
-      color: theme.colors.text,
-      marginLeft: theme.spacing.sm,
-      flex: 1,
-    },
-    gameArea: {
-      flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
-      padding: theme.spacing.xl,
-    },
-    gameFrame: {
-      width: '100%',
-      height: 320,
-      borderRadius: theme.radius.card,
-      backgroundColor: theme.colors.surfaceSecondary,
-      justifyContent: 'center',
-      alignItems: 'center',
-      borderWidth: 2,
-      borderColor: theme.colors.border,
-      borderStyle: 'dashed',
-    },
-    gameFrameText: {
-      fontSize: theme.typography.sizes.lg,
-      fontWeight: theme.typography.weights.bold,
-      color: theme.colors.text,
-      marginTop: theme.spacing.md,
-    },
-    gameFrameHint: {
-      fontSize: theme.typography.sizes.sm,
-      color: theme.colors.textMuted,
-      marginTop: theme.spacing.xs,
-    },
-    gameAreaPlaceholder: {
-      alignItems: 'center',
-      padding: theme.spacing.xl,
-    },
-    gameAreaPlaceholderText: {
-      fontSize: theme.typography.sizes.lg,
-      fontWeight: theme.typography.weights.bold,
-      color: theme.colors.textMuted,
-      marginTop: theme.spacing.md,
-    },
-    gameAreaPlaceholderHint: {
-      fontSize: theme.typography.sizes.sm,
-      color: theme.colors.textMuted,
-      marginTop: theme.spacing.xs,
-      textAlign: 'center',
-    },
-    bottomBar: {
-      padding: theme.spacing.lg,
-      paddingBottom: theme.spacing.xxl,
-    },
-    scoreCard: {
-      alignItems: 'center',
-    },
-    scoreIconRow: {
-      marginBottom: theme.spacing.md,
-    },
-    scoreTitle: {
-      fontSize: theme.typography.sizes.xxl,
-      fontWeight: theme.typography.weights.black,
-      color: theme.colors.text,
-      textAlign: 'center',
-      marginBottom: theme.spacing.xs,
-    },
-    scoreSubtitle: {
-      fontSize: theme.typography.sizes.md,
-      color: theme.colors.textSecondary,
-      textAlign: 'center',
-      marginBottom: theme.spacing.xl,
-    },
-    starRow: {
-      flexDirection: 'row',
-      justifyContent: 'center',
-      gap: theme.spacing.md,
-      marginBottom: theme.spacing.xl,
-    },
-    submitButton: {
-      marginTop: theme.spacing.sm,
-    },
-  });
+export default GameScreen;
+
+const styles = StyleSheet.create({
+  /**
+   * Caps the column instead of branching on a 768px breakpoint: a single card
+   * stretched across a desktop window reads badly, and a max-width does the job
+   * at every size without a hardcoded layout (§27).
+   */
+  readable: {
+    width: '100%',
+    maxWidth: 640,
+    alignSelf: 'center',
+  },
+  center: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: spacing.lg,
+  },
+  loadingText: {
+    color: colors.textSecondary,
+    marginTop: spacing.md,
+  },
+
+  // ------------------------------------------------------------- play surface
+  stage: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  gameFrame: {
+    width: '100%',
+    /* Grows with the space available instead of a fixed 320px box (§27). */
+    flexGrow: 1,
+    maxHeight: 420,
+    borderRadius: radius.card,
+    backgroundColor: colors.surface,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.lg,
+    gap: spacing.xs,
+  },
+  frameTitle: {
+    color: colors.text,
+    textAlign: 'center',
+    marginTop: spacing.sm,
+  },
+  frameHint: {
+    color: colors.textSecondary,
+    textAlign: 'center',
+  },
+
+  // -------------------------------------------------------------- rating card
+  scoreCard: {
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  scoreTitle: {
+    color: colors.text,
+    textAlign: 'center',
+    marginTop: spacing.sm,
+  },
+  scoreSubtitle: {
+    color: colors.textSecondary,
+    textAlign: 'center',
+  },
+  stars: {
+    marginTop: spacing.md,
+  },
+
+  // ---------------------------------------------------------------- game card
+  gameCard: {
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  gameTitle: {
+    color: colors.text,
+    textAlign: 'center',
+    marginTop: spacing.sm,
+  },
+  typePill: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: 5,
+    borderRadius: radius.pill,
+  },
+  typePillText: {
+    textTransform: 'capitalize',
+  },
+  configSection: {
+    width: '100%',
+    backgroundColor: colors.surfaceSecondary,
+    borderRadius: radius.cardInner,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    padding: spacing.md,
+    marginTop: spacing.md,
+  },
+  configLabel: {
+    color: colors.textSecondary,
+    marginBottom: spacing.sm,
+  },
+  configRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingVertical: spacing.xs,
+  },
+  configKey: {
+    color: colors.textMuted,
+    textTransform: 'capitalize',
+  },
+  configValue: {
+    color: colors.text,
+    flexShrink: 1,
+    textAlign: 'right',
+  },
+});

@@ -2,8 +2,27 @@ import React, { useEffect, useState } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity } from 'react-native';
 import { cameraEngine } from './CameraEngine';
 import { DiagnosticMetrics } from './CameraTypes';
+import { PetalIcon } from '../components/icons';
 
-export const DebugOverlay: React.FC<{ isVisible?: boolean }> = ({ isVisible = true }) => {
+/**
+ * Camera engine diagnostics. Developer-facing, deliberately styled as a terminal
+ * readout rather than on the child-facing design system.
+ *
+ * `isVisible` used to default to `true` unconditionally, so a release build put a
+ * black diagnostics slab at `zIndex: 9999` over the camera preview a five-year-old
+ * was meant to be looking at. It now defaults to expanded in development and
+ * collapsed in production — the mini badge is still there in both, one tap away.
+ *
+ * Note for the outstanding camera verification: `npx expo run:android` produces a
+ * debug build, where `__DEV__` is true, so that flow is unchanged and the panel
+ * still opens by itself showing `State` / `Camera FPS` / `Watchdog`.
+ *
+ * The terminal styling is intentional and stays, but the two *controls* were the
+ * text characters `⚡` and `✕`. Since the mini badge ships in release builds and
+ * is tappable by a child, both are real glyphs now (§7) — the monospace-readout
+ * look is unaffected.
+ */
+export const DebugOverlay: React.FC<{ isVisible?: boolean }> = ({ isVisible = __DEV__ }) => {
   const [expanded, setExpanded] = useState(isVisible);
   const [metrics, setMetrics] = useState<DiagnosticMetrics | null>(null);
 
@@ -19,8 +38,15 @@ export const DebugOverlay: React.FC<{ isVisible?: boolean }> = ({ isVisible = tr
 
   if (!expanded) {
     return (
-      <TouchableOpacity style={styles.miniBadge} onPress={() => setExpanded(true)}>
-        <Text style={styles.miniText}>⚡ Metrics</Text>
+      <TouchableOpacity
+        style={styles.miniBadge}
+        onPress={() => setExpanded(true)}
+        hitSlop={12}
+        accessibilityRole="button"
+        accessibilityLabel="Show camera engine metrics"
+      >
+        <PetalIcon name="chart" size={12} color="#00FFCC" filled />
+        <Text style={styles.miniText}>Metrics</Text>
       </TouchableOpacity>
     );
   }
@@ -29,8 +55,13 @@ export const DebugOverlay: React.FC<{ isVisible?: boolean }> = ({ isVisible = tr
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>PetalPath Camera Engine v3 (Phase 2 Pose Engine)</Text>
-        <TouchableOpacity onPress={() => setExpanded(false)}>
-          <Text style={styles.closeBtn}>✕</Text>
+        <TouchableOpacity
+          onPress={() => setExpanded(false)}
+          hitSlop={16}
+          accessibilityRole="button"
+          accessibilityLabel="Hide camera engine metrics"
+        >
+          <PetalIcon name="close" size={14} color="#FFFFFF" strokeWidth={2.4} />
         </TouchableOpacity>
       </View>
 
@@ -113,6 +144,9 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 40,
     right: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
     backgroundColor: 'rgba(0,0,0,0.7)',
     paddingHorizontal: 10,
     paddingVertical: 6,
@@ -120,9 +154,9 @@ const styles = StyleSheet.create({
     zIndex: 9999,
   },
   miniText: { color: '#00FFCC', fontSize: 12, fontWeight: 'bold' },
-  header: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
-  title: { color: '#00FFCC', fontWeight: 'bold', fontSize: 12 },
-  closeBtn: { color: '#FFFFFF', fontWeight: 'bold', fontSize: 14 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8, marginBottom: 8 },
+  // The title is long enough to push the close control off the row at 360px.
+  title: { color: '#00FFCC', fontWeight: 'bold', fontSize: 12, flexShrink: 1 },
   content: { gap: 3 },
   row: { color: '#CCCCCC', fontSize: 11 },
   val: { color: '#FFFFFF', fontWeight: 'bold' },

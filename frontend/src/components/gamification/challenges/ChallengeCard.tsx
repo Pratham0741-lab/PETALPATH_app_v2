@@ -1,9 +1,26 @@
+/**
+ * ChallengeCard — one daily challenge.
+ *
+ * Redesign notes (§5, §7, §15): challenges are the blue activity family, so the
+ * card uses the `blueSoft`/`blueDark` tint pair from the tokens rather than
+ * `colors.blue + '1A'` string concatenation, and the Ionicons flag/star/cash
+ * glyphs are the `sparkle`, `star` and `coin` PetalIcons.
+ *
+ * Two things were also wrong underneath the styling. The card wrapped an
+ * `AppCard` inside a `Pressable`, which nests a pressable in a pressable and
+ * loses the press animation the rest of the app has — it is a single `Card` with
+ * `onPress` now. And the "Done" pill drew `colors.success` on a 10%-alpha green,
+ * roughly 2:1, so the one word confirming the child finished the challenge was
+ * the least readable thing on the card (§30). It now carries a check glyph as
+ * well, so completion is not signalled by colour alone.
+ */
+
 import React from 'react';
-import { View, Text, StyleSheet, Pressable, StyleProp, ViewStyle } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { colors, spacing, typography, radius, shadows } from '../../../theme';
-import { AppCard } from '../../cards/AppCard';
-import { ProgressBar } from '../../../components/ui';
+import { StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native';
+
+import { colors, radius, spacing, typography } from '../../../theme';
+import { Card, IconWell, ProgressIndicator } from '../../design';
+import { PetalIcon } from '../../icons';
 
 interface Props {
   title: string;
@@ -29,125 +46,123 @@ export const ChallengeCard: React.FC<Props> = ({
   style,
 }) => {
   const percent = target > 0 ? (progress / target) * 100 : 0;
+  const rewardIcon = reward.toLowerCase().includes('star') ? 'star' : 'coin';
 
-  const content = (
-    <AppCard style={[styles.card, style]}>
+  return (
+    <Card
+      variant={completed ? 'selected' : 'raised'}
+      onPress={onPress}
+      style={style}
+      accessibilityLabel={`${title}. ${
+        completed ? 'Completed' : `${progress} of ${target}`
+      }. Reward: ${reward}`}
+    >
       <View style={styles.header}>
-        <View style={styles.iconWrap}>
-          <Ionicons name="flag" size={22} color={colors.blue} />
-        </View>
+        <IconWell
+          icon={completed ? 'check' : 'sparkle'}
+          color={completed ? colors.successDark : colors.blueDark}
+          soft={completed ? colors.greenSoft : colors.blueSoft}
+          size={44}
+          filled={completed}
+        />
         <View style={styles.headerText}>
-          <Text style={styles.title}>{title}</Text>
-          {category ? <Text style={styles.category}>{category}</Text> : null}
+          <Text style={styles.title} numberOfLines={2}>
+            {title}
+          </Text>
+          {category ? (
+            <Text style={styles.category} numberOfLines={1}>
+              {category}
+            </Text>
+          ) : null}
         </View>
       </View>
+
       {description ? <Text style={styles.description}>{description}</Text> : null}
-      <View style={styles.progressWrap}>
-        <ProgressBar progress={percent} color={colors.blue} />
-      </View>
+
+      <ProgressIndicator
+        value={percent}
+        color={completed ? colors.success : colors.blue}
+        countOf={{ current: progress, total: target }}
+        style={styles.progressWrap}
+      />
+
       <View style={styles.footer}>
         <View style={styles.reward}>
-          <Ionicons
-            name={reward.toLowerCase().includes('star') ? 'star' : 'cash'}
-            size={16}
-            color={colors.blue}
-          />
+          <PetalIcon name={rewardIcon} size={16} color={colors.accent} filled />
           <Text style={styles.rewardText}>{reward}</Text>
         </View>
         {completed ? (
           <View style={styles.donePill}>
+            <PetalIcon name="check" size={12} color={colors.successDark} strokeWidth={2.4} />
             <Text style={styles.doneText}>Done</Text>
           </View>
         ) : null}
       </View>
-    </AppCard>
+    </Card>
   );
-
-  if (onPress) {
-    return (
-      <Pressable onPress={onPress} style={({ pressed }) => (pressed ? styles.pressed : null)}>
-        {content}
-      </Pressable>
-    );
-  }
-
-  return content;
 };
 
 const styles = StyleSheet.create({
-  card: {
-    padding: spacing.md,
-    borderRadius: radius.lg,
-  },
-  pressed: {
-    opacity: 0.85,
-  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: spacing.sm,
-  },
-  iconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.md,
-    backgroundColor: colors.blue + '1A',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: spacing.sm,
+    gap: spacing.sm,
   },
   headerText: {
     flex: 1,
+    minWidth: 0,
   },
   title: {
-    fontFamily: typography.families.rounded,
-    fontSize: typography.sizes.lg,
-    fontWeight: typography.weights.bold,
+    ...typography.presets.cardTitle,
     color: colors.text,
   },
   category: {
-    fontFamily: typography.families.rounded,
-    fontSize: typography.sizes.xs,
-    fontWeight: typography.weights.medium,
-    color: colors.blue,
+    ...typography.presets.caption,
+    color: colors.blueDark,
+    fontWeight: typography.weights.bold,
     marginTop: 2,
   },
   description: {
-    fontFamily: typography.families.rounded,
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.regular,
-    color: colors.textMuted,
-    marginBottom: spacing.sm,
+    ...typography.presets.subtle,
+    color: colors.textSecondary,
+    marginTop: spacing.sm,
   },
   progressWrap: {
-    marginBottom: spacing.sm,
+    marginTop: spacing.md,
   },
   footer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: spacing.sm,
+    marginTop: spacing.md,
   },
   reward: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: spacing.xs,
+    flex: 1,
+    minWidth: 0,
   },
   rewardText: {
-    fontFamily: typography.families.rounded,
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.medium,
+    ...typography.presets.subtle,
     color: colors.text,
-    marginLeft: spacing.xs,
+    fontWeight: typography.weights.bold,
   },
   donePill: {
-    backgroundColor: colors.success + '1A',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: colors.greenSoft,
     paddingVertical: 4,
     paddingHorizontal: spacing.sm,
     borderRadius: radius.full,
   },
   doneText: {
-    fontFamily: typography.families.rounded,
-    fontSize: typography.sizes.xs,
+    ...typography.presets.caption,
+    color: colors.successDark,
     fontWeight: typography.weights.bold,
-    color: colors.success,
   },
 });
+
+export default ChallengeCard;

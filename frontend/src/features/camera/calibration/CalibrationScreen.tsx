@@ -1,10 +1,72 @@
+/**
+ * Quick Camera Calibration — the three-step setup (spec §34 phase 7).
+ *
+ * Behaviour is untouched (§1): the same `useCalibration` hook, the same
+ * step-then-save `handleNext`, the same `handleSkip` that saves and leaves, and
+ * the same shoulder-width readout with its `|| 0.2` fallback.
+ *
+ * The surface is rebuilt. The three steps were carried entirely by a 56px emoji
+ * each — 🧍, 🙌, ✨ — which is exactly what §7 rules out, and the card had its own
+ * hand-mixed shadow rather than the shared one (§5). Steps now use `IconWell`
+ * with glyphs that say the same thing honestly: a camera for "stand in front of
+ * it", an up arrow for "raise your arms high", a tick for "ready". Each step also
+ * has its own colour, so the three feel like progress rather than one screen
+ * redrawn.
+ *
+ * "Step 2 of 3" was a pink caption; it is now a real `ProgressIndicator`, which
+ * means a screen reader announces the position instead of a child having to read
+ * it, and the two buttons are the shared pair rather than two `Pressable`s.
+ */
+
 import React, { useState } from 'react';
-import { StyleSheet, View, Text, Pressable } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { ScreenContainer } from '../../../components/common/ScreenContainer';
-import { TopBar } from '../../../components/navigation/TopBar';
+import {
+  AppShell,
+  Card,
+  IconWell,
+  PageHeader,
+  PrimaryButton,
+  ProgressIndicator,
+  SecondaryButton,
+} from '../../../components/design';
+import type { PetalIconName } from '../../../components/icons';
 import { useCalibration } from './useCalibration';
-import { colors, radius, spacing, typography } from '../../../theme';
+import { cardSizes, colors, spacing, typography, layoutSizes } from '../../../theme';
+
+const TOTAL_STEPS = 3;
+
+/**
+ * One entry per step. The glyphs are literal rather than decorative: `camera`
+ * for standing in front of it, `arrowUp` for raising your arms, `check` for
+ * done — none of them pretends to depict a body, which the icon set has no
+ * honest glyph for (§7).
+ */
+const STEPS: Array<{
+  icon: PetalIconName;
+  color: string;
+  soft: string;
+  title: string;
+}> = [
+  {
+    icon: 'camera',
+    color: colors.blue,
+    soft: colors.blueSoft,
+    title: 'Stand in Front of Camera',
+  },
+  {
+    icon: 'arrowUp',
+    color: colors.purple,
+    soft: colors.secondaryLight,
+    title: 'Raise Both Arms High',
+  },
+  {
+    icon: 'check',
+    color: colors.green,
+    soft: colors.greenSoft,
+    title: 'Calibration Ready!',
+  },
+];
 
 export const CalibrationScreen: React.FC = () => {
   const navigation = useNavigation<any>();
@@ -25,129 +87,91 @@ export const CalibrationScreen: React.FC = () => {
     if (navigation.canGoBack()) navigation.goBack();
   };
 
+  const current = STEPS[step - 1] ?? STEPS[0];
+  const isLast = step === TOTAL_STEPS;
+
+  /* Copy per step, kept word for word from the original. */
+  const message =
+    step === 1
+      ? 'Make sure your upper body and arms are clearly visible in the preview.'
+      : step === 2
+      ? 'Stretch your arms up high so PetalPath can measure your movement range.'
+      : `Baseline shoulder width: ${Math.round(
+          (profile.shoulderWidth || 0.2) * 100,
+        )}% ratio. You are all set!`;
+
   return (
-    <ScreenContainer style={styles.container}>
-      <TopBar title="Quick Camera Calibration" showBack />
+    <AppShell scroll={false} petals="light" header={<PageHeader title="Quick Camera Calibration" />}>
+      <View style={styles.column}>
+        <ProgressIndicator
+          value={(step / TOTAL_STEPS) * 100}
+          label={`Step ${step} of ${TOTAL_STEPS}`}
+          color={current.color}
+          countOf={{ current: step, total: TOTAL_STEPS }}
+          accessibilityLabel={`Calibration step ${step} of ${TOTAL_STEPS}`}
+          style={styles.progress}
+        />
 
-      <View style={styles.content}>
-        <Text style={styles.stepBadge}>Step {step} of 3</Text>
-
-        {step === 1 ? (
-          <View style={styles.card}>
-            <Text style={styles.emoji}>🧍</Text>
-            <Text style={styles.title}>Stand in Front of Camera</Text>
-            <Text style={styles.subtitle}>
-              Make sure your upper body and arms are clearly visible in the preview.
-            </Text>
-          </View>
-        ) : step === 2 ? (
-          <View style={styles.card}>
-            <Text style={styles.emoji}>🙌</Text>
-            <Text style={styles.title}>Raise Both Arms High</Text>
-            <Text style={styles.subtitle}>
-              Stretch your arms up high so PetalPath can measure your movement range.
-            </Text>
-          </View>
-        ) : (
-          <View style={styles.card}>
-            <Text style={styles.emoji}>✨</Text>
-            <Text style={styles.title}>Calibration Ready!</Text>
-            <Text style={styles.subtitle}>
-              Baseline shoulder width: {Math.round((profile.shoulderWidth || 0.2) * 100)}% ratio. You are all set!
-            </Text>
-          </View>
-        )}
+        <Card variant="raised" padding="roomy" accent={current.color} contentStyle={styles.card}>
+          <IconWell
+            icon={current.icon}
+            color={current.color}
+            soft={current.soft}
+            size={cardSizes.iconWellLarge}
+            filled
+          />
+          <Text style={[typography.presets.section, styles.title]} accessibilityRole="header">
+            {current.title}
+          </Text>
+          <Text style={[typography.presets.body, styles.message]}>{message}</Text>
+        </Card>
 
         <View style={styles.actions}>
-          <Pressable style={styles.primaryButton} onPress={handleNext}>
-            <Text style={styles.primaryButtonText}>
-              {step === 3 ? 'Save & Finish' : 'Next Step'}
-            </Text>
-          </Pressable>
-
-          <Pressable style={styles.secondaryButton} onPress={handleSkip}>
-            <Text style={styles.secondaryButtonText}>Skip Setup</Text>
-          </Pressable>
+          <PrimaryButton
+            label={isLast ? 'Save & Finish' : 'Next Step'}
+            icon={isLast ? 'check' : undefined}
+            iconRight={isLast ? undefined : 'forward'}
+            size="lg"
+            onPress={handleNext}
+          />
+          <SecondaryButton
+            label="Skip Setup"
+            onPress={handleSkip}
+            accessibilityHint="Saves what we have and returns to the activities"
+          />
         </View>
       </View>
-    </ScreenContainer>
+    </AppShell>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  content: {
-    flex: 1,
-    padding: spacing.xl,
+  column: {
+    /* Centres the card vertically without `flex: 1` — this sits in AppShell's
+       non-scrolling body, but `flexGrow` is safe either way. */
+    flexGrow: 1,
     justifyContent: 'center',
-    alignItems: 'center',
+    width: '100%',
+    maxWidth: layoutSizes.dialog,
+    alignSelf: 'center',
+    gap: spacing.lg,
   },
-  stepBadge: {
-    fontFamily: typography.families.rounded,
-    fontSize: typography.sizes.sm,
-    color: colors.purple,
-    fontWeight: 'bold',
-    marginBottom: spacing.md,
+  progress: {
+    alignSelf: 'stretch',
   },
   card: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.card,
-    padding: spacing.xxl,
     alignItems: 'center',
-    width: '100%',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 4,
-    marginBottom: spacing.xl,
-  },
-  emoji: {
-    fontSize: 56,
-    marginBottom: spacing.md,
+    gap: spacing.sm,
   },
   title: {
-    fontFamily: typography.families.rounded,
-    fontSize: typography.sizes.xl,
-    color: colors.text,
-    fontWeight: 'bold',
     textAlign: 'center',
-    marginBottom: spacing.xs,
   },
-  subtitle: {
-    fontFamily: typography.families.rounded,
-    fontSize: typography.sizes.md,
-    color: colors.textMuted,
+  message: {
+    color: colors.textSecondary,
     textAlign: 'center',
   },
   actions: {
-    width: '100%',
-    alignItems: 'center',
-  },
-  primaryButton: {
-    backgroundColor: colors.purple,
-    width: '100%',
-    paddingVertical: spacing.md,
-    borderRadius: radius.button,
-    alignItems: 'center',
-    marginBottom: spacing.md,
-  },
-  primaryButtonText: {
-    fontFamily: typography.families.rounded,
-    fontSize: typography.sizes.md,
-    color: colors.card,
-    fontWeight: 'bold',
-  },
-  secondaryButton: {
-    paddingVertical: spacing.sm,
-  },
-  secondaryButtonText: {
-    fontFamily: typography.families.rounded,
-    fontSize: typography.sizes.sm,
-    color: colors.textMuted,
+    gap: spacing.sm,
   },
 });
 

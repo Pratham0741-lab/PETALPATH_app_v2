@@ -16,7 +16,7 @@ const XPTransactionItem: React.FC<XPTransactionItemProps> = ({ label, amount, da
   return (
     <View style={styles.row} accessibilityRole="text" accessibilityLabel={`${label}, ${amount} XP`}>
       <View style={styles.left}>
-        <Ionicons name="star" size={18} color={colors.purple} />
+        <Ionicons name="star" size={18} color={colors.primary} />
         <View style={styles.textBlock}>
           <Text style={styles.label}>{label}</Text>
           <Text style={styles.date}>{formattedDate}</Text>

@@ -1,10 +1,19 @@
 /**
  * Draggable Token View — PetalPath Drag & Drop Presentation
  * PanResponder gesture handling with canvas scale compensation, dynamic scaling, and token rendering.
+ *
+ * Redesign notes: the gesture pipeline is untouched — `gesture.dx / scaleFactor`
+ * still converts screen pixels into virtual canvas units, and every callback
+ * fires with the same arguments as before. What changed is the paint: the token
+ * palette is the app's six accent colours instead of a Tailwind grab-bag (spec
+ * §3), a locked token now carries a visible ring as well as reduced opacity so
+ * "already placed" does not depend on a 10% opacity shift (§30), and the drop
+ * shadow uses the shared elevation token.
  */
 
 import React, { useRef, useMemo, useEffect } from 'react';
 import { Animated, PanResponder, StyleSheet, Text } from 'react-native';
+import { colors, radius, shadows, typography } from '../../../theme';
 import { DraggableItem, DropZone as DropZoneModel } from '../types';
 import { AccessibilityService } from '../../../core/accessibility/accessibilityService';
 import { useCanvasScale } from './Canvas';
@@ -19,7 +28,24 @@ export interface DraggableProps {
   onDragEnd: (id: string, dropPoint: { x: number; y: number }) => boolean;
 }
 
-const palette = ['#4A90E2', '#8B5CF6', '#0EA5E9', '#F59E0B', '#EC4899', '#10B981'];
+/**
+ * Fallback token colours, cycled by `sortOrder`, for specs that ship no explicit
+ * `style.backgroundColor`. Generated specs always set one, so this is a safety net.
+ *
+ * These are measured, not assumed. The previous list used `colors.orange`,
+ * `colors.leafGreen` and `colors.coral`, above a comment asserting all six were
+ * "dark enough for white text" — they measure 2.48:1, 2.83:1 and 2.72:1 against
+ * white, all below even the 3:1 large-text bar (§30). Every hue below clears 3:1,
+ * and none of them is the green or red that `DropZone` uses for its verdicts.
+ */
+const palette = [
+  '#E8386A', // rose   4.03:1
+  '#3F7FC4', // blue   4.16:1
+  '#D9741F', // amber  3.25:1
+  '#7B5BD6', // purple 4.87:1
+  '#2E8C9E', // teal   3.92:1
+  '#8A6242', // cocoa  5.38:1
+];
 
 export const Draggable: React.FC<DraggableProps> = ({
   item,
@@ -92,10 +118,24 @@ export const Draggable: React.FC<DraggableProps> = ({
     [item.id, isLocked, item.behavior.draggable, currentPosX, currentPosY, scaleFactor, onDragStart, onDragMove, onDragEnd]
   );
 
+  const rawSrLabel = item.accessibility?.screenReaderLabel ?? '';
+
   const displayLabel = AccessibilityService.getScreenReaderLabel(
-    item.accessibility.screenReaderLabel,
+    rawSrLabel,
     item.content || 'Draggable Item'
   );
+
+  /*
+   * What the child actually sees. Only `content` is real display text; the
+   * screen-reader label is a last resort and is suppressed when it is an `l10n:`
+   * key, because `getScreenReaderLabel` "humanises" such a key by taking its last
+   * colon-segment — so `l10n:drag:pn_matching:item-1:sr-label` came out as the
+   * literal words "sr label", drawn at 56px inside the tile. 24 of the shipped
+   * boards rendered exactly that. A bare coloured tile is a smaller lie than a
+   * tile captioned with the name of an accessibility field; the spoken label
+   * below is unaffected either way.
+   */
+  const visibleText = item.content || (rawSrLabel.startsWith('l10n:') ? '' : displayLabel);
 
   const bgColor = item.style?.backgroundColor || palette[item.sortOrder % palette.length];
 
@@ -111,7 +151,7 @@ export const Draggable: React.FC<DraggableProps> = ({
           width: item.dimensions.width,
           height: item.dimensions.height,
           backgroundColor: bgColor,
-          borderRadius: item.style?.borderRadius || 24,
+          borderRadius: item.style?.borderRadius || radius.illustrationCard,
           transform: [...pan.getTranslateTransform(), { scale: scaleAnim }],
         },
         isLocked && styles.lockedToken,
@@ -119,23 +159,26 @@ export const Draggable: React.FC<DraggableProps> = ({
       ]}
       accessibilityRole="button"
       accessibilityLabel={`Draggable: ${displayLabel}`}
+      accessibilityState={{ disabled: isLocked }}
+      accessibilityHint={isLocked ? 'Already placed' : 'Drag this onto its matching shape'}
     >
-      {item.content ? (
+      {visibleText ? (
         <Text
           style={[
             styles.text,
             {
-              color: item.style?.textColor || '#FFFFFF',
+              color: item.style?.textColor || colors.white,
               fontSize: item.style?.fontSize || 56,
-              fontWeight: (item.style?.fontWeight as any) || '800',
+              fontWeight: (item.style?.fontWeight as any) || typography.weights.black,
             },
           ]}
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.5}
         >
-          {item.content}
+          {visibleText}
         </Text>
-      ) : (
-        <Text style={styles.text}>{displayLabel}</Text>
-      )}
+      ) : null}
     </Animated.View>
   );
 };
@@ -145,23 +188,24 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 4,
+    ...shadows.md,
     elevation: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
   },
   lockedToken: {
     opacity: 0.9,
+    /* A ring, not just an opacity nudge, so "placed" is legible on its own (§30). */
+    borderWidth: 3,
+    borderColor: colors.leafGreen,
   },
   highlightedToken: {
     borderWidth: 3,
-    borderColor: '#F59E0B',
+    borderColor: colors.warning,
   },
   text: {
     fontSize: 56,
-    fontWeight: '800',
-    color: '#FFFFFF',
+    fontFamily: typography.families.rounded,
+    fontWeight: typography.weights.black,
+    color: colors.white,
     textAlign: 'center',
     includeFontPadding: false,
   },

@@ -1,13 +1,25 @@
 import React from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  ScrollView,
-  StyleSheet,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { colors, typography, spacing, radius, shadows } from '../../theme';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+
+import { colors, radius, spacing, typography } from '../../theme';
+import { IconWell, PrimaryButton } from '../design';
+import { PetalIcon } from '../icons';
+
+/**
+ * Global error boundary — the last screen a child ever wants to see, so it is
+ * at least dressed like the rest of the app (§35).
+ *
+ * Behaviour is unchanged: the same `getDerivedStateFromError`, the same
+ * `componentDidCatch` logging, the same optional `fallback`, the same reset, and
+ * the technical-details toggle still shows name, message and stack for whoever
+ * is debugging.
+ *
+ * The chrome moved onto the design system: an `IconWell` instead of a bare
+ * Ionicons face, `PrimaryButton` instead of a hand-rolled pink pill, and the
+ * "▲/▼" text arrows are real `arrowUp`/`arrowDown` glyphs (§7). The details
+ * toggle is deliberately quiet — muted, small, and below the message — because
+ * the child needs the Try Again button, not the stack.
+ */
 
 interface ErrorBoundaryProps {
   children: React.ReactNode;
@@ -60,25 +72,31 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
         accessibilityLiveRegion="assertive"
         accessibilityLabel="An unexpected error occurred"
       >
-        <View style={styles.iconContainer}>
-          <Ionicons name="sad-outline" size={48} color={colors.error} />
-        </View>
-        <Text style={styles.title}>Something went wrong</Text>
-        <Text style={styles.message}>
+        <IconWell icon="warning" color={colors.error} soft={colors.errorLight} size={80} />
+
+        <Text style={[typography.presets.title, styles.title]}>Something went wrong</Text>
+        <Text style={[typography.presets.body, styles.message]}>
           PetalPath hit an unexpected problem. Please try again.
         </Text>
 
         {error ? (
-          <TouchableOpacity
-            style={styles.detailsToggle}
+          <Pressable
+            style={({ pressed }) => [styles.detailsToggle, pressed && styles.pressed]}
             onPress={this.toggleDetails}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             accessibilityRole="button"
-            accessibilityLabel="Show or hide error details"
+            accessibilityState={{ expanded: showDetails }}
+            accessibilityLabel={showDetails ? 'Hide technical details' : 'Show technical details'}
           >
-            <Text style={styles.detailsToggleText}>
-              {showDetails ? 'Hide Technical Details ▲' : 'Show Technical Details ▼'}
+            <Text style={[typography.presets.caption, styles.detailsToggleText]}>
+              {showDetails ? 'Hide technical details' : 'Show technical details'}
             </Text>
-          </TouchableOpacity>
+            <PetalIcon
+              name={showDetails ? 'arrowUp' : 'arrowDown'}
+              size={14}
+              color={colors.textMuted}
+            />
+          </Pressable>
         ) : null}
 
         {error && showDetails ? (
@@ -101,16 +119,14 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
           </ScrollView>
         ) : null}
 
-        <TouchableOpacity
-          style={styles.resetButton}
+        <PrimaryButton
+          label="Try Again"
+          icon="replay"
           onPress={this.handleReset}
-          accessibilityRole="button"
-          accessibilityLabel="Try Again"
+          fullWidth={false}
+          style={styles.resetButton}
           accessibilityHint="Resets the application state and retries"
-        >
-          <Ionicons name="refresh" size={20} color={colors.white} style={styles.resetIcon} />
-          <Text style={styles.resetText}>Try Again</Text>
-        </TouchableOpacity>
+        />
       </View>
     );
   }
@@ -124,44 +140,36 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     padding: spacing.xxl,
   },
-  iconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: colors.errorLight,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: spacing.xl,
-  },
   title: {
-    fontSize: typography.sizes.xxl,
-    fontWeight: typography.weights.bold,
     color: colors.text,
-    fontFamily: typography.families.rounded,
-    marginBottom: spacing.sm,
     textAlign: 'center',
+    marginTop: spacing.xl,
+    marginBottom: spacing.sm,
   },
   message: {
-    fontSize: typography.sizes.sm,
     color: colors.textSecondary,
-    fontFamily: typography.families.rounded,
     textAlign: 'center',
-    lineHeight: typography.lineHeights.sm,
-    marginBottom: spacing.md,
+    lineHeight: 22,
+    marginBottom: spacing.lg,
     maxWidth: 320,
   },
   detailsToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
     paddingVertical: spacing.xs,
     paddingHorizontal: spacing.sm,
     marginBottom: spacing.md,
   },
-  detailsToggleText: {
-    fontSize: typography.sizes.caption,
-    color: colors.textMuted,
-    fontFamily: typography.families.rounded,
-    fontWeight: '600',
-    textDecorationLine: 'underline',
+  pressed: {
+    opacity: 0.6,
   },
+  detailsToggleText: {
+    color: colors.textMuted,
+    fontWeight: '700',
+  },
+
+  // The stack is for whoever is debugging, so it stays monospaced and plain.
   stackContainer: {
     maxHeight: 200,
     width: '100%',
@@ -176,7 +184,7 @@ const styles = StyleSheet.create({
   },
   stackLabel: {
     fontSize: typography.sizes.xs,
-    color: colors.error,
+    color: colors.errorDark,
     fontFamily: 'monospace',
     fontWeight: typography.weights.bold,
     marginBottom: spacing.xs,
@@ -193,21 +201,8 @@ const styles = StyleSheet.create({
     fontFamily: 'monospace',
   },
   resetButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.primary,
-    paddingHorizontal: spacing.xxl,
-    paddingVertical: spacing.md,
-    borderRadius: radius.button,
-    ...shadows.md,
-  },
-  resetIcon: {
-    marginRight: spacing.sm,
-  },
-  resetText: {
-    color: colors.white,
-    fontSize: typography.sizes.button,
-    fontWeight: typography.weights.bold,
-    fontFamily: typography.families.rounded,
+    minWidth: 200,
   },
 });
+
+export default ErrorBoundary;

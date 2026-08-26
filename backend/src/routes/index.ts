@@ -41,6 +41,7 @@ import aiTutorRoutes from '../modules/ai-tutor/ai-tutor.routes.js';
 import { adaptationRoutes } from '../modules/adaptation/adaptation.routes.js';
 import { dashboardRoutes } from '../modules/dashboard/dashboard.routes.js';
 import { teacherDashboardRoutes } from '../modules/teacher-dashboard/teacher-dashboard.routes.js';
+import { waitlistRoutes } from '../modules/waitlist/waitlist.routes.js';
 
 const router = Router();
 
@@ -113,6 +114,9 @@ router.use('/v1/dashboard', dashboardRoutes);
 
 router.use('/teacher/dashboard', teacherDashboardRoutes);
 router.use('/v1/teacher/dashboard', teacherDashboardRoutes);
+
+router.use('/waitlist', waitlistRoutes);
+router.use('/v1/waitlist', waitlistRoutes);
 
 export { router as rootRouter };
 

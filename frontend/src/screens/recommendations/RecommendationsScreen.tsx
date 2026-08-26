@@ -110,7 +110,7 @@ export const RecommendationsScreen: React.FC = () => {
             <Text style={styles.badgeText}>{titleCase(recommendation.kind)}</Text>
           </View>
           <View style={styles.activityChip}>
-            <Ionicons name={activityIcon} size={16} color={colors.purple} />
+            <Ionicons name={activityIcon} size={16} color={colors.primary} />
             <Text style={styles.activityChipText}>
               {titleCase(recommendation.activityType)}
             </Text>
@@ -122,12 +122,12 @@ export const RecommendationsScreen: React.FC = () => {
 
         <View style={styles.metaRow}>
           <View style={styles.metaItem}>
-            <Ionicons name="time-outline" size={18} color={colors.purple} />
+            <Ionicons name="time-outline" size={18} color={colors.primary} />
             <Text style={styles.metaLabel}>Session length</Text>
             <Text style={styles.metaValue}>{recommendation.optimalSessionDurationMin} min</Text>
           </View>
           <View style={styles.metaItem}>
-            <Ionicons name="stats-chart-outline" size={18} color={colors.purple} />
+            <Ionicons name="stats-chart-outline" size={18} color={colors.primary} />
             <Text style={styles.metaLabel}>Confidence</Text>
             <Text style={styles.metaValue}>{confidencePct}%</Text>
           </View>
@@ -146,12 +146,12 @@ export const RecommendationsScreen: React.FC = () => {
         contentContainerStyle={styles.scrollContainer}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={isFetching} onRefresh={onRefresh} tintColor={colors.purple} />
+          <RefreshControl refreshing={isFetching} onRefresh={onRefresh} tintColor={colors.primary} />
         }
       >
         <View style={styles.header}>
           <View style={styles.headerIconWrap}>
-            <Ionicons name="bulb" size={26} color={colors.purple} />
+            <Ionicons name="bulb" size={26} color={colors.primary} />
           </View>
           <Text style={styles.headerTitle}>Smart Recommendation</Text>
           <Text style={styles.headerSubtitle}>
@@ -211,7 +211,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   badge: {
-    backgroundColor: colors.purple,
+    backgroundColor: colors.primary,
     paddingHorizontal: spacing.sm,
     paddingVertical: 4,
     borderRadius: radius.full,

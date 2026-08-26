@@ -1,36 +1,52 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import {
-  StyleSheet,
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  RefreshControl,
-  useWindowDimensions,
-  Alert,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
-import {
-  useMonthlyReport,
-  useAnalyticsActivity,
-} from '../../hooks/useParentAnalytics';
-import { CurriculumProgressCard } from '../../components/analytics/CurriculumProgressCard';
-import { ConsistencyCard } from '../../components/analytics/ConsistencyCard';
-import { ProgressRing } from '../../components/charts/ProgressRing';
+import { Alert, RefreshControl, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { useAnalyticsActivity, useMonthlyReport } from '../../hooks/useParentAnalytics';
 import { BarChart } from '../../components/charts/BarChart';
-import { ScreenContainer } from '../../components/common/ScreenContainer';
-import { Card } from '../../components/ui/Card';
-import { Skeleton } from '../../components/ui/Skeleton';
-import { ErrorState } from '../../components/common/ErrorState';
+import {
+  AppShell,
+  Card,
+  PageHeader,
+  ParentRow,
+  ParentSection,
+  PetalIcon,
+  ProgressIndicator,
+  ProgressRing,
+  SecondaryButton,
+  StatGrid,
+} from '../../components/design';
+import type { PetalIconName, Stat } from '../../components/design';
+import { ConsistencyCard, DataSection } from '../../components/analytics';
 import { EmptyState } from '../../components/common/EmptyState';
-import { useTheme } from '../../theme/ThemeContext';
-import { spacing, typography, radius, breakpoints } from '../../theme';
+import { ErrorState } from '../../components/common/ErrorState';
+import { Skeleton } from '../../components/ui/Skeleton';
+import { breakpoints, colors, progressSizes, spacing, typography, layoutSizes } from '../../theme';
+import { formatDuration } from '../../utils/formatters';
 import type { MonthlyReport } from '../../services/api/analyticsApi';
 
+/**
+ * Monthly Report (spec §26) — the same figures as before, told once each.
+ *
+ * The old screen printed Lessons, Modules and Activities in a four-tile stat row
+ * and then again in a "Content Completed" card, and fed
+ * `CurriculumProgressCard` `modulesTotal={Math.max(modulesCompleted, 1)}` — a
+ * ratio that is 100% by construction, so the card always read "complete". The
+ * report's real `curriculumProgress` percentage was never drawn at all. It is the
+ * progress bar at the top of this version, and the totals now appear once: the
+ * summary grid up top, the per-content-type breakdown below it.
+ *
+ * Also: the chart fills its card instead of `screenWidth - spacing.lg * 4` (§27),
+ * and the one Export control sits at the foot rather than as a filled pink button
+ * competing with the page title.
+ */
+
+interface Comparison {
+  label: string;
+  icon: PetalIconName;
+  value: number;
+  suffix?: string;
+}
+
 export const MonthlyReportScreen: React.FC = () => {
-  const { theme: { colors: themeColors } } = useTheme();
-  const navigation = useNavigation<{ goBack: () => void }>();
   const { width: screenWidth } = useWindowDimensions();
   const isTabletOrDesktop = screenWidth >= breakpoints.mobileMax;
 
@@ -42,10 +58,7 @@ export const MonthlyReportScreen: React.FC = () => {
   const reportData: MonthlyReport | undefined = report.data?.data;
 
   const refreshAll = useCallback(async () => {
-    await Promise.all([
-      report.refetch(),
-      activity.refetch(),
-    ]);
+    await Promise.all([report.refetch(), activity.refetch()]);
   }, [report, activity]);
 
   const onRefresh = useCallback(async () => {
@@ -67,440 +80,317 @@ export const MonthlyReportScreen: React.FC = () => {
     Alert.alert('Export', 'Export functionality coming soon.');
   }, []);
 
-  const isLoading = report.isLoading || activity.isLoading;
-  const hasError = report.error || activity.error;
-  const isEmpty = !isLoading && !hasError && !reportData;
+  const stats: Stat[] = useMemo(
+    () => [
+      {
+        label: 'Learning',
+        value: reportData ? formatDuration(reportData.totalLearningMinutes) : '0m',
+        icon: 'clock',
+        color: colors.primary,
+      },
+      { label: 'Lessons', value: String(reportData?.lessonsCompleted ?? 0), icon: 'check', color: colors.successDark },
+      { label: 'Modules', value: String(reportData?.contentCompleted.modules ?? 0), icon: 'explore', color: colors.secondary },
+      { label: 'Activities', value: String(reportData?.contentCompleted.activities ?? 0), icon: 'play', color: colors.accent },
+    ],
+    [reportData],
+  );
 
-  if (report.isLoading && activity.isLoading) {
+  const comparisons: Comparison[] = useMemo(
+    () => [
+      { label: 'Lessons', icon: 'book', value: reportData?.previousMonthComparison.lessonsChange ?? 0 },
+      { label: 'Minutes', icon: 'clock', value: reportData?.previousMonthComparison.minutesChange ?? 0 },
+      { label: 'Mastery', icon: 'medal', value: reportData?.previousMonthComparison.masteryChange ?? 0, suffix: '%' },
+    ],
+    [reportData],
+  );
+
+  const header = (
+    <PageHeader
+      title="Monthly Report"
+      subtitle={reportData?.month ?? 'The last four weeks'}
+      centered={false}
+    />
+  );
+
+  if (report.isLoading) {
     return (
-      <ScreenContainer>
-        <ScrollView
-          contentContainerStyle={[
-            styles.scrollContainer,
-            isTabletOrDesktop && styles.scrollContainerTablet,
-          ]}
-        >
-          <View style={styles.header}>
-            <Skeleton width={40} height={40} variant="circle" />
-            <Skeleton width={200} height={28} style={{ marginLeft: spacing.sm }} />
-            <Skeleton width={80} height={36} style={{ marginLeft: 'auto' }} borderRadius={radius.button} />
-          </View>
-          <Skeleton variant="card" style={{ marginBottom: spacing.xl }} />
-          <Skeleton variant="card" style={{ marginBottom: spacing.xl }} />
-          <Skeleton variant="card" style={{ marginBottom: spacing.xl }} />
-          <Skeleton variant="card" style={{ marginBottom: spacing.xl }} />
-          <Skeleton variant="card" style={{ marginBottom: spacing.xl }} />
-          <Skeleton variant="card" style={{ marginBottom: spacing.xl }} />
-        </ScrollView>
-      </ScreenContainer>
+      <AppShell petals="light" header={header}>
+        <Skeleton variant="card" height={168} style={styles.block} />
+        <Skeleton variant="card" height={200} style={styles.block} />
+        <Skeleton variant="card" height={220} style={styles.block} />
+      </AppShell>
     );
   }
 
-  if (hasError && !reportData) {
-    const err = report.error ?? activity.error;
+  if (report.error && !reportData) {
     return (
-      <ScreenContainer>
-        <ErrorState
-          title="Could not load monthly report"
-          message={err instanceof Error ? err.message : 'An unexpected error occurred.'}
-          onRetry={() => handleRetry(report, activity)}
-        />
-      </ScreenContainer>
+      <AppShell petals="light" header={header}>
+        <StatePanel>
+          <ErrorState
+            title="Could not load monthly report"
+            message={report.error.message}
+            onRetry={() => report.refetch()}
+          />
+        </StatePanel>
+      </AppShell>
+    );
+  }
+
+  if (!reportData) {
+    return (
+      <AppShell petals="light" header={header}>
+        <StatePanel>
+          <EmptyState
+            icon="calendar"
+            title="No report yet"
+            message="Complete lessons this month to see your report."
+          />
+        </StatePanel>
+      </AppShell>
     );
   }
 
   return (
-    <ScreenContainer>
-      <ScrollView
-        contentContainerStyle={[
-          styles.scrollContainer,
-          isTabletOrDesktop && styles.scrollContainerTablet,
-        ]}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={themeColors.primary} />
-        }
-      >
-        <View style={styles.header} accessibilityRole="header">
-          <TouchableOpacity
-            onPress={() => navigation.goBack()}
-            style={styles.backButton}
-            accessibilityRole="button"
-            accessibilityLabel="Go back"
+    <AppShell
+      petals="light"
+      header={header}
+      contentContainerStyle={isTabletOrDesktop ? styles.contentTablet : undefined}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
+      }
+    >
+      <ParentSection title="This Month" icon="calendar" boxed>
+        <StatGrid stats={stats} />
+        <ProgressIndicator
+          label="Curriculum progress"
+          value={reportData.curriculumProgress}
+          color={colors.primary}
+          showPercentage
+          style={styles.curriculumBar}
+        />
+      </ParentSection>
+
+      <ParentSection title="Mastery Growth" subtitle="How much stronger this month made things" icon="medal" boxed>
+        <View style={styles.ringWrap}>
+          <ProgressRing
+            value={reportData.masteryGrowth}
+            size={progressSizes.ringSizeLarge}
+            stroke={progressSizes.ringStrokeLarge}
+            color={colors.secondary}
+            accessibilityLabel={`Mastery growth ${Math.round(reportData.masteryGrowth)} percent`}
           >
-            <Ionicons name="arrow-back" size={24} color={themeColors.text} />
-          </TouchableOpacity>
-          <Ionicons name="calendar" size={28} color={themeColors.primary} />
-          <Text style={[styles.headerTitle, { color: themeColors.text }]}>Monthly Report</Text>
-          <TouchableOpacity
-            style={[styles.exportButton, { backgroundColor: themeColors.primary }]}
-            onPress={handleExport}
-            accessibilityRole="button"
-            accessibilityLabel="Export report"
-          >
-            <Ionicons name="download-outline" size={18} color={themeColors.textInverse} />
-            <Text style={[styles.exportLabel, { color: themeColors.textInverse }]}>Export</Text>
-          </TouchableOpacity>
+            <Text style={[typography.presets.stat, styles.ringValue]}>
+              {Math.round(reportData.masteryGrowth)}%
+            </Text>
+          </ProgressRing>
+          <Text style={[typography.presets.caption, styles.muted]}>Growth</Text>
         </View>
+      </ParentSection>
 
-        {isEmpty ? (
-          <EmptyState title="No report yet" message="Complete lessons this month to see your report." />
-        ) : reportData ? (
-          <>
-            <Card style={styles.section} accessibilityLabel="Report month">
-              <View style={styles.monthRow}>
-                <Ionicons name="calendar-outline" size={20} color={themeColors.primary} />
-                <Text style={[styles.monthLabel, { color: themeColors.text }]}>{reportData.month}</Text>
-              </View>
-            </Card>
+      <ConsistencyCard
+        score={reportData.consistency}
+        currentStreak={Math.round(reportData.consistency / 10)}
+        longestStreak={Math.round(reportData.consistency / 8)}
+        style={styles.block}
+      />
 
-            <View style={styles.statsRow}>
-              <View style={[styles.statCard, { backgroundColor: themeColors.surfaceSecondary }]}>
-                <Text style={[styles.statValue, { color: themeColors.primary }]}>
-                  {reportData.totalLearningMinutes}
-                </Text>
-                <Text style={[styles.statLabel, { color: themeColors.textSecondary }]}>Minutes</Text>
-              </View>
-              <View style={[styles.statCard, { backgroundColor: themeColors.surfaceSecondary }]}>
-                <Text style={[styles.statValue, { color: themeColors.secondary }]}>
-                  {reportData.lessonsCompleted}
-                </Text>
-                <Text style={[styles.statLabel, { color: themeColors.textSecondary }]}>Lessons</Text>
-              </View>
-              <View style={[styles.statCard, { backgroundColor: themeColors.surfaceSecondary }]}>
-                <Text style={[styles.statValue, { color: themeColors.success }]}>
-                  {reportData.contentCompleted.modules}
-                </Text>
-                <Text style={[styles.statLabel, { color: themeColors.textSecondary }]}>Modules</Text>
-              </View>
-              <View style={[styles.statCard, { backgroundColor: themeColors.surfaceSecondary }]}>
-                <Text style={[styles.statValue, { color: themeColors.accent }]}>
-                  {reportData.contentCompleted.activities}
-                </Text>
-                <Text style={[styles.statLabel, { color: themeColors.textSecondary }]}>Activities</Text>
-              </View>
-            </View>
+      <ParentSection title="Content Completed" icon="book" boxed>
+        <ParentRow
+          label="Lessons"
+          value={String(reportData.contentCompleted.lessons)}
+          icon="book"
+          iconColor={colors.secondary}
+        />
+        <ParentRow
+          label="Modules"
+          value={String(reportData.contentCompleted.modules)}
+          icon="explore"
+          iconColor={colors.successDark}
+          divided
+        />
+        <ParentRow
+          label="Activities"
+          value={String(reportData.contentCompleted.activities)}
+          icon="play"
+          iconColor={colors.accent}
+          divided
+        />
+      </ParentSection>
 
-            <View style={styles.section}>
-              <CurriculumProgressCard
-                modulesCompleted={reportData.contentCompleted.modules}
-                modulesTotal={Math.max(reportData.contentCompleted.modules, 1)}
-                lessonsCompleted={reportData.lessonsCompleted}
-                lessonsTotal={Math.max(reportData.lessonsCompleted, 1)}
-                loading={report.isLoading}
-                style={styles.curriculumCard}
-              />
-            </View>
+      <ParentSection title="vs Last Month" icon="chart" boxed>
+        {comparisons.map((c, i) => (
+          <ParentRow
+            key={c.label}
+            label={c.label}
+            icon={c.icon}
+            iconColor={colors.textSecondary}
+            divided={i > 0}
+            right={<ChangePill value={c.value} suffix={c.suffix} label={c.label} />}
+          />
+        ))}
+      </ParentSection>
 
-            <View style={styles.masterySection}>
-              <Card accessibilityLabel="Mastery growth" style={styles.masteryCard}>
-                <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Mastery Growth</Text>
-                <View style={styles.masteryRingWrap}>
-                  <ProgressRing
-                    progress={reportData.masteryGrowth}
-                    size={140}
-                    strokeWidth={12}
-                    label="Growth"
-                  />
-                </View>
-              </Card>
-              <ConsistencyCard
-                score={reportData.consistency}
-                currentStreak={Math.round(reportData.consistency / 10)}
-                longestStreak={Math.round(reportData.consistency / 8)}
-                loading={report.isLoading}
-                style={styles.consistencyCard}
-              />
-            </View>
+      <DataSection
+        title="Achievements"
+        icon="trophy"
+        boxed
+        empty={reportData.achievements.length === 0}
+        emptyTitle="No achievements yet"
+        emptyMessage="Keep learning to earn achievements."
+        emptyIcon="trophy"
+      >
+        {reportData.achievements.map((ach, i) => (
+          <View key={`ach-${i}`} style={styles.listRow}>
+            <PetalIcon name="trophy" size={18} color={colors.accent} />
+            <Text style={[typography.presets.body, styles.listText]}>{ach}</Text>
+          </View>
+        ))}
+      </DataSection>
 
-            <Card style={styles.section} accessibilityLabel="Content completed breakdown">
-              <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Content Completed</Text>
-              <View style={styles.contentRow}>
-                <View style={styles.contentItem}>
-                  <Ionicons name="book" size={20} color={themeColors.secondary} />
-                  <Text style={[styles.contentValue, { color: themeColors.text }]}>
-                    {reportData.contentCompleted.lessons}
-                  </Text>
-                  <Text style={[styles.contentLabel, { color: themeColors.textSecondary }]}>Lessons</Text>
-                </View>
-                <View style={styles.contentItem}>
-                  <Ionicons name="layers" size={20} color={themeColors.success} />
-                  <Text style={[styles.contentValue, { color: themeColors.text }]}>
-                    {reportData.contentCompleted.modules}
-                  </Text>
-                  <Text style={[styles.contentLabel, { color: themeColors.textSecondary }]}>Modules</Text>
-                </View>
-                <View style={styles.contentItem}>
-                  <Ionicons name="bulb" size={20} color={themeColors.accent} />
-                  <Text style={[styles.contentValue, { color: themeColors.text }]}>
-                    {reportData.contentCompleted.activities}
-                  </Text>
-                  <Text style={[styles.contentLabel, { color: themeColors.textSecondary }]}>Activities</Text>
-                </View>
-              </View>
-            </Card>
+      <DataSection
+        title="Recommendations"
+        icon="sparkle"
+        boxed
+        empty={reportData.recommendations.length === 0}
+        emptyTitle="No recommendations"
+        emptyMessage="Recommendations will appear based on learning patterns."
+        emptyIcon="sparkle"
+      >
+        {reportData.recommendations.map((rec, i) => (
+          <View key={`rec-${i}`} style={styles.listRow}>
+            <PetalIcon name="check" size={16} color={colors.primary} />
+            <Text style={[typography.presets.body, styles.listText]}>{rec}</Text>
+          </View>
+        ))}
+      </DataSection>
 
-            <Card style={styles.section} accessibilityLabel="Comparison with previous month">
-              <Text style={[styles.sectionTitle, { color: themeColors.text }]}>vs Last Month</Text>
-              <ComparisonRow
-                icon="book"
-                label="Lessons"
-                value={reportData.previousMonthComparison.lessonsChange}
-                themeColors={themeColors}
-              />
-              <ComparisonRow
-                icon="time"
-                label="Minutes"
-                value={reportData.previousMonthComparison.minutesChange}
-                themeColors={themeColors}
-              />
-              <ComparisonRow
-                icon="trending-up"
-                label="Mastery"
-                value={reportData.previousMonthComparison.masteryChange}
-                suffix="%"
-                themeColors={themeColors}
-              />
-            </Card>
+      <DataSection
+        title="Monthly Activity"
+        icon="chart"
+        loading={activity.isLoading}
+        error={activity.error}
+        errorTitle="Could not load activity chart"
+        onRetry={() => activity.refetch()}
+        empty={barChartData.length === 0}
+        emptyTitle="No activity data"
+        emptyMessage="Activity chart will appear once lessons are logged."
+        emptyIcon="calendar"
+      >
+        <Card>
+          <BarChart
+            data={barChartData}
+            height={220}
+            animated
+            showValues
+            loading={activity.isLoading}
+          />
+        </Card>
+      </DataSection>
 
-            <Card style={styles.section} accessibilityLabel="Achievements">
-              <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Achievements</Text>
-              {reportData.achievements.length > 0 ? (
-                <View style={styles.achievementList}>
-                  {reportData.achievements.map((ach, i) => (
-                    <View key={`ach-${i}`} style={styles.achievementItem}>
-                      <Ionicons name="trophy" size={18} color={themeColors.accent} />
-                      <Text style={[styles.achievementText, { color: themeColors.text }]}>{ach}</Text>
-                    </View>
-                  ))}
-                </View>
-              ) : (
-                <EmptyState title="No achievements yet" message="Keep learning to earn achievements." />
-              )}
-            </Card>
-
-            <Card style={styles.section} accessibilityLabel="Recommendations">
-              <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Recommendations</Text>
-              {reportData.recommendations.length > 0 ? (
-                <View style={styles.recommendationList}>
-                  {reportData.recommendations.map((rec, i) => (
-                    <View key={`rec-${i}`} style={styles.recommendationItem}>
-                      <Ionicons name="bulb" size={18} color={themeColors.warning} />
-                      <Text style={[styles.recommendationText, { color: themeColors.text }]}>{rec}</Text>
-                    </View>
-                  ))}
-                </View>
-              ) : (
-                <EmptyState title="No recommendations" message="Recommendations will appear based on learning patterns." />
-              )}
-            </Card>
-
-            <View style={styles.section}>
-              <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Monthly Activity</Text>
-              {activity.isLoading ? (
-                <Skeleton variant="card" />
-              ) : activity.error ? (
-                <ErrorState
-                  title="Could not load activity chart"
-                  message={activity.error.message}
-                  onRetry={() => activity.refetch()}
-                />
-              ) : barChartData.length > 0 ? (
-                <Card style={styles.chartCard}>
-                  <BarChart data={barChartData} width={screenWidth - spacing.lg * 4} height={220} animated showValues />
-                </Card>
-              ) : (
-                <EmptyState title="No activity data" message="Activity chart will appear once lessons are logged." />
-              )}
-            </View>
-          </>
-        ) : null}
-      </ScrollView>
-    </ScreenContainer>
+      <SecondaryButton
+        label="Export Report"
+        icon="arrowDown"
+        onPress={handleExport}
+        accessibilityLabel="Export report"
+        accessibilityHint="Export is not available yet"
+        style={styles.export}
+      />
+    </AppShell>
   );
 };
 
-interface ComparisonRowProps {
-  icon: React.ComponentProps<typeof Ionicons>['name'];
-  label: string;
-  value: number;
-  suffix?: string;
-  themeColors: Record<string, string>;
-}
-
-const ComparisonRow: React.FC<ComparisonRowProps> = ({ icon, label, value, suffix = '', themeColors }) => {
-  const isPositive = value >= 0;
-  const arrowIcon = isPositive ? 'arrow-up' : 'arrow-down';
-  const arrowColor = isPositive ? themeColors.success : themeColors.error;
-  const displayValue = `${isPositive ? '+' : ''}${value}${suffix}`;
+/**
+ * A month-on-month change. The sign, the word and the arrow all carry the
+ * direction, so the colour is the last of four cues rather than the only one
+ * (§30). The pill speaks as one phrase instead of four separate fragments.
+ */
+const ChangePill: React.FC<{ value: number; suffix?: string; label: string }> = ({
+  value,
+  suffix = '',
+  label,
+}) => {
+  const up = value >= 0;
+  const tint = up ? colors.successDark : colors.errorDark;
+  const display = `${up ? '+' : ''}${value}${suffix}`;
 
   return (
-    <View style={comparisonStyles.row} accessibilityLabel={`${label}: ${displayValue} compared to last month`}>
-      <Ionicons name={icon} size={18} color={themeColors.textSecondary} />
-      <Text style={[comparisonStyles.label, { color: themeColors.textSecondary }]}>{label}</Text>
-      <Text style={[comparisonStyles.value, { color: arrowColor }]}>{displayValue}</Text>
-      <Ionicons name={arrowIcon} size={16} color={arrowColor} />
+    <View
+      style={styles.pill}
+      accessible
+      accessibilityLabel={`${label}: ${display} ${up ? 'more' : 'fewer'} than last month`}
+    >
+      <Text style={[typography.presets.caption, styles.pillText, { color: tint }]}>{display}</Text>
+      <PetalIcon name={up ? 'arrowUp' : 'arrowDown'} size={14} color={tint} />
     </View>
   );
 };
 
-const comparisonStyles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: spacing.sm,
-    gap: spacing.sm,
-  },
-  label: {
-    flex: 1,
-    fontSize: typography.sizes.sm,
-  },
-  value: {
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.bold,
-  },
-});
-
-function handleRetry(
-  ...queries: Array<{ refetch: () => Promise<unknown> }>
-): void {
-  queries.forEach((q) => q.refetch());
-}
+/**
+ * `EmptyState` and `ErrorState` centre themselves with `flex: 1`, which collapses
+ * inside a scroll view's auto-height content — the minimum height gives it room.
+ */
+const StatePanel: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <Card variant="flat" padding="none">
+    <View style={styles.panel}>{children}</View>
+  </Card>
+);
 
 const styles = StyleSheet.create({
-  scrollContainer: {
-    padding: spacing.lg,
-    paddingBottom: spacing.xxxl,
-  },
-  scrollContainerTablet: {
-    maxWidth: 720,
+  contentTablet: {
+    maxWidth: layoutSizes.report,
     alignSelf: 'center',
+    width: '100%',
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: spacing.xl,
-    gap: spacing.sm,
-  },
-  backButton: {
-    padding: spacing.xs,
-  },
-  headerTitle: {
-    fontSize: typography.sizes.xxl,
-    fontWeight: typography.weights.bold,
-    flex: 1,
-  },
-  exportButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.button,
-    gap: spacing.xs,
-  },
-  exportLabel: {
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.bold,
-  },
-  section: {
+  block: {
     marginBottom: spacing.xl,
   },
-  sectionTitle: {
-    fontSize: typography.sizes.lg,
-    fontWeight: typography.weights.bold,
-    marginBottom: spacing.sm,
-  },
-  monthRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  monthLabel: {
-    fontSize: typography.sizes.xl,
-    fontWeight: typography.weights.bold,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    marginBottom: spacing.xl,
-  },
-  statCard: {
-    flex: 1,
-    alignItems: 'center',
+  panel: {
+    minHeight: 220,
     paddingVertical: spacing.md,
-    borderRadius: radius.lg,
-    gap: spacing.xs,
   },
-  statValue: {
-    fontSize: typography.sizes.xl,
-    fontWeight: typography.weights.bold,
+  muted: {
+    color: colors.textSecondary,
   },
-  statLabel: {
-    fontSize: typography.sizes.xs,
+
+  // ------------------------------------------------------------------ summary
+  curriculumBar: {
+    marginTop: spacing.lg,
   },
-  curriculumCard: {
-    marginBottom: 0,
-  },
-  masterySection: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-    marginBottom: spacing.xl,
-  },
-  masteryCard: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  masteryRingWrap: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: spacing.sm,
-  },
-  consistencyCard: {
-    flex: 1,
-  },
-  contentRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    paddingVertical: spacing.sm,
-  },
-  contentItem: {
+  ringWrap: {
     alignItems: 'center',
     gap: spacing.xs,
   },
-  contentValue: {
-    fontSize: typography.sizes.lg,
-    fontWeight: typography.weights.bold,
+  ringValue: {
+    color: colors.text,
   },
-  contentLabel: {
-    fontSize: typography.sizes.xs,
-  },
-  achievementList: {
-    gap: spacing.sm,
-  },
-  achievementItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  achievementText: {
-    fontSize: typography.sizes.sm,
-    flex: 1,
-  },
-  recommendationList: {
-    gap: spacing.sm,
-  },
-  recommendationItem: {
+
+  // -------------------------------------------------------------- text lists
+  listRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: spacing.sm,
+    paddingVertical: spacing.xs,
   },
-  recommendationText: {
-    fontSize: typography.sizes.sm,
+  listText: {
     flex: 1,
-    lineHeight: 20,
+    minWidth: 0,
+    color: colors.text,
+    lineHeight: 22,
   },
-  chartCard: {
-    padding: spacing.md,
+
+  // ------------------------------------------------------------- comparisons
+  pill: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 2,
+  },
+  pillText: {
+    fontWeight: '800',
+  },
+
+  export: {
+    marginTop: spacing.sm,
   },
 });
+
+export default MonthlyReportScreen;

@@ -63,7 +63,22 @@ export class ActivitySessionEngine {
       return;
     }
 
-    if (evalResult.state === 'detected' || evalResult.state === 'completed') {
+    /**
+     * A frame counts towards the hold only if the pose was detected AND scored
+     * at or above the activity's confidence threshold.
+     *
+     * The threshold comparison is new. `confidenceThreshold` was carried on every
+     * definition, adjusted by the difficulty profile and softened for poor camera
+     * quality — and then never read, so all of that tuning did nothing and a
+     * barely-there pose advanced the hold exactly as fast as a perfect one. The
+     * primitives now return a graded 0.60-1.00, which is what makes the
+     * comparison meaningful rather than a coin flip.
+     */
+    const poseHeld =
+      (evalResult.state === 'detected' || evalResult.state === 'completed') &&
+      evalResult.confidence >= this.definition.confidenceThreshold;
+
+    if (poseHeld) {
       this.holdProgressMs += deltaMs;
 
       // Check if hold duration criteria met

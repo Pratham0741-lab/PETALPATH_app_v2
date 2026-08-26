@@ -1,11 +1,40 @@
-import React, { useState } from 'react';
-import { ScrollView, StyleSheet, Text, View, Pressable } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { Ionicons } from '@expo/vector-icons';
-import { colors, spacing, typography, radius, shadows } from '../../../theme';
-import { ScreenContainer } from '../../../components/common/ScreenContainer';
-import { TopBar } from '../../../components/navigation/TopBar';
-import { AppCard } from '../../../components/cards/AppCard';
+import React, { useCallback, useState } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
+import { colors, spacing, typography } from '../../../theme';
+import {
+  AppShell,
+  Card,
+  PageHeader,
+  ParentRow,
+  ParentSection,
+  PetalIcon,
+} from '../../../components/design';
+import type { PetalIconName } from '../../../components/design';
+import { useNotificationStore } from '../../../store/notificationStore';
+
+/**
+ * Notification Preferences (spec §26, §35) — reached from the bell in the
+ * Rewards header.
+ *
+ * Restyled onto `AppShell` + `PageHeader` + `ParentSection`/`ParentRow` so it
+ * matches the rest of the grown-up surfaces: it was the last reachable screen
+ * still on `ScreenContainer` + `TopBar` + `AppCard`, with Ionicons glyphs (§7)
+ * and a hand-rolled 50×28 pill switch that had no accessible label and a 28px
+ * touch target — under the 44px minimum (§30). `ParentRow`'s `toggle` gives a
+ * platform `Switch` with the row label attached and a 48px row.
+ *
+ * The two intro paragraphs became the page title and subtitle rather than a
+ * heading stacked on top of a heading.
+ *
+ * The seven category switches are still session-only `useState`, exactly as
+ * before — there is no preferences endpoint and no persisted slice behind them,
+ * so wiring one up would be inventing behaviour rather than restyling it.
+ * What is real is `notificationStore.notificationsEnabled`, which
+ * `notificationService` sets from the actual OS permission result. When the
+ * system is blocking PetalPath, the categories are disabled and the screen says
+ * why, instead of offering seven live-looking switches that cannot deliver
+ * anything.
+ */
 
 type PreferenceKey =
   | 'dailyReminder'
@@ -21,21 +50,67 @@ type Preferences = Record<PreferenceKey, boolean>;
 interface PreferenceRow {
   key: PreferenceKey;
   label: string;
-  icon: keyof typeof Ionicons.glyphMap;
+  /** Says what actually arrives — "XP Earned" on its own is opaque. */
+  description: string;
+  icon: PetalIconName;
+  iconColor: string;
 }
 
 const PREFERENCE_ROWS: PreferenceRow[] = [
-  { key: 'dailyReminder', label: 'Daily Reminder', icon: 'alarm' },
-  { key: 'streakReminder', label: 'Streak Reminder', icon: 'flame' },
-  { key: 'xpEarned', label: 'XP Earned', icon: 'star' },
-  { key: 'badgeUnlocked', label: 'Badge Unlocked', icon: 'medal' },
-  { key: 'challengeReminder', label: 'Challenge Reminder', icon: 'flag' },
-  { key: 'lessonReminder', label: 'Lesson Reminder', icon: 'book' },
-  { key: 'reinforcementReminder', label: 'Reinforcement Reminder', icon: 'refresh' },
+  {
+    key: 'dailyReminder',
+    label: 'Daily Reminder',
+    description: 'A nudge to practice at the usual time',
+    icon: 'clock',
+    iconColor: colors.primary,
+  },
+  {
+    key: 'streakReminder',
+    label: 'Streak Reminder',
+    description: 'A heads-up before a streak runs out',
+    icon: 'flame',
+    iconColor: colors.warning,
+  },
+  {
+    key: 'xpEarned',
+    label: 'XP Earned',
+    description: 'When your child earns XP for finished work',
+    icon: 'star',
+    iconColor: colors.accent,
+  },
+  {
+    key: 'badgeUnlocked',
+    label: 'Badge Unlocked',
+    description: 'When a new badge is unlocked',
+    icon: 'medal',
+    iconColor: colors.secondary,
+  },
+  {
+    key: 'challengeReminder',
+    label: 'Challenge Reminder',
+    description: 'When a daily challenge is waiting',
+    icon: 'trophy',
+    iconColor: colors.blue,
+  },
+  {
+    key: 'lessonReminder',
+    label: 'Lesson Reminder',
+    description: 'When a lesson is ready to continue',
+    icon: 'book',
+    iconColor: colors.successDark,
+  },
+  {
+    key: 'reinforcementReminder',
+    label: 'Reinforcement Reminder',
+    description: 'When a skill is due for another pass',
+    icon: 'replay',
+    iconColor: colors.lavender,
+  },
 ];
 
 export const NotificationPreferencesScreen: React.FC = () => {
-  const navigation = useNavigation<any>();
+  const systemAllowed = useNotificationStore((state) => state.notificationsEnabled);
+
   const [preferences, setPreferences] = useState<Preferences>({
     dailyReminder: true,
     streakReminder: true,
@@ -46,146 +121,75 @@ export const NotificationPreferencesScreen: React.FC = () => {
     reinforcementReminder: true,
   });
 
-  const toggle = (key: PreferenceKey) => {
+  const toggle = useCallback((key: PreferenceKey) => {
     setPreferences((prev) => ({ ...prev, [key]: !prev[key] }));
-  };
+  }, []);
 
   return (
-    <ScreenContainer>
-      <TopBar title="Notification Settings" showBack />
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
+    <AppShell
+      petals="light"
+      header={
+        <PageHeader
+          title="Notifications"
+          subtitle="Choose what PetalPath can remind you about"
+          centered={false}
+        />
+      }
+    >
+      {!systemAllowed ? (
+        <Card accent={colors.warning} rail style={styles.notice}>
+          <View style={styles.noticeHead}>
+            <PetalIcon name="warning" size={20} color={colors.warning} />
+            <Text style={typography.presets.cardTitle}>Notifications are turned off</Text>
+          </View>
+          <Text style={[typography.presets.caption, styles.noticeBody]}>
+            PetalPath does not have permission to send notifications on this device. Allow them in
+            your device settings and these reminders will start arriving.
+          </Text>
+        </Card>
+      ) : null}
+
+      <ParentSection
+        title="Reminders"
+        subtitle="Turn on the ones that help your child stay engaged"
+        icon="notifications"
+        boxed
+        footnote="Reminders are sent based on your child's learning activity."
       >
-        <Text style={styles.header}>Choose what PetalPath can remind you about.</Text>
-        <Text style={styles.subtext}>
-          Turn on the reminders that help your child stay engaged with learning.
-        </Text>
-        <AppCard style={styles.card}>
-          {PREFERENCE_ROWS.map((row, index) => {
-            const value = preferences[row.key];
-            return (
-              <View
-                key={row.key}
-                style={[
-                  styles.row,
-                  index < PREFERENCE_ROWS.length - 1 && styles.rowDivider,
-                ]}
-              >
-                <View style={styles.rowLabel}>
-                  <Ionicons
-                    name={row.icon}
-                    size={22}
-                    color={colors.purple}
-                    style={styles.rowIcon}
-                  />
-                  <Text style={styles.label}>{row.label}</Text>
-                </View>
-                <Pressable
-                  accessibilityRole="switch"
-                  accessibilityState={{ checked: value }}
-                  onPress={() => toggle(row.key)}
-                  style={[
-                    styles.toggle,
-                    { backgroundColor: value ? colors.purple : colors.border },
-                  ]}
-                >
-                  <View
-                    style={[
-                      styles.knob,
-                      value ? styles.knobOn : styles.knobOff,
-                    ]}
-                  />
-                </Pressable>
-              </View>
-            );
-          })}
-        </AppCard>
-        <Text style={styles.note}>
-          Reminders are sent based on your child's learning activity.
-        </Text>
-      </ScrollView>
-    </ScreenContainer>
+        {PREFERENCE_ROWS.map((row, index) => (
+          <ParentRow
+            key={row.key}
+            label={row.label}
+            description={row.description}
+            icon={row.icon}
+            iconColor={row.iconColor}
+            divided={index > 0}
+            toggle={{
+              value: preferences[row.key],
+              onValueChange: () => toggle(row.key),
+              disabled: !systemAllowed,
+            }}
+          />
+        ))}
+      </ParentSection>
+    </AppShell>
   );
 };
 
 const styles = StyleSheet.create({
-  scroll: {
-    flex: 1,
+  notice: {
+    marginBottom: spacing.xl,
   },
-  content: {
-    padding: spacing.lg,
-    paddingBottom: spacing.xxl,
-  },
-  header: {
-    fontFamily: typography.families.rounded,
-    fontSize: typography.sizes.lg,
-    fontWeight: typography.weights.bold,
-    color: colors.text,
+  noticeHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
     marginBottom: spacing.xs,
   },
-  subtext: {
-    fontFamily: typography.families.rounded,
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.regular,
-    color: colors.textMuted,
-    marginBottom: spacing.lg,
-  },
-  card: {
-    paddingVertical: spacing.sm,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.sm,
-  },
-  rowDivider: {
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  rowLabel: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  rowIcon: {
-    marginRight: spacing.sm,
-  },
-  label: {
-    fontFamily: typography.families.rounded,
-    fontSize: typography.sizes.md,
-    fontWeight: typography.weights.medium,
-    color: colors.text,
-  },
-  toggle: {
-    width: 50,
-    height: 28,
-    borderRadius: 14,
-    padding: 3,
-    justifyContent: 'center',
-  },
-  knob: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: colors.white,
-    ...shadows.sm,
-  },
-  knobOn: {
-    alignSelf: 'flex-end',
-  },
-  knobOff: {
-    alignSelf: 'flex-start',
-  },
-  note: {
-    fontFamily: typography.families.rounded,
-    fontSize: typography.sizes.xs,
-    fontWeight: typography.weights.regular,
-    color: colors.textMuted,
-    marginTop: spacing.lg,
-    textAlign: 'center',
+  noticeBody: {
+    color: colors.textSecondary,
+    lineHeight: 20,
   },
 });
+
+export default NotificationPreferencesScreen;

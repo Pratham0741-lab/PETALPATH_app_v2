@@ -1,8 +1,57 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { StyleSheet, View, Text, Pressable } from 'react-native';
+/**
+ * A camera activity, played (spec §34 phase 7).
+ *
+ * This is the screen the pose engine actually runs in, so every effect, hook and
+ * service call is the original (§1, §23): `setActiveActivity(activityType,
+ * config.title)` — the wiring that makes the engine speak the activity's real
+ * name rather than "raise hands" — the permission request, the
+ * start-session-on-active effect with its voice instruction and
+ * `activity_started` analytics, the frame pump into `processFrameResult`, the
+ * completion sync with its swallowed 404s, `handleRestart`, and the always-on
+ * `DebugOverlay`.
+ *
+ * The chrome is now the design system:
+ *
+ *  - `ScreenContainer` + `TopBar` → `AppShell` + `PageHeader`, and "🔄 Flip
+ *    Camera" (§7) is a labelled `SecondaryButton` with a real icon, sitting below
+ *    the preview. It spent one revision as a bare `IconButton` in the header,
+ *    which was a mistake: an unlabelled glyph beside the back chevron reads as
+ *    chrome, and the flip control effectively disappeared.
+ *  - The instruction moved off the camera image and into the flow above it. It
+ *    used to float at `top: spacing.md` with `right: 210` — a magic offset that
+ *    existed only to dodge that floating flip button (§27, §33) — and it was
+ *    losing anyway: `DebugOverlay` owns the top of the preview at z-index 9999,
+ *    so the one line telling a child what to do sat *behind* a metrics panel.
+ *    In the flow it is always legible, and nothing has to be measured against
+ *    anything.
+ *  - The completion and time-up cards were separately-styled boxes with their own
+ *    shadows and their own 🎉 and ⏳; they are `Card`s with `IconWell` glyphs and
+ *    the shared buttons now (§5, §7, §28).
+ *  - "+3 Stars • +10 XP" is `RewardBadge`, the same pills the rest of the app
+ *    counts rewards with.
+ *
+ * Two things that were latent in the old file and are now real:
+ *
+ *  - `queueCount` was fetched after every completion and never shown — the value
+ *    existed, nothing used it. When the sync queue is not empty the completion
+ *    card now says so, because "your stars are saved on this device and will sync
+ *    later" is worth telling a child who finished an activity offline.
+ *  - Eight `poseButton*` styles belonged to a manual "I did the pose" button that
+ *    no longer exists in the JSX. They are gone; nothing rendered them.
+ */
+
+import React, { useEffect, useState } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
-import { ScreenContainer } from '../../../components/common/ScreenContainer';
-import { TopBar } from '../../../components/navigation/TopBar';
+import {
+  AppShell,
+  Card,
+  IconWell,
+  PageHeader,
+  PrimaryButton,
+  RewardBadge,
+  SecondaryButton,
+} from '../../../components/design';
 import { useCameraPermissions } from '../hooks/useCameraPermissions';
 import { useCameraLifecycle } from '../hooks/useCameraLifecycle';
 import { useCameraEnginePipeline } from '../../../camera/hooks/useCameraEnginePipeline';
@@ -19,7 +68,7 @@ import { cameraSyncService } from '../progress/cameraSyncService';
 import { cameraAnalytics } from '../analytics/cameraAnalytics';
 import { offlineQueue } from '../progress/offlineQueue';
 import { ActivityType } from '../types/pose.types';
-import { colors, spacing, radius, typography } from '../../../theme';
+import { cardSizes, colors, radius, spacing, typography } from '../../../theme';
 
 export const CameraActivityLesson: React.FC = () => {
   const route = useRoute<any>();
@@ -30,7 +79,19 @@ export const CameraActivityLesson: React.FC = () => {
   const activityType: ActivityType = route.params?.activityType || 'raise_hands';
 
   const config = getDefaultCurriculumConfig(lessonId, activityId, activityType);
-  const technicalDef = getActivityDefinition(activityType);
+  const technicalDef = getActivityDefinition(activityType, activityId);
+
+  /**
+   * The primitive that decides success.
+   *
+   * The route may carry the catalog's own `validatorName`; when it does not, the
+   * catalog entry for `activityId` supplies it. Either way this is what stops the
+   * activity being validated as one of eight generic poses — the Explorer used to
+   * flatten all 97 activities into `raise_hands` or `touch_head`, so 95 of them
+   * checked whether the child had raised their hands regardless of what the card
+   * had asked for.
+   */
+  const validatorName: string | undefined = route.params?.validatorName || config.validatorName;
 
   const { hasPermission, permissionStatus, requestPermission } = useCameraPermissions();
   const { isActive } = useCameraLifecycle();
@@ -46,14 +107,14 @@ export const CameraActivityLesson: React.FC = () => {
     startSession,
     processFrameResult,
     resetSession,
-  } = useActivitySession(activityType);
+  } = useActivitySession(activityType, activityId);
 
   const { speakInstruction } = useFeedbackVoice();
   const [queueCount, setQueueCount] = useState<number>(0);
 
   useEffect(() => {
-    setActiveActivity(activityType, config.title);
-  }, [activityType, config.title, setActiveActivity]);
+    setActiveActivity(activityType, config.title, validatorName);
+  }, [activityType, config.title, validatorName, setActiveActivity]);
 
   useEffect(() => {
     if (permissionStatus === 'not-determined') {
@@ -63,7 +124,7 @@ export const CameraActivityLesson: React.FC = () => {
 
   useEffect(() => {
     if (isActive && sessionState === 'idle') {
-      startSession(activityType, 0);
+      startSession(activityType, 0, activityId);
       speakInstruction(config.instruction);
       cameraAnalytics.logEvent('activity_started', { lessonId, activityId, activityType });
     }
@@ -90,29 +151,38 @@ export const CameraActivityLesson: React.FC = () => {
 
   const handleRestart = () => {
     resetSession();
-    startSession(activityType, 3);
+    startSession(activityType, 3, activityId);
   };
 
+  const live = hasPermission && isActive;
+
   return (
-    <ScreenContainer style={styles.container}>
-      <TopBar title={config.title} showBack />
-      <View style={styles.previewContainer}>
-        {hasPermission && isActive ? (
+    <AppShell
+      scroll={false}
+      petals="none"
+      header={<PageHeader title={config.title} />}
+    >
+      <View style={styles.body}>
+        {/* ---------------------------------------------------- Instruction */}
+        {/* In the flow above the preview, not floating on it: the always-on
+            `DebugOverlay` owns the top of the camera image at z-index 9999, and
+            a child's instruction must never end up behind a metrics panel. */}
+        {live ? (
+          <Card variant="raised" padding="compact" accent={colors.blue} rail>
+            <Text style={[typography.presets.cardTitle, styles.instructionText]}>
+              {config.instruction}
+            </Text>
+          </Card>
+        ) : null}
+
+        <View style={styles.preview}>
+        {live ? (
           <>
             <NativeCameraView style={StyleSheet.absoluteFill} />
 
-            {/* Camera Switch Button */}
-            <Pressable style={styles.switchCameraButton} onPress={switchCamera}>
-              <Text style={styles.switchCameraText}>🔄 Flip Camera</Text>
-            </Pressable>
-
-            {/* Instruction Header */}
-            <View style={styles.instructionCard}>
-              <Text style={styles.instructionText}>{config.instruction}</Text>
-            </View>
-
-            {/* Timer Ring & Countdown */}
-            <View style={styles.centerHUD}>
+            {/* -------------------------------------------------- Centre HUD */}
+            {/* Purely informational, so it never intercepts a tap. */}
+            <View style={styles.centreHud} pointerEvents="none">
               {sessionState === 'starting' ? (
                 <ActivityTimerRing
                   progressMs={0}
@@ -134,29 +204,66 @@ export const CameraActivityLesson: React.FC = () => {
               ) : null}
             </View>
 
-            {/* Session State Overlays */}
+            {/* ---------------------------------------------- Session result */}
             {sessionState === 'completed' ? (
-              <View style={styles.completionCard}>
-                <Text style={styles.completionEmoji}>🎉</Text>
-                <Text style={styles.completionTitle}>Activity Completed!</Text>
-                <Text style={styles.completionSubtitle}>
-                  +{config.reward.stars} Stars • +{config.reward.xp} XP Earned
-                </Text>
-                <Pressable
-                  style={styles.continueButton}
-                  onPress={() => navigation.canGoBack() && navigation.goBack()}
-                >
-                  <Text style={styles.continueButtonText}>Continue Learning</Text>
-                </Pressable>
+              <View style={styles.resultWrap} accessibilityLiveRegion="polite">
+                <Card variant="raised" padding="roomy" accent={colors.green} contentStyle={styles.result}>
+                  <IconWell
+                    icon="trophy"
+                    color={colors.green}
+                    soft={colors.greenSoft}
+                    size={cardSizes.iconWellLarge}
+                    filled
+                  />
+                  <Text style={[typography.presets.title, styles.resultTitle]} accessibilityRole="header">
+                    Activity Completed!
+                  </Text>
+
+                  <View style={styles.rewardRow}>
+                    <RewardBadge kind="stars" value={config.reward.stars} signed showUnit />
+                    <RewardBadge kind="xp" value={config.reward.xp} signed showUnit />
+                  </View>
+
+                  {/* Was fetched and thrown away before — worth saying out loud. */}
+                  {queueCount > 0 ? (
+                    <Text style={[typography.presets.caption, styles.resultNote]}>
+                      Saved on this device — {queueCount} to sync when you are back online.
+                    </Text>
+                  ) : null}
+
+                  <PrimaryButton
+                    label="Continue Learning"
+                    iconRight="forward"
+                    size="lg"
+                    onPress={() => navigation.canGoBack() && navigation.goBack()}
+                    style={styles.resultButton}
+                  />
+                </Card>
               </View>
             ) : sessionState === 'timed_out' ? (
-              <View style={styles.completionCard}>
-                <Text style={styles.completionEmoji}>⏳</Text>
-                <Text style={styles.completionTitle}>Time Up!</Text>
-                <Text style={styles.completionSubtitle}>Take a breath and try again whenever you are ready!</Text>
-                <Pressable style={styles.continueButton} onPress={handleRestart}>
-                  <Text style={styles.continueButtonText}>Try Again</Text>
-                </Pressable>
+              <View style={styles.resultWrap} accessibilityLiveRegion="polite">
+                <Card variant="raised" padding="roomy" accent={colors.orange} contentStyle={styles.result}>
+                  <IconWell
+                    icon="clock"
+                    color={colors.orange}
+                    soft={colors.warningLight}
+                    size={cardSizes.iconWellLarge}
+                  />
+                  <Text style={[typography.presets.title, styles.resultTitle]} accessibilityRole="header">
+                    Time Up!
+                  </Text>
+                  <Text style={[typography.presets.body, styles.resultNote]}>
+                    Take a breath and try again whenever you are ready!
+                  </Text>
+
+                  <PrimaryButton
+                    label="Try Again"
+                    icon="replay"
+                    size="lg"
+                    onPress={handleRestart}
+                    style={styles.resultButton}
+                  />
+                </Card>
               </View>
             ) : (
               <ChildFeedbackOverlay
@@ -171,7 +278,7 @@ export const CameraActivityLesson: React.FC = () => {
               />
             )}
 
-            {/* Phase 3 Diagnostics Overlay */}
+            {/* Phase 3 diagnostics — the surface the camera bug was traced on. */}
             <DebugOverlay isVisible={true} />
           </>
         ) : (
@@ -180,146 +287,84 @@ export const CameraActivityLesson: React.FC = () => {
             onRequestPermission={requestPermission}
           />
         )}
+        </View>
+
+        {/* ------------------------------------------------------ Camera control */}
+        {/* A labelled button, not an icon in the header. It began as a "🔄 Flip
+            Camera" pill floating on the preview; moving it into the header as a
+            bare glyph next to the back chevron made it unfindable — a child (or
+            an adult) looking for the flip control could not see one. Below the
+            preview it is self-describing, it cannot collide with `DebugOverlay`,
+            and it is the only control that does this job (§33). */}
+        {live ? (
+          <SecondaryButton
+            label="Flip Camera"
+            icon="flipCamera"
+            tone="blue"
+            onPress={switchCamera}
+            accessibilityHint="Switches between the front and rear camera"
+          />
+        ) : null}
       </View>
-    </ScreenContainer>
+    </AppShell>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  body: {
     flex: 1,
-    backgroundColor: colors.background,
+    gap: spacing.md,
   },
-  previewContainer: {
+  preview: {
     flex: 1,
     position: 'relative',
-    backgroundColor: '#000000',
-  },
-  instructionCard: {
-    position: 'absolute',
-    top: spacing.md,
-    left: spacing.lg,
-    right: 210,
-    backgroundColor: 'rgba(0, 0, 0, 0.75)',
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderRadius: radius.md,
-    zIndex: 10,
+    /* Honest for a camera surface, with the app's card radius around it. */
+    backgroundColor: colors.black,
+    borderRadius: radius.card,
+    overflow: 'hidden',
   },
   instructionText: {
-    fontFamily: typography.families.rounded,
-    fontSize: typography.sizes.sm,
-    color: '#FFFFFF',
-    fontWeight: 'bold',
+    color: colors.text,
   },
-  centerHUD: {
+  centreHud: {
+    /* Centred in whatever room the preview has, rather than a fixed
+       percentage that could land under the diagnostics panel (§27). */
     position: 'absolute',
-    top: '30%',
+    top: 0,
     left: 0,
     right: 0,
+    bottom: 0,
     alignItems: 'center',
     justifyContent: 'center',
+    gap: spacing.md,
     zIndex: 10,
   },
-  poseButtonContainer: {
+  resultWrap: {
     position: 'absolute',
-    bottom: 90,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-    zIndex: 50,
-  },
-  poseButton: {
-    backgroundColor: 'rgba(139, 120, 216, 0.95)',
-    paddingVertical: 18,
-    paddingHorizontal: 36,
-    borderRadius: 36,
-    borderWidth: 3,
-    borderColor: '#FFFFFF',
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    elevation: 10,
-  },
-  poseButtonActive: {
-    backgroundColor: '#10B981',
-    borderColor: '#6EE7B7',
-    transform: [{ scale: 1.06 }],
-  },
-  poseButtonEmoji: {
-    fontSize: 28,
-  },
-  poseButtonText: {
-    fontFamily: typography.families.rounded,
-    fontSize: typography.sizes.lg,
-    color: '#FFFFFF',
-    fontWeight: 'bold',
-  },
-  completionCard: {
-    position: 'absolute',
-    bottom: spacing.xxl,
-    left: spacing.xl,
-    right: spacing.xl,
-    backgroundColor: colors.surface,
-    padding: spacing.xl,
-    borderRadius: radius.card,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
+    bottom: spacing.lg,
+    left: spacing.md,
+    right: spacing.md,
     zIndex: 200,
   },
-  completionEmoji: {
-    fontSize: 48,
-    marginBottom: spacing.xs,
+  result: {
+    alignItems: 'center',
+    gap: spacing.sm,
   },
-  completionTitle: {
-    fontFamily: typography.families.rounded,
-    fontSize: typography.sizes.xxl,
-    color: colors.text,
-    fontWeight: 'bold',
-    marginBottom: spacing.xs,
+  resultTitle: {
+    textAlign: 'center',
   },
-  completionSubtitle: {
-    fontFamily: typography.families.rounded,
-    fontSize: typography.sizes.md,
-    color: colors.textMuted,
-    marginBottom: spacing.lg,
+  rewardRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: spacing.sm,
   },
-  continueButton: {
-    backgroundColor: colors.purple,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.xl,
-    borderRadius: radius.button,
+  resultNote: {
+    color: colors.textSecondary,
+    textAlign: 'center',
   },
-  continueButtonText: {
-    fontFamily: typography.families.rounded,
-    fontSize: typography.sizes.md,
-    color: colors.card,
-    fontWeight: 'bold',
-  },
-  switchCameraButton: {
-    position: 'absolute',
-    top: spacing.lg,
-    right: spacing.lg,
-    backgroundColor: 'rgba(0, 0, 0, 0.65)',
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderRadius: radius.full,
-    zIndex: 30,
-  },
-  switchCameraText: {
-    fontFamily: typography.families.rounded,
-    fontSize: typography.sizes.xs,
-    color: '#FFFFFF',
-    fontWeight: '600',
+  resultButton: {
+    marginTop: spacing.sm,
   },
 });
 

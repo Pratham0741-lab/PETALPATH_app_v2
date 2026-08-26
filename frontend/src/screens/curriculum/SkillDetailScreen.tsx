@@ -1,29 +1,51 @@
 import React, { useCallback } from 'react';
-import { StyleSheet, View, Text, ScrollView } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import { ScreenContainer } from '../../components/common/ScreenContainer';
-import { TopBar } from '../../components/navigation/TopBar';
-import { AppCard } from '../../components/cards/AppCard';
-import { AppButton } from '../../components/buttons/AppButton';
-import { ProgressBar } from '../../components/progress/ProgressBar';
+import { StyleSheet, View, Text } from 'react-native';
+import { useRoute, RouteProp } from '@react-navigation/native';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { ErrorState } from '../../components/common/ErrorState';
 import { EmptyState } from '../../components/common/EmptyState';
 import { useCurriculum, useActivateSkill } from '../../hooks/useCurriculum';
 import { useAppNavigation } from '../../hooks/useAppNavigation';
 import { toUserMessage } from '../../api/errors';
-import { colors, spacing, typography, radius } from '../../theme';
+import { colors, spacing, typography, cardSizes } from '../../theme';
+import {
+  AppShell,
+  Card,
+  IconWell,
+  LessonStatus,
+  PageHeader,
+  PrimaryButton,
+  ProgressIndicator,
+  SecondaryButton,
+  Stat,
+  StatGrid,
+  StatusBadge,
+  getSubjectVisual,
+} from '../../components/design';
 
-const stateConfig: Record<string, { label: string; icon: React.ComponentProps<typeof Ionicons>['name']; color: string }> = {
-  LOCKED: { label: 'Locked', icon: 'lock-closed', color: colors.textMuted },
-  AVAILABLE: { label: 'Available', icon: 'lock-open', color: colors.blue },
-  ACTIVE: { label: 'Active', icon: 'flame', color: colors.coral },
-  COMPLETED: { label: 'Completed', icon: 'checkmark-circle', color: colors.green },
+/**
+ * Skill Detail — reached from Explore (spec §14 flow).
+ *
+ * Behaviour is unchanged: the skill is still resolved out of `useCurriculum()`,
+ * "Activate Skill" still fires the `useActivateSkill` mutation, and "Go to
+ * Journey" still uses `navigateToTab('Journey')`.
+ */
+
+const STATE_TO_STATUS: Record<string, LessonStatus> = {
+  LOCKED: 'locked',
+  AVAILABLE: 'available',
+  ACTIVE: 'current',
+  COMPLETED: 'completed',
+};
+
+/** Turns MASTERY_STATE_LIKE_THIS into "Mastery state like this". */
+const humanize = (value?: string | null) => {
+  if (!value) return '—';
+  const s = String(value).replace(/_/g, ' ').toLowerCase();
+  return s.charAt(0).toUpperCase() + s.slice(1);
 };
 
 const SkillDetailScreen: React.FC = () => {
-  const navigation = useNavigation<any>();
   const route = useRoute<RouteProp<{ params: { skillId: string } }, 'params'>>();
   const { skillId } = route.params;
   const { navigateToTab } = useAppNavigation();
@@ -56,19 +78,17 @@ const SkillDetailScreen: React.FC = () => {
 
   if (isLoading) {
     return (
-      <ScreenContainer>
-        <TopBar title="Skill Detail" showBack />
+      <AppShell scroll={false} header={<PageHeader title="Skill" />}>
         <View style={styles.center}>
           <LoadingSpinner label="Loading skill…" />
         </View>
-      </ScreenContainer>
+      </AppShell>
     );
   }
 
   if (isError) {
     return (
-      <ScreenContainer>
-        <TopBar title="Skill Detail" showBack />
+      <AppShell scroll={false} header={<PageHeader title="Skill" />}>
         <View style={styles.center}>
           <ErrorState
             title="Couldn't load skill"
@@ -76,107 +96,120 @@ const SkillDetailScreen: React.FC = () => {
             onRetry={refetch}
           />
         </View>
-      </ScreenContainer>
+      </AppShell>
     );
   }
 
   if (!skillData) {
     return (
-      <ScreenContainer>
-        <TopBar title="Skill Detail" showBack />
+      <AppShell scroll={false} header={<PageHeader title="Skill" />}>
         <View style={styles.center}>
           <EmptyState
-            icon="🔍"
+            icon="search"
             title="Skill not found"
             message="This skill could not be found in the curriculum."
           />
         </View>
-      </ScreenContainer>
+      </AppShell>
     );
   }
 
   const { skill, subjectName } = skillData;
-  const cfg = stateConfig[skill.state] ?? stateConfig.LOCKED;
+  const status = STATE_TO_STATUS[skill.state] ?? 'locked';
+  const visual = getSubjectVisual(subjectName);
   const isActivating = activateSkill.isPending;
   const canActivate = skill.state === 'AVAILABLE';
+  const mastery = skill.masteryScore ?? 0;
+
+  const stats: Stat[] = [
+    {
+      value: skill.difficulty > 0 ? `Level ${skill.difficulty}` : '—',
+      label: 'Difficulty',
+      icon: 'chart',
+      color: colors.blue,
+    },
+    {
+      value: humanize(skill.masteryState),
+      label: 'Mastery',
+      icon: 'star',
+      color: colors.yellow,
+    },
+    {
+      value: skill.estimatedAge ? `${skill.estimatedAge}+` : '—',
+      label: 'Age',
+      icon: 'profile',
+      color: colors.purple,
+    },
+  ];
 
   return (
-    <ScreenContainer>
-      <TopBar title={skill.name} showBack />
-      <ScrollView
-        contentContainerStyle={styles.scrollContainer}
-        showsVerticalScrollIndicator={false}
-      >
-        <AppCard style={styles.headerCard}>
-          <View style={styles.headerRow}>
-            <View style={[styles.stateIconCircle, { backgroundColor: cfg.color + '18' }]}>
-              <Ionicons name={cfg.icon} size={28} color={cfg.color} />
-            </View>
-            <View style={styles.headerInfo}>
-              <Text style={styles.skillTitle}>{skill.name}</Text>
-              <Text style={styles.subjectLabel}>{subjectName}</Text>
-            </View>
-          </View>
-
-          <View style={[styles.stateBadgeLarge, { backgroundColor: cfg.color + '15' }]}>
-            <Ionicons name={cfg.icon} size={14} color={cfg.color} />
-            <Text style={[styles.stateBadgeLabel, { color: cfg.color }]}>{cfg.label}</Text>
-          </View>
-        </AppCard>
-
-        {skill.description && (
-          <AppCard style={styles.sectionCard}>
-            <Text style={styles.sectionTitle}>Description</Text>
-            <Text style={styles.descriptionText}>{skill.description}</Text>
-          </AppCard>
-        )}
-
-        <AppCard style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Progress</Text>
-          <View style={styles.statRow}>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{skill.difficulty > 0 ? `Lv.${skill.difficulty}` : 'N/A'}</Text>
-              <Text style={styles.statLabel}>Difficulty</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{skill.masteryState ?? '—'}</Text>
-              <Text style={styles.statLabel}>Mastery State</Text>
-            </View>
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{skill.estimatedAge ? `${skill.estimatedAge}+` : '—'}</Text>
-              <Text style={styles.statLabel}>Age</Text>
-            </View>
-          </View>
-          {(skill.masteryScore ?? 0) > 0 && (
-            <View style={styles.masterySection}>
-              <View style={styles.masteryLabelRow}>
-                <Text style={styles.masteryLabel}>Mastery Score</Text>
-                <Text style={styles.masteryValue}>{Math.round(skill.masteryScore)}%</Text>
-              </View>
-              <ProgressBar progress={skill.masteryScore / 100} color={colors.purple} height={10} />
-            </View>
-          )}
-        </AppCard>
-
-        <View style={styles.actions}>
-          {canActivate && (
-            <AppButton
+    <AppShell
+      header={<PageHeader title={skill.name} backFallback={handleGoToJourney} />}
+      footer={
+        <View style={styles.footer}>
+          {canActivate ? (
+            <PrimaryButton
               label="Activate Skill"
+              icon="play"
               onPress={handleActivate}
-              variant="primary"
               loading={isActivating}
-              style={styles.actionButton}
             />
-          )}
-          <AppButton
-            label="Go to Journey"
-            onPress={handleGoToJourney}
-            variant="secondary"
-            style={styles.actionButton}
-          />
+          ) : null}
+          <SecondaryButton label="Go to Journey" icon="explore" onPress={handleGoToJourney} />
         </View>
-      </ScrollView>
-    </ScreenContainer>
+      }
+    >
+      {/* Identity */}
+      <Card variant="raised" padding="roomy" accent={visual.color} rail style={styles.card}>
+        <View style={styles.headerRow}>
+          <IconWell
+            icon={visual.icon}
+            color={visual.color}
+            soft={visual.soft}
+            size={cardSizes.iconWellLarge}
+          />
+          <View style={styles.headerInfo}>
+            <Text style={[typography.presets.eyebrow, styles.subject]} numberOfLines={1}>
+              {subjectName}
+            </Text>
+            <Text style={[typography.presets.section, styles.title]}>{skill.name}</Text>
+          </View>
+        </View>
+        <View style={styles.badgeRow}>
+          <StatusBadge status={status} />
+        </View>
+      </Card>
+
+      {skill.description ? (
+        <Card variant="raised" padding="normal" style={styles.card}>
+          <Text style={[typography.presets.cardTitle, styles.sectionTitle]}>What you'll learn</Text>
+          <Text style={[typography.presets.body, styles.description]}>{skill.description}</Text>
+        </Card>
+      ) : null}
+
+      {/* Progress */}
+      <Card variant="raised" padding="normal" style={styles.card}>
+        <Text style={[typography.presets.cardTitle, styles.sectionTitle]}>Progress</Text>
+
+        <StatGrid stats={stats} />
+
+        {mastery > 0 ? (
+          <View style={styles.masteryBlock}>
+            <View style={styles.masteryHead}>
+              <Text style={[typography.presets.caption, styles.masteryLabel]}>Mastery score</Text>
+              <Text style={[typography.presets.caption, styles.masteryValue]}>
+                {Math.round(mastery)}%
+              </Text>
+            </View>
+            <ProgressIndicator
+              value={Math.min(mastery, 100)}
+              color={colors.purple}
+              accessibilityLabel={`${skill.name} mastery score`}
+            />
+          </View>
+        ) : null}
+      </Card>
+    </AppShell>
   );
 };
 
@@ -187,115 +220,54 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: spacing.xl,
   },
-  scrollContainer: {
-    padding: spacing.lg,
-    paddingBottom: spacing.xxl * 2,
-    gap: spacing.md,
-  },
-  headerCard: {
-    gap: spacing.md,
+  card: {
+    marginBottom: cardSizes.gap,
   },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  stateIconCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: radius.full,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: spacing.md,
+    gap: spacing.md,
   },
   headerInfo: {
     flex: 1,
+    minWidth: 0,
   },
-  skillTitle: {
-    fontSize: typography.sizes.xxl,
-    fontWeight: typography.weights.black,
+  subject: {
+    color: colors.textSecondary,
+  },
+  title: {
     color: colors.text,
-    fontFamily: typography.families.rounded,
-    marginBottom: 2,
+    marginTop: 2,
   },
-  subjectLabel: {
-    fontSize: typography.sizes.sm,
-    color: colors.textMuted,
-    fontFamily: typography.families.rounded,
-  },
-  stateBadgeLarge: {
+  badgeRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    gap: spacing.xs,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: radius.full,
-  },
-  stateBadgeLabel: {
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.bold,
-    fontFamily: typography.families.rounded,
-  },
-  sectionCard: {
-    gap: spacing.md,
+    marginTop: spacing.lg,
   },
   sectionTitle: {
-    fontSize: typography.sizes.body,
-    fontWeight: typography.weights.bold,
     color: colors.text,
-    fontFamily: typography.families.rounded,
+    marginBottom: spacing.sm,
   },
-  descriptionText: {
-    fontSize: typography.sizes.sm,
+  description: {
     color: colors.textSecondary,
-    fontFamily: typography.families.rounded,
-    lineHeight: 20,
+    lineHeight: 21,
   },
-  statRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  masteryBlock: {
+    marginTop: spacing.lg,
   },
-  statItem: {
-    alignItems: 'center',
-    flex: 1,
-  },
-  statValue: {
-    fontSize: typography.sizes.lg,
-    fontWeight: typography.weights.black,
-    color: colors.text,
-    fontFamily: typography.families.rounded,
-  },
-  statLabel: {
-    fontSize: typography.sizes.xs,
-    color: colors.textMuted,
-    fontFamily: typography.families.rounded,
-    marginTop: spacing.xs,
-  },
-  masterySection: {
-    gap: spacing.sm,
-  },
-  masteryLabelRow: {
+  masteryHead: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 6,
   },
   masteryLabel: {
-    fontSize: typography.sizes.sm,
     color: colors.textSecondary,
-    fontFamily: typography.families.rounded,
   },
   masteryValue: {
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.bold,
     color: colors.purple,
-    fontFamily: typography.families.rounded,
   },
-  actions: {
-    gap: spacing.md,
-    marginTop: spacing.md,
-  },
-  actionButton: {
-    width: '100%',
+  footer: {
+    gap: spacing.sm,
   },
 });
 

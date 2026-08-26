@@ -33,7 +33,7 @@ export const AppButton: React.FC<AppButtonProps> = ({
     let variantStyle: ViewStyle = {};
     switch (variant) {
       case 'primary':
-        variantStyle = { backgroundColor: colors.purple };
+        variantStyle = { backgroundColor: colors.primary };
         break;
       case 'secondary':
         variantStyle = { backgroundColor: colors.blue };

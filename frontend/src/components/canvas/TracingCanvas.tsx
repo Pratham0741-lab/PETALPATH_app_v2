@@ -1,8 +1,40 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { StyleSheet, View, Text, Pressable, Platform, PanResponder, DimensionValue } from 'react-native';
-import { colors, radius, spacing } from '../../theme';
+import { LayoutChangeEvent, StyleSheet, View, Text, Platform, PanResponder } from 'react-native';
+import { colors, radius, spacing, typography } from '../../theme';
 import { Point } from '../../store/writeStore';
-import { Ionicons } from '@expo/vector-icons';
+import { PrimaryButton, SecondaryButton } from '../design/Buttons';
+
+/**
+ * Trace & Draw's canvas (spec §20: this stays a real tracing interaction, never
+ * a static image). The drawing internals — PanResponder, stroke capture, the
+ * native-SVG / web-<canvas> split and the guide geometry — are untouched by the
+ * redesign. What changed is the surface: the toolbar's three hand-rolled
+ * Pressables are now real design-system buttons with icons from the shared set
+ * (§7, §28), the child's ink is TRACE green (§15) instead of brand pink, and
+ * the dashed guide uses the `traceGuide` token instead of a cool grey that
+ * clashed with the warm palette.
+ *
+ * ## One frozen drawing space
+ *
+ * The child's ink and the dashed guide live in a single coordinate space, `base`,
+ * frozen at the first real measurement of the frame. Everything downstream —
+ * `getGuideDetails`, the stored `Point`s, the `w`/`h` handed to `onComplete` for
+ * scoring — is in those units, so ink and guide cannot drift apart. If the frame
+ * later changes size the space is *fitted* into it, uniformly and centred, by the
+ * SVG `viewBox`; nothing is re-derived.
+ *
+ * This replaced storing a normalised `normX`/`normY` beside every point and
+ * re-projecting at render as `normX * width, normY * height`. That looks
+ * equivalent and is not, for two reasons. It is a per-axis scale, so the drawing
+ * squashed rather than shrank whenever the height changed on its own — which is
+ * exactly what pressing Check used to do, by making room for the result banner
+ * and the Continue footer. And the guide does not follow the same transform:
+ * `Circle`, `Star`, `Spiral`, `Letter S`, the pentagon, the hexagon and half the
+ * digits size their radius off `Math.min(w, h)` or off `h` and then use it on the
+ * x axis, so a height-only change moved the guide horizontally while the ink
+ * stayed put. Replayed on a 326×434 board losing 200pt: ink displaced by up to
+ * 170pt, and up to 31pt of it left the dashed line altogether.
+ */
 
 const IS_DEV = typeof __DEV__ !== 'undefined' ? __DEV__ : false;
 
@@ -42,8 +74,14 @@ export const TracingCanvas: React.FC<TracingCanvasProps> = ({
   isCompleted,
   onGuideLayout,
 }) => {
-  const [width, setWidth] = useState(0);
-  const [height, setHeight] = useState(0);
+  /** Live size of the frame. Only ever used to fit the drawing space into it. */
+  const [box, setBox] = useState({ w: 0, h: 0 });
+  /**
+   * The drawing space, frozen at the first measurement that has real numbers in
+   * it. Reset only when the guide changes, i.e. on a new activity — by then the
+   * store has cleared the strokes, so nothing survives into a different space.
+   */
+  const [base, setBase] = useState<{ w: number; h: number } | null>(null);
   const [currentStroke, setCurrentStroke] = useState<Point[]>([]);
 
   // Mutable ref to track the current stroke for PanResponder (avoids stale closure)
@@ -59,48 +97,100 @@ export const TracingCanvas: React.FC<TracingCanvasProps> = ({
   const containerRef = useRef<View>(null);
   const offsetRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
-  const reportGuideLayout = useCallback((w: number, h: number) => {
-    if (!onGuideLayout) return;
-    containerRef.current?.measure((x, y, width, height, pageX, pageY) => {
-      if (pageX !== undefined && pageY !== undefined) {
-        offsetRef.current = { x: pageX, y: pageY };
-        const guidePts = getGuidePoints(guideName, w, h);
-        if (guidePts.length >= 2) {
-          const first = guidePts[0];
-          const last = guidePts[guidePts.length - 1];
-          onGuideLayout(
-            pageX + first.x,
-            pageY + first.y,
-            pageX + last.x,
-            pageY + last.y
-          );
-        }
-      }
-    });
-  }, [guideName, onGuideLayout]);
+  /**
+   * How the frozen space currently sits inside the frame: the same uniform,
+   * centred fit that `preserveAspectRatio="xMidYMid meet"` applies to the SVG, so
+   * a touch can be converted back into drawing coordinates. Held in a ref because
+   * the PanResponder is built once and would otherwise close over the first
+   * render's values forever.
+   */
+  const fitRef = useRef({ scale: 1, dx: 0, dy: 0 });
+  const fitScale =
+    base && box.w > 0 && box.h > 0 ? Math.min(box.w / base.w, box.h / base.h) : 1;
+  fitRef.current = {
+    scale: fitScale,
+    dx: base ? (box.w - base.w * fitScale) / 2 : 0,
+    dy: base ? (box.h - base.h * fitScale) / 2 : 0,
+  };
 
-  const handleLayout = (event: any) => {
-    const { width: w, height: h } = event.nativeEvent.layout;
-    setWidth(w);
-    setHeight(h);
-
-    reportGuideLayout(w, h);
-    // Run again with a short timeout to handle layout settling
-    setTimeout(() => {
-      reportGuideLayout(w, h);
-    }, 150);
+  /** Frame-local pixels → the frozen drawing space. */
+  const toBase = (localX: number, localY: number): Point => {
+    const { scale, dx, dy } = fitRef.current;
+    return { x: (localX - dx) / scale, y: (localY - dy) / scale };
   };
 
   useEffect(() => {
-    if (width > 0 && height > 0) {
-      reportGuideLayout(width, height);
-    }
-  }, [guideName, width, height, reportGuideLayout]);
+    /*
+     * A new activity gets a fresh space, sized to the frame as it stands now. The
+     * store has already cleared the strokes by this point, so nothing is left
+     * behind in the old space.
+     *
+     * Re-freezing to `box` and not to `null` is load-bearing: a new guide does not
+     * change the frame's size, so no further `onLayout` would arrive to replace a
+     * null, and the render branch below — which needs `base` to write a viewBox —
+     * would sit on its fallback for the rest of the screen's life.
+     */
+    setBase((prev) => {
+      if (box.w <= 0 || box.h <= 0) return prev;
+      if (prev && prev.w === box.w && prev.h === box.h) return prev;
+      return { w: box.w, h: box.h };
+    });
+    // Deliberately keyed on the guide alone: `box` is read as "the size right
+    // now", and depending on it would re-freeze the space on every resize, which
+    // is the whole thing this component exists to avoid.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [guideName]);
+
+  /**
+   * Refreshes the frame's page origin, which the PanResponder subtracts to get a
+   * local coordinate, and — when a caller wants it — reports where the guide
+   * starts and ends on screen so the tutorial hand can follow it.
+   *
+   * The measurement is unconditional. It used to bail out before touching
+   * `offsetRef` when `onGuideLayout` was absent, which is the desktop variant, so
+   * desktop's origin sat at {0,0} for the life of the screen and capture fell
+   * through to the `pageX - locationX` guess below.
+   */
+  const measureFrame = useCallback(() => {
+    containerRef.current?.measure((_x, _y, _w, _h, pageX, pageY) => {
+      if (pageX === undefined || pageY === undefined) return;
+      offsetRef.current = { x: pageX, y: pageY };
+
+      if (!onGuideLayout || !base) return;
+      const guidePts = getGuidePoints(guideName, base.w, base.h);
+      if (guidePts.length < 2) return;
+      /* Guide points are in the frozen space; the hand needs screen pixels. */
+      const { scale, dx, dy } = fitRef.current;
+      const first = guidePts[0];
+      const last = guidePts[guidePts.length - 1];
+      onGuideLayout(
+        pageX + dx + first.x * scale,
+        pageY + dy + first.y * scale,
+        pageX + dx + last.x * scale,
+        pageY + dy + last.y * scale,
+      );
+    });
+  }, [base, guideName, onGuideLayout]);
+
+  const handleLayout = (event: LayoutChangeEvent) => {
+    const { width: w, height: h } = event.nativeEvent.layout;
+    setBox((prev) => (prev.w === w && prev.h === h ? prev : { w, h }));
+    if (w > 0 && h > 0) setBase((prev) => prev ?? { w, h });
+  };
+
+  useEffect(() => {
+    if (box.w <= 0 || box.h <= 0) return;
+    measureFrame();
+    /* Once more after layout settles: `measure` can report a stale page origin
+       on the same frame the view was laid out in. */
+    const timer = setTimeout(measureFrame, 150);
+    return () => clearTimeout(timer);
+  }, [box, measureFrame]);
 
   // Generate SVG path string or canvas drawing instructions for guides
   const getGuideDetails = () => {
-    const w = width || 300;
-    const h = height || 300;
+    const w = base?.w ?? 300;
+    const h = base?.h ?? 300;
 
     switch (guideName) {
       case 'Standing Line':
@@ -628,92 +718,81 @@ export const TracingCanvas: React.FC<TracingCanvasProps> = ({
     }
   };
 
-  const getPointX = (p: Point) => (p.normX !== undefined && width > 0 ? p.normX * width : p.x);
-  const getPointY = (p: Point) => (p.normY !== undefined && height > 0 ? p.normY * height : p.y);
-
-  const makePoint = (x: number, y: number): Point => ({
-    x,
-    y,
-    normX: width > 0 ? x / width : undefined,
-    normY: height > 0 ? y / height : undefined,
-  });
-
   const guide = getGuideDetails();
 
   // Web Canvas Drawing Sync
   useEffect(() => {
-    if (Platform.OS === 'web' && canvasRef.current && width > 0 && height > 0) {
-      const canvas = canvasRef.current;
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.clearRect(0, 0, width, height);
+    if (Platform.OS !== 'web' || !canvasRef.current || !base) return;
+    if (box.w <= 0 || box.h <= 0) return;
+    const ctx = canvasRef.current.getContext('2d');
+    if (!ctx) return;
 
-        // 1. Draw guide shape (dashed gray)
-        ctx.strokeStyle = '#D1D5DB';
-        ctx.lineWidth = 6;
-        ctx.setLineDash([8, 8]);
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
+    /* The backing store is frame-sized, so clear in frame pixels... */
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, box.w, box.h);
+    /* ...then draw everything in the frozen space, scaled and centred exactly the
+       way the native side's `preserveAspectRatio="xMidYMid meet"` does it. */
+    const { scale, dx, dy } = fitRef.current;
+    ctx.setTransform(scale, 0, 0, scale, dx, dy);
 
-        if (guide.paths) {
-          guide.paths.forEach((pStr) => {
-            const p = new Path2D(pStr);
-            ctx.stroke(p);
-          });
-        } else {
-          const p = new Path2D(guide.d);
-          ctx.stroke(p);
-        }
+    // 1. Draw guide shape (dashed, low-contrast)
+    ctx.strokeStyle = colors.traceGuide;
+    ctx.lineWidth = 6;
+    ctx.setLineDash([8, 8]);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
 
-        // 2. Draw user strokes (solid purple)
-        ctx.strokeStyle = colors.purple;
-        ctx.lineWidth = 8;
-        ctx.setLineDash([]);
-
-        strokes.forEach((stroke) => {
-          if (stroke.length < 2) return;
-          ctx.beginPath();
-          ctx.moveTo(getPointX(stroke[0]), getPointY(stroke[0]));
-          for (let i = 1; i < stroke.length; i++) {
-            ctx.lineTo(getPointX(stroke[i]), getPointY(stroke[i]));
-          }
-          ctx.stroke();
-        });
-
-        // Current ongoing stroke
-        if (currentStroke.length >= 2) {
-          ctx.beginPath();
-          ctx.moveTo(getPointX(currentStroke[0]), getPointY(currentStroke[0]));
-          for (let i = 1; i < currentStroke.length; i++) {
-            ctx.lineTo(getPointX(currentStroke[i]), getPointY(currentStroke[i]));
-          }
-          ctx.stroke();
-        }
-      }
+    if (guide.paths) {
+      guide.paths.forEach((pStr) => {
+        ctx.stroke(new Path2D(pStr));
+      });
+    } else {
+      ctx.stroke(new Path2D(guide.d));
     }
-  }, [width, height, strokes, currentStroke, guideName]);
+
+    // 2. Draw user strokes (solid, TRACE green)
+    ctx.strokeStyle = colors.leafGreen;
+    ctx.lineWidth = 8;
+    ctx.setLineDash([]);
+
+    const drawStroke = (stroke: Point[]) => {
+      if (stroke.length < 2) return;
+      ctx.beginPath();
+      ctx.moveTo(stroke[0].x, stroke[0].y);
+      for (let i = 1; i < stroke.length; i++) {
+        ctx.lineTo(stroke[i].x, stroke[i].y);
+      }
+      ctx.stroke();
+    };
+
+    strokes.forEach(drawStroke);
+    drawStroke(currentStroke);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [box, base, strokes, currentStroke, guideName]);
 
   // Web Touch Handlers using Ref for synchronous updates
+  /** Client coords → frame-local pixels → the frozen space. */
+  const webPoint = (clientX: number, clientY: number): Point | null => {
+    const canvas = canvasRef.current;
+    if (!canvas) return null;
+    const rect = canvas.getBoundingClientRect();
+    return toBase(clientX - rect.left, clientY - rect.top);
+  };
+
   const handleWebMouseDown = (e: React.MouseEvent) => {
     if (Platform.OS !== 'web') return;
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    const newStroke = [makePoint(x, y)];
+    const point = webPoint(e.clientX, e.clientY);
+    if (!point) return;
+    const newStroke = [point];
     currentStrokeRef.current = newStroke;
     setCurrentStroke(newStroke);
   };
 
   const handleWebMouseMove = (e: React.MouseEvent) => {
     if (Platform.OS !== 'web' || currentStrokeRef.current.length === 0) return;
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    const updated = [...currentStrokeRef.current, makePoint(x, y)];
+    const point = webPoint(e.clientX, e.clientY);
+    if (!point) return;
+    const updated = [...currentStrokeRef.current, point];
     currentStrokeRef.current = updated;
     setCurrentStroke(updated);
   };
@@ -730,26 +809,22 @@ export const TracingCanvas: React.FC<TracingCanvasProps> = ({
 
   const handleWebTouchStart = (e: React.TouchEvent) => {
     if (Platform.OS !== 'web') return;
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
     const touch = e.touches[0];
-    const x = touch.clientX - rect.left;
-    const y = touch.clientY - rect.top;
-    const newStroke = [makePoint(x, y)];
+    if (!touch) return;
+    const point = webPoint(touch.clientX, touch.clientY);
+    if (!point) return;
+    const newStroke = [point];
     currentStrokeRef.current = newStroke;
     setCurrentStroke(newStroke);
   };
 
   const handleWebTouchMove = (e: React.TouchEvent) => {
     if (Platform.OS !== 'web' || currentStrokeRef.current.length === 0) return;
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
     const touch = e.touches[0];
-    const x = touch.clientX - rect.left;
-    const y = touch.clientY - rect.top;
-    const updated = [...currentStrokeRef.current, makePoint(x, y)];
+    if (!touch) return;
+    const point = webPoint(touch.clientX, touch.clientY);
+    if (!point) return;
+    const updated = [...currentStrokeRef.current, point];
     currentStrokeRef.current = updated;
     setCurrentStroke(updated);
   };
@@ -765,26 +840,23 @@ export const TracingCanvas: React.FC<TracingCanvasProps> = ({
       onMoveShouldSetPanResponder: () => true,
       onPanResponderGrant: (evt) => {
         const { locationX, locationY, pageX, pageY } = evt.nativeEvent;
-        let baseRefX = offsetRef.current.x;
-        let baseRefY = offsetRef.current.y;
-        if (baseRefX === 0) {
-          baseRefX = pageX - locationX;
-          baseRefY = pageY - locationY;
+        let originX = offsetRef.current.x;
+        let originY = offsetRef.current.y;
+        if (originX === 0) {
+          originX = pageX - locationX;
+          originY = pageY - locationY;
         }
-        containerXRef.current = baseRefX;
-        containerYRef.current = baseRefY;
+        containerXRef.current = originX;
+        containerYRef.current = originY;
 
-        const x = pageX - baseRefX;
-        const y = pageY - baseRefY;
-        const newStroke = [makePoint(x, y)];
+        const newStroke = [toBase(pageX - originX, pageY - originY)];
         currentStrokeRef.current = newStroke;
         setCurrentStroke(newStroke);
       },
       onPanResponderMove: (evt) => {
         const { pageX, pageY } = evt.nativeEvent;
-        const x = pageX - containerXRef.current;
-        const y = pageY - containerYRef.current;
-        const updated = [...currentStrokeRef.current, makePoint(x, y)];
+        const point = toBase(pageX - containerXRef.current, pageY - containerYRef.current);
+        const updated = [...currentStrokeRef.current, point];
         currentStrokeRef.current = updated;
         setCurrentStroke(updated);
       },
@@ -799,23 +871,19 @@ export const TracingCanvas: React.FC<TracingCanvasProps> = ({
     })
   ).current;
 
-  // Render native SVG path string from user strokes
+  // Render native SVG path string from user strokes, in the frozen space — the
+  // viewBox below is what maps it onto the screen.
   const getNativeUserPath = () => {
     let d = '';
-    strokes.forEach((stroke) => {
-      if (stroke.length > 0) {
-        d += ` M ${getPointX(stroke[0])} ${getPointY(stroke[0])}`;
-        for (let i = 1; i < stroke.length; i++) {
-          d += ` L ${getPointX(stroke[i])} ${getPointY(stroke[i])}`;
-        }
+    const append = (stroke: Point[]) => {
+      if (stroke.length === 0) return;
+      d += ` M ${stroke[0].x} ${stroke[0].y}`;
+      for (let i = 1; i < stroke.length; i++) {
+        d += ` L ${stroke[i].x} ${stroke[i].y}`;
       }
-    });
-    if (currentStroke.length > 0) {
-      d += ` M ${getPointX(currentStroke[0])} ${getPointY(currentStroke[0])}`;
-      for (let i = 1; i < currentStroke.length; i++) {
-        d += ` L ${getPointX(currentStroke[i])} ${getPointY(currentStroke[i])}`;
-      }
-    }
+    };
+    strokes.forEach(append);
+    append(currentStroke);
     return d;
   };
 
@@ -831,8 +899,8 @@ export const TracingCanvas: React.FC<TracingCanvasProps> = ({
         {Platform.OS === 'web' ? (
           <canvas
             ref={canvasRef}
-            width={width}
-            height={height}
+            width={box.w}
+            height={box.h}
             style={{ display: 'block', width: '100%', height: '100%', cursor: 'crosshair' }}
             onMouseDown={handleWebMouseDown}
             onMouseMove={handleWebMouseMove}
@@ -842,13 +910,23 @@ export const TracingCanvas: React.FC<TracingCanvasProps> = ({
             onTouchMove={handleWebTouchMove}
             onTouchEnd={handleWebMouseUp}
           />
-        ) : Svg && Path ? (
-          <Svg width={width} height={height} style={StyleSheet.absoluteFill} pointerEvents="none">
+        ) : Svg && Path && base ? (
+          <Svg
+            width={box.w}
+            height={box.h}
+            /* Guide and ink are both authored in the frozen space; the viewBox is
+               the only thing that ever reacts to the frame changing size, so they
+               can only ever move together. */
+            viewBox={`0 0 ${base.w} ${base.h}`}
+            preserveAspectRatio="xMidYMid meet"
+            style={StyleSheet.absoluteFill}
+            pointerEvents="none"
+          >
             {/* Guide Path */}
             <Path
               d={guide.d}
               fill="none"
-              stroke="#D1D5DB"
+              stroke={colors.traceGuide}
               strokeWidth={6}
               strokeDasharray="8,8"
               strokeLinecap="round"
@@ -859,7 +937,7 @@ export const TracingCanvas: React.FC<TracingCanvasProps> = ({
             <Path
               d={getNativeUserPath()}
               fill="none"
-              stroke={colors.purple}
+              stroke={colors.leafGreen}
               strokeWidth={8}
               strokeLinecap="round"
               strokeLinejoin="round"
@@ -868,43 +946,44 @@ export const TracingCanvas: React.FC<TracingCanvasProps> = ({
           </Svg>
         ) : (
           <View style={styles.centerFallback}>
-            <Text style={{ color: colors.textMuted }}>Native Drawing Canvas fallback</Text>
+            <Text style={styles.fallbackText}>Native Drawing Canvas fallback</Text>
           </View>
         )}
       </View>
 
       {/* Toolbox Panel */}
       <View style={styles.toolsRow}>
-        <Pressable
-          style={({ pressed }) => [styles.toolBtn, pressed && styles.toolBtnPressed]}
+        <SecondaryButton
+          label="Undo"
+          icon="undo"
+          size="sm"
+          fullWidth={false}
           onPress={onUndo}
           disabled={strokes.length === 0}
-        >
-          <Ionicons name="arrow-undo-outline" size={20} color={strokes.length === 0 ? colors.border : colors.purple} />
-          <Text style={[styles.toolBtnText, strokes.length === 0 && { color: colors.border }]}>Undo</Text>
-        </Pressable>
+          accessibilityHint="Removes your last stroke"
+        />
 
-        <Pressable
-          style={({ pressed }) => [styles.toolBtn, pressed && styles.toolBtnPressed]}
+        <SecondaryButton
+          label="Clear"
+          icon="eraser"
+          size="sm"
+          tone="danger"
+          fullWidth={false}
           onPress={onClear}
           disabled={strokes.length === 0 && currentStroke.length === 0}
-        >
-          <Ionicons name="trash-outline" size={20} color={strokes.length === 0 ? colors.border : '#FF4A4A'} />
-          <Text style={[styles.toolBtnText, { color: strokes.length === 0 ? colors.border : '#FF4A4A' }]}>Clear</Text>
-        </Pressable>
+          accessibilityHint="Erases the whole drawing"
+        />
 
-        <Pressable
-          style={({ pressed }) => [
-            styles.doneBtn,
-            strokes.length === 0 && styles.doneBtnDisabled,
-            pressed && strokes.length > 0 && styles.toolBtnPressed,
-          ]}
-          onPress={() => onComplete(width, height)}
+        <PrimaryButton
+          label="Check Tracing"
+          icon="check"
+          size="sm"
+          tone="green"
+          fullWidth={false}
+          onPress={() => base && onComplete(base.w, base.h)}
           disabled={strokes.length === 0}
-        >
-          <Ionicons name="checkmark-circle-outline" size={20} color={colors.white} />
-          <Text style={styles.doneBtnText}>Check Tracing</Text>
-        </Pressable>
+          accessibilityHint="Scores how closely you followed the guide"
+        />
       </View>
     </View>
   );
@@ -920,10 +999,10 @@ const styles = StyleSheet.create({
     flex: 1,
     width: '100%',
     minHeight: 280,
-    backgroundColor: '#FAFAFA',
-    borderWidth: 2,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: radius.xxl,
+    borderRadius: radius.card,
     overflow: 'hidden',
   },
   centerFallback: {
@@ -931,48 +1010,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  fallbackText: {
+    ...typography.presets.subtle,
+    color: colors.textMuted,
+  },
   toolsRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    /* Wraps rather than squeezing the three controls below their touch target
+       on a 360px screen (§27, §30). */
+    flexWrap: 'wrap',
+    justifyContent: 'center',
     alignItems: 'center',
     gap: spacing.sm,
-  },
-  toolBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderRadius: radius.lg,
-    backgroundColor: colors.backgroundSecondary,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  toolBtnPressed: {
-    transform: [{ scale: 0.98 }],
-    opacity: 0.9,
-  },
-  toolBtnText: {
-    color: colors.text,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  doneBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.lg,
-    borderRadius: radius.lg,
-    backgroundColor: colors.purple,
-  },
-  doneBtnDisabled: {
-    backgroundColor: colors.border,
-    opacity: 0.6,
-  },
-  doneBtnText: {
-    color: colors.white,
-    fontSize: 14,
-    fontWeight: '700',
   },
 });

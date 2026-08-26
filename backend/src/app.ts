@@ -10,6 +10,7 @@ import { loggerMiddleware } from './middleware/logger.middleware.js';
 import { errorHandler } from './middleware/error.middleware.js';
 import { rootRouter } from './routes/index.js';
 import { healthRoutes } from './modules/health/health.routes.js';
+import { waitlistRoutes } from './modules/waitlist/waitlist.routes.js';
 import { NotFoundError } from './utils/errors.js';
 import { env } from './config/env.js';
 import { metricsService } from './modules/metrics/metrics.service.js';
@@ -92,6 +93,8 @@ app.use('/storage', express.static(path.join(__dirname, '../storage')));
 app.use('/health', healthRoutes);
 app.use('/api/health', healthRoutes);
 
+// Waitlist route alias at root level
+app.use('/waitlist', waitlistRoutes);
 
 const isProduction = env.NODE_ENV === 'production';
 
@@ -111,6 +114,8 @@ if (isProduction) {
   // Per-endpoint rate limiters (applied before the global limiter)
   app.use('/api/auth/login', authLimiter);
   app.use('/api/auth/register', authLimiter);
+  app.use('/api/waitlist', authLimiter);
+  app.use('/waitlist', authLimiter);
   app.use('/api/session-planner/generate', moderateLimiter);
   app.use('/api/stories', moderateLimiter);
   app.use('/api/assessments', moderateLimiter);

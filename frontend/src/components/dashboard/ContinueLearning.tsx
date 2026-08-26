@@ -48,7 +48,7 @@ export const ContinueLearning: React.FC<ContinueLearningProps> = ({
       <View style={styles.content}>
         <View style={styles.textSection}>
           <View style={styles.labelRow}>
-            <Ionicons name="play-circle" size={16} color={colors.purple} />
+            <Ionicons name="play-circle" size={16} color={colors.primary} />
             <Text style={styles.label}>Continue Learning</Text>
           </View>
           <Text style={styles.lessonTitle} numberOfLines={2}>{lessonTitle}</Text>
@@ -100,7 +100,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: typography.sizes.xs,
-    color: colors.purple,
+    color: colors.primary,
     fontWeight: typography.weights.bold,
     textTransform: 'uppercase',
     marginLeft: spacing.xs,

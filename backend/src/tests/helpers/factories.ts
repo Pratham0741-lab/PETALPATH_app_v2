@@ -395,6 +395,7 @@ export async function cleanDatabase() {
     'story_progress', 'story_pages', 'story_vocabulary', 'stories',
     'skill_tags', 'skill_activities', 'skill_assessments',
     'curriculum_grades', 'curriculum_domains',
+    'waitlists',
   ];
 
   for (const table of tables) {

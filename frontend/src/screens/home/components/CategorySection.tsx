@@ -100,7 +100,7 @@ const styles = StyleSheet.create({
   expandedCard: {
     borderBottomLeftRadius: radius.sm,
     borderBottomRightRadius: radius.sm,
-    borderColor: colors.purple + '40',
+    borderColor: colors.primary + '40',
   },
   headerRow: {
     flexDirection: 'row',

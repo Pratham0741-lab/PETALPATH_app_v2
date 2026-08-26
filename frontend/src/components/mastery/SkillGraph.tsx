@@ -19,6 +19,8 @@ import { useTheme } from '../../theme/ThemeContext';
 import { spacing, typography, radius } from '../../theme';
 import { Skeleton } from '../ui/Skeleton';
 import type { MasteryData } from '../../services/api/intelligenceApi';
+import { MASTERY_STATE_LABELS } from '../../services/api/masteryTypes';
+import type { MasteryStateName } from '../../services/api/masteryTypes';
 
 interface SkillGraphProps {
   skills: MasteryData[];
@@ -33,18 +35,32 @@ interface Section {
   data: MasteryData[];
 }
 
-const STATE_CONFIG: Record<MasteryData['masteryState'], { label: string; icon: React.ComponentProps<typeof Ionicons>['name'] }> = {
-  locked: { label: 'Locked', icon: 'lock-closed' },
-  in_progress: { label: 'In Progress', icon: 'time' },
-  mastered: { label: 'Mastered', icon: 'checkmark-circle' },
-  review: { label: 'Review', icon: 'refresh' },
+/**
+ * Icon per state. The words come from `MASTERY_STATE_LABELS` so this file cannot
+ * drift from the rest of the app: it used to carry its own four — 'Locked',
+ * 'In Progress', 'Mastered', 'Review' — keyed on lowercase names the server has
+ * never sent, which meant `STATE_CONFIG[skill.masteryState]` was `undefined` and
+ * the next line read `.label` off it. Every row threw.
+ *
+ * LEARNING takes the alert, not WEAK. The bands run LEARNING < 40, WEAK 40-59,
+ * so the enum's declaration order is not its severity order — see
+ * `MASTERY_STATE_ORDER`, which is where any ranking here has to come from.
+ */
+const STATE_ICONS: Record<MasteryStateName, React.ComponentProps<typeof Ionicons>['name']> = {
+  LEARNING: 'alert-circle',
+  WEAK: 'warning',
+  NEW: 'ellipse-outline',
+  STRONG: 'trending-up',
+  MASTERED: 'checkmark-circle',
 };
 
-const STATE_COLOR_KEY: Record<MasteryData['masteryState'], string> = {
-  locked: 'textMuted',
-  in_progress: 'blue',
-  mastered: 'success',
-  review: 'warning',
+/** A ramp from "needs help" to "done", resolved against the active theme. */
+const STATE_COLOR_KEY: Record<MasteryStateName, string> = {
+  LEARNING: 'error',
+  WEAK: 'warning',
+  NEW: 'textMuted',
+  STRONG: 'blue',
+  MASTERED: 'success',
 };
 
 const AnimatedProgressFill: React.FC<{ score: number; delay: number; color: string }> = ({ score, delay, color }) => {
@@ -86,7 +102,7 @@ const SkillItem: React.FC<{
   onPress?: (skillId: string) => void;
   colors: Record<string, string>;
 }> = ({ skill, index, onPress, colors: themeColors }) => {
-  const stateConfig = STATE_CONFIG[skill.masteryState];
+  const stateLabel = MASTERY_STATE_LABELS[skill.masteryState];
   const stateColorKey = STATE_COLOR_KEY[skill.masteryState];
   const stateColor = themeColors[stateColorKey];
 
@@ -98,16 +114,16 @@ const SkillItem: React.FC<{
         pressed && skillStyles.pressed,
       ]}
       accessibilityRole="button"
-      accessibilityLabel={`${skill.skillName}, ${Math.round(skill.masteryScore)} percent mastery, ${stateConfig.label.toLowerCase()}`}
+      accessibilityLabel={`${skill.skillName}, ${Math.round(skill.masteryScore)} percent mastery, ${stateLabel.toLowerCase()}`}
     >
       <View style={skillStyles.topRow}>
         <Text style={[skillStyles.name, { color: themeColors.text }]} numberOfLines={1}>
           {skill.skillName}
         </Text>
         <View style={[skillStyles.badge, { backgroundColor: `${stateColor}20` }]}>
-          <Ionicons name={stateConfig.icon} size={12} color={stateColor} />
+          <Ionicons name={STATE_ICONS[skill.masteryState]} size={12} color={stateColor} />
           <Text style={[skillStyles.badgeText, { color: stateColor }]}>
-            {stateConfig.label}
+            {stateLabel}
           </Text>
         </View>
       </View>
@@ -125,17 +141,22 @@ const SkillItem: React.FC<{
         </Text>
       </View>
 
-      {skill.dependencies && skill.dependencies.length > 0 && (
-        <View style={skillStyles.dependencyRow} accessibilityLabel={`${skill.dependencies.length} dependencies`}>
-          <Ionicons name="git-branch-outline" size={12} color={themeColors.textMuted} />
-          {skill.dependencies.map((dep, i) => (
-            <View key={dep} style={skillStyles.depDot}>
-              <View style={[skillStyles.dot, { backgroundColor: themeColors.textMuted }]} />
-              {i < skill.dependencies.length - 1 && (
-                <View style={[skillStyles.dotLine, { backgroundColor: themeColors.border }]} />
-              )}
-            </View>
-          ))}
+      {/*
+        Was a dependency chain: a row of dots drawn from `skill.dependencies`,
+        a field the endpoint has never returned, so the branch was dead and the
+        graph in this component's name never had any edges to draw. What the
+        response does carry is decay, which is the thing a reader would actually
+        want next to a score — the bar says 79, and this says it was 86 until
+        the child stopped practicing.
+      */}
+      {skill.isSlipping && (
+        <View style={skillStyles.dependencyRow}>
+          <Ionicons name="trending-down-outline" size={12} color={themeColors.textMuted} />
+          <Text style={[skillStyles.decayText, { color: themeColors.textMuted }]}>
+            {`Was ${Math.round(skill.storedScore)}%, last practiced ${
+              skill.daysSincePractice === 1 ? 'yesterday' : `${skill.daysSincePractice} days ago`
+            }`}
+          </Text>
         </View>
       )}
     </Pressable>
@@ -351,6 +372,13 @@ const skillStyles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.xs,
     marginTop: spacing.xs,
+  },
+  decayText: {
+    fontSize: typography.sizes.xs,
+    fontFamily: typography.families.rounded,
+    /* Shares a row with a fixed-width icon; without this the sentence is
+       measured at its full length and pushed off the card. */
+    flexShrink: 1,
   },
   depDot: {
     flexDirection: 'row',

@@ -55,7 +55,7 @@ export const PlacementAssessmentLoadingScreen: React.FC = () => {
     <ScreenContainer>
       <View style={styles.container}>
         <Animated.View style={[styles.iconWrap, { opacity: pulseAnim, transform: [{ scale: pulseAnim }] }]}>
-          <Ionicons name="analytics" size={48} color={colors.purple} />
+          <Ionicons name="analytics" size={48} color={colors.primary} />
         </Animated.View>
         <LoadingSpinner label="Analyzing your responses…" />
         <Text style={styles.subtitle}>Calculating the best starting level for your child</Text>
@@ -75,7 +75,7 @@ const styles = StyleSheet.create({
     width: 88,
     height: 88,
     borderRadius: 44,
-    backgroundColor: `${colors.purple}15`,
+    backgroundColor: `${colors.primary}15`,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: spacing.lg,

@@ -19,11 +19,19 @@ export class RecoveryModeService {
 
     const effortLevel = topicStates.length > 0
       ? Math.max(...topicStates.map(t => {
+          /*
+           * Higher is worse, and `Math.max` picks the worst topic the child has.
+           * NEEDS_PRACTICE and LEARNING were the wrong way up: the topic-state
+           * vocabulary is written from `MasteryState` by `knowledgeStateFor`,
+           * which sends WEAK (40-59) to NEEDS_PRACTICE and LEARNING (under 40)
+           * to LEARNING — so LEARNING is the lower of the two, and it was being
+           * scored as the milder.
+           */
           switch (t.state) {
             case 'MASTERED': return 1;
             case 'STABLE': return 2;
-            case 'LEARNING': return 3;
-            case 'NEEDS_PRACTICE': return 4;
+            case 'NEEDS_PRACTICE': return 3;
+            case 'LEARNING': return 4;
             case 'NEW': return 5;
             default: return 3;
           }

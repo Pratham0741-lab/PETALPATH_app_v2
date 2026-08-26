@@ -34,7 +34,7 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
       case 'listen':
         return colors.blue;
       case 'speak':
-        return colors.purple;
+        return colors.primary;
       case 'write':
         return colors.green;
       case 'video':
@@ -42,7 +42,7 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
       case 'drag_drop':
         return '#F59E0B'; // Vibrant amber for drag & drop games
       default:
-        return colors.purple;
+        return colors.primary;
     }
   };
 

@@ -1,18 +1,36 @@
+/**
+ * Category Completed — the biggest milestone in the journey (spec §34 phase 6).
+ *
+ * Reached only from `LessonCompleteScreen.handleFinish` when the backend reports
+ * `categoryCompleted`, with `categoryTitle` and the badge name resolved from
+ * `categoryBadgeMap`. Both params stay optional and both fallbacks are kept (§1),
+ * and the two navigations — Rewards and Home — are unchanged.
+ *
+ * The chrome now comes from `CelebrationScaffold`. That retires the 160px hero
+ * circle (which alone was taller than the title on a 360px screen), the 32px
+ * one-off title size and the four `colors.primary + '10'`-style hex-alpha
+ * suffixes, which produced pink washes at four different opacities across the
+ * three completion screens.
+ *
+ * The badge itself is now a real `RewardCard` — the same component the Rewards
+ * screen uses — so an earned badge looks the same wherever a child meets it (§28).
+ */
+
 import React from 'react';
-import { StyleSheet, View, Text } from 'react-native';
-import { ScreenContainer } from '../../components/common/ScreenContainer';
-import { AppButton } from '../../components/buttons/AppButton';
-import { colors, typography, spacing, radius } from '../../theme';
+import { StyleSheet, View } from 'react-native';
 import { useRoute } from '@react-navigation/native';
+
+import { colors, spacing } from '../../theme';
 import { useAppNavigation } from '../../hooks/useAppNavigation';
-import { Ionicons } from '@expo/vector-icons';
 import { useChildStore } from '../../store/childStore';
+import { PrimaryButton, RewardCard, SecondaryButton } from '../../components/design';
+import { CelebrationScaffold } from './CelebrationScaffold';
 
 export const CategoryCompleteScreen: React.FC = () => {
   const { navigateToTab } = useAppNavigation();
   const route = useRoute<any>();
   const activeChild = useChildStore((state) => state.activeChild);
-  
+
   const { categoryTitle, badgeName } = route.params || {};
 
   const handleContinue = () => {
@@ -20,127 +38,47 @@ export const CategoryCompleteScreen: React.FC = () => {
   };
 
   return (
-    <ScreenContainer style={styles.container}>
-      <View style={styles.content}>
-        <View style={styles.iconContainer}>
-          <Ionicons name="trophy" size={96} color={colors.yellow} />
+    <CelebrationScaffold
+      icon="trophy"
+      iconColor={colors.yellow}
+      iconSoft={colors.yellowSoft}
+      /* A shade larger than a lesson or module — this is the rarest moment. */
+      iconSize={112}
+      title="Incredible!"
+      message={`Spectacular achievement${activeChild?.name ? `, ${activeChild.name}` : ''}! You completed the entire “${categoryTitle || 'Category'}” curriculum path!`}
+      footer={
+        <View style={styles.footer}>
+          <SecondaryButton
+            label="View Rewards"
+            icon="trophy"
+            onPress={() => navigateToTab('Rewards')}
+          />
+          <PrimaryButton
+            label="Go to Home"
+            iconRight="forward"
+            tone="green"
+            onPress={handleContinue}
+            accessibilityHint="Goes back to your learning journey"
+          />
         </View>
-
-        <Text style={styles.title}>Category Completed!</Text>
-        <Text style={styles.subtitle}>
-          Spectacular achievement, {activeChild?.name}! You completed the entire "{categoryTitle || 'Category'}" curriculum path!
-        </Text>
-
-        {badgeName ? (
-          <View style={styles.badgeCard}>
-            <View style={styles.badgeIcon}>
-              <Ionicons name="medal" size={32} color={colors.purple} />
-            </View>
-            <View style={styles.badgeInfo}>
-              <Text style={styles.badgeLabel}>New Badge Earned!</Text>
-              <Text style={styles.badgeName}>{badgeName}</Text>
-            </View>
-          </View>
-        ) : null}
-
-        <AppButton
-          label="View Rewards"
+      }
+    >
+      {badgeName ? (
+        <RewardCard
+          title={badgeName}
+          description="New badge earned — find it in My Rewards."
+          kind="badge"
+          unlocked
           onPress={() => navigateToTab('Rewards')}
-          style={styles.rewardsButton}
-          variant="secondary"
         />
-
-        <AppButton
-          label="Go to Home"
-          onPress={handleContinue}
-          style={styles.button}
-        />
-      </View>
-    </ScreenContainer>
+      ) : null}
+    </CelebrationScaffold>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    backgroundColor: colors.background,
-  },
-  content: {
-    flex: 1,
-    padding: spacing.xl,
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: spacing.lg,
-    maxWidth: 600,
-    width: '100%',
-    alignSelf: 'center',
-  },
-  iconContainer: {
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    backgroundColor: colors.yellow + '15',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: spacing.md,
-  },
-  title: {
-    color: colors.text,
-    fontSize: 32,
-    fontWeight: typography.weights.black,
-    textAlign: 'center',
-  },
-  subtitle: {
-    color: colors.textMuted,
-    fontSize: typography.sizes.md,
-    textAlign: 'center',
-    lineHeight: 22,
-    marginBottom: spacing.md,
-  },
-  badgeCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    backgroundColor: colors.purple + '10',
-    borderWidth: 1,
-    borderColor: colors.purple + '20',
-    padding: spacing.lg,
-    borderRadius: radius.lg,
-    width: '100%',
-    marginBottom: spacing.lg,
-  },
-  badgeIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: colors.purple + '15',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  badgeInfo: {
-    flex: 1,
-    gap: 4,
-  },
-  badgeLabel: {
-    color: colors.purple,
-    fontSize: typography.sizes.xs,
-    fontWeight: typography.weights.bold,
-    textTransform: 'uppercase',
-  },
-  badgeName: {
-    color: colors.text,
-    fontSize: typography.sizes.lg,
-    fontWeight: typography.weights.bold,
-  },
-  rewardsButton: {
-    width: '100%',
-    height: 54,
-    borderRadius: radius.xl,
-    marginBottom: spacing.xs,
-  },
-  button: {
-    width: '100%',
-    height: 54,
-    borderRadius: radius.xl,
+  footer: {
+    gap: spacing.sm,
   },
 });
 

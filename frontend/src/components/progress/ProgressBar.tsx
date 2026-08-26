@@ -13,7 +13,7 @@ interface ProgressBarProps {
 export const ProgressBar: React.FC<ProgressBarProps> = ({
   progress,
   height = 10,
-  color = colors.purple,
+  color = colors.primary,
   trackColor = colors.background,
   style,
 }) => {

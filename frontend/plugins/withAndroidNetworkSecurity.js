@@ -35,7 +35,7 @@ module.exports = function withAndroidNetworkSecurity(config) {
     <base-config cleartextTrafficPermitted="true" />
 
     <domain-config cleartextTrafficPermitted="true">
-        <domain includeSubdomains="true">13.235.178.117</domain>
+        <domain includeSubdomains="true">api.petalpath.co.in</domain>
         <domain includeSubdomains="true">10.0.2.2</domain>
         <domain includeSubdomains="true">localhost</domain>
         <domain includeSubdomains="true">127.0.0.1</domain>

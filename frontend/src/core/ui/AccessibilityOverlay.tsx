@@ -1,11 +1,19 @@
 /**
  * Shared Accessibility Overlay — PetalPath Core UI
  * Renders accessibility controls & screen reader instructions for activities.
+ *
+ * Redesign notes (spec §7, §28): the two hand-rolled `TouchableOpacity` +
+ * Ionicons controls are now `IconButton`s from the design system, so they match
+ * every other floating control in the app and inherit its touch target and
+ * pressed state. The container keeps its screen-reader header role — on the
+ * drag & drop board neither callback is supplied, and the overlay's only job
+ * there is to announce the activity instruction.
  */
 
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { View, StyleSheet } from 'react-native';
+import { spacing } from '../../theme';
+import { IconButton } from '../../components/design';
 import { AccessibilityService } from '../accessibility/accessibilityService';
 
 export interface AccessibilityOverlayProps {
@@ -33,27 +41,25 @@ export const AccessibilityOverlay: React.FC<AccessibilityOverlayProps> = ({
       accessibilityLabel={`Activity Instruction: ${displayInstruction}`}
     >
       {onReadInstruction && (
-        <TouchableOpacity
+        <IconButton
+          icon="sound"
+          variant="surface"
+          tone="brand"
+          size="sm"
           onPress={onReadInstruction}
-          style={styles.btn}
           accessibilityLabel="Read instruction aloud"
-        >
-          <Ionicons name="volume-high-outline" size={22} color="#4B5563" />
-        </TouchableOpacity>
+        />
       )}
 
       {onToggleHighContrast && (
-        <TouchableOpacity
+        <IconButton
+          icon="settings"
+          variant={highContrast ? 'solid' : 'surface'}
+          tone="purple"
+          size="sm"
           onPress={onToggleHighContrast}
-          style={[styles.btn, highContrast && styles.btnActive]}
           accessibilityLabel="Toggle high contrast mode"
-        >
-          <Ionicons
-            name="contrast-outline"
-            size={22}
-            color={highContrast ? '#8B5CF6' : '#4B5563'}
-          />
-        </TouchableOpacity>
+        />
       )}
     </View>
   );
@@ -62,28 +68,10 @@ export const AccessibilityOverlay: React.FC<AccessibilityOverlayProps> = ({
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
-    top: 12,
-    right: 12,
+    top: spacing.sm,
+    right: spacing.sm,
     flexDirection: 'row',
-    gap: 8,
+    gap: spacing.xs,
     zIndex: 100,
-  },
-  btn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  btnActive: {
-    backgroundColor: '#EDE9FE',
-    borderWidth: 2,
-    borderColor: '#8B5CF6',
   },
 });

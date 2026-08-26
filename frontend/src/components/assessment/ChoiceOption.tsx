@@ -49,7 +49,7 @@ export const ChoiceOption: React.FC<Props> = ({
             iconName = 'checkmark-circle-outline';
           }
         } else if (isSelected) {
-          borderColor = colors.purple;
+          borderColor = colors.primary;
           backgroundColor = colors.surfaceSecondary;
         }
 

@@ -196,7 +196,7 @@ export const ParentDashboardScreen: React.FC = () => {
         contentContainerStyle={styles.scrollContainer}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.purple} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
         }
       >
         <ChildSwitcher
@@ -276,7 +276,7 @@ export const ParentDashboardScreen: React.FC = () => {
                 <Ionicons
                   name={action.icon}
                   size={24}
-                  color={action.disabled ? colors.textMuted : colors.purple}
+                  color={action.disabled ? colors.textMuted : colors.primary}
                 />
               </View>
               <Text style={[styles.quickLabel, action.disabled && styles.quickLabelDisabled]}>

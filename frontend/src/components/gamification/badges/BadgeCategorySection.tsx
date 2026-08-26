@@ -42,7 +42,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     paddingHorizontal: spacing.xs,
     borderLeftWidth: 4,
-    borderLeftColor: colors.purple,
+    borderLeftColor: colors.primary,
     paddingLeft: spacing.sm,
   },
   title: {

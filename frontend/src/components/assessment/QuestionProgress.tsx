@@ -20,7 +20,7 @@ export const QuestionProgress: React.FC<Props> = ({
     <View style={styles.container}>
       <ProgressBar
         progress={progress}
-        color={colors.purple}
+        color={colors.primary}
         showPercentage
       />
       <Text style={styles.stats}>

@@ -86,6 +86,13 @@ export interface DropZoneVisualState {
   labelText?: string;
   labelLocalizationKey?: string;
   targetContent?: string;
+  /**
+   * Point size for the ghost label drawn inside the zone. Generated specs compute
+   * this to fit the zone's own dimensions; when it is absent `DropZoneView`
+   * measures a fallback. It used to be a hardcoded 72 in the renderer, which fits
+   * a single letter and overflows any real word.
+   */
+  fontSize?: number;
 }
 
 export interface DropZoneSnapping {

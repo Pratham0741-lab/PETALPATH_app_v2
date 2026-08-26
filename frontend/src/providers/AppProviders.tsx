@@ -8,8 +8,6 @@ import { ErrorBoundary } from '../components/common/ErrorBoundary';
 import { OfflineBanner } from '../components/common/OfflineBanner';
 import { PendingSyncIndicator } from '../components/common/PendingSyncIndicator';
 
-const IS_DEV = typeof __DEV__ !== 'undefined' ? __DEV__ : false;
-
 export const AppProviders: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return (
     <SafeAreaProvider>
@@ -18,9 +16,7 @@ export const AppProviders: React.FC<{ children: React.ReactNode }> = ({ children
           <AuthProvider>
             <View style={styles.root}>
               <OfflineBanner />
-              <View style={styles.syncRow}>
-                <PendingSyncIndicator />
-              </View>
+              <PendingSyncIndicator />
               <ErrorBoundary>
                 {children}
               </ErrorBoundary>
@@ -35,9 +31,5 @@ export const AppProviders: React.FC<{ children: React.ReactNode }> = ({ children
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-  },
-  syncRow: {
-    alignItems: 'center',
-    paddingVertical: 4,
   },
 });

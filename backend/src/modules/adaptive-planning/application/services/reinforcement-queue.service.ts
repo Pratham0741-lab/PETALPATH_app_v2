@@ -2,6 +2,7 @@ import { ReinforcementQueue } from '../../domain/entities/reinforcement-queue.en
 import { IReinforcementQueueRepository } from '../../domain/repositories/repository-interfaces.js';
 import { ReinforcementQueueStatus } from '../../domain/value-objects/planning-types.js';
 import { Modality } from '../../../adaptive-learning/domain/value-objects/event-types.js';
+import { cadenceDaysFor, nextReviewDateFor } from '../../../mastery/review-cadence.js';
 
 export class ReinforcementQueueService {
   constructor(private readonly reinforcementQueueRepo: IReinforcementQueueRepository) {}
@@ -78,33 +79,38 @@ export class ReinforcementQueueService {
     return this.reinforcementQueueRepo.update(resumed);
   }
 
+  /**
+   * The third copy of the cadence table used to live here, as a private literal
+   * map plus a `now + N × 86_400_000`. `/v1/adaptive-planning` is mounted, so it
+   * was reachable — two modules answering "when does this come back?" with
+   * different code. Both now delegate to `modules/mastery/review-cadence.ts`,
+   * which also schedules to the start of a local day.
+   *
+   * This module's own status vocabulary (`NEEDS_PRACTICE`, `STABLE`,
+   * `REINFORCEMENT`) is listed in `unified.review.cadenceDaysByState` alongside
+   * the `MasteryState` values, so nothing changes for those callers.
+   */
   private calculateNextReviewDate(masteryState: string): Date {
-    const now = new Date();
-    const frequencyDays = this.calculateFrequencyDays(masteryState);
-    return new Date(now.getTime() + frequencyDays * 24 * 60 * 60 * 1000);
+    return nextReviewDateFor(masteryState).nextReviewDate;
   }
 
   private calculateFrequencyDays(masteryState: string): number {
-    const frequencies: Record<string, number> = {
-      'WEAK': 1,
-      'STRONG': 2,
-      'MASTERED': 3,
-      'NEW': 1,
-      'LEARNING': 1,
-      'NEEDS_PRACTICE': 1,
-      'STABLE': 2,
-      'REINFORCEMENT': 2,
-    };
-    return frequencies[masteryState] || 1;
+    return cadenceDaysFor(masteryState);
   }
 
   private getRequiredReviews(masteryState: string): number {
+    /*
+     * Worst bands need the most passes. LEARNING sits *below* WEAK — under 40,
+     * against WEAK's 40-59 — so giving it 2 where WEAK got 3 asked for less
+     * practice on the skills that needed most. It now matches WEAK, which is
+     * also what the cadence table says about the pair: both come back tomorrow.
+     */
     const required: Record<string, number> = {
+      'LEARNING': 3,
       'WEAK': 3,
       'STRONG': 2,
       'MASTERED': 1,
       'NEW': 3,
-      'LEARNING': 2,
       'NEEDS_PRACTICE': 3,
       'STABLE': 2,
       'REINFORCEMENT': 2,

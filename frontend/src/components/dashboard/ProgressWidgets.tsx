@@ -50,7 +50,7 @@ export const ProgressWidgets: React.FC<ProgressWidgetsProps> = ({
   }
 
   const widgets: WidgetItem[] = [
-    ...(typeof overallProgress === 'number' ? [{ label: 'Overall Progress', value: `${overallProgress}%`, icon: 'pie-chart' as const, color: colors.purple }] : []),
+    ...(typeof overallProgress === 'number' ? [{ label: 'Overall Progress', value: `${overallProgress}%`, icon: 'pie-chart' as const, color: colors.primary }] : []),
     ...(typeof curriculumCompletion === 'number' ? [{ label: 'Curriculum', value: `${curriculumCompletion}%`, icon: 'book' as const, color: colors.blue }] : []),
     ...(typeof currentMastery === 'number' ? [{ label: 'Mastery', value: `${currentMastery}%`, icon: 'trophy' as const, color: colors.success }] : []),
     ...(typeof xp === 'number' ? [{ label: 'Total XP', value: xp, icon: 'flash' as const, color: colors.accent }] : []),

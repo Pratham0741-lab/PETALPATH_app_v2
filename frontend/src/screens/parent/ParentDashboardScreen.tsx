@@ -1,14 +1,12 @@
 import React, { useCallback, useState } from 'react';
 import {
-  StyleSheet,
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
   RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
   useWindowDimensions,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useChildStore } from '../../store/childStore';
 import {
@@ -17,39 +15,82 @@ import {
   useCurriculumInsights,
   useAnalyticsRewards,
 } from '../../hooks/useParentAnalytics';
-import { ProgressSummaryCard } from '../../components/analytics/ProgressSummaryCard';
-import { CurriculumProgressCard } from '../../components/analytics/CurriculumProgressCard';
-import { WeeklyLearningCard } from '../../components/analytics/WeeklyLearningCard';
-import { MonthlyLearningCard } from '../../components/analytics/MonthlyLearningCard';
-import { ConsistencyCard } from '../../components/analytics/ConsistencyCard';
-import { LearningTimeCard } from '../../components/analytics/LearningTimeCard';
-import { BarChart } from '../../components/charts/BarChart';
-import { ScreenContainer } from '../../components/common/ScreenContainer';
-import { ErrorState } from '../../components/common/ErrorState';
-import { EmptyState } from '../../components/common/EmptyState';
-import { Card } from '../../components/ui/Card';
-import { Skeleton } from '../../components/ui/Skeleton';
-import { colors, spacing, typography, radius, shadows, breakpoints } from '../../theme';
-import type { OverviewMetrics, ActivitySeries, CurriculumInsight, RewardsSummary } from '../../services/api/analyticsApi';
+import {
+  AppShell,
+  AvatarGlyph,
+  Card,
+  IconWell,
+  PageHeader,
+  ParentRow,
+  ParentSection,
+  PetalIcon,
+  SegmentedTabs,
+} from '../../components/design';
+import type { PetalIconName, SegmentedTabItem } from '../../components/design';
+import {
+  ActivityBucketsCard,
+  ConsistencyCard,
+  CurriculumProgressCard,
+  DataSection,
+  LearningTimeCard,
+  MonthlyLearningCard,
+  ProgressSummaryCard,
+  WeeklyLearningCard,
+} from '../../components/analytics';
+import { colors, spacing, typography, cardSizes, breakpoints, layoutSizes } from '../../theme';
+import type {
+  OverviewMetrics,
+  ActivitySeries,
+  CurriculumInsight,
+  RewardsSummary,
+} from '../../services/api/analyticsApi';
+
+/**
+ * Parent Dashboard (spec §26).
+ *
+ * The grown-up entrance to everything the app knows about a child's learning.
+ * Same tokens and surfaces as the child-facing screens, but calmer: no
+ * illustrations, data before decoration, a light petal layer rather than the
+ * normal one.
+ *
+ * Every hook, derived figure and destination is unchanged from the version this
+ * replaces — what changed is that the screen now composes `AppShell`,
+ * `PageHeader`, `DataSection` and the shared analytics cards instead of a
+ * `ScreenContainer`, seven Ionicons and its own tab strip (§28).
+ */
 
 type PeriodTab = 'daily' | 'weekly' | 'monthly';
 
-const PERIOD_TABS: PeriodTab[] = ['daily', 'weekly', 'monthly'];
+const PERIOD_ITEMS: SegmentedTabItem<PeriodTab>[] = [
+  { key: 'daily', label: 'Daily' },
+  { key: 'weekly', label: 'Weekly' },
+  { key: 'monthly', label: 'Monthly' },
+];
 
 interface QuickLink {
   key: string;
   label: string;
-  icon: React.ComponentProps<typeof Ionicons>['name'];
+  icon: PetalIconName;
   screen: string;
+  /** Read out after the label, so the tile says what it opens. */
+  hint: string;
 }
 
 const QUICK_LINKS: QuickLink[] = [
-  { key: 'analytics', label: 'Analytics', icon: 'bar-chart', screen: 'Analytics' },
-  { key: 'skillMastery', label: 'Skill Mastery', icon: 'school', screen: 'SkillMastery' },
-  { key: 'learningHistory', label: 'Learning History', icon: 'time', screen: 'LearningHistory' },
-  { key: 'weeklyReport', label: 'Weekly Report', icon: 'calendar', screen: 'WeeklyReport' },
-  { key: 'monthlyReport', label: 'Monthly Report', icon: 'calendar', screen: 'MonthlyReport' },
-  { key: 'curriculum', label: 'Curriculum Insights', icon: 'book', screen: 'CurriculumInsights' },
+  { key: 'analytics', label: 'Analytics', icon: 'chart', screen: 'Analytics', hint: 'Charts and trends over time' },
+  { key: 'skillMastery', label: 'Skill Mastery', icon: 'medal', screen: 'SkillMastery', hint: 'Progress on each skill' },
+  /*
+   * The practice queue had no way in. It has been registered in the navigator
+   * all along, but nothing navigated to it, so the one screen that explains why
+   * the app keeps re-offering lessons was unreachable. It sits next to Skill
+   * Mastery deliberately: that tile says where each skill stands, this one says
+   * what the engine is doing about it.
+   */
+  { key: 'practice', label: 'Practice Queue', icon: 'replay', screen: 'ReinforcementQueue', hint: 'What needs another go, and why' },
+  { key: 'learningHistory', label: 'Learning History', icon: 'clock', screen: 'LearningHistory', hint: 'Everything completed, newest first' },
+  { key: 'weeklyReport', label: 'Weekly Report', icon: 'calendar', screen: 'WeeklyReport', hint: 'This week at a glance' },
+  { key: 'monthlyReport', label: 'Monthly Report', icon: 'calendar', screen: 'MonthlyReport', hint: 'This month at a glance' },
+  { key: 'curriculum', label: 'Curriculum Insights', icon: 'book', screen: 'CurriculumInsights', hint: 'Where your child is in the curriculum' },
 ];
 
 export const ParentDashboardScreen: React.FC = () => {
@@ -117,255 +158,268 @@ export const ParentDashboardScreen: React.FC = () => {
   const currentActivityLoading = activityLoadingMap[selectedPeriod];
   const currentActivityError = activityErrorMap[selectedPeriod];
   const currentActivityRefetch = activityRefetchMap[selectedPeriod];
+  const buckets = currentActivity?.buckets ?? [];
+
+  const hasAchievements =
+    !!rewardsData && (rewardsData.badges.items.length > 0 || rewardsData.stickers.items.length > 0);
 
   return (
-    <ScreenContainer>
-      <ScrollView
-        contentContainerStyle={[
-          styles.scrollContainer,
-          isTabletOrDesktop && styles.scrollContainerTablet,
-        ]}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
-        }
+    <AppShell
+      petals="light"
+      header={<PageHeader title="Parent Dashboard" subtitle="Progress, time and rewards" centered={false} />}
+      contentContainerStyle={isTabletOrDesktop ? styles.contentTablet : undefined}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
+      }
+    >
+      <DataSection
+        title="Child Overview"
+        icon="profile"
+        boxed
+        empty={!activeChild}
+        emptyTitle="No child selected"
+        emptyMessage="Select a child to view their dashboard."
+        emptyIcon="profile"
       >
-        <View style={styles.header} accessibilityRole="header">
-          <Ionicons name="bar-chart" size={28} color={colors.primary} />
-          <Text style={styles.headerTitle}>Parent Dashboard</Text>
-        </View>
-
-        <Card style={styles.section} accessibilityLabel="Child overview">
-          <Text style={styles.sectionTitle}>Child Overview</Text>
-          {activeChild ? (
+        {activeChild ? (
+          <View>
             <View style={styles.childRow}>
-              <Ionicons name="person-circle" size={48} color={colors.primary} />
+              <AvatarGlyph
+                species={activeChild.avatar}
+                size={56}
+                ringColor={colors.primary}
+                accessibilityLabel={`${activeChild.name}'s avatar`}
+              />
               <View style={styles.childInfo}>
-                <Text style={styles.childName}>{activeChild.name}</Text>
-                <Text style={styles.childDetail}>
+                <Text style={typography.presets.cardTitle}>{activeChild.name}</Text>
+                <Text style={[typography.presets.caption, styles.muted]}>
                   Age {activeChild.age}
-                  {activeChild.ageGroup ? ` \u00B7 ${activeChild.ageGroup}` : ''}
+                  {activeChild.ageGroup ? ` · ${activeChild.ageGroup}` : ''}
                 </Text>
               </View>
             </View>
-          ) : (
-            <EmptyState title="No child selected" message="Select a child to view their dashboard." />
-          )}
-        </Card>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Overall Completion</Text>
-          {overview.isLoading ? (
-            <Skeleton variant="card" />
-          ) : overview.error ? (
-            <ErrorState
-              title="Could not load completion data"
-              message={overview.error.message}
-              onRetry={() => overview.refetch()}
-            />
-          ) : overviewData ? (
-            <ProgressSummaryCard
-              completionPercentage={overviewData.completionPercentage}
-              lessonsCompleted={overviewData.lessonsCompleted}
-            />
-          ) : (
-            <EmptyState title="No data yet" message="Complete lessons to see progress." />
-          )}
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Current Curriculum</Text>
-          {curriculum.isLoading ? (
-            <Skeleton variant="card" />
-          ) : curriculum.error ? (
-            <ErrorState
-              title="Could not load curriculum"
-              message={curriculum.error.message}
-              onRetry={() => curriculum.refetch()}
-            />
-          ) : curriculumData ? (
-            <CurriculumProgressCard
-              modulesCompleted={curriculumData.modulesCompleted}
-              modulesTotal={curriculumData.modulesCompleted + curriculumData.modulesRemaining}
-              lessonsCompleted={curriculumData.lessonsCompleted}
-              lessonsTotal={curriculumData.lessonsCompleted + curriculumData.lessonsRemaining}
-            />
-          ) : (
-            <EmptyState title="No curriculum data" message="Curriculum insights will appear here." />
-          )}
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Progress</Text>
-          <View style={styles.periodTabs} accessibilityRole="tablist">
-            {PERIOD_TABS.map((period) => {
-              const isSelected = period === selectedPeriod;
-              return (
-                <TouchableOpacity
-                  key={period}
-                  style={[styles.periodTab, isSelected && styles.periodTabActive]}
-                  onPress={() => setSelectedPeriod(period)}
-                  accessibilityRole="tab"
-                  accessibilityState={{ selected: isSelected }}
-                  accessibilityLabel={`${period} view`}
-                >
-                  <Text style={[styles.periodTabLabel, isSelected && styles.periodTabLabelActive]}>
-                    {period.charAt(0).toUpperCase() + period.slice(1)}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
+            {activeChild.mentor ? (
+              <ParentRow
+                label="Mentor"
+                value={activeChild.mentor.name}
+                icon="mentors"
+                iconColor={colors.secondary}
+                divided
+                style={styles.mentorRow}
+              />
+            ) : null}
           </View>
-          {currentActivityLoading ? (
-            <Skeleton variant="card" />
-          ) : currentActivityError ? (
-            <ErrorState
-              title="Could not load activity"
-              message={currentActivityError.message}
-              onRetry={currentActivityRefetch}
-            />
-          ) : currentActivity ? (
-            <>
-              {selectedPeriod === 'weekly' ? (
-                <WeeklyLearningCard buckets={currentActivity.buckets} />
-              ) : selectedPeriod === 'monthly' ? (
-                <MonthlyLearningCard buckets={currentActivity.buckets} />
-              ) : null}
-              <View style={styles.chartContainer}>
-                <BarChart data={currentActivity.buckets.map((b) => ({ label: b.label, value: b.total }))} />
-              </View>
-            </>
-          ) : (
-            <EmptyState title="No activity data" message="Activity data will appear once lessons are completed." />
-          )}
-        </View>
+        ) : null}
+      </DataSection>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Learning Streak</Text>
-          {overview.isLoading ? (
-            <Skeleton variant="card" />
-          ) : overview.error ? (
-            <ErrorState
-              title="Could not load streak data"
-              message={overview.error.message}
-              onRetry={() => overview.refetch()}
-            />
-          ) : overviewData ? (
-            <ConsistencyCard
-              score={overviewData.completionPercentage}
-              currentStreak={Math.max(1, Math.floor(overviewData.lessonsCompleted / 3))}
-              longestStreak={Math.max(1, Math.floor(overviewData.lessonsCompleted / 2))}
-            />
-          ) : (
-            <EmptyState title="No streak data" message="Start a streak by completing daily lessons." />
-          )}
-        </View>
+      <DataSection
+        title="Overall Completion"
+        icon="chart"
+        loading={overview.isLoading}
+        error={overview.error}
+        errorTitle="Could not load completion data"
+        onRetry={() => overview.refetch()}
+        empty={!overviewData}
+        emptyTitle="No data yet"
+        emptyMessage="Complete lessons to see progress."
+        emptyIcon="chart"
+      >
+        <ProgressSummaryCard
+          loading={overview.isLoading}
+          completionPercentage={overviewData?.completionPercentage ?? 0}
+          lessonsCompleted={overviewData?.lessonsCompleted ?? 0}
+        />
+      </DataSection>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Learning Time</Text>
-          {overview.isLoading ? (
-            <Skeleton variant="card" />
-          ) : overview.error ? (
-            <ErrorState
-              title="Could not load learning time"
-              message={overview.error.message}
-              onRetry={() => overview.refetch()}
-            />
-          ) : overviewData ? (
-            <LearningTimeCard
-              dailyMinutes={Math.round(overviewData.totalLearningMinutes / 30)}
-              weeklyMinutes={Math.round(overviewData.totalLearningMinutes / 4)}
-              monthlyMinutes={overviewData.totalLearningMinutes}
-              averageSessionMinutes={Math.round(overviewData.totalLearningMinutes / Math.max(1, overviewData.lessonsCompleted))}
-            />
-          ) : (
-            <EmptyState title="No time data" message="Learning time will appear after completing lessons." />
-          )}
-        </View>
+      <DataSection
+        title="Current Curriculum"
+        icon="book"
+        loading={curriculum.isLoading}
+        error={curriculum.error}
+        errorTitle="Could not load curriculum"
+        onRetry={() => curriculum.refetch()}
+        empty={!curriculumData}
+        emptyTitle="No curriculum data"
+        emptyMessage="Curriculum insights will appear here."
+        emptyIcon="book"
+      >
+        <CurriculumProgressCard
+          loading={curriculum.isLoading}
+          modulesCompleted={curriculumData?.modulesCompleted ?? 0}
+          modulesTotal={(curriculumData?.modulesCompleted ?? 0) + (curriculumData?.modulesRemaining ?? 0)}
+          lessonsCompleted={curriculumData?.lessonsCompleted ?? 0}
+          lessonsTotal={(curriculumData?.lessonsCompleted ?? 0) + (curriculumData?.lessonsRemaining ?? 0)}
+        />
+      </DataSection>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Recent Achievements</Text>
-          {rewards.isLoading ? (
-            <Skeleton variant="card" />
-          ) : rewards.error ? (
-            <ErrorState
-              title="Could not load achievements"
-              message={rewards.error.message}
-              onRetry={() => rewards.refetch()}
-            />
-          ) : rewardsData && (rewardsData.badges.items.length > 0 || rewardsData.stickers.items.length > 0) ? (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.achievementScroll}>
-              {rewardsData.badges.items.map((badge) => (
-                <View key={`badge-${badge.id}`} style={styles.achievementChip} accessibilityLabel={`Badge: ${badge.name}`}>
-                  <Ionicons name="shield-checkmark" size={20} color={colors.accent} />
-                  <Text style={styles.achievementLabel}>{badge.name}</Text>
-                </View>
-              ))}
-              {rewardsData.stickers.items.map((sticker) => (
-                <View key={`sticker-${sticker.id}`} style={styles.achievementChip} accessibilityLabel={`Sticker: ${sticker.name}`}>
-                  <Ionicons name="star" size={20} color={colors.secondary} />
-                  <Text style={styles.achievementLabel}>{sticker.name}</Text>
-                </View>
-              ))}
-            </ScrollView>
-          ) : (
-            <EmptyState title="No achievements yet" message="Earn badges and stickers by completing lessons." />
-          )}
-        </View>
+      <DataSection
+        title="Progress"
+        icon="chart"
+        loading={currentActivityLoading}
+        error={currentActivityError}
+        errorTitle="Could not load activity"
+        onRetry={currentActivityRefetch}
+        empty={buckets.length === 0}
+        emptyTitle="No activity data"
+        emptyMessage="Activity data will appear once lessons are completed."
+        emptyIcon="calendar"
+        controls={
+          <SegmentedTabs
+            items={PERIOD_ITEMS}
+            selected={selectedPeriod}
+            onSelect={setSelectedPeriod}
+            accessibilityLabel="Activity period"
+          />
+        }
+      >
+        {/* One card per period rather than a card *and* a loose duplicate chart
+            below it, which is what the previous version drew. */}
+        {selectedPeriod === 'weekly' ? (
+          <WeeklyLearningCard buckets={buckets} loading={currentActivityLoading} />
+        ) : selectedPeriod === 'monthly' ? (
+          <MonthlyLearningCard buckets={buckets} loading={currentActivityLoading} />
+        ) : (
+          <ActivityBucketsCard
+            title="Day by Day"
+            icon="calendar"
+            buckets={buckets}
+            totalNoun="activities"
+            loading={currentActivityLoading}
+          />
+        )}
+      </DataSection>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Quick Links</Text>
-          <View style={styles.quickGrid}>
-            {QUICK_LINKS.map((link) => (
-              <TouchableOpacity
-                key={link.key}
-                style={styles.quickItem}
+      <DataSection
+        title="Learning Streak"
+        icon="flame"
+        loading={overview.isLoading}
+        error={overview.error}
+        errorTitle="Could not load streak data"
+        onRetry={() => overview.refetch()}
+        empty={!overviewData}
+        emptyTitle="No streak data"
+        emptyMessage="Start a streak by completing daily lessons."
+        emptyIcon="flame"
+      >
+        <ConsistencyCard
+          loading={overview.isLoading}
+          score={overviewData?.completionPercentage ?? 0}
+          currentStreak={Math.max(1, Math.floor((overviewData?.lessonsCompleted ?? 0) / 3))}
+          longestStreak={Math.max(1, Math.floor((overviewData?.lessonsCompleted ?? 0) / 2))}
+        />
+      </DataSection>
+
+      <DataSection
+        title="Learning Time"
+        icon="clock"
+        loading={overview.isLoading}
+        error={overview.error}
+        errorTitle="Could not load learning time"
+        onRetry={() => overview.refetch()}
+        empty={!overviewData}
+        emptyTitle="No time data"
+        emptyMessage="Learning time will appear after completing lessons."
+        emptyIcon="clock"
+      >
+        <LearningTimeCard
+          loading={overview.isLoading}
+          dailyMinutes={Math.round((overviewData?.totalLearningMinutes ?? 0) / 30)}
+          weeklyMinutes={Math.round((overviewData?.totalLearningMinutes ?? 0) / 4)}
+          monthlyMinutes={overviewData?.totalLearningMinutes ?? 0}
+          averageSessionMinutes={Math.round(
+            (overviewData?.totalLearningMinutes ?? 0) / Math.max(1, overviewData?.lessonsCompleted ?? 0),
+          )}
+        />
+      </DataSection>
+
+      <DataSection
+        title="Recent Achievements"
+        icon="trophy"
+        loading={rewards.isLoading}
+        error={rewards.error}
+        errorTitle="Could not load achievements"
+        onRetry={() => rewards.refetch()}
+        empty={!hasAchievements}
+        emptyTitle="No achievements yet"
+        emptyMessage="Earn badges and stickers by completing lessons."
+        emptyIcon="trophy"
+      >
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.chipRow}
+        >
+          {rewardsData?.badges.items.map((badge) => (
+            <AchievementChip key={`badge-${badge.id}`} kind="Badge" name={badge.name} icon="medal" color={colors.accent} />
+          ))}
+          {rewardsData?.stickers.items.map((sticker) => (
+            <AchievementChip key={`sticker-${sticker.id}`} kind="Sticker" name={sticker.name} icon="star" color={colors.secondary} />
+          ))}
+        </ScrollView>
+      </DataSection>
+
+      <ParentSection title="Quick Links" icon="parent" boxed={false}>
+        <View style={styles.quickGrid}>
+          {QUICK_LINKS.map((link) => (
+            // The tile carries the flex sizing rather than the Card, because an
+            // interactive Card puts its own animated wrapper between the two.
+            <View key={link.key} style={styles.quickTile}>
+              <Card
                 onPress={() => navigation.navigate(link.screen)}
-                accessibilityRole="button"
                 accessibilityLabel={link.label}
+                accessibilityHint={link.hint}
+                contentStyle={styles.quickInner}
+                style={styles.quickCard}
               >
-                <View style={styles.quickIconWrap}>
-                  <Ionicons name={link.icon} size={24} color={colors.primary} />
-                </View>
-                <Text style={styles.quickLabel}>{link.label}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+                <IconWell
+                  icon={link.icon}
+                  color={colors.primary}
+                  soft={colors.primaryLight}
+                  size={cardSizes.iconWellSmall}
+                />
+                <Text style={[typography.presets.cardTitle, styles.quickLabel]} numberOfLines={2}>
+                  {link.label}
+                </Text>
+              </Card>
+            </View>
+          ))}
         </View>
-      </ScrollView>
-    </ScreenContainer>
+      </ParentSection>
+    </AppShell>
   );
 };
 
+/**
+ * One earned badge or sticker. The kind is spoken as well as drawn, so a badge
+ * and a sticker are not told apart by icon colour alone (§30).
+ */
+const AchievementChip: React.FC<{
+  kind: string;
+  name: string;
+  icon: PetalIconName;
+  color: string;
+}> = ({ kind, name, icon, color }) => (
+  <Card variant="flat" padding="compact">
+    <View style={styles.chipInner} accessible accessibilityLabel={`${kind}: ${name}`}>
+      <PetalIcon name={icon} size={18} color={color} />
+      <Text style={[typography.presets.caption, styles.chipLabel]} numberOfLines={1}>
+        {name}
+      </Text>
+    </View>
+  </Card>
+);
+
 const styles = StyleSheet.create({
-  scrollContainer: {
-    padding: spacing.lg,
-    paddingBottom: spacing.xxxl,
-  },
-  scrollContainerTablet: {
-    maxWidth: 720,
+  contentTablet: {
+    maxWidth: layoutSizes.report,
     alignSelf: 'center',
+    width: '100%',
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: spacing.xl,
-    gap: spacing.sm,
+  muted: {
+    color: colors.textSecondary,
   },
-  headerTitle: {
-    fontSize: typography.sizes.xxl,
-    fontWeight: typography.weights.bold,
-    color: colors.text,
-  },
-  section: {
-    marginBottom: spacing.xl,
-  },
-  sectionTitle: {
-    fontSize: typography.sizes.lg,
-    fontWeight: typography.weights.bold,
-    color: colors.text,
-    marginBottom: spacing.sm,
-  },
+
+  // ------------------------------------------------------------ child overview
   childRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -373,92 +427,52 @@ const styles = StyleSheet.create({
   },
   childInfo: {
     flex: 1,
+    minWidth: 0,
   },
-  childName: {
-    fontSize: typography.sizes.xl,
-    fontWeight: typography.weights.bold,
-    color: colors.text,
+  mentorRow: {
+    marginTop: spacing.sm,
   },
-  childDetail: {
-    fontSize: typography.sizes.sm,
-    color: colors.textSecondary,
-    marginTop: spacing.xs,
-  },
-  periodTabs: {
+
+  // ------------------------------------------------------------- achievements
+  chipRow: {
     flexDirection: 'row',
-    backgroundColor: colors.surfaceSecondary,
-    borderRadius: radius.lg,
-    padding: spacing.xs,
-    marginBottom: spacing.md,
+    gap: spacing.sm,
+    paddingRight: spacing.lg,
   },
-  periodTab: {
-    flex: 1,
-    paddingVertical: spacing.sm,
-    alignItems: 'center',
-    borderRadius: radius.md,
-  },
-  periodTabActive: {
-    backgroundColor: colors.primary,
-  },
-  periodTabLabel: {
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.medium,
-    color: colors.textSecondary,
-  },
-  periodTabLabelActive: {
-    color: colors.textInverse,
-    fontWeight: typography.weights.bold,
-  },
-  chartContainer: {
-    marginTop: spacing.md,
-  },
-  achievementScroll: {
-    flexDirection: 'row',
-  },
-  achievementChip: {
+  chipInner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.surfaceSecondary,
-    borderRadius: radius.chip,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    marginRight: spacing.sm,
     gap: spacing.xs,
   },
-  achievementLabel: {
-    fontSize: typography.sizes.sm,
+  chipLabel: {
     color: colors.text,
-    fontWeight: typography.weights.medium,
+    fontWeight: '700',
+    maxWidth: 180,
   },
+
+  // -------------------------------------------------------------- quick links
   quickGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: spacing.md,
+    gap: cardSizes.gap,
   },
-  quickItem: {
-    width: '47%',
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    padding: spacing.lg,
-    alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    ...shadows.sm,
+  quickTile: {
+    // Two per row at 360px, three from ~600px up — no hardcoded widths (§27).
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: 140,
   },
-  quickIconWrap: {
-    width: 48,
-    height: 48,
-    borderRadius: radius.full,
-    backgroundColor: colors.background,
-    justifyContent: 'center',
+  quickCard: {
+    height: '100%',
+  },
+  quickInner: {
     alignItems: 'center',
-    marginBottom: spacing.sm,
+    gap: spacing.sm,
   },
   quickLabel: {
-    fontSize: typography.sizes.xs,
     color: colors.text,
     textAlign: 'center',
-    fontWeight: typography.weights.bold,
   },
-
 });
+
+export default ParentDashboardScreen;

@@ -106,7 +106,19 @@ export class SkillRoadmapService {
         } else {
           masteredSection.push(roadmapSkill);
         }
-      } else if (reviewSkillIds.has(skillId) || (health?.masteryState === 'WEAK')) {
+      } else if (
+        reviewSkillIds.has(skillId) ||
+        /*
+         * Both of the bands below the pass mark, not just WEAK. LEARNING is
+         * under 40 and WEAK is 40-59 — so testing WEAK alone sent a skill the
+         * child was scoring 50 on into the review section while one they were
+         * scoring 30 on was left in "available" as though it were untouched.
+         * NEW is deliberately not here: it means nothing has been measured yet,
+         * which is a lesson to start rather than a result to revisit.
+         */
+        health?.masteryState === 'LEARNING' ||
+        health?.masteryState === 'WEAK'
+      ) {
         roadmapSkill.reason = this.computeReviewReason(health, reviewSkillIds.has(skillId));
         reviewSection.push(roadmapSkill);
       } else if (curriculumState === 'AVAILABLE') {
@@ -378,8 +390,13 @@ export class SkillRoadmapService {
   ): string {
     if (inQueue) return 'Pending revision — reinforcement scheduled';
     if (!health) return 'Unknown state';
+    /*
+     * Worst first, and worded that way round. LEARNING is the band below WEAK,
+     * so "still learning — continued practice recommended" was the gentlest
+     * sentence in this function attached to its most worrying score.
+     */
+    if (health.masteryState === 'LEARNING') return 'Well below the pass mark — needs teaching again';
     if (health.masteryState === 'WEAK') return 'Weak mastery — needs practice';
-    if (health.masteryState === 'LEARNING') return 'Still learning — continued practice recommended';
     if (health.masteryState === 'STRONG' || health.masteryState === 'MASTERED') return 'Due for maintenance review';
     return 'Review recommended';
   }
@@ -415,12 +432,21 @@ export class SkillRoadmapService {
   }): number {
     let score = 0;
 
+    /*
+     * Band weights, worst first. LEARNING outranks WEAK because it is the lower
+     * band, not the milder-sounding one: `masteryStateFor` puts everything below
+     * 40 in LEARNING and 40-59 in WEAK. This ladder had the two the other way
+     * round, so the skills a child was struggling with most sorted *below* the
+     * ones they were merely shaky on. WEAK keeps its 200 and LEARNING takes the
+     * step above it, so only the relative order changes and nothing that was
+     * already tuned against these numbers moves.
+     */
     if (params.curriculumState === 'COMPLETED') {
       score += params.reviewUrgency;
+    } else if (params.masteryState === 'LEARNING') {
+      score += 250;
     } else if (params.masteryState === 'WEAK') {
       score += 200;
-    } else if (params.masteryState === 'LEARNING') {
-      score += 150;
     } else if (params.masteryState === 'STRONG') {
       score += 50;
     } else if (params.masteryState === 'MASTERED') {

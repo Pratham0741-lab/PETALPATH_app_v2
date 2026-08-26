@@ -1,27 +1,55 @@
-import React, { useCallback } from 'react';
-import {
-  View,
-  Text,
-  ScrollView,
-  RefreshControl,
-  StyleSheet,
-} from 'react-native';
+import React, { useCallback, useMemo } from 'react';
+import { RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import { Ionicons } from '@expo/vector-icons';
-import { ScreenContainer } from '../../components/common/ScreenContainer';
-import { TopBar } from '../../components/navigation/TopBar';
 import { ErrorState } from '../../components/common/ErrorState';
 import { EmptyState } from '../../components/common/EmptyState';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
-import { LessonNode } from '../../components/roadmap/LessonNode';
 import { useRoadmap } from '../../hooks/useLearningQueries';
 import { toUserMessage } from '../../api/errors';
 import type { ApiResponse } from '../../types/api';
 import type { Category, Module, Lesson } from '../../store/roadmapStore';
-import { colors, spacing, typography, radius, iconSizes } from '../../theme';
+import { colors, spacing, typography, cardSizes } from '../../theme';
+import {
+  AppShell,
+  Card,
+  LessonCard,
+  LessonStatus,
+  PageHeader,
+  PetalIcon,
+  ProgressIndicator,
+  Stat,
+  StatGrid,
+} from '../../components/design';
+
+/**
+ * Module detail — the lessons inside one module.
+ *
+ * Behaviour is unchanged: `useRoadmap()` is still the only data source, the
+ * module and its category are still found by scanning the roadmap, and tapping
+ * a lesson still navigates to `LessonOverview` with the lesson id. The lesson
+ * rows moved from the old `components/roadmap/LessonNode` to the design
+ * system's `LessonCard` so this screen matches Home and Explore (spec §35);
+ * the roadmap's own curvy path stays where it belongs, on Home.
+ */
 
 type ModuleRouteParams = {
   Module: { moduleId: string };
+};
+
+const lessonStatus = (lesson: Lesson): LessonStatus => {
+  if (lesson.isCompleted) return 'completed';
+  if (lesson.isUnlocked) return 'available';
+  return 'locked';
+};
+
+/** Percentage of a lesson's four activity flags that are done. */
+const lessonProgress = (lesson: Lesson): number | undefined => {
+  const p = lesson.progress;
+  if (!p) return undefined;
+  const flags = [p.videoCompleted, p.listenCompleted, p.speakCompleted, p.writeCompleted];
+  const done = flags.filter(Boolean).length;
+  if (done === 0) return undefined;
+  return Math.round((done / flags.length) * 100);
 };
 
 export const ModuleScreen: React.FC = () => {
@@ -29,14 +57,7 @@ export const ModuleScreen: React.FC = () => {
   const route = useRoute<RouteProp<ModuleRouteParams, 'Module'>>();
   const { moduleId } = route.params;
 
-  const {
-    data: rawData,
-    isLoading,
-    isError,
-    error,
-    refetch,
-    isFetching,
-  } = useRoadmap();
+  const { data: rawData, isLoading, isError, error, refetch, isFetching } = useRoadmap();
 
   const roadmapData = (rawData as ApiResponse<{ roadmap: Category[] }> | undefined)?.data;
   const categories: Category[] = roadmapData?.roadmap ?? [];
@@ -44,9 +65,8 @@ export const ModuleScreen: React.FC = () => {
   const allModules = categories.flatMap((c: Category) => c.modules);
   const module = allModules.find((m: Module) => m.id === moduleId) ?? null;
 
-  const category = categories.find((c: Category) =>
-    c.modules.some((m: Module) => m.id === moduleId),
-  ) ?? null;
+  const category =
+    categories.find((c: Category) => c.modules.some((m: Module) => m.id === moduleId)) ?? null;
 
   const handleLessonPress = useCallback(
     (lessonId: string) => {
@@ -55,21 +75,36 @@ export const ModuleScreen: React.FC = () => {
     [navigation],
   );
 
+  const stats = useMemo<Stat[]>(() => {
+    if (!module) return [];
+    const lessons = module.lessons ?? [];
+    const completed = lessons.filter((l: Lesson) => l.isCompleted).length;
+    const unlocked = lessons.filter((l: Lesson) => l.isUnlocked).length;
+    return [
+      {
+        value: `${completed}/${lessons.length}`,
+        label: 'Lessons done',
+        icon: 'check',
+        color: colors.green,
+      },
+      { value: String(unlocked), label: 'Unlocked', icon: 'play', color: colors.blue },
+      { value: String(lessons.length), label: 'Total', icon: 'book', color: colors.purple },
+    ];
+  }, [module]);
+
   if (isLoading) {
     return (
-      <ScreenContainer>
-        <TopBar title="Module" showBack />
+      <AppShell scroll={false} header={<PageHeader title="Module" />}>
         <View style={styles.center}>
-          <LoadingSpinner label="Loading module..." />
+          <LoadingSpinner label="Loading module…" />
         </View>
-      </ScreenContainer>
+      </AppShell>
     );
   }
 
   if (isError) {
     return (
-      <ScreenContainer>
-        <TopBar title="Module" showBack />
+      <AppShell scroll={false} header={<PageHeader title="Module" />}>
         <View style={styles.center}>
           <ErrorState
             title="Couldn't load module"
@@ -77,179 +112,165 @@ export const ModuleScreen: React.FC = () => {
             onRetry={refetch}
           />
         </View>
-      </ScreenContainer>
+      </AppShell>
     );
   }
 
   if (!module) {
     return (
-      <ScreenContainer>
-        <TopBar title="Module" showBack />
+      <AppShell scroll={false} header={<PageHeader title="Module" />}>
         <View style={styles.center}>
           <EmptyState
-            icon="🔍"
+            icon="search"
             title="Module not found"
             message="This module doesn't exist or has been removed."
           />
         </View>
-      </ScreenContainer>
+      </AppShell>
     );
   }
 
-  const completedCount = module.lessons.filter((l: Lesson) => l.isCompleted).length;
-  const unlockedCount = module.lessons.filter((l: Lesson) => l.isUnlocked).length;
+  const lessons = module.lessons ?? [];
+  const completed = lessons.filter((l: Lesson) => l.isCompleted).length;
+  const modulePercent = lessons.length > 0 ? Math.round((completed / lessons.length) * 100) : 0;
 
   return (
-    <ScreenContainer>
-      <TopBar title={module.title} showBack />
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={isFetching}
-            onRefresh={refetch}
-            tintColor={colors.purple}
-          />
-        }
-      >
-        {category && (
+    <AppShell
+      header={<PageHeader title={module.title} />}
+      refreshControl={
+        <RefreshControl refreshing={isFetching} onRefresh={refetch} tintColor={colors.primary} />
+      }
+    >
+      <Card variant="raised" padding="roomy" accent={colors.primary} rail style={styles.card}>
+        {category ? (
           <View style={styles.breadcrumb}>
-            <Ionicons name="folder" size={14} color={colors.textSecondary} />
-            <Text style={styles.breadcrumbText}>{category.title}</Text>
+            <PetalIcon name="explore" size={14} color={colors.textSecondary} />
+            <Text style={[typography.presets.caption, styles.breadcrumbText]} numberOfLines={1}>
+              {category.title}
+            </Text>
           </View>
-        )}
-
-        <Text style={styles.title}>{module.title}</Text>
-
-        {module.description ? (
-          <Text style={styles.description}>{module.description}</Text>
         ) : null}
 
-        <View style={styles.statsRow}>
-          <View style={styles.stat}>
-            <Text style={styles.statValue}>
-              {completedCount}/{module.lessons.length}
+        <Text style={[typography.presets.section, styles.title]}>{module.title}</Text>
+
+        {module.description ? (
+          <Text style={[typography.presets.body, styles.description]}>{module.description}</Text>
+        ) : null}
+
+        <View style={styles.moduleProgress}>
+          <View style={styles.progressHead}>
+            <Text style={[typography.presets.caption, styles.progressLabel]}>Module progress</Text>
+            <Text style={[typography.presets.caption, styles.progressValue]}>
+              {modulePercent}%
             </Text>
-            <Text style={styles.statLabel}>Lessons Done</Text>
           </View>
-          <View style={styles.stat}>
-            <Text style={styles.statValue}>{unlockedCount}</Text>
-            <Text style={styles.statLabel}>Unlocked</Text>
-          </View>
-          <View style={styles.stat}>
-            <Text style={styles.statValue}>{module.lessons.length}</Text>
-            <Text style={styles.statLabel}>Total</Text>
-          </View>
-        </View>
-
-        <View style={styles.sectionHeader}>
-          <Ionicons name="list" size={iconSizes.sm} color={colors.text} />
-          <Text style={styles.sectionTitle}>Lessons</Text>
-        </View>
-
-        {module.lessons.length === 0 ? (
-          <EmptyState
-            icon="📝"
-            title="No lessons yet"
-            message="Lessons will appear here when they're ready."
+          <ProgressIndicator
+            value={modulePercent}
+            color={colors.green}
+            accessibilityLabel={`${module.title} is ${modulePercent} percent complete`}
           />
-        ) : (
-          <View style={styles.lessonList}>
-            {module.lessons.map((lesson: Lesson) => (
-              <LessonNode
-                key={lesson.id}
-                id={lesson.id}
-                title={lesson.title}
-                difficulty={lesson.difficulty}
-                isCompleted={lesson.isCompleted}
-                isUnlocked={lesson.isUnlocked}
-                isCurrent={false}
-                onPress={() => handleLessonPress(lesson.id)}
-              />
-            ))}
-          </View>
-        )}
-      </ScrollView>
-    </ScreenContainer>
+        </View>
+
+        <StatGrid stats={stats} style={styles.stats} />
+      </Card>
+
+      <View style={styles.sectionHeader}>
+        <PetalIcon name="book" size={18} color={colors.text} />
+        <Text style={[typography.presets.cardTitle, styles.sectionTitle]} accessibilityRole="header">
+          Lessons
+        </Text>
+      </View>
+
+      {lessons.length === 0 ? (
+        <EmptyState
+          icon="pencil"
+          title="No lessons yet"
+          message="Lessons will appear here when they're ready."
+        />
+      ) : (
+        lessons.map((lesson: Lesson) => (
+          <LessonCard
+            key={lesson.id}
+            title={lesson.title}
+            eyebrow={module.title}
+            status={lessonStatus(lesson)}
+            progress={lessonProgress(lesson)}
+            footnote={
+              lesson.activities?.length
+                ? `${lesson.activities.length} ${
+                    lesson.activities.length === 1 ? 'activity' : 'activities'
+                  }`
+                : undefined
+            }
+            onPress={
+              lesson.isUnlocked || lesson.isCompleted
+                ? () => handleLessonPress(lesson.id)
+                : undefined
+            }
+            style={styles.card}
+          />
+        ))
+      )}
+    </AppShell>
   );
 };
 
 const styles = StyleSheet.create({
-  scrollContent: {
-    padding: spacing.lg,
-    paddingBottom: spacing.xxl * 2,
-  },
   center: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: spacing.xl,
   },
+  card: {
+    marginBottom: cardSizes.gap,
+  },
   breadcrumb: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
-    marginBottom: spacing.sm,
+    marginBottom: spacing.xs,
   },
   breadcrumbText: {
-    fontSize: typography.sizes.small,
     color: colors.textSecondary,
-    fontFamily: typography.families.rounded,
+    flexShrink: 1,
   },
   title: {
-    fontSize: typography.sizes.xxl,
-    fontWeight: typography.weights.black,
     color: colors.text,
-    fontFamily: typography.families.rounded,
-    marginBottom: spacing.sm,
   },
   description: {
-    fontSize: typography.sizes.sm,
     color: colors.textSecondary,
-    fontFamily: typography.families.rounded,
-    lineHeight: typography.lineHeights.md,
-    marginBottom: spacing.lg,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    gap: spacing.md,
-    marginBottom: spacing.xl,
-  },
-  stat: {
-    flex: 1,
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    padding: spacing.md,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  statValue: {
-    fontSize: typography.sizes.xl,
-    fontWeight: typography.weights.black,
-    color: colors.text,
-    fontFamily: typography.families.rounded,
-  },
-  statLabel: {
-    fontSize: typography.sizes.caption,
-    color: colors.textSecondary,
-    fontFamily: typography.families.rounded,
+    lineHeight: 21,
     marginTop: spacing.xs,
+  },
+  moduleProgress: {
+    marginTop: spacing.lg,
+  },
+  stats: {
+    marginTop: spacing.lg,
+  },
+  progressHead: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  progressLabel: {
+    color: colors.textSecondary,
+  },
+  progressValue: {
+    color: colors.green,
   },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
+    marginTop: spacing.sm,
     marginBottom: spacing.md,
   },
   sectionTitle: {
-    fontSize: typography.sizes.lg,
-    fontWeight: typography.weights.bold,
     color: colors.text,
-    fontFamily: typography.families.rounded,
-  },
-  lessonList: {
-    gap: spacing.md,
   },
 });
+
+export default ModuleScreen;

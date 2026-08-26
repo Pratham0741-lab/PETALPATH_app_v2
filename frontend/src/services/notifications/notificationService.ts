@@ -52,7 +52,7 @@ async function registerForPushNotifications(): Promise<string | null> {
       const { setNotificationChannelAsync, AndroidImportance } = await import('expo-notifications');
       void setNotificationChannelAsync('default', {
         name: 'default',
-        importance: AndroidImportance.Max,
+        importance: AndroidImportance.MAX,
         vibrationPattern: [0, 250, 250, 250],
         lightColor: '#FF231F7C',
       });

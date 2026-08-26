@@ -146,7 +146,7 @@ export const JourneyDesktop: React.FC = () => {
 
               {loading && lessons.length === 0 ? (
                 <View style={styles.center}>
-                  <ActivityIndicator size="large" color={colors.purple} />
+                  <ActivityIndicator size="large" color={colors.primary} />
                 </View>
               ) : error ? (
                 <View style={styles.center}>

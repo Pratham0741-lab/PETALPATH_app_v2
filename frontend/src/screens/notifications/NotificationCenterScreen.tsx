@@ -1,14 +1,37 @@
+/**
+ * Notification centre — pushed from the bell in the top bar.
+ *
+ * Redesign notes (§5, §7, §28, §30):
+ *
+ *  - The seven Ionicons glyphs in `typeIcon` are `PetalIcon` names now, and each
+ *    type carries its own colour identity (a completed lesson is green, a reward
+ *    is yellow, a milestone purple) drawn on an `IconWell` rather than a
+ *    hand-rolled circle with a `${colors.primary}15` fill.
+ *  - Rows are design-system `Card`s instead of a divided list. Unread is signalled
+ *    three ways — a raised card against a flat one, a bold title, and a dot — so
+ *    it does not depend on colour. The old unread tint was `${colors.primary}08`,
+ *    a 3% alpha wash that is invisible on `#FFF8FA`, which left the small dot
+ *    doing all the work.
+ *  - Deleting was long-press only, with nothing on screen to suggest it. There is
+ *    a real trash button per row now; the long-press shortcut still works.
+ *  - `AppButton` gives way to `SecondaryButton`, the `🔔` emoji `EmptyState` icon
+ *    to the `notifications` glyph, and the empty state is wrapped in `StatePanel`
+ *    so its `flex: 1` centring has a height to fill inside the scroll view.
+ *  - The unused `useNavigation` call is gone.
+ *
+ * The queries, mutations, pagination and `formatTime` behaviour are unchanged.
+ */
+
 import React, { useState, useCallback } from 'react';
-import { StyleSheet, View, Text, ScrollView, RefreshControl, Pressable, Alert } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { StyleSheet, View, Text, ScrollView, RefreshControl, Alert } from 'react-native';
 
 import { ScreenContainer } from '../../components/common/ScreenContainer';
 import { TopBar } from '../../components/navigation/TopBar';
-import { AppButton } from '../../components/buttons/AppButton';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { EmptyState } from '../../components/common/EmptyState';
 import { ErrorState } from '../../components/common/ErrorState';
+import { Card, IconButton, IconWell, SecondaryButton, StatePanel } from '../../components/design';
+import { PetalIconName } from '../../components/icons';
 import {
   useNotifications,
   useMarkRead,
@@ -16,7 +39,16 @@ import {
   useDeleteNotification,
 } from '../../hooks/useNotifications';
 import { toUserMessage } from '../../api/errors';
-import { colors, spacing, typography, radius } from '../../theme';
+import { colors, radius, spacing, typography, cardSizes } from '../../theme';
+
+interface NotificationItem {
+  id: string;
+  type: string;
+  title: string;
+  message: string;
+  createdAt: string;
+  isRead: boolean;
+}
 
 const formatTime = (iso: string): string => {
   const d = new Date(iso);
@@ -33,25 +65,31 @@ const formatTime = (iso: string): string => {
   return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 };
 
-const typeIcon: Record<string, React.ComponentProps<typeof Ionicons>['name']> = {
-  LESSON_COMPLETED: 'school',
-  ASSESSMENT_COMPLETED: 'clipboard',
-  REWARD_EARNED: 'star',
-  MILESTONE: 'trophy',
-  REMINDER: 'alarm',
-  SYSTEM: 'information-circle',
-  GENERAL: 'notifications',
+/**
+ * Icon plus colour per notification type. The colours follow the activity
+ * identity from §15 where they overlap, so a reward reads yellow here and in the
+ * rewards tab.
+ */
+const TYPE_STYLE: Record<string, { icon: PetalIconName; color: string; soft: string }> = {
+  LESSON_COMPLETED: { icon: 'book', color: colors.successDark, soft: colors.greenSoft },
+  ASSESSMENT_COMPLETED: { icon: 'check', color: colors.blueDark, soft: colors.blueSoft },
+  REWARD_EARNED: { icon: 'star', color: colors.warningDark, soft: colors.yellowSoft },
+  MILESTONE: { icon: 'trophy', color: colors.purpleDark, soft: colors.secondaryLight },
+  REMINDER: { icon: 'clock', color: colors.primaryDark, soft: colors.primaryLight },
+  SYSTEM: { icon: 'info', color: colors.textSecondary, soft: colors.skeleton },
+  GENERAL: { icon: 'notifications', color: colors.textSecondary, soft: colors.skeleton },
 };
 
+const FALLBACK_STYLE = TYPE_STYLE.GENERAL;
+
 export const NotificationCenterScreen: React.FC = () => {
-  const navigation = useNavigation<any>();
   const [page, setPage] = useState(1);
   const { data, isLoading, isError, error, refetch, isFetching } = useNotifications(page);
   const markRead = useMarkRead();
   const markAllRead = useMarkAllRead();
   const deleteNotif = useDeleteNotification();
 
-  const notifications = data?.data ?? [];
+  const notifications: NotificationItem[] = data?.data ?? [];
   const pagination = data?.pagination;
 
   const onRefresh = useCallback(async () => {
@@ -76,7 +114,7 @@ export const NotificationCenterScreen: React.FC = () => {
     markAllRead.mutate();
   }, [markAllRead]);
 
-  const handleLongPress = useCallback(
+  const confirmDelete = useCallback(
     (id: string) => {
       Alert.alert('Delete Notification', 'Remove this notification?', [
         { text: 'Cancel', style: 'cancel' },
@@ -86,37 +124,58 @@ export const NotificationCenterScreen: React.FC = () => {
     [handleDelete],
   );
 
-  const renderNotification = (item: any) => {
-    const iconName = typeIcon[item.type] ?? 'notifications';
+  const renderNotification = (item: NotificationItem) => {
+    const style = TYPE_STYLE[item.type] ?? FALLBACK_STYLE;
     const isUnread = !item.isRead;
+    const time = formatTime(item.createdAt);
 
     return (
-      <Pressable
+      <Card
         key={item.id}
-        onPress={() => handleMarkRead(item.id)}
-        onLongPress={() => handleLongPress(item.id)}
-        style={({ pressed }) => [
-          styles.notifItem,
-          isUnread && styles.notifUnread,
-          pressed && styles.notifPressed,
-        ]}
+        variant={isUnread ? 'raised' : 'flat'}
+        padding="compact"
+        style={styles.notifCard}
+        onPress={isUnread ? () => handleMarkRead(item.id) : undefined}
+        onLongPress={() => confirmDelete(item.id)}
+        accessibilityLabel={`${isUnread ? 'Unread. ' : ''}${item.title}. ${item.message}. ${time}`}
+        accessibilityHint={isUnread ? 'Marks this notification as read' : undefined}
       >
-        <View style={[styles.notifIcon, isUnread && styles.notifIconUnread]}>
-          <Ionicons name={iconName} size={20} color={isUnread ? colors.purple : colors.textMuted} />
-        </View>
-        <View style={styles.notifContent}>
-          <View style={styles.notifHeader}>
-            <Text style={[styles.notifTitle, isUnread && styles.notifTitleUnread]} numberOfLines={1}>
-              {item.title}
+        <View style={styles.notifRow}>
+          <IconWell
+            icon={style.icon}
+            color={style.color}
+            soft={style.soft}
+            size={cardSizes.iconWellSmall}
+            filled={isUnread}
+          />
+
+          <View style={styles.notifContent}>
+            <View style={styles.notifHeader}>
+              {isUnread ? <View style={styles.unreadDot} /> : null}
+              <Text
+                style={[styles.notifTitle, isUnread && styles.notifTitleUnread]}
+                numberOfLines={2}
+              >
+                {item.title}
+              </Text>
+            </View>
+            <Text style={styles.notifBody} numberOfLines={3}>
+              {item.message}
             </Text>
-            <Text style={styles.notifTime}>{formatTime(item.createdAt)}</Text>
+            <Text style={styles.notifTime}>{time}</Text>
           </View>
-          <Text style={styles.notifBody} numberOfLines={2}>
-            {item.message}
-          </Text>
+
+          <IconButton
+            icon="trash"
+            size="sm"
+            tone="danger"
+            variant="plain"
+            onPress={() => confirmDelete(item.id)}
+            accessibilityLabel={`Delete notification: ${item.title}`}
+            accessibilityHint="Asks you to confirm first"
+          />
         </View>
-        {isUnread && <View style={styles.unreadDot} />}
-      </Pressable>
+      </Card>
     );
   };
 
@@ -124,9 +183,9 @@ export const NotificationCenterScreen: React.FC = () => {
     return (
       <ScreenContainer>
         <TopBar title="Notifications" showBack />
-        <View style={styles.center}>
+        <StatePanel bare minHeight={320}>
           <LoadingSpinner label="Loading notifications…" />
-        </View>
+        </StatePanel>
       </ScreenContainer>
     );
   }
@@ -135,69 +194,85 @@ export const NotificationCenterScreen: React.FC = () => {
     return (
       <ScreenContainer>
         <TopBar title="Notifications" showBack />
-        <View style={styles.center}>
+        <StatePanel bare minHeight={320}>
           <ErrorState
             title="Couldn't load notifications"
             message={toUserMessage(error)}
             onRetry={onRefresh}
           />
-        </View>
+        </StatePanel>
       </ScreenContainer>
     );
   }
 
+  const allRead = notifications.length === 0 || notifications.every((n) => n.isRead);
+
   return (
     <ScreenContainer>
       <TopBar title="Notifications" showBack />
-      <View style={styles.actionRow}>
-        <AppButton
-          label="Mark All Read"
-          onPress={handleMarkAllRead}
-          variant="secondary"
-          loading={markAllRead.isPending}
-          disabled={notifications.length === 0 || notifications.every((n: any) => n.isRead)}
-          style={styles.markAllBtn}
-        />
-      </View>
+
+      {notifications.length > 0 ? (
+        <View style={styles.actionRow}>
+          <SecondaryButton
+            label="Mark all read"
+            icon="check"
+            size="sm"
+            fill="soft"
+            fullWidth={false}
+            onPress={handleMarkAllRead}
+            loading={markAllRead.isPending}
+            disabled={allRead}
+          />
+        </View>
+      ) : null}
 
       <ScrollView
-        contentContainerStyle={styles.scrollContainer}
+        style={styles.scroll}
+        contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={isFetching} onRefresh={onRefresh} tintColor={colors.purple} />
+          <RefreshControl
+            refreshing={isFetching}
+            onRefresh={onRefresh}
+            tintColor={colors.primary}
+          />
         }
       >
         {notifications.length === 0 ? (
-          <EmptyState
-            icon="🔔"
-            title="No notifications yet"
-            message="When you get notifications, they will appear here."
-          />
+          <StatePanel>
+            <EmptyState
+              icon="notifications"
+              title="No notifications yet"
+              message="When you get notifications, they will appear here."
+            />
+          </StatePanel>
         ) : (
           <>
             {notifications.map(renderNotification)}
 
-            {pagination && pagination.totalPages > 1 && (
+            {pagination && pagination.totalPages > 1 ? (
               <View style={styles.paginationRow}>
-                <AppButton
+                <SecondaryButton
                   label="Previous"
-                  variant="secondary"
+                  icon="back"
+                  size="sm"
+                  fullWidth={false}
                   disabled={page <= 1}
                   onPress={() => setPage((p) => Math.max(1, p - 1))}
-                  style={styles.paginationBtn}
                 />
                 <Text style={styles.pageInfo}>
-                  Page {pagination.page} of {pagination.totalPages}
+                  {pagination.page} / {pagination.totalPages}
                 </Text>
-                <AppButton
+                <SecondaryButton
                   label="Next"
-                  variant="secondary"
+                  iconRight="forward"
+                  size="sm"
+                  fullWidth={false}
                   disabled={page >= pagination.totalPages}
                   onPress={() => setPage((p) => p + 1)}
-                  style={styles.paginationBtn}
                 />
               </View>
-            )}
+            ) : null}
           </>
         )}
       </ScrollView>
@@ -206,101 +281,71 @@ export const NotificationCenterScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-  center: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: spacing.xl,
-  },
   actionRow: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    paddingTop: spacing.sm,
   },
-  markAllBtn: {
-    minWidth: 140,
-    height: 40,
+  scroll: {
+    flex: 1,
+    backgroundColor: colors.background,
   },
-  scrollContainer: {
+  content: {
+    padding: spacing.lg,
     paddingBottom: spacing.xxl,
   },
-  notifItem: {
+  notifCard: {
+    marginBottom: spacing.sm,
+  },
+  notifRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    padding: spacing.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  notifUnread: {
-    backgroundColor: `${colors.purple}08`,
-  },
-  notifPressed: {
-    opacity: 0.7,
-  },
-  notifIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: radius.full,
-    backgroundColor: colors.background,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: spacing.md,
-  },
-  notifIconUnread: {
-    backgroundColor: `${colors.purple}15`,
+    gap: spacing.md,
   },
   notifContent: {
     flex: 1,
-    marginRight: spacing.sm,
+    minWidth: 0,
   },
   notifHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 2,
-  },
-  notifTitle: {
-    fontSize: typography.sizes.sm,
-    color: colors.text,
-    flex: 1,
-    marginRight: spacing.sm,
-  },
-  notifTitleUnread: {
-    fontWeight: typography.weights.bold,
-  },
-  notifTime: {
-    fontSize: typography.sizes.xs,
-    color: colors.textMuted,
-  },
-  notifBody: {
-    fontSize: typography.sizes.sm,
-    color: colors.textMuted,
-    lineHeight: 18,
+    gap: spacing.xs,
   },
   unreadDot: {
     width: 8,
     height: 8,
     borderRadius: radius.full,
-    backgroundColor: colors.purple,
-    marginTop: 6,
+    backgroundColor: colors.primary,
+  },
+  notifTitle: {
+    ...typography.presets.body,
+    color: colors.text,
+    flexShrink: 1,
+  },
+  notifTitleUnread: {
+    fontWeight: typography.weights.bold,
+  },
+  notifBody: {
+    ...typography.presets.subtle,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  notifTime: {
+    ...typography.presets.caption,
+    color: colors.textMuted,
+    marginTop: spacing.xs,
   },
   paginationRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.md,
-    padding: spacing.lg,
-  },
-  paginationBtn: {
-    minWidth: 100,
-    height: 40,
+    paddingTop: spacing.md,
   },
   pageInfo: {
-    fontSize: typography.sizes.sm,
-    color: colors.textMuted,
+    ...typography.presets.subtle,
+    color: colors.textSecondary,
   },
 });
 

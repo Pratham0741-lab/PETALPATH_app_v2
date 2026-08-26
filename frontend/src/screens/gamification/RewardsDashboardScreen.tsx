@@ -105,8 +105,8 @@ export const RewardsDashboardScreen: React.FC = () => {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor={colors.purple}
-            colors={[colors.purple]}
+            tintColor={colors.primary}
+            colors={[colors.primary]}
           />
         }
       >
@@ -141,7 +141,7 @@ export const RewardsDashboardScreen: React.FC = () => {
           onPress={() => navigation.navigate('BadgeGallery')}
         >
           <Text style={styles.linkText}>View all badges</Text>
-          <Ionicons name="chevron-forward" size={20} color={colors.purple} />
+          <Ionicons name="chevron-forward" size={20} color={colors.primary} />
         </Pressable>
 
         <Text style={styles.sectionHeader}>Achievements</Text>
@@ -154,7 +154,7 @@ export const RewardsDashboardScreen: React.FC = () => {
           onPress={() => navigation.navigate('Achievements')}
         >
           <Text style={styles.linkText}>View achievements</Text>
-          <Ionicons name="chevron-forward" size={20} color={colors.purple} />
+          <Ionicons name="chevron-forward" size={20} color={colors.primary} />
         </Pressable>
 
         <Text style={styles.sectionHeader}>Daily Streak</Text>
@@ -185,7 +185,7 @@ export const RewardsDashboardScreen: React.FC = () => {
           onPress={() => navigation.navigate('DailyChallenges')}
         >
           <Text style={styles.linkText}>View challenges</Text>
-          <Ionicons name="chevron-forward" size={20} color={colors.purple} />
+          <Ionicons name="chevron-forward" size={20} color={colors.primary} />
         </Pressable>
 
         <Text style={styles.sectionHeader}>Reward History</Text>
@@ -194,7 +194,7 @@ export const RewardsDashboardScreen: React.FC = () => {
             {(history.data as RewardHistoryItem[] | undefined)?.map((h) => (
               <View key={h.id} style={styles.historyRow}>
                 <View style={styles.historyIcon}>
-                  <Ionicons name="medal" size={20} color={colors.purple} />
+                  <Ionicons name="medal" size={20} color={colors.primary} />
                 </View>
                 <View style={styles.historyInfo}>
                   <Text style={styles.historyLabel}>{h.label}</Text>
@@ -251,7 +251,7 @@ const styles = StyleSheet.create({
   linkText: {
     fontSize: typography.sizes.body,
     fontWeight: typography.weights.bold,
-    color: colors.purple,
+    color: colors.primary,
     fontFamily: typography.families.rounded,
   },
   challengeList: {
@@ -271,6 +271,9 @@ const styles = StyleSheet.create({
     fontWeight: typography.weights.medium,
     color: colors.text,
     fontFamily: typography.families.rounded,
+    /* Challenge titles are full sentences ("Finish three activities today") and
+       sit beside a flag icon in a row, so they have to be allowed to wrap. */
+    flexShrink: 1,
   },
   historyCard: {
     backgroundColor: colors.surface,

@@ -144,7 +144,7 @@ export const AssessmentSessionScreen: React.FC = () => {
           progress={progress}
           answeredCount={answeredCount}
           totalCount={totalQuestions}
-          color={colors.purple}
+          color={colors.primary}
         />
 
         <QuestionHeader

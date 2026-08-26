@@ -1,33 +1,70 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  StyleSheet,
-  View,
-  Text,
-  SectionList,
-  TouchableOpacity,
-  RefreshControl,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
-import { useTheme } from '../../theme/ThemeContext';
-import { spacing, typography, radius } from '../../theme';
+import { RefreshControl, SectionList, StyleSheet, Text, View } from 'react-native';
+import { spacing, colors, typography, cardSizes } from '../../theme';
 import { useLearningHistory } from '../../hooks/useParentAnalytics';
 import type { TimelineEvent } from '../../services/api/analyticsApi';
-import { ScreenContainer } from '../../components/common/ScreenContainer';
-import { Card } from '../../components/ui/Card';
-import { Button } from '../../components/ui/Button';
-import { Skeleton } from '../../components/ui/Skeleton';
-import { ErrorState } from '../../components/common/ErrorState';
+import {
+  AppShell,
+  Card,
+  IconWell,
+  PageHeader,
+  SecondaryButton,
+} from '../../components/design';
+import type { PetalIconName } from '../../components/design';
 import { EmptyState } from '../../components/common/EmptyState';
+import { ErrorState } from '../../components/common/ErrorState';
+import { Skeleton } from '../../components/ui/Skeleton';
+
+/**
+ * Learning History (spec §26) — everything the child has finished, newest first.
+ *
+ * Paging, grouping and the two time formatters are untouched. What changed: the
+ * four event colours were hardcoded Material hexes (#4CAF50, #2196F3, #FFC107,
+ * #F44336) and their glyphs came from Ionicons — both are tokens and `PetalIcon`
+ * now (§3, §7). Each row also had a `chevron-forward` on a card with no
+ * `onPress`, which promised a detail screen that does not exist (§33); it is
+ * gone. And the row used to announce itself as "LESSON_COMPLETED event: …", the
+ * raw enum — it now says "Lesson completed: {title}, 2h ago".
+ */
 
 type EventType = TimelineEvent['type'];
 
-const EVENT_ICON_CONFIG: Record<EventType, { name: keyof typeof Ionicons.glyphMap; color: string }> = {
-  LESSON_COMPLETED: { name: 'checkmark-circle', color: '#4CAF50' },
-  ASSESSMENT_COMPLETED: { name: 'clipboard', color: '#2196F3' },
-  REWARD_EARNED: { name: 'star', color: '#FFC107' },
-  VIDEO_WATCHED: { name: 'play-circle', color: '#F44336' },
+interface EventVisual {
+  icon: PetalIconName;
+  color: string;
+  soft: string;
+  /** Spoken (and never shown) — the row's title says the rest. */
+  spoken: string;
+}
+
+const EVENT_VISUALS: Record<EventType, EventVisual> = {
+  LESSON_COMPLETED: {
+    icon: 'check',
+    color: colors.successDark,
+    soft: colors.greenSoft,
+    spoken: 'Lesson completed',
+  },
+  ASSESSMENT_COMPLETED: {
+    icon: 'medal',
+    color: colors.blue,
+    soft: colors.blueSoft,
+    spoken: 'Assessment completed',
+  },
+  REWARD_EARNED: {
+    icon: 'star',
+    color: colors.accent,
+    soft: colors.yellowSoft,
+    spoken: 'Reward earned',
+  },
+  VIDEO_WATCHED: {
+    icon: 'watch',
+    color: colors.primary,
+    soft: colors.primaryLight,
+    spoken: 'Video watched',
+  },
 };
+
+const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 function formatRelativeTime(timestamp: string): string {
   const date = new Date(timestamp);
@@ -41,10 +78,7 @@ function formatRelativeTime(timestamp: string): string {
   if (diffMinutes < 60) return `${diffMinutes}m ago`;
   if (diffHours < 24) return `${diffHours}h ago`;
   if (diffDays === 1) return 'Yesterday';
-  if (diffDays < 7) {
-    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    return dayNames[date.getDay()];
-  }
+  if (diffDays < 7) return DAY_NAMES[date.getDay()];
   return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
@@ -57,10 +91,7 @@ function getDateLabel(timestamp: string): string {
 
   if (diffDays === 0) return 'Today';
   if (diffDays === 1) return 'Yesterday';
-  if (diffDays < 7) {
-    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    return dayNames[date.getDay()];
-  }
+  if (diffDays < 7) return DAY_NAMES[date.getDay()];
   return date.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 }
 
@@ -69,37 +100,13 @@ interface DateSection {
   data: TimelineEvent[];
 }
 
-function TimelineSkeleton({ themeColors }: { themeColors: Record<string, string> }) {
-  return (
-    <View style={styles.skeletonContainer}>
-      <View style={styles.header}>
-        <Skeleton variant="circle" width={36} height={36} />
-        <Skeleton width={160} height={24} style={{ marginLeft: spacing.sm }} />
-      </View>
-      {[1, 2, 3, 4].map((i) => (
-        <Skeleton key={i} variant="card" height={90} style={{ marginTop: spacing.md }} />
-      ))}
-    </View>
-  );
-}
-
 export const LearningHistoryScreen: React.FC = () => {
-  const { theme: { colors: themeColors } } = useTheme();
-  const navigation = useNavigation<{ goBack: () => void }>();
-
   const [page, setPage] = useState(1);
   const [events, setEvents] = useState<TimelineEvent[]>([]);
   const [pagination, setPagination] = useState({ page: 1, totalPages: 1, total: 0, limit: 20 });
   const [refreshing, setRefreshing] = useState(false);
 
-  const {
-    data,
-    isLoading,
-    isError,
-    error,
-    refetch,
-    isFetching,
-  } = useLearningHistory(page);
+  const { data, isLoading, isError, error, refetch, isFetching } = useLearningHistory(page);
 
   useEffect(() => {
     if (data?.data) {
@@ -139,108 +146,70 @@ export const LearningHistoryScreen: React.FC = () => {
 
   const renderSectionHeader = useCallback(
     ({ section }: { section: DateSection }) => (
-      <View style={[styles.dateHeader, { backgroundColor: themeColors.background }]}>
-        <Text style={[styles.dateHeaderText, { color: themeColors.text }]} accessibilityRole="header">
+      <View style={styles.dateHeader}>
+        <Text style={[typography.presets.eyebrow, styles.dateHeaderText]} accessibilityRole="header">
           {section.title}
         </Text>
       </View>
     ),
-    [themeColors],
+    [],
   );
 
   const renderEventCard = useCallback(
-    ({ item }: { item: TimelineEvent }) => {
-      const iconConfig = EVENT_ICON_CONFIG[item.type];
-      return (
-        <Card variant="flat" style={styles.eventCard} accessibilityLabel={`${item.type} event: ${item.title}`}>
-          <View style={styles.eventRow}>
-            <View style={[styles.eventIconWrap, { backgroundColor: `${iconConfig.color}18` }]}>
-              <Ionicons name={iconConfig.name} size={22} color={iconConfig.color} />
-            </View>
-            <View style={styles.eventContent}>
-              <Text style={[styles.eventTitle, { color: themeColors.text }]} numberOfLines={2}>
-                {item.title}
-              </Text>
-              <Text style={[styles.eventTime, { color: themeColors.textSecondary }]}>
-                {formatRelativeTime(item.timestamp)}
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={themeColors.textMuted} />
-          </View>
-        </Card>
-      );
-    },
-    [themeColors],
+    ({ item }: { item: TimelineEvent }) => <EventRow event={item} />,
+    [],
   );
 
   const keyExtractor = useCallback((item: TimelineEvent) => item.id, []);
 
+  const header = (
+    <PageHeader
+      title="Learning History"
+      subtitle={pagination.total > 0 ? `${pagination.total} events, newest first` : 'Newest first'}
+      centered={false}
+    />
+  );
+
   if (isLoading && page === 1) {
     return (
-      <ScreenContainer>
-        <TimelineSkeleton themeColors={themeColors} />
-      </ScreenContainer>
+      <AppShell petals="light" header={header}>
+        {[0, 1, 2, 3].map((i) => (
+          <Skeleton key={i} variant="card" height={84} style={styles.skeletonRow} />
+        ))}
+      </AppShell>
     );
   }
 
   if (isError) {
     return (
-      <ScreenContainer>
-        <View style={styles.centerContainer}>
-          <View style={styles.header}>
-            <TouchableOpacity
-              onPress={() => navigation.goBack()}
-              style={styles.backButton}
-              accessibilityRole="button"
-              accessibilityLabel="Go back"
-            >
-              <Ionicons name="arrow-back" size={24} color={themeColors.text} />
-            </TouchableOpacity>
-            <View style={[styles.headerIconWrap, { backgroundColor: `${themeColors.primary}18` }]}>
-              <Ionicons name="time" size={24} color={themeColors.primary} />
-            </View>
-            <Text style={[styles.headerTitle, { color: themeColors.text }]}>Learning History</Text>
-          </View>
+      <AppShell petals="light" header={header}>
+        <StatePanel>
           <ErrorState
             title="Couldn't load learning history"
             message={(error as Error)?.message ?? 'An error occurred loading your history.'}
             onRetry={() => refetch()}
           />
-        </View>
-      </ScreenContainer>
+        </StatePanel>
+      </AppShell>
     );
   }
 
-  if (!isLoading && events.length === 0) {
+  if (events.length === 0) {
     return (
-      <ScreenContainer>
-        <View style={styles.centerContainer}>
-          <View style={styles.header}>
-            <TouchableOpacity
-              onPress={() => navigation.goBack()}
-              style={styles.backButton}
-              accessibilityRole="button"
-              accessibilityLabel="Go back"
-            >
-              <Ionicons name="arrow-back" size={24} color={themeColors.text} />
-            </TouchableOpacity>
-            <View style={[styles.headerIconWrap, { backgroundColor: `${themeColors.primary}18` }]}>
-              <Ionicons name="time" size={24} color={themeColors.primary} />
-            </View>
-            <Text style={[styles.headerTitle, { color: themeColors.text }]}>Learning History</Text>
-          </View>
+      <AppShell petals="light" header={header}>
+        <StatePanel>
           <EmptyState
-            icon="📖"
+            icon="book"
             title="No learning history yet"
             message="Start a lesson to see your progress!"
           />
-        </View>
-      </ScreenContainer>
+        </StatePanel>
+      </AppShell>
     );
   }
 
   return (
-    <ScreenContainer>
+    <AppShell petals="light" scroll={false} padded={false} header={header}>
       <SectionList
         sections={sections}
         keyExtractor={keyExtractor}
@@ -248,133 +217,118 @@ export const LearningHistoryScreen: React.FC = () => {
         renderItem={renderEventCard}
         stickySectionHeadersEnabled
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
+        style={styles.list}
+        contentContainerStyle={styles.listContent}
         refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={themeColors.primary}
-            colors={[themeColors.primary]}
-          />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
         }
-        accessibilityLabel="Learning History Timeline"
-        ListHeaderComponent={
-          <View style={styles.header}>
-            <TouchableOpacity
-              onPress={() => navigation.goBack()}
-              style={styles.backButton}
-              accessibilityRole="button"
-              accessibilityLabel="Go back"
-            >
-              <Ionicons name="arrow-back" size={24} color={themeColors.text} />
-            </TouchableOpacity>
-            <View style={[styles.headerIconWrap, { backgroundColor: `${themeColors.primary}18` }]}>
-              <Ionicons name="time" size={24} color={themeColors.primary} />
-            </View>
-            <Text style={[styles.headerTitle, { color: themeColors.text }]}>Learning History</Text>
-          </View>
-        }
+        accessibilityLabel="Learning history timeline"
         ListFooterComponent={
           <View style={styles.footer}>
-            {isFetching && page > 1 && (
+            {isFetching && page > 1 ? (
               <View style={styles.loadingMore}>
                 <Skeleton variant="text" width={120} height={16} />
               </View>
-            )}
-            {hasMore && !isFetching && (
-              <Button
-                title="Load More"
-                variant="outline"
+            ) : null}
+            {hasMore && !isFetching ? (
+              <SecondaryButton
+                label="Load More"
+                icon="arrowDown"
                 onPress={loadMore}
-                fullWidth
-                style={styles.loadMoreButton}
                 accessibilityLabel="Load more learning history events"
               />
-            )}
+            ) : null}
           </View>
         }
       />
-    </ScreenContainer>
+    </AppShell>
   );
 };
 
+/** One finished thing. Not tappable — there is no detail screen behind it. */
+const EventRow: React.FC<{ event: TimelineEvent }> = ({ event }) => {
+  const v = EVENT_VISUALS[event.type];
+  const when = formatRelativeTime(event.timestamp);
+
+  return (
+    <Card variant="flat" padding="compact" style={styles.eventCard}>
+      <View
+        style={styles.eventRow}
+        accessible
+        accessibilityLabel={`${v.spoken}: ${event.title}, ${when}`}
+      >
+        <IconWell icon={v.icon} color={v.color} soft={v.soft} size={cardSizes.iconWellSmall} />
+        <View style={styles.eventContent}>
+          <Text style={[typography.presets.body, styles.eventTitle]} numberOfLines={2}>
+            {event.title}
+          </Text>
+          <Text style={[typography.presets.caption, styles.eventTime]}>{when}</Text>
+        </View>
+      </View>
+    </Card>
+  );
+};
+
+/**
+ * `EmptyState` and `ErrorState` centre themselves with `flex: 1`, which collapses
+ * inside a scroll view's auto-height content — the minimum height gives it room.
+ */
+const StatePanel: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <Card variant="flat" padding="none">
+    <View style={styles.panel}>{children}</View>
+  </Card>
+);
+
 const styles = StyleSheet.create({
-  scrollContent: {
+  list: {
+    flex: 1,
+  },
+  listContent: {
     paddingBottom: spacing.xxxl,
   },
-  centerContainer: {
-    padding: spacing.lg,
-    paddingBottom: spacing.xxxl,
+  panel: {
+    minHeight: 240,
+    paddingVertical: spacing.md,
   },
-  skeletonContainer: {
-    padding: spacing.lg,
-    paddingBottom: spacing.xxxl,
+  skeletonRow: {
+    marginBottom: spacing.sm,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.lg,
-    paddingBottom: spacing.md,
-  },
-  backButton: {
-    marginRight: spacing.sm,
-    padding: spacing.xs,
-  },
-  headerIconWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.full,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  headerTitle: {
-    fontSize: typography.sizes.xl,
-    fontWeight: typography.weights.bold,
-    marginLeft: spacing.md,
-  },
+
+  /* The sticky header spans the full width, so its padding is its own rather
+     than the list's — an inset background would leave the rows showing through
+     the gutters as it passes underneath. */
   dateHeader: {
+    backgroundColor: colors.background,
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
     paddingTop: spacing.lg,
+    paddingBottom: spacing.sm,
   },
   dateHeaderText: {
-    fontSize: typography.sizes.md,
-    fontWeight: typography.weights.bold,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    color: colors.textSecondary,
   },
+
   eventCard: {
     marginHorizontal: spacing.lg,
     marginBottom: spacing.sm,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    borderRadius: radius.md,
   },
   eventRow: {
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  eventIconWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.full,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: spacing.md,
+    gap: spacing.md,
   },
   eventContent: {
     flex: 1,
-    marginRight: spacing.sm,
+    minWidth: 0,
+    gap: 2,
   },
   eventTitle: {
-    fontSize: typography.sizes.body,
-    fontWeight: typography.weights.medium,
-    marginBottom: spacing.xs,
+    color: colors.text,
+    fontWeight: '700',
   },
   eventTime: {
-    fontSize: typography.sizes.xs,
+    color: colors.textSecondary,
   },
+
   footer: {
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.md,
@@ -384,7 +338,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: spacing.md,
   },
-  loadMoreButton: {
-    marginTop: spacing.sm,
-  },
 });
+
+export default LearningHistoryScreen;

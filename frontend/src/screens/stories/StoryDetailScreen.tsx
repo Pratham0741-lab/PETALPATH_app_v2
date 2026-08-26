@@ -1,20 +1,55 @@
 import React, { useCallback } from 'react';
-import { StyleSheet, View, Text, ScrollView } from 'react-native';
+import { StyleSheet, View, Text } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import { Ionicons } from '@expo/vector-icons';
 
-import { ScreenContainer } from '../../components/common/ScreenContainer';
-import { TopBar } from '../../components/navigation/TopBar';
-import { AppCard } from '../../components/cards/AppCard';
-import { AppButton } from '../../components/buttons/AppButton';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
 import { ErrorState } from '../../components/common/ErrorState';
-import { Badge, ProgressBar } from '../../components/ui';
+import {
+  AppShell,
+  Card,
+  IconWell,
+  LessonStatus,
+  PageHeader,
+  PetalIcon,
+  PrimaryButton,
+  ProgressIndicator,
+  SecondaryButton,
+  Stat,
+  StatGrid,
+  StatusBadge,
+} from '../../components/design';
 import { useStory, useStoryProgress, useStartStory } from '../../hooks/useStories';
 import { toUserMessage } from '../../api/errors';
-import { colors, spacing, typography, radius } from '../../theme';
+import { colors, spacing, typography, cardSizes } from '../../theme';
+
+/**
+ * Story Detail (spec §35) — reached from the recommendation card on Home.
+ *
+ * Restyled to match `SkillDetailScreen`, the app's other "here is one thing, do
+ * you want to start it?" page: identity card, description, stats, progress,
+ * actions pinned to the foot. It was the last family still on `ScreenContainer`
+ * + `TopBar` + `AppCard` + Ionicons (§7, §33 "a different design language per
+ * page").
+ *
+ * Every hook call is untouched — `useStory`, `useStoryProgress`,
+ * `useStartStory`, and the three action shapes (Read Again / Resume + Start
+ * Over / Start Reading) with the same navigation payloads.
+ *
+ * Two things fixed in passing: the 160×200 book-shaped placeholder was a fake
+ * cover for an illustration the app does not have, so it is now an `IconWell`
+ * the same size as every other identity card's; and Resume/Start Over carried
+ * `flex: 1` inside a `gap`-stacked column, which does nothing there — the
+ * footer stacks them properly.
+ */
 
 type RouteParams = { storyId: string };
+
+/** Turns NON_FICTION into "Non fiction" for the eyebrow. */
+const humanize = (value?: string | null) => {
+  if (!value) return 'Story';
+  const s = String(value).replace(/_/g, ' ').toLowerCase();
+  return s.charAt(0).toUpperCase() + s.slice(1);
+};
 
 export const StoryDetailScreen: React.FC = () => {
   const navigation = useNavigation<any>();
@@ -50,19 +85,17 @@ export const StoryDetailScreen: React.FC = () => {
 
   if (isLoading) {
     return (
-      <ScreenContainer>
-        <TopBar title="Story" showBack />
+      <AppShell scroll={false} header={<PageHeader title="Story" />}>
         <View style={styles.center}>
-          <LoadingSpinner label="Loading story..." />
+          <LoadingSpinner label="Loading story…" />
         </View>
-      </ScreenContainer>
+      </AppShell>
     );
   }
 
   if (isError || !story) {
     return (
-      <ScreenContainer>
-        <TopBar title="Story" showBack />
+      <AppShell scroll={false} header={<PageHeader title="Story" />}>
         <View style={styles.center}>
           <ErrorState
             title="Couldn't load story"
@@ -70,124 +103,140 @@ export const StoryDetailScreen: React.FC = () => {
             onRetry={refetch}
           />
         </View>
-      </ScreenContainer>
+      </AppShell>
     );
   }
 
+  const status: LessonStatus = isCompleted ? 'completed' : isInProgress ? 'current' : 'available';
+
+  const stats: Stat[] = [
+    {
+      value: `${story.estimatedDuration ?? 5} min`,
+      label: 'Reading time',
+      icon: 'clock',
+      color: colors.primary,
+    },
+    {
+      value: String(totalPages),
+      label: totalPages === 1 ? 'Page' : 'Pages',
+      icon: 'book',
+      color: colors.blue,
+    },
+    {
+      value: story.readingLevel ? `Level ${story.readingLevel}` : '—',
+      label: 'Reading level',
+      icon: 'chart',
+      color: colors.purple,
+    },
+  ];
+
   return (
-    <ScreenContainer>
-      <TopBar title="Story Detail" showBack />
-      <ScrollView
-        contentContainerStyle={styles.scrollContainer}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.coverSection}>
-          <View style={styles.coverPlaceholder}>
-            <Ionicons name="book" size={64} color={colors.purple} />
-          </View>
+    <AppShell
+      header={<PageHeader title={story.title} />}
+      footer={
+        <View style={styles.footer}>
           {isCompleted ? (
-            <Badge label="Completed" color={colors.green} style={styles.completedBadge} />
-          ) : null}
-        </View>
-
-        <Text style={styles.title}>{story.title}</Text>
-
-        {story.description ? (
-          <Text style={styles.description}>{story.description}</Text>
-        ) : null}
-
-        <View style={styles.metaRow}>
-          {story.category ? (
-            <Badge label={story.category} color={colors.blue} />
-          ) : null}
-          <View style={styles.metaItem}>
-            <Ionicons name="time-outline" size={16} color={colors.textMuted} />
-            <Text style={styles.metaText}>{story.estimatedDuration ?? 5} min</Text>
-          </View>
-          <View style={styles.metaItem}>
-            <Ionicons name="layers-outline" size={16} color={colors.textMuted} />
-            <Text style={styles.metaText}>{totalPages} pages</Text>
-          </View>
-          {story.readingLevel ? (
-            <View style={styles.metaItem}>
-              <Ionicons name="trending-up" size={16} color={colors.textMuted} />
-              <Text style={styles.metaText}>Level {story.readingLevel}</Text>
-            </View>
-          ) : null}
-        </View>
-
-        {progress ? (
-          <AppCard style={styles.progressCard}>
-            <Text style={styles.progressTitle}>Your Progress</Text>
-            <ProgressBar
-              progress={progress.completionPercent ?? 0}
-              color={isCompleted ? colors.green : colors.purple}
-              style={styles.progressBar}
-            />
-            <Text style={styles.progressStats}>
-              {isCompleted
-                ? `Completed in ${Math.round((progress.readingTime ?? 0) / 60)} min`
-                : `Page ${(progress.currentPage ?? 0) + 1} of ${progress.totalPages ?? totalPages}`
-              }
-              {progress.starsEarned ? ` · ${progress.starsEarned} stars` : ''}
-            </Text>
-          </AppCard>
-        ) : null}
-
-        <AppCard style={styles.vocabCard}>
-          <View style={styles.vocabHeader}>
-            <Ionicons name="bookmark" size={20} color={colors.purple} />
-            <Text style={styles.vocabTitle}>Vocabulary</Text>
-            <Text style={styles.vocabCount}>{vocabCount} words</Text>
-          </View>
-          {story.vocabulary?.slice(0, 5).map((v: any) => (
-            <View key={v.id} style={styles.vocabItem}>
-              <Text style={styles.vocabWord}>{v.word}</Text>
-              {v.definition ? (
-                <Text style={styles.vocabDef}>{v.definition}</Text>
-              ) : null}
-            </View>
-          ))}
-          {vocabCount > 5 ? (
-            <Text style={styles.vocabMore}>+{vocabCount - 5} more words</Text>
-          ) : null}
-        </AppCard>
-
-        <View style={styles.actions}>
-          {isCompleted ? (
-            <AppButton
+            <PrimaryButton
               label="Read Again"
+              icon="replay"
               onPress={handleStartReading}
-              variant="primary"
               loading={startStory.isPending}
             />
           ) : isInProgress ? (
             <>
-              <AppButton
-                label="Resume Reading"
-                onPress={handleResume}
-                variant="primary"
-                style={styles.actionBtn}
-              />
-              <AppButton
+              <PrimaryButton label="Resume Reading" icon="play" onPress={handleResume} />
+              <SecondaryButton
                 label="Start Over"
+                icon="replay"
                 onPress={handleStartReading}
-                variant="secondary"
                 loading={startStory.isPending}
-                style={styles.actionBtn}
               />
             </>
           ) : (
-            <AppButton
+            <PrimaryButton
               label="Start Reading"
+              icon="play"
               onPress={handleStartReading}
-              variant="primary"
               loading={startStory.isPending}
             />
           )}
         </View>
-      </ScrollView>
-    </ScreenContainer>
+      }
+    >
+      {/* Identity */}
+      <Card variant="raised" padding="roomy" accent={colors.primary} rail style={styles.card}>
+        <View style={styles.headerRow}>
+          <IconWell
+            icon="book"
+            color={colors.primary}
+            soft={colors.primaryLight}
+            size={cardSizes.iconWellLarge}
+          />
+          <View style={styles.headerInfo}>
+            <Text style={[typography.presets.eyebrow, styles.eyebrow]} numberOfLines={1}>
+              {humanize(story.category)}
+            </Text>
+            <Text style={[typography.presets.section, styles.title]}>{story.title}</Text>
+          </View>
+        </View>
+        <View style={styles.badgeRow}>
+          <StatusBadge status={status} label={isInProgress && !isCompleted ? 'Reading' : undefined} />
+        </View>
+      </Card>
+
+      {story.description ? (
+        <Card variant="raised" padding="normal" style={styles.card}>
+          <Text style={[typography.presets.cardTitle, styles.sectionTitle]}>What it's about</Text>
+          <Text style={[typography.presets.body, styles.description]}>{story.description}</Text>
+        </Card>
+      ) : null}
+
+      <Card variant="raised" padding="normal" style={styles.card}>
+        <StatGrid stats={stats} />
+      </Card>
+
+      {progress ? (
+        <Card variant="raised" padding="normal" style={styles.card}>
+          <Text style={[typography.presets.cardTitle, styles.sectionTitle]}>Your progress</Text>
+          <ProgressIndicator
+            value={progress.completionPercent ?? 0}
+            color={isCompleted ? colors.successDark : colors.primary}
+            accessibilityLabel={`${story.title} is ${Math.round(progress.completionPercent ?? 0)} percent read`}
+          />
+          <Text style={[typography.presets.caption, styles.progressStats]}>
+            {isCompleted
+              ? `Finished in ${Math.round((progress.readingTime ?? 0) / 60)} min`
+              : `Page ${(progress.currentPage ?? 0) + 1} of ${progress.totalPages ?? totalPages}`}
+            {progress.starsEarned ? ` · ${progress.starsEarned} stars` : ''}
+          </Text>
+        </Card>
+      ) : null}
+
+      {vocabCount > 0 ? (
+        <Card variant="raised" padding="normal" style={styles.card}>
+          <View style={styles.vocabHeader}>
+            <PetalIcon name="sparkle" size={18} color={colors.secondary} />
+            <Text style={[typography.presets.cardTitle, styles.vocabTitle]}>New words</Text>
+            <Text style={[typography.presets.caption, styles.muted]}>
+              {vocabCount} {vocabCount === 1 ? 'word' : 'words'}
+            </Text>
+          </View>
+          {story.vocabulary?.slice(0, 5).map((v: any, index: number) => (
+            <View key={v.id} style={[styles.vocabItem, index > 0 && styles.vocabItemDivided]}>
+              <Text style={[typography.presets.body, styles.vocabWord]}>{v.word}</Text>
+              {v.definition ? (
+                <Text style={[typography.presets.caption, styles.vocabDef]}>{v.definition}</Text>
+              ) : null}
+            </View>
+          ))}
+          {vocabCount > 5 ? (
+            <Text style={[typography.presets.caption, styles.vocabMore]}>
+              +{vocabCount - 5} more words in the story
+            </Text>
+          ) : null}
+        </Card>
+      ) : null}
+    </AppShell>
   );
 };
 
@@ -198,123 +247,84 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: spacing.xl,
   },
-  scrollContainer: {
-    padding: spacing.lg,
-    paddingBottom: spacing.xxl,
+  card: {
+    marginBottom: cardSizes.gap,
   },
-  coverSection: {
+  muted: {
+    color: colors.textSecondary,
+  },
+
+  // ------------------------------------------------------------------ identity
+  headerRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: spacing.xl,
-    position: 'relative',
+    gap: spacing.md,
   },
-  coverPlaceholder: {
-    width: 160,
-    height: 200,
-    borderRadius: radius.illustrationCard,
-    backgroundColor: `${colors.purple}10`,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: colors.border,
+  headerInfo: {
+    flex: 1,
+    minWidth: 0,
   },
-  completedBadge: {
-    position: 'absolute',
-    top: -spacing.xs,
-    right: -spacing.xs,
+  eyebrow: {
+    color: colors.textSecondary,
   },
   title: {
-    fontSize: typography.sizes.xl,
-    fontWeight: typography.weights.bold,
     color: colors.text,
-    textAlign: 'center',
+    marginTop: 2,
+  },
+  badgeRow: {
+    flexDirection: 'row',
+    marginTop: spacing.lg,
+  },
+
+  sectionTitle: {
+    color: colors.text,
     marginBottom: spacing.sm,
   },
   description: {
-    fontSize: typography.sizes.sm,
-    color: colors.textMuted,
-    textAlign: 'center',
-    lineHeight: 22,
-    marginBottom: spacing.lg,
-    paddingHorizontal: spacing.md,
-  },
-  metaRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: spacing.md,
-    marginBottom: spacing.xl,
-  },
-  metaItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  metaText: {
-    fontSize: typography.sizes.sm,
-    color: colors.textMuted,
-  },
-  progressCard: {
-    marginBottom: spacing.lg,
-  },
-  progressTitle: {
-    fontSize: typography.sizes.md,
-    fontWeight: typography.weights.bold,
-    color: colors.text,
-    marginBottom: spacing.sm,
-  },
-  progressBar: {
-    marginBottom: spacing.sm,
+    color: colors.textSecondary,
+    lineHeight: 21,
   },
   progressStats: {
-    fontSize: typography.sizes.sm,
-    color: colors.textMuted,
+    color: colors.textSecondary,
+    marginTop: spacing.sm,
   },
-  vocabCard: {
-    marginBottom: spacing.xl,
-  },
+
+  // ---------------------------------------------------------------- vocabulary
   vocabHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: spacing.md,
     gap: spacing.sm,
+    marginBottom: spacing.sm,
   },
   vocabTitle: {
-    fontSize: typography.sizes.md,
-    fontWeight: typography.weights.bold,
-    color: colors.text,
     flex: 1,
-  },
-  vocabCount: {
-    fontSize: typography.sizes.sm,
-    color: colors.textMuted,
+    minWidth: 0,
+    color: colors.text,
   },
   vocabItem: {
     paddingVertical: spacing.sm,
+  },
+  vocabItemDivided: {
     borderTopWidth: 1,
     borderTopColor: colors.border,
   },
   vocabWord: {
-    fontSize: typography.sizes.body,
-    fontWeight: typography.weights.bold,
     color: colors.text,
+    fontWeight: '700',
   },
   vocabDef: {
-    fontSize: typography.sizes.sm,
-    color: colors.textMuted,
-    marginTop: spacing.xs,
+    color: colors.textSecondary,
+    marginTop: 2,
+    lineHeight: 19,
   },
   vocabMore: {
-    fontSize: typography.sizes.sm,
-    color: colors.textMuted,
+    color: colors.textSecondary,
     textAlign: 'center',
     marginTop: spacing.sm,
   },
-  actions: {
-    gap: spacing.md,
-  },
-  actionBtn: {
-    flex: 1,
+
+  footer: {
+    gap: spacing.sm,
   },
 });
 

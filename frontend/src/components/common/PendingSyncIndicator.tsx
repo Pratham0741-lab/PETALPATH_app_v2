@@ -1,13 +1,22 @@
 import React from 'react';
-import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { colors, spacing, typography, radius } from '../../theme';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+
+import { colors, radius, spacing, typography } from '../../theme';
+import { PetalIcon } from '../icons';
 import { useOfflineSync } from '../../hooks/useOfflineSync';
 
 /**
  * Compact indicator that shows how many requests are pending synchronization
  * while offline, or a brief syncing spinner when the queue is flushing.
  * Renders null when everything is idle and online.
+ *
+ * Redesign notes (§3, §7): the pill was `primaryDark` — brand pink, which the
+ * app now reserves for actions the child can take, and this is neither an
+ * action nor the child's business. It reads as calm status instead: the blue
+ * information tint with `blueDark` on top, and the `arrowUp` glyph in place of
+ * the Ionicons cloud. It also owns its own vertical margin now, so
+ * `AppProviders` no longer holds an 8px gap open on every screen for a pill
+ * that is usually absent.
  */
 export const PendingSyncIndicator: React.FC = () => {
   const { pending, isSyncing, isOffline } = useOfflineSync();
@@ -28,11 +37,11 @@ export const PendingSyncIndicator: React.FC = () => {
       accessibilityLabel={label}
     >
       {isSyncing ? (
-        <ActivityIndicator size="small" color={colors.white} style={styles.icon} />
+        <ActivityIndicator size="small" color={colors.blueDark} />
       ) : (
-        <Ionicons name="cloud-upload" size={14} color={colors.white} style={styles.icon} />
+        <PetalIcon name="arrowUp" size={14} color={colors.blueDark} />
       )}
-      <Text style={styles.text}>{label}</Text>
+      <Text style={[typography.presets.caption, styles.text]}>{label}</Text>
     </View>
   );
 };
@@ -41,19 +50,18 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    alignSelf: 'flex-start',
-    backgroundColor: colors.primaryDark,
+    alignSelf: 'center',
+    gap: spacing.xs,
+    marginVertical: spacing.xs,
+    backgroundColor: colors.blueSoft,
     paddingVertical: 4,
     paddingHorizontal: spacing.sm,
     borderRadius: radius.full,
-    gap: spacing.xs,
-  },
-  icon: {
-    marginRight: 2,
   },
   text: {
-    color: colors.white,
-    fontSize: typography.sizes.xs,
-    fontWeight: typography.weights.bold,
+    color: colors.blueDark,
+    fontWeight: '700',
   },
 });
+
+export default PendingSyncIndicator;

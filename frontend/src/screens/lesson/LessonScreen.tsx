@@ -1,32 +1,77 @@
-import React, { useCallback } from 'react';
-import {
-  View,
-  Text,
-  ScrollView,
-  RefreshControl,
-  StyleSheet,
-  useWindowDimensions,
-} from 'react-native';
+/**
+ * Lesson (route `'Lesson'`) — the react-query flavour of the lesson overview
+ * (spec §34 phase 6).
+ *
+ * This is a *second* lesson-overview screen. `LessonOverviewContent` reads
+ * `roadmapStore`; this one reads the react-query layer
+ * (`useLesson`/`useActivities`/`useCompleteLesson`) and has its own
+ * `launchActivity` switch. Nothing currently navigates to `'Lesson'`, but it is
+ * registered in both stacks, so it is restyled rather than deleted — §1 forbids
+ * removing functionality to make the redesign easier, and §35 requires every
+ * reachable screen to share one design system.
+ *
+ * Every piece of behaviour is carried across untouched: the two queries, the
+ * mutation, `handleRefresh`, `launchActivity`'s five destinations, the
+ * `RefreshControl`, and the `normalizeActivityType`-based progress reads.
+ *
+ * What changed is presentation:
+ *  - `ScreenContainer` + a hand-rolled `ScrollView` → `AppShell`, and the ghost
+ *    "Back" `Button` → `PageHeader`'s standard back affordance.
+ *  - The difficulty `Chip` was wrapped in a `<Text>` — a View inside a Text,
+ *    which RN on Android can refuse to lay out. Difficulty is now a stat tile,
+ *    which also removes the last `components/ui` import.
+ *  - Three hand-rolled stat cards (Ionicons `checkmark-circle` / `time-outline`
+ *    / `star`) → the shared `StatGrid`, and the `layers` section glyph → a
+ *    `PetalIcon` (§7).
+ *  - `EmptyState icon="🔍"` / `"🎯"` and the literal `'Lesson Completed ✓'` →
+ *    real icon names and a `check` icon on the footer button (§7).
+ *  - The `breakpoints.tabletMax` branch → a plain `maxWidth` cap on the content
+ *    column, so the layout follows real available width (§27).
+ *
+ * Two things the old markup computed but never showed are now visible, using
+ * data that was already there rather than anything invented: each activity's
+ * completed flag (it passed a hardcoded `isCompleted={false}`) and
+ * `isAllActivitiesCompleted`, which was assigned and then unused.
+ */
+
+import React, { useCallback, useMemo } from 'react';
+import { ActivityIndicator, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import { Ionicons } from '@expo/vector-icons';
-import { ScreenContainer } from '../../components/common/ScreenContainer';
+
 import { ErrorState } from '../../components/common/ErrorState';
 import { EmptyState } from '../../components/common/EmptyState';
-import { Button } from '../../components/ui/Button';
-import { Chip } from '../../components/ui/Chip';
-import { ActivityNode } from '../../components/roadmap/ActivityNode';
-import { Skeleton } from '../../components/ui/Skeleton';
 import { useLesson, useActivities, useCompleteLesson } from '../../hooks/useLearningQueries';
 import { toUserMessage } from '../../api/errors';
-import { useDeviceType } from '../../hooks/useDeviceType';
 import type { ApiResponse } from '../../types/api';
 import type { Lesson, Activity } from '../../store/roadmapStore';
-import { colors, spacing, typography, radius, iconSizes, breakpoints } from '../../theme';
+import { colors, spacing, typography } from '../../theme';
 import { normalizeActivityType } from '../../utils/activityNormalization';
+import { difficultyBand } from '../../utils/difficulty';
+import {
+  ActivityCard,
+  AppShell,
+  Card,
+  PageHeader,
+  PetalIcon,
+  PrimaryButton,
+  ProgressIndicator,
+  Stat,
+  StatGrid,
+  StatusBadge,
+} from '../../components/design';
 
 type LessonRouteParams = {
   LessonOverview: { lessonId: string };
 };
+
+/** Caps the reading column on a tablet or desktop window (§27). */
+const MAX_CONTENT_WIDTH = 720;
+
+/**
+ * The stars a lesson awards. Was a bare `10` in the markup; it is the shipped
+ * figure, so it is carried across as a named constant rather than changed.
+ */
+const LESSON_XP_REWARD = 10;
 
 const launchActivity = (activity: { id: string; activityType: string }, navigation: any) => {
   const normalizedType = normalizeActivityType(activity.activityType);
@@ -53,13 +98,28 @@ const launchActivity = (activity: { id: string; activityType: string }, navigati
   }
 };
 
+/**
+ * The four progress flags the old `completedActivityCount` filter read, pulled
+ * out so the activity cards and the counter cannot drift apart. `drag_drop` has
+ * no flag of its own, which is why it reports `false` here — same as before.
+ */
+const isActivityDone = (
+  activity: { activityType: string },
+  progress: Lesson['progress'] | undefined,
+): boolean => {
+  if (!progress) return false;
+  const t = normalizeActivityType(activity.activityType);
+  if (t === 'video') return !!progress.videoCompleted;
+  if (t === 'listen') return !!progress.listenCompleted;
+  if (t === 'speak') return !!progress.speakCompleted;
+  if (t === 'write') return !!progress.writeCompleted;
+  return false;
+};
+
 export const LessonScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const route = useRoute<RouteProp<LessonRouteParams, 'LessonOverview'>>();
   const { lessonId } = route.params;
-  const deviceType = useDeviceType();
-  const { width: windowWidth } = useWindowDimensions();
-  const isDesktop = deviceType === 'desktop' || windowWidth >= breakpoints.tabletMax;
 
   const {
     data: lessonRaw,
@@ -98,317 +158,287 @@ export const LessonScreen: React.FC = () => {
     [navigation],
   );
 
-  const isAllActivitiesCompleted = activities.length > 0 && activities.every((a) => {
-    if (!lesson?.progress) return false;
-    const p = lesson.progress;
-    const t = normalizeActivityType(a.activityType);
-    if (t === 'video') return p.videoCompleted;
-    if (t === 'listen') return p.listenCompleted;
-    if (t === 'speak') return p.speakCompleted;
-    if (t === 'write') return p.writeCompleted;
-    return false;
-  });
-
   const handleCompleteLesson = useCallback(() => {
     if (lessonId) {
       completeLessonMutation.mutate(lessonId);
     }
   }, [lessonId, completeLessonMutation]);
 
-  const isLoading = lessonLoading || activitiesLoading;
+  const completedActivityCount = activities.filter((a) => isActivityDone(a, lesson?.progress))
+    .length;
+  const allActivitiesCompleted =
+    activities.length > 0 && completedActivityCount === activities.length;
+  const percent =
+    activities.length > 0 ? Math.round((completedActivityCount / activities.length) * 100) : 0;
 
-  if (isLoading) {
+  const durationLabel = lesson?.activities?.[0]?.video?.duration
+    ? `${Math.ceil(lesson.activities[0].video.duration / 60)}m`
+    : '~5m';
+
+  const stats = useMemo<Stat[]>(() => {
+    const tiles: Stat[] = [];
+
+    /* Only shown when there is progress to report — same condition as before. */
+    if (lesson?.progress) {
+      tiles.push({
+        value: `${completedActivityCount}/${activities.length}`,
+        label: 'Activities',
+        icon: 'check',
+        color: colors.green,
+      });
+    }
+
+    tiles.push({ value: durationLabel, label: 'Duration', icon: 'clock', color: colors.primary });
+    tiles.push({
+      value: `${LESSON_XP_REWARD}`,
+      label: 'XP Reward',
+      icon: 'star',
+      color: colors.yellow,
+    });
+
+    /*
+     * Difficulty replaces the `Chip` that was illegally nested in a `Text`.
+     *
+     * This used to title-case `lesson.difficulty` with `charAt`/`slice`, on the
+     * assumption it was one of the words 'EASY' / 'MEDIUM' / 'HARD'. It is a 1-5
+     * number, and until recently the roadmap payload dropped it altogether — so
+     * the guard above was always false and this tile simply never rendered.
+     * Calling string methods on it would have crashed the screen the moment the
+     * server started sending the field.
+     */
+    const band = difficultyBand(lesson?.difficulty);
+    if (band) {
+      tiles.push({
+        value: band.label,
+        label: 'Difficulty',
+        icon: 'chart',
+        color: colors[band.tone],
+      });
+    }
+
+    return tiles;
+  }, [lesson?.progress, lesson?.difficulty, completedActivityCount, activities.length, durationLabel]);
+
+  const header = (
+    <PageHeader
+      title={lesson?.title || 'Lesson'}
+      subtitle={
+        activities.length > 0
+          ? `${activities.length} ${activities.length === 1 ? 'activity' : 'activities'}`
+          : undefined
+      }
+      onBack={() => navigation.goBack()}
+    />
+  );
+
+  // ---- Non-content states -------------------------------------------------
+
+  if (lessonLoading || activitiesLoading) {
     return (
-      <ScreenContainer>
-        <View style={styles.container}>
-          <View style={styles.skeletonHeader}>
-            <View style={styles.skeletonBackRow}>
-              <Skeleton variant="circle" width={32} height={32} />
-            </View>
-            <Skeleton variant="rect" width="70%" height={28} style={styles.skelMargin} />
-            <Skeleton variant="text" width="100%" height={14} style={styles.skelMargin} />
-            <View style={styles.skeletonStats}>
-              <Skeleton variant="rect" width={80} height={40} borderRadius={12} />
-              <Skeleton variant="rect" width={80} height={40} borderRadius={12} />
-              <Skeleton variant="rect" width={80} height={40} borderRadius={12} />
-            </View>
-          </View>
+      <AppShell scroll={false} header={header} petals="light">
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={[typography.presets.caption, styles.loadingText]}>Loading lesson…</Text>
         </View>
-      </ScreenContainer>
+      </AppShell>
     );
   }
 
   if (lessonError || activitiesError) {
     return (
-      <ScreenContainer>
+      <AppShell scroll={false} header={header} petals="light">
         <View style={styles.center}>
           <ErrorState
-            title="Couldn't load lesson"
+            title="Couldn’t load this lesson"
             message={toUserMessage(lessonErrorObj ?? activitiesErrorObj)}
             onRetry={handleRefresh}
           />
         </View>
-      </ScreenContainer>
+      </AppShell>
     );
   }
 
   if (!lesson) {
     return (
-      <ScreenContainer>
+      <AppShell scroll={false} header={header} petals="light">
         <View style={styles.center}>
           <EmptyState
-            icon="🔍"
+            icon="search"
             title="Lesson not found"
-            message="This lesson doesn't exist or has been removed."
+            message="This lesson doesn’t exist or has been removed."
           />
         </View>
-      </ScreenContainer>
+      </AppShell>
     );
   }
 
-  const completedActivityCount = activities.filter(
-    (a) => {
-      if (!lesson.progress) return false;
-      const p = lesson.progress;
-      const t = normalizeActivityType(a.activityType);
-      if (t === 'video') return p.videoCompleted;
-      if (t === 'listen') return p.listenCompleted;
-      if (t === 'speak') return p.speakCompleted;
-      if (t === 'write') return p.writeCompleted;
-      return false;
-    },
-  ).length;
+  // ---- Content ------------------------------------------------------------
 
   return (
-    <ScreenContainer>
-      <ScrollView
-        contentContainerStyle={[
-          styles.scrollContent,
-          isDesktop && styles.scrollContentDesktop,
-        ]}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={isRefreshing}
-            onRefresh={handleRefresh}
-            tintColor={colors.purple}
-          />
-        }
-      >
-        <View style={[styles.contentInner, isDesktop && styles.contentInnerDesktop]}>
-          <View style={styles.titleSection}>
-            <View style={styles.backRow}>
-              <Button
-                variant="ghost"
-                size="sm"
-                leftIcon={<Ionicons name="arrow-back" size={18} color={colors.textPrimary} />}
-                label="Back"
-                onPress={() => navigation.goBack()}
-              />
+    <AppShell
+      header={header}
+      refreshControl={
+        <RefreshControl
+          refreshing={isRefreshing}
+          onRefresh={handleRefresh}
+          tintColor={colors.primary}
+        />
+      }
+      footer={
+        <PrimaryButton
+          label={lesson.isCompleted ? 'Lesson Completed' : 'Complete Lesson'}
+          icon="check"
+          tone={lesson.isCompleted ? 'green' : 'brand'}
+          onPress={handleCompleteLesson}
+          loading={completeLessonMutation.isPending}
+          disabled={lesson.isCompleted}
+          accessibilityHint="Marks this lesson as finished"
+        />
+      }
+    >
+      <View style={styles.column}>
+        <Card variant="raised" padding="roomy" accent={colors.primary} rail>
+          <View style={styles.infoTop}>
+            <View style={styles.infoText}>
+              <Text style={[typography.presets.eyebrow, styles.eyebrow]}>Lesson</Text>
+              <Text style={[typography.presets.section, styles.lessonTitle]}>{lesson.title}</Text>
             </View>
-
-            <Text style={styles.difficultyBadge}>
-              <Chip
-                label={lesson.difficulty}
-                size="sm"
-                variant={
-                  lesson.difficulty === 'EASY' ? 'success' :
-                  lesson.difficulty === 'MEDIUM' ? 'warning' : 'error'
-                }
-              />
-            </Text>
-
-            <Text style={styles.title}>{lesson.title}</Text>
-
-            {lesson.description ? (
-              <Text style={styles.description}>{lesson.description}</Text>
-            ) : null}
-          </View>
-
-          <View style={styles.statsGrid}>
-            {lesson.progress ? (
-              <View style={styles.statCard}>
-                <Ionicons name="checkmark-circle" size={iconSizes.sm} color={colors.green} />
-                <Text style={styles.statValue}>{completedActivityCount}/{activities.length}</Text>
-                <Text style={styles.statLabel}>Activities</Text>
-              </View>
-            ) : null}
-            <View style={styles.statCard}>
-              <Ionicons name="time-outline" size={iconSizes.sm} color={colors.primary} />
-              <Text style={styles.statValue}>
-                {lesson.activities?.[0]?.video?.duration
-                  ? `${Math.ceil(lesson.activities[0].video.duration / 60)}m`
-                  : '~5m'}
-              </Text>
-              <Text style={styles.statLabel}>Duration</Text>
-            </View>
-            <View style={styles.statCard}>
-              <Ionicons name="star" size={iconSizes.sm} color={colors.yellow} />
-              <Text style={styles.statValue}>10</Text>
-              <Text style={styles.statLabel}>XP Reward</Text>
-            </View>
-          </View>
-
-          <View style={styles.sectionHeader}>
-            <Ionicons name="layers" size={iconSizes.sm} color={colors.text} />
-            <Text style={styles.sectionTitle}>Activities</Text>
-          </View>
-
-          {activities.length === 0 ? (
-            <View style={styles.emptyActivities}>
-              <EmptyState
-                icon="🎯"
-                title="No activities yet"
-                message="Activities will appear here when they're ready."
-              />
-            </View>
-          ) : (
-            <View style={styles.activityList}>
-              {activities.map((activity) => (
-                <ActivityNode
-                  key={activity.id}
-                  id={activity.id}
-                  title={activity.title}
-                  activityType={activity.activityType as any}
-                  isCompleted={false}
-                  onPress={() => handleActivityPress(activity)}
-                />
-              ))}
-            </View>
-          )}
-
-          <View style={styles.completeSection}>
-            <Button
-              label={
-                lesson.isCompleted
-                  ? 'Lesson Completed ✓'
-                  : 'Complete Lesson'
+            <StatusBadge
+              status={
+                lesson.isCompleted ? 'completed' : percent > 0 ? 'current' : 'available'
               }
-              variant={lesson.isCompleted ? 'success' : 'primary'}
-              onPress={handleCompleteLesson}
-              loading={completeLessonMutation.isPending}
-              disabled={lesson.isCompleted}
-              fullWidth
-              size="lg"
             />
           </View>
+
+          {lesson.description ? (
+            <Text style={[typography.presets.body, styles.description]}>{lesson.description}</Text>
+          ) : null}
+
+          {lesson.progress ? (
+            <ProgressIndicator
+              value={percent}
+              label="Lesson progress"
+              showPercentage
+              color={lesson.isCompleted ? colors.green : colors.purple}
+              style={styles.progress}
+              accessibilityLabel={`${completedActivityCount} of ${activities.length} activities complete`}
+            />
+          ) : null}
+
+          <StatGrid stats={stats} style={styles.stats} />
+        </Card>
+
+        <View style={styles.sectionHeader}>
+          <PetalIcon name="explore" size={18} color={colors.text} />
+          <View style={styles.sectionText}>
+            <Text
+              style={[typography.presets.cardTitle, styles.sectionTitle]}
+              accessibilityRole="header"
+            >
+              Activities
+            </Text>
+            <Text style={[typography.presets.caption, styles.sectionSubtitle]}>
+              {allActivitiesCompleted
+                ? 'Every activity is done — finish the lesson below!'
+                : 'Work through each one from top to bottom.'}
+            </Text>
+          </View>
         </View>
-      </ScrollView>
-    </ScreenContainer>
+
+        {activities.length === 0 ? (
+          <EmptyState
+            icon="pencil"
+            title="No activities yet"
+            message="Activities will appear here when they’re ready."
+          />
+        ) : (
+          <View style={styles.activityList}>
+            {activities.map((activity) => (
+              <ActivityCard
+                key={activity.id}
+                // normalizeActivityType returns a strict subset of ActivityCardKind.
+                kind={normalizeActivityType(activity.activityType)}
+                title={activity.title}
+                meta={
+                  activity.video?.duration
+                    ? `${Math.ceil(activity.video.duration / 60)} mins`
+                    : undefined
+                }
+                completed={isActivityDone(activity, lesson.progress)}
+                onPress={() => handleActivityPress(activity)}
+              />
+            ))}
+          </View>
+        )}
+      </View>
+    </AppShell>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  scrollContent: {
-    paddingBottom: spacing.xxl * 2,
-  },
-  scrollContentDesktop: {
-    alignItems: 'center',
-  },
-  contentInner: {
-    padding: spacing.lg,
-  },
-  contentInnerDesktop: {
-    maxWidth: 720,
+  column: {
     width: '100%',
+    maxWidth: MAX_CONTENT_WIDTH,
+    alignSelf: 'center',
+    gap: spacing.lg,
+    paddingTop: spacing.md,
   },
   center: {
-    flex: 1,
+    flexGrow: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    gap: spacing.md,
     padding: spacing.xl,
   },
-  skeletonHeader: {
-    padding: spacing.lg,
-    gap: spacing.sm,
+  loadingText: {
+    color: colors.textSecondary,
   },
-  skeletonBackRow: {
-    marginBottom: spacing.md,
-  },
-  skelMargin: {
-    marginBottom: spacing.sm,
-  },
-  skeletonStats: {
+  infoTop: {
     flexDirection: 'row',
+    alignItems: 'flex-start',
     gap: spacing.md,
-    marginTop: spacing.md,
   },
-  backRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: spacing.md,
+  infoText: {
+    /* Lets a long title wrap instead of pushing the badge off the card. */
+    flexShrink: 1,
+    flexGrow: 1,
+    gap: 2,
   },
-  titleSection: {
-    marginBottom: spacing.lg,
+  eyebrow: {
+    color: colors.primary,
   },
-  difficultyBadge: {
-    marginBottom: spacing.sm,
-    alignSelf: 'flex-start',
-  },
-  title: {
-    fontSize: typography.sizes.xxl,
-    fontWeight: typography.weights.black,
+  lessonTitle: {
     color: colors.text,
-    fontFamily: typography.families.rounded,
-    marginBottom: spacing.sm,
   },
   description: {
-    fontSize: typography.sizes.sm,
     color: colors.textSecondary,
-    fontFamily: typography.families.rounded,
-    lineHeight: typography.lineHeights.md,
+    marginTop: spacing.md,
   },
-  statsGrid: {
-    flexDirection: 'row',
-    gap: spacing.md,
-    marginBottom: spacing.xl,
+  progress: {
+    marginTop: spacing.lg,
   },
-  statCard: {
-    flex: 1,
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    padding: spacing.md,
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
-    gap: spacing.xs,
-  },
-  statValue: {
-    fontSize: typography.sizes.md,
-    fontWeight: typography.weights.bold,
-    color: colors.text,
-    fontFamily: typography.families.rounded,
-  },
-  statLabel: {
-    fontSize: typography.sizes.caption,
-    color: colors.textSecondary,
-    fontFamily: typography.families.rounded,
+  stats: {
+    marginTop: spacing.lg,
   },
   sectionHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: spacing.sm,
-    marginBottom: spacing.md,
+  },
+  sectionText: {
+    flexShrink: 1,
+    flexGrow: 1,
+    gap: 2,
   },
   sectionTitle: {
-    fontSize: typography.sizes.lg,
-    fontWeight: typography.weights.bold,
     color: colors.text,
-    fontFamily: typography.families.rounded,
+  },
+  sectionSubtitle: {
+    color: colors.textSecondary,
   },
   activityList: {
     gap: spacing.sm,
-    marginBottom: spacing.xl,
-  },
-  emptyActivities: {
-    marginBottom: spacing.xl,
-  },
-  completeSection: {
-    marginTop: spacing.md,
-    paddingBottom: spacing.xxl,
   },
 });
+
+export default LessonScreen;

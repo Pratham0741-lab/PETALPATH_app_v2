@@ -1,7 +1,19 @@
+/**
+ * FlameAnimation — the streak flame, animated while a streak is alive.
+ *
+ * Redesign notes (§7, §31): the Ionicons flame is the `flame` PetalIcon, and the
+ * animation now respects the reduced-motion setting, which it previously ignored
+ * — a looping pulse is exactly the kind of thing that setting exists to stop.
+ * With motion reduced the flame still renders filled and coloured, so nothing is
+ * lost but the movement.
+ */
+
 import React, { useEffect, useRef } from 'react';
-import { View, StyleSheet, Animated } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { colors, typography } from '../../../theme';
+import { Animated, StyleSheet, View } from 'react-native';
+
+import { colors } from '../../../theme';
+import { PetalIcon } from '../../icons';
+import { useReducedMotion } from '../../../hooks/useReducedMotion';
 
 interface FlameAnimationProps {
   active: boolean;
@@ -11,52 +23,38 @@ interface FlameAnimationProps {
 const FlameAnimation: React.FC<FlameAnimationProps> = ({ active, size = 48 }) => {
   const scale = useRef(new Animated.Value(1)).current;
   const opacity = useRef(new Animated.Value(1)).current;
+  const reduceMotion = useReducedMotion();
 
   useEffect(() => {
-    if (!active) {
+    if (!active || reduceMotion) {
       scale.setValue(1);
       opacity.setValue(1);
-      return;
+      return undefined;
     }
     const loop = Animated.loop(
       Animated.sequence([
         Animated.parallel([
-          Animated.timing(scale, {
-            toValue: 1.25,
-            duration: 500,
-            useNativeDriver: true,
-          }),
-          Animated.timing(opacity, {
-            toValue: 0.7,
-            duration: 500,
-            useNativeDriver: true,
-          }),
+          Animated.timing(scale, { toValue: 1.25, duration: 500, useNativeDriver: true }),
+          Animated.timing(opacity, { toValue: 0.7, duration: 500, useNativeDriver: true }),
         ]),
         Animated.parallel([
-          Animated.timing(scale, {
-            toValue: 1,
-            duration: 500,
-            useNativeDriver: true,
-          }),
-          Animated.timing(opacity, {
-            toValue: 1,
-            duration: 500,
-            useNativeDriver: true,
-          }),
+          Animated.timing(scale, { toValue: 1, duration: 500, useNativeDriver: true }),
+          Animated.timing(opacity, { toValue: 1, duration: 500, useNativeDriver: true }),
         ]),
       ])
     );
     loop.start();
     return () => loop.stop();
-  }, [active, scale, opacity]);
+  }, [active, reduceMotion, scale, opacity]);
 
   return (
     <View style={[styles.container, { width: size, height: size }]}>
       <Animated.View style={{ transform: [{ scale }], opacity }}>
-        <Ionicons
+        <PetalIcon
           name="flame"
           size={size}
           color={active ? colors.warning : colors.textMuted}
+          filled={active}
         />
       </Animated.View>
     </View>

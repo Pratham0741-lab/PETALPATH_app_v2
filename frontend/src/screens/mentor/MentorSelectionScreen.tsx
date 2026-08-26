@@ -1,27 +1,52 @@
+/**
+ * Mentor Selection (route `'MentorSelection'`) — spec §34 phase 7.
+ *
+ * The onboarding-side companion chooser, reached from `AddEditChildScreen` with
+ * `{ selectedMentorId, returnScreen }` and returning to `returnScreen` with the
+ * chosen id. That contract, the `useApiQuery` fetch, the `RefreshControl` and
+ * the tap-a-selected-buddy-to-continue shortcut are all unchanged (§1).
+ *
+ * This is the *detailed* chooser — it shows personality and voice style, which
+ * the compact `MentorCard` used in the garden does not — so the card is composed
+ * here from shared primitives rather than by adding slots to `MentorCard`. It
+ * uses the same `Card` surface, accent rail, `AvatarGlyph` and button sizes, so
+ * it still reads as the same family (§28, §33).
+ *
+ * Replaced along the way: the `Ionicons` avatar (one `paw`-ish glyph per mentor)
+ * with each buddy's real face, `checkmark-circle` with `StatusBadge`,
+ * `sparkles-outline` / `volume-medium-outline` with `PetalIcon`, the "Choose a
+ * Companion 🐾" title emoji, and the `width: '45%'` card grid with cards that
+ * flex from a minimum width (§7, §27).
+ *
+ * The select animation is kept but now skipped when the OS asks for reduced
+ * motion, in which case the screen navigates straight away (§30).
+ */
+
 import React, { useCallback, useRef } from 'react';
-import {
-  StyleSheet,
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  RefreshControl,
-  Animated,
-} from 'react-native';
+import { ActivityIndicator, Animated, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
-import { Ionicons } from '@expo/vector-icons';
-import { Screen } from '../../components/layout/Screen';
-import { Card } from '../../components/ui/Card';
-import { Button } from '../../components/ui/Button';
-import { Skeleton } from '../../components/ui/Skeleton';
-import { useDeviceType } from '../../hooks/useDeviceType';
+
 import { useApiQuery } from '../../hooks/useReactQuery';
+import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { queryKeys } from '../../utils/queryKeys';
 import { apiClient } from '../../services/api/apiClient';
 import { enhanceMentor } from '../../constants/mentors';
-import { colors, spacing, typography, radius, shadows } from '../../theme';
+import { colors, radius, spacing, typography } from '../../theme';
 import type { ApiResponse } from '../../types/api';
 import type { OnboardingStackParamList } from '../../types/navigation';
+import { EmptyState } from '../../components/common/EmptyState';
+import {
+  AppShell,
+  AvatarGlyph,
+  Card,
+  PageHeader,
+  PetalIcon,
+  PrimaryButton,
+  SceneBand,
+  SecondaryButton,
+  StatusBadge,
+} from '../../components/design';
+import type { PetalIconName } from '../../components/icons';
 
 interface MentorData {
   id: string;
@@ -40,10 +65,14 @@ interface EnhancedMentor extends MentorData {
   funFact: string;
 }
 
+/** Cards flex from this width, so the column count follows the window (§27). */
+const CARD_MIN_WIDTH = 300;
+const MAX_CONTENT_WIDTH = 1000;
+
 export const MentorSelectionScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const route = useRoute<RouteProp<OnboardingStackParamList, 'MentorSelection'>>();
-  const deviceType = useDeviceType();
+  const reduceMotion = useReducedMotion();
 
   const currentlySelectedId = route.params?.selectedMentorId || null;
   const returnScreen = route.params?.returnScreen || 'AddChild';
@@ -53,303 +82,253 @@ export const MentorSelectionScreen: React.FC = () => {
     isLoading,
     isRefetching,
     refetch,
-  } = useApiQuery(
-    queryKeys.mentors.all,
-    () => apiClient.get<ApiResponse<MentorData[]>>('/mentors'),
+  } = useApiQuery(queryKeys.mentors.all, () =>
+    apiClient.get<ApiResponse<MentorData[]>>('/mentors'),
   );
 
-  const mentorList: EnhancedMentor[] = (mentorsResponse?.data ?? []).map((m) => enhanceMentor(m)).filter(Boolean) as EnhancedMentor[];
+  const mentorList: EnhancedMentor[] = (mentorsResponse?.data ?? [])
+    .map((m) => enhanceMentor(m))
+    .filter(Boolean) as EnhancedMentor[];
 
   const pulseAnims = useRef<Map<string, Animated.Value>>(new Map()).current;
 
-  const getPulseAnim = useCallback((id: string) => {
-    if (!pulseAnims.has(id)) {
-      pulseAnims.set(id, new Animated.Value(1));
-    }
-    return pulseAnims.get(id)!;
-  }, [pulseAnims]);
+  const getPulseAnim = useCallback(
+    (id: string) => {
+      if (!pulseAnims.has(id)) {
+        pulseAnims.set(id, new Animated.Value(1));
+      }
+      return pulseAnims.get(id)!;
+    },
+    [pulseAnims],
+  );
 
-  const handleSelectMentor = useCallback((mentorId: string) => {
-    if (mentorId === currentlySelectedId) {
-      navigation.navigate(returnScreen, { selectedMentorId: mentorId });
-      return;
-    }
+  const handleSelectMentor = useCallback(
+    (mentorId: string) => {
+      /* Tapping the buddy you already have is "continue", not "choose". */
+      if (mentorId === currentlySelectedId || reduceMotion) {
+        navigation.navigate(returnScreen, { selectedMentorId: mentorId });
+        return;
+      }
 
-    const anim = getPulseAnim(mentorId);
-    anim.setValue(1);
-    Animated.sequence([
-      Animated.timing(anim, { toValue: 0.95, duration: 80, useNativeDriver: true }),
-      Animated.timing(anim, { toValue: 1.03, duration: 150, useNativeDriver: true }),
-      Animated.timing(anim, { toValue: 1, duration: 100, useNativeDriver: true }),
-    ]).start(() => {
-      navigation.navigate(returnScreen, { selectedMentorId: mentorId });
-    });
-  }, [currentlySelectedId, getPulseAnim, navigation, returnScreen]);
+      const anim = getPulseAnim(mentorId);
+      anim.setValue(1);
+      Animated.sequence([
+        Animated.timing(anim, { toValue: 0.95, duration: 80, useNativeDriver: true }),
+        Animated.timing(anim, { toValue: 1.03, duration: 150, useNativeDriver: true }),
+        Animated.timing(anim, { toValue: 1, duration: 100, useNativeDriver: true }),
+      ]).start(() => {
+        navigation.navigate(returnScreen, { selectedMentorId: mentorId });
+      });
+    },
+    [currentlySelectedId, getPulseAnim, navigation, returnScreen, reduceMotion],
+  );
 
   const onRefresh = useCallback(() => {
     refetch();
   }, [refetch]);
 
-  const renderSkeleton = () => (
-    <View style={[
-      styles.mentorCard,
-      styles.skeletonCard,
-      deviceType !== 'mobile' && styles.largeDeviceCard,
-    ]}>
-      <View style={styles.cardHeader}>
-        <Skeleton variant="circle" width={56} height={56} />
-        <View style={styles.headerInfo}>
-          <Skeleton width="60%" height={16} />
-          <Skeleton width="40%" height={12} style={{ marginTop: spacing.xs }} />
-        </View>
-      </View>
-      <Skeleton width="100%" height={14} style={{ marginBottom: spacing.sm }} />
-      <Skeleton width="90%" height={14} style={{ marginBottom: spacing.sm }} />
-      <Skeleton variant="rect" width="100%" height={60} />
-    </View>
+  const header = (
+    <PageHeader
+      title="Choose a Companion"
+      subtitle="Pick a learning guide to join your child on their adventures."
+    />
   );
 
-  const renderMentorCard = (mentor: EnhancedMentor) => {
-    const isSelected = currentlySelectedId === mentor.id;
-    const pulseAnim = getPulseAnim(mentor.id);
-
+  if (isLoading) {
     return (
-      <Animated.View
-        key={mentor.id}
-        style={[
-          { transform: [{ scale: pulseAnim }] },
-          deviceType !== 'mobile' && styles.largeDeviceCard,
-        ]}
-      >
-        <Card
-          onPress={() => handleSelectMentor(mentor.id)}
-          variant={isSelected ? 'elevated' : 'outlined'}
-          style={[
-            styles.mentorCard,
-            isSelected && { borderColor: mentor.color, borderWidth: 2.5 },
-          ]}
-          accessibilityLabel={`${mentor.name}, ${mentor.characterType}`}
-        >
-          <View style={styles.cardHeader}>
-            <View style={[styles.avatarCircle, { backgroundColor: mentor.color }]}>
-              <Ionicons name={(mentor.iconName as any) ?? 'paw'} size={28} color={colors.white} />
-            </View>
-            <View style={styles.headerInfo}>
-              <Text style={styles.mentorName}>{mentor.name}</Text>
-              <Text style={[styles.characterType, { color: mentor.color }]}>
-                {mentor.characterType.toUpperCase()}
-              </Text>
-            </View>
-            {isSelected && (
-              <View style={styles.selectedBadge}>
-                <Ionicons name="checkmark-circle" size={24} color={mentor.color} />
-              </View>
-            )}
-          </View>
-
-          <View style={styles.detailsGroup}>
-            <Text style={styles.description}>{mentor.description}</Text>
-
-            <View style={styles.metadataContainer}>
-              <View style={styles.metaRow}>
-                <Ionicons name="sparkles-outline" size={14} color={colors.textMuted} style={styles.metaIcon} />
-                <Text style={styles.metaText}>
-                  <Text style={styles.metaBold}>Personality: </Text>{mentor.personality}
-                </Text>
-              </View>
-              <View style={styles.metaRow}>
-                <Ionicons name="volume-medium-outline" size={14} color={colors.textMuted} style={styles.metaIcon} />
-                <Text style={styles.metaText}>
-                  <Text style={styles.metaBold}>Voice Style: </Text>{mentor.voiceStyle}
-                </Text>
-              </View>
-            </View>
-          </View>
-
-          <Button
-            label={isSelected ? 'Selected Companion' : 'Choose Companion'}
-            onPress={() => handleSelectMentor(mentor.id)}
-            variant={isSelected ? 'primary' : 'outline'}
-            style={[
-              styles.selectBtn,
-              isSelected && { backgroundColor: mentor.color, borderColor: mentor.color },
-            ]}
-          />
-        </Card>
-      </Animated.View>
+      <AppShell scroll={false} header={header} petals="light">
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color={colors.primary} />
+          <Text style={[typography.presets.caption, styles.loadingText]}>
+            Gathering the buddies…
+          </Text>
+        </View>
+      </AppShell>
     );
-  };
+  }
 
   return (
-    <Screen
-      scroll
-      safeBottom
+    <AppShell
+      header={header}
+      sky
+      /*
+       * The garden the buddy is being invited into. This screen is often a
+       * child's first sight of the app, and it was a page of white cards on a
+       * pink field — nothing here said the app is about a garden until several
+       * screens later.
+       *
+       * `progress={null}`: nobody has done anything yet, and the band's flowers
+       * mean finished work. Shrubs promise nothing.
+       */
+      scene={<SceneBand progress={null} height={116} />}
       refreshControl={
-        <RefreshControl
-          refreshing={isRefetching}
-          onRefresh={onRefresh}
-          colors={[colors.purple]}
-          tintColor={colors.purple}
-        />
+        <RefreshControl refreshing={isRefetching} onRefresh={onRefresh} tintColor={colors.primary} />
       }
     >
-      <View style={styles.topHeader}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton} accessibilityLabel="Go back">
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
-        </TouchableOpacity>
-        <Text style={styles.title}>Choose a Companion 🐾</Text>
-      </View>
-
-      {isLoading ? (
-        <View style={styles.scrollContainer}>
-          <Text style={styles.subtitle}>
-            Select a learning guide to accompany your child on their writing adventures!
-          </Text>
-          <View style={[
-            styles.gridContainer,
-            deviceType !== 'mobile' && styles.largeGridContainer,
-          ]}>
-            {[1, 2, 3].map((i) => (
-              <React.Fragment key={i}>{renderSkeleton()}</React.Fragment>
+      <View style={styles.column}>
+        {mentorList.length === 0 ? (
+          <EmptyState
+            icon="mentors"
+            title="No companions available"
+            message="Pull down to try again in a moment."
+          />
+        ) : (
+          <View style={styles.grid}>
+            {mentorList.map((mentor) => (
+              <MentorChoice
+                key={mentor.id}
+                mentor={mentor}
+                selected={currentlySelectedId === mentor.id}
+                scale={getPulseAnim(mentor.id)}
+                onPress={() => handleSelectMentor(mentor.id)}
+              />
             ))}
           </View>
-        </View>
-      ) : (
-        <View style={styles.scrollContainer}>
-          <Text style={styles.subtitle}>
-            Select a learning guide to accompany your child on their writing adventures!
-          </Text>
-
-          <View style={[
-            styles.gridContainer,
-            deviceType !== 'mobile' && styles.largeGridContainer,
-          ]}>
-            {mentorList.map(renderMentorCard)}
-          </View>
-        </View>
-      )}
-    </Screen>
+        )}
+      </View>
+    </AppShell>
   );
 };
 
+// ---------------------------------------------------------------------------
+// One companion
+// ---------------------------------------------------------------------------
+
+const MentorChoice: React.FC<{
+  mentor: EnhancedMentor;
+  selected: boolean;
+  scale: Animated.Value;
+  onPress: () => void;
+}> = ({ mentor, selected, scale, onPress }) => (
+  <Animated.View style={[styles.gridItem, { transform: [{ scale }] }]}>
+    <Card
+      variant={selected ? 'selected' : 'raised'}
+      accent={mentor.color}
+      rail
+      padding="normal"
+      onPress={onPress}
+      /* `Card` puts children inside its own padded view, so the stack spacing
+         has to go on `contentStyle` — on `style` it would only separate the
+         accent rail from the body. */
+      contentStyle={styles.cardBody}
+      accessibilityLabel={`${mentor.name}, ${mentor.characterType}.${selected ? ' Chosen.' : ''}`}
+      accessibilityHint={selected ? 'Continue with this buddy' : 'Choose this buddy'}
+    >
+      <View style={styles.cardHeader}>
+        <AvatarGlyph
+          species={mentor.species}
+          size={56}
+          ringColor={selected ? mentor.color : undefined}
+          style={styles.avatar}
+        />
+        <View style={styles.headerText}>
+          <Text style={[typography.presets.cardTitle, styles.name]} numberOfLines={1}>
+            {mentor.name}
+          </Text>
+          {/* Same field the old card showed, still shouted — it is the buddy's
+              role ("storyteller", "explorer"), which `species` does not cover. */}
+          <Text style={[typography.presets.eyebrow, { color: mentor.color }]} numberOfLines={1}>
+            {mentor.characterType.toUpperCase()}
+          </Text>
+        </View>
+        {selected ? <StatusBadge status="completed" label="Chosen" size="sm" /> : null}
+      </View>
+
+      <Text style={[typography.presets.body, styles.description]}>{mentor.description}</Text>
+
+      <View style={styles.metaBlock}>
+        <MetaRow icon="sparkle" label="Personality" value={mentor.personality} />
+        <MetaRow icon="sound" label="Voice style" value={mentor.voiceStyle} />
+      </View>
+
+      {selected ? (
+        <SecondaryButton label="Selected Companion" icon="check" onPress={onPress} />
+      ) : (
+        <PrimaryButton label="Choose Companion" onPress={onPress} />
+      )}
+    </Card>
+  </Animated.View>
+);
+
+const MetaRow: React.FC<{ icon: PetalIconName; label: string; value: string }> = ({
+  icon,
+  label,
+  value,
+}) => (
+  <View style={styles.metaRow}>
+    <PetalIcon name={icon} size={15} color={colors.textSecondary} />
+    <Text style={[typography.presets.caption, styles.metaText]}>
+      <Text style={styles.metaLabel}>{label}: </Text>
+      {value}
+    </Text>
+  </View>
+);
+
 const styles = StyleSheet.create({
-  topHeader: {
-    flexDirection: 'row',
+  column: {
+    width: '100%',
+    maxWidth: MAX_CONTENT_WIDTH,
+    alignSelf: 'center',
+    paddingTop: spacing.md,
+  },
+  center: {
+    flexGrow: 1,
+    justifyContent: 'center',
     alignItems: 'center',
-    padding: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  backButton: {
-    marginRight: spacing.md,
-  },
-  title: {
-    fontSize: typography.sizes.lg,
-    fontWeight: typography.weights.bold,
-    color: colors.text,
-  },
-  scrollContainer: {
-    padding: spacing.lg,
-    paddingBottom: spacing.xxl,
-  },
-  subtitle: {
-    fontSize: typography.sizes.sm,
-    color: colors.textMuted,
-    textAlign: 'center',
-    marginBottom: spacing.xl,
-    lineHeight: typography.lineHeights.sm,
-  },
-  gridContainer: {
     gap: spacing.md,
   },
-  largeGridContainer: {
+  loadingText: {
+    color: colors.textSecondary,
+  },
+  grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'center',
+    gap: spacing.md,
   },
-  mentorCard: {
-    padding: spacing.lg,
-    backgroundColor: colors.backgroundSecondary,
-    borderRadius: radius.lg,
-    ...shadows.md,
-    borderWidth: 1,
-    borderColor: colors.border,
+  gridItem: {
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: CARD_MIN_WIDTH,
   },
-  skeletonCard: {
-    padding: spacing.lg,
-    backgroundColor: colors.backgroundSecondary,
-    borderRadius: radius.lg,
-  },
-  largeDeviceCard: {
-    width: '45%',
-    minWidth: 320,
+  cardBody: {
+    gap: spacing.md,
   },
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: spacing.md,
+    gap: spacing.md,
   },
-  avatarCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: radius.full,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: spacing.md,
-    ...shadows.sm,
+  avatar: {
+    flexShrink: 0,
   },
-  headerInfo: {
-    flex: 1,
+  headerText: {
+    flexShrink: 1,
+    flexGrow: 1,
+    gap: 2,
   },
-  mentorName: {
-    fontSize: typography.sizes.md,
-    fontWeight: typography.weights.bold,
+  name: {
     color: colors.text,
-  },
-  characterType: {
-    fontSize: 10,
-    fontWeight: typography.weights.bold,
-    letterSpacing: 1,
-    marginTop: 2,
-  },
-  selectedBadge: {
-    padding: spacing.xs,
-  },
-  detailsGroup: {
-    gap: spacing.sm,
-    marginBottom: spacing.lg,
   },
   description: {
-    fontSize: typography.sizes.sm,
     color: colors.text,
-    lineHeight: typography.lineHeights.sm,
   },
-  metadataContainer: {
-    backgroundColor: colors.background,
-    borderRadius: radius.md,
+  metaBlock: {
+    gap: spacing.sm,
     padding: spacing.md,
-    gap: spacing.xs,
-    marginTop: spacing.sm,
-    borderWidth: 1,
-    borderColor: colors.border,
+    backgroundColor: colors.backgroundSecondary,
+    borderRadius: radius.cardInner,
   },
   metaRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-  },
-  metaIcon: {
-    marginRight: spacing.sm,
+    alignItems: 'flex-start',
+    gap: spacing.sm,
   },
   metaText: {
-    fontSize: typography.sizes.xs,
     color: colors.text,
+    flexShrink: 1,
   },
-  metaBold: {
-    fontWeight: typography.weights.bold,
-    color: colors.textMuted,
-  },
-  selectBtn: {
-    marginTop: 'auto',
+  metaLabel: {
+    color: colors.textSecondary,
   },
 });
 

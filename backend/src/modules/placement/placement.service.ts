@@ -3,6 +3,13 @@ import { placementRepository } from './placement.repository.js';
 import { NotFoundError, ValidationError, ConflictError } from '../../utils/errors.js';
 import { logger } from '../../utils/logger.js';
 import { AssessmentAttemptStatus, CurriculumState, MasteryState } from '../../shared/enums.js';
+import { engineConfig } from '../../shared/config/engine.config.js';
+import {
+  describeReviewCause,
+  nextReviewDateFor,
+  reviewPriority,
+  type ReviewCause,
+} from '../mastery/review-cadence.js';
 import type {
   PlacementQuestionnaire,
   PlacementQuestion,
@@ -109,6 +116,14 @@ export class PlacementService {
 
     const now = new Date();
 
+    /**
+     * Every row written here is NEW, so one schedule serves them all. Placement
+     * used to hand-roll `now + 7 * 24h` alongside `frequencyDays: 7` — its own
+     * private copy of the cadence decision, on a scale nothing else in the
+     * engine used. `modules/mastery/review-cadence.ts` is the only table now.
+     */
+    const newSchedule = nextReviewDateFor(MasteryState.NEW, now);
+
     const skillEntries = rootSkills.map((s) => ({
       skillId: s.id,
       state: CurriculumState.AVAILABLE,
@@ -147,12 +162,12 @@ export class PlacementService {
             consistencyScore: 0,
             masteryScore: 0,
             lastPracticed: now,
-            nextReviewDate: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000),
+            nextReviewDate: newSchedule.nextReviewDate,
             reviewCount: 0,
             attemptCount: 0,
             retryCount: 0,
-            decayFactor: 0.9,
-            frequencyDays: 7,
+            decayFactor: engineConfig.mastery.retention.decayFactor,
+            frequencyDays: newSchedule.frequencyDays,
           },
           update: {
             masteryState: MasteryState.NEW,
@@ -160,12 +175,12 @@ export class PlacementService {
             confidenceScore: 0,
             masteryScore: 0,
             lastPracticed: now,
-            nextReviewDate: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000),
+            nextReviewDate: newSchedule.nextReviewDate,
             reviewCount: 0,
             attemptCount: 0,
             retryCount: 0,
-            decayFactor: 0.9,
-            frequencyDays: 7,
+            decayFactor: engineConfig.mastery.retention.decayFactor,
+            frequencyDays: newSchedule.frequencyDays,
           },
         });
       }
@@ -358,6 +373,18 @@ export class PlacementService {
 
     const now = new Date();
 
+    /**
+     * Used for the locked-skill rows below, which are all NEW.
+     *
+     * `SkillHealth.nextReviewDate` is NOT NULL in the schema, so "not scheduled"
+     * cannot be expressed — a never-attempted, locked skill has to carry *some*
+     * date. Any consumer of `skillHealthRepository.findDueReviews` must
+     * therefore join `ChildSkillCurriculum` and exclude LOCKED rows, or it will
+     * offer the child a review of a lesson they have never seen. Nothing reads
+     * that method today; this note is for whoever writes the first caller.
+     */
+    const lockedSchedule = nextReviewDateFor(MasteryState.NEW, now);
+
     const allRelevantSkillIds = new Set([
       ...masteredSkillIds,
       ...weakSkillIds,
@@ -417,32 +444,47 @@ export class PlacementService {
           },
         });
 
+        /**
+         * Deliberately left as-is, but worth recording: these are flat scores
+         * from a questionnaire, and `masteryScore = 85` mints MASTERED outright
+         * — bypassing the evidence rules the engine now applies to lessons
+         * (`unified.evidence.minSessionsForMastered`, and the
+         * `unprovenScoreCeiling` of 84 that stops one lucky run from claiming
+         * mastery). Placement's job is to skip content the child already knows,
+         * and it is `CurriculumState.COMPLETED` on the row above that does the
+         * skipping, so tightening this number is a product decision about how
+         * much a placement quiz should be trusted, not a bug fix.
+         */
         let masteryState: MasteryState;
         let masteryScore: number;
         let knowledgeScore: number;
-        let frequencyDays: number;
 
         if (isMastered) {
           masteryState = MasteryState.MASTERED;
           masteryScore = 85;
           knowledgeScore = 85;
-          frequencyDays = 30;
         } else if (isWeak) {
           masteryState = MasteryState.WEAK;
           masteryScore = 35;
           knowledgeScore = 35;
-          frequencyDays = 3;
         } else if (isLearning) {
           masteryState = MasteryState.LEARNING;
           masteryScore = 60;
           knowledgeScore = 60;
-          frequencyDays = 7;
         } else {
           masteryState = MasteryState.NEW;
           masteryScore = 0;
           knowledgeScore = 0;
-          frequencyDays = 7;
         }
+
+        /**
+         * The `frequencyDays` this branch used to set (mastered 30, weak 3,
+         * learning 7, new 7) was placement's own cadence table, and it did not
+         * agree with any of the others — a weak skill waited three days here and
+         * one day everywhere else. Both the interval and the date now come from
+         * the same call, so they cannot drift apart.
+         */
+        const schedule = nextReviewDateFor(masteryState, now);
 
         await tx.skillHealth.upsert({
           where: { childId_skillId: { childId, skillId } },
@@ -457,12 +499,12 @@ export class PlacementService {
             consistencyScore: isMastered ? 80 : 30,
             masteryScore,
             lastPracticed: now,
-            nextReviewDate: new Date(now.getTime() + frequencyDays * 24 * 60 * 60 * 1000),
+            nextReviewDate: schedule.nextReviewDate,
             reviewCount: isMastered ? 3 : 0,
             attemptCount: 1,
             retryCount: isWeak ? 1 : 0,
-            decayFactor: 0.9,
-            frequencyDays,
+            decayFactor: engineConfig.mastery.retention.decayFactor,
+            frequencyDays: schedule.frequencyDays,
           },
           update: {
             masteryState,
@@ -470,35 +512,61 @@ export class PlacementService {
             confidenceScore: isMastered ? 80 : 30,
             masteryScore,
             lastPracticed: now,
-            nextReviewDate: new Date(now.getTime() + frequencyDays * 24 * 60 * 60 * 1000),
+            nextReviewDate: schedule.nextReviewDate,
             reviewCount: isMastered ? 3 : 0,
             attemptCount: 1,
             retryCount: isWeak ? 1 : 0,
-            decayFactor: 0.9,
-            frequencyDays,
+            decayFactor: engineConfig.mastery.retention.decayFactor,
+            frequencyDays: schedule.frequencyDays,
           },
         });
 
         if (isWeak || isGap) {
-          const reason = isWeak ? 'Weak skill detected during placement' : 'Prerequisite gap detected during placement';
-          const queuePriority = isGap ? 5 : 3;
+          /**
+           * These rows sit in the same queue, and are ordered by the same
+           * `priority DESC`, as every row the reinforcement engine writes — so
+           * they have to be scored on the same scale. They were not: placement
+           * assigned 5 for a prerequisite gap and 3 for a weak skill, while the
+           * engine's `reviewPriority` produces 70–120 for a struggling skill.
+           * Every placement finding therefore sorted below every engine finding,
+           * which matters because the roadmap surfaces only the top few.
+           *
+           * Scoring them properly also reverses nothing: a gap skill (mastery 0)
+           * comes out at 105 and a weak skill (mastery 35) at 88, preserving the
+           * 5-beats-3 intent without hand-assigned numbers.
+           */
+          const skillName =
+            assessedSkills.find((s) => s.skillId === skillId)?.skillName ??
+            prerequisiteGaps.find((g) => g.skillId === skillId)?.skillName;
+          const cause: ReviewCause = isGap ? 'PREREQUISITE_GAP' : 'MASTERY_GAP';
 
           await tx.reinforcementQueue.upsert({
             where: { childId_skillId: { childId, skillId } },
             create: {
               childId,
               skillId,
-              priority: queuePriority,
-              masteryState: MasteryState.LEARNING,
-              reason,
+              priority: reviewPriority({
+                masteryScore,
+                retentionScore: isMastered ? 80 : 30,
+                confidenceScore: isMastered ? 80 : 30,
+                cause,
+              }),
+              masteryState,
+              reason: describeReviewCause(cause, skillName),
               isCompleted: false,
-              nextReviewDate: new Date(now.getTime() + 24 * 60 * 60 * 1000),
+              nextReviewDate: schedule.nextReviewDate,
             },
             update: {
-              priority: queuePriority,
-              reason,
+              priority: reviewPriority({
+                masteryScore,
+                retentionScore: isMastered ? 80 : 30,
+                confidenceScore: isMastered ? 80 : 30,
+                cause,
+              }),
+              masteryState,
+              reason: describeReviewCause(cause, skillName),
               isCompleted: false,
-              nextReviewDate: new Date(now.getTime() + 24 * 60 * 60 * 1000),
+              nextReviewDate: schedule.nextReviewDate,
             },
           });
         }
@@ -534,12 +602,12 @@ export class PlacementService {
             consistencyScore: 0,
             masteryScore: 0,
             lastPracticed: now,
-            nextReviewDate: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000),
+            nextReviewDate: lockedSchedule.nextReviewDate,
             reviewCount: 0,
             attemptCount: 0,
             retryCount: 0,
-            decayFactor: 0.9,
-            frequencyDays: 7,
+            decayFactor: engineConfig.mastery.retention.decayFactor,
+            frequencyDays: lockedSchedule.frequencyDays,
           },
           update: {},
         });

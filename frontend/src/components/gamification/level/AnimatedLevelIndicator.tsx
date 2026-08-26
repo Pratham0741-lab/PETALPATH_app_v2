@@ -41,7 +41,7 @@ export const AnimatedLevelIndicator: React.FC<AnimatedLevelIndicatorProps> = ({
 
 const styles = StyleSheet.create({
   badge: {
-    backgroundColor: colors.purple,
+    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },

@@ -10,10 +10,26 @@ import Animated, {
   runOnJS,
 } from 'react-native-reanimated';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
+import { colors } from '../../theme';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-const COLORS = ['#FF6B6B', '#4ECDC4', '#FFE66D', '#A8E6CF', '#FF8A5C', '#7C4DFF', '#FF4081', '#00E676'];
+/**
+ * Celebration confetti, on the app palette rather than a separate neon set
+ * (spec §3) — this fires over redesigned screens now, so it has to belong to
+ * them. Motion, count and timing are unchanged, and reduced motion still
+ * suppresses the effect entirely.
+ */
+const COLORS = [
+  colors.pink,
+  colors.purple,
+  colors.blue,
+  colors.green,
+  colors.yellow,
+  colors.orange,
+  colors.coral,
+  colors.lavender,
+];
 
 const CONFETTI_COUNT = 40;
 

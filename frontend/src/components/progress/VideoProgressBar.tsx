@@ -83,7 +83,7 @@ const styles = StyleSheet.create({
     fontWeight: typography.weights.bold,
   },
   percentageText: {
-    color: colors.purple,
+    color: colors.primary,
     fontSize: typography.sizes.xs,
     fontWeight: typography.weights.bold,
   },
@@ -101,7 +101,7 @@ const styles = StyleSheet.create({
   },
   trackFill: {
     height: '100%',
-    backgroundColor: colors.purple,
+    backgroundColor: colors.primary,
     borderRadius: radius.full,
   },
   thumb: {
@@ -110,7 +110,7 @@ const styles = StyleSheet.create({
     width: 16,
     height: 16,
     borderRadius: 8,
-    backgroundColor: colors.purple,
+    backgroundColor: colors.primary,
     borderWidth: 2,
     borderColor: colors.white,
     shadowColor: '#000',

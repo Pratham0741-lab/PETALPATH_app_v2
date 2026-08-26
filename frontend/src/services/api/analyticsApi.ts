@@ -1,5 +1,6 @@
 import { apiClient } from './apiClient';
 import type { ApiResponse } from '../../types/api';
+import type { SkillMasteryView } from './masteryTypes';
 
 export interface OverviewMetrics {
   lessonsCompleted: number;
@@ -162,8 +163,14 @@ export const analyticsApi = {
   getLearningTime: (childId: string) =>
     apiClient.get<ApiResponse<LearningStats>>(`/analytics/overview?childId=${childId}`),
 
+  /**
+   * A flat list, one entry per tracked skill.
+   *
+   * This was declared as `[{ category, skills: [...] }]` — a grouped shape the
+   * endpoint has never returned. `SkillMasteryScreen` believed the declaration
+   * and called `.skills.map()`, which throws on a flat row; it only stayed
+   * quiet while the table was empty. Grouping by `domain` is the caller's job.
+   */
   getSkillMasteryDetailed: (childId: string) =>
-    apiClient.get<ApiResponse<Array<{ category: string; skills: Array<{ name: string; score: number; state: string }> }>>>(
-      `/mastery/child/${childId}`,
-    ),
+    apiClient.get<ApiResponse<SkillMasteryView[]>>(`/mastery/child/${childId}`),
 };

@@ -1,5 +1,7 @@
 import { MasteryState } from '../../shared/enums.js';
 import { engineConfig } from '../../shared/config/engine.config.js';
+import * as scoring from './mastery-scoring.js';
+import { nextReviewDateFor } from './review-cadence.js';
 import { skillHealthRepository } from './repositories/skill-health.repository.js';
 import { skillHistoryRepository } from './repositories/skill-history.repository.js';
 import { regressionLogRepository } from './repositories/regression-log.repository.js';
@@ -14,84 +16,47 @@ export class MasteryEngineService {
    * Range: 0–100
    */
   calculateKnowledgeScore(accuracy: number): number {
-    return Math.max(0, Math.min(100, accuracy));
+    return scoring.knowledgeScore(accuracy);
   }
 
   /**
-   * Confidence score is calculated based on the lack of retries and help requests.
-   * Uses a standard normalization ceiling of 5 (where 5+ retries or help requests results in max penalty).
+   * Confidence score — how surely the child arrived at a *correct* answer.
+   *
+   * Takes the whole evidence record rather than just the two penalty counts:
+   * built from penalties alone, this returned 100 for a child who had done
+   * nothing at all. See `mastery-scoring.ts::confidenceScore`.
    * Range: 0–100
    */
-  calculateConfidenceScore(retries: number, helpRequests: number): number {
-    const retryCeil = engineConfig.mastery.confidence.retryNormalizationCeiling;
-    const helpCeil = engineConfig.mastery.confidence.helpNormalizationCeiling;
-    const normalizedRetries = Math.min((retries / retryCeil) * 100, 100);
-    const normalizedHelpRequests = Math.min((helpRequests / helpCeil) * 100, 100);
-
-    const score = 0.5 * (100 - normalizedRetries) + 0.5 * (100 - normalizedHelpRequests);
-    return Math.max(0, Math.min(100, score));
+  calculateConfidenceScore(input: scoring.ConfidenceInput): number {
+    return scoring.confidenceScore(input);
   }
 
   /**
-   * Consistency score is the moving average accuracy over the last 5 performances.
+   * Consistency score over the last `consistencyWindowSize` performances:
+   * mean accuracy less its volatility, so a steady learner outscores an erratic
+   * one at the same average.
    */
   async calculateConsistencyScore(childId: string, skillId: string, currentAccuracy: number): Promise<number> {
     const recentHistory = await skillHistoryRepository.findRecent(childId, skillId, engineConfig.mastery.consistencyWindowSize - 1);
     const accuracies = [currentAccuracy, ...recentHistory.map((h) => h.knowledgeScore)];
-    const sum = accuracies.reduce((total, val) => total + val, 0);
-    return sum / accuracies.length;
+    return scoring.consistencyScore(accuracies).score;
   }
 
   /**
-   * Retention score decays dynamically based on the days elapsed since the last practice session.
-   * Future performances adjust retention upwards (on success) or leave it decayed.
+   * Retention score decays over the days elapsed since the last practice
+   * session, then moves toward today's demonstrated accuracy in bounded steps.
    * Range: 0–100
    */
   calculateRetentionScore(previousHealth: SkillHealth | null, currentDate: Date, currentAccuracy: number): number {
-    const defaultDecayFactor = engineConfig.mastery.retention.decayFactor;
-    const initialRetention = engineConfig.mastery.retention.initialRetention;
-    const successThreshold = engineConfig.mastery.retention.successAccuracyThreshold;
-
-    if (!previousHealth) {
-      // First session: establish baseline
-      return currentAccuracy >= successThreshold ? initialRetention : currentAccuracy;
-    }
-
-    const lastPracticed = new Date(previousHealth.lastPracticed);
-    const timeDiff = currentDate.getTime() - lastPracticed.getTime();
-    const daysElapsed = Math.max(0, timeDiff / (1000 * 60 * 60 * 24));
-
-    const decayFactor = previousHealth.decayFactor ?? defaultDecayFactor;
-    const decayedRetention = previousHealth.retentionScore * Math.pow(decayFactor, daysElapsed);
-
-    // Update retention based on performance success
-    const isSuccessful = currentAccuracy >= successThreshold;
-    const updatedRetention = isSuccessful
-      ? Math.min(100, decayedRetention + engineConfig.mastery.retention.successBoost)
-      : Math.max(0, decayedRetention - engineConfig.mastery.retention.failurePenalty);
-
-    return updatedRetention;
+    return scoring.retentionScore(previousHealth, currentDate, currentAccuracy);
   }
 
   /**
    * Mastery score is a weighted combination of all performance dimensions.
    * Range: 0–100
    */
-  calculateMasteryScore(scores: {
-    knowledgeScore: number;
-    retentionScore: number;
-    confidenceScore: number;
-    engagementScore: number;
-    consistencyScore: number;
-  }): number {
-    const w = engineConfig.mastery.weights;
-    const score =
-      w.knowledge * scores.knowledgeScore +
-      w.retention * scores.retentionScore +
-      w.confidence * scores.confidenceScore +
-      w.engagement * scores.engagementScore +
-      w.consistency * scores.consistencyScore;
-    return Math.max(0, Math.min(100, score));
+  calculateMasteryScore(scores: scoring.DimensionScores): number {
+    return scoring.combineDimensions(scores);
   }
 
   /**
@@ -99,47 +64,21 @@ export class MasteryEngineService {
    * Design accommodates potential future states (e.g. INTRODUCED, FRAGILE, PROFICIENT).
    */
   determineMasteryState(masteryScore: number): MasteryState {
-    const t = engineConfig.mastery.stateThresholds;
-    if (masteryScore < t.learning) {
-      return MasteryState.LEARNING;
-    }
-    if (masteryScore >= t.learning && masteryScore < t.weak) {
-      return MasteryState.WEAK;
-    }
-    if (masteryScore >= t.weak && masteryScore < t.strong) {
-      return MasteryState.STRONG;
-    }
-    return MasteryState.MASTERED;
+    return scoring.masteryStateFor(masteryScore);
   }
 
   /**
    * Calculate next review schedule date based on mastery state.
    * Returns next review date and review frequency in days.
+   *
+   * Delegates to `review-cadence.ts`, which is authoritative for the cadence and
+   * schedules to the start of a local calendar day. The signature is unchanged,
+   * so every existing caller is untouched; what changes is that a lesson
+   * finished at 23:50 now comes due at breakfast rather than at 23:50 tomorrow,
+   * and that STRONG's interval is the product's 2 days rather than 7.
    */
   calculateNextReviewDate(state: MasteryState, currentDate: Date): { nextReviewDate: Date; frequencyDays: number } {
-    const cad = engineConfig.mastery.reviewCadenceDays;
-    let frequencyDays: number = engineConfig.mastery.defaultFrequencyDays;
-
-    switch (state) {
-      case MasteryState.LEARNING:
-        frequencyDays = cad.learning;
-        break;
-      case MasteryState.WEAK:
-        frequencyDays = cad.weak;
-        break;
-      case MasteryState.STRONG:
-        frequencyDays = cad.strong;
-        break;
-      case MasteryState.MASTERED:
-        frequencyDays = cad.mastered;
-        break;
-      default:
-        frequencyDays = engineConfig.mastery.defaultFrequencyDays;
-        break;
-    }
-
-    const nextReviewDate = new Date(currentDate.getTime() + frequencyDays * 24 * 60 * 60 * 1000);
-    return { nextReviewDate, frequencyDays };
+    return nextReviewDateFor(state, currentDate);
   }
 
   /**
@@ -158,7 +97,12 @@ export class MasteryEngineService {
 
     // 1. Calculate scoring dimensions
     const knowledgeScore = this.calculateKnowledgeScore(dto.accuracy);
-    const confidenceScore = this.calculateConfidenceScore(dto.retries, dto.helpRequests);
+    const confidenceScore = this.calculateConfidenceScore({
+      accuracy: dto.accuracy,
+      attempts: dto.attempts,
+      retries: dto.retries,
+      helpRequests: dto.helpRequests,
+    });
     const consistencyScore = await this.calculateConsistencyScore(childId, skillId, dto.accuracy);
     const retentionScore = this.calculateRetentionScore(previousHealth, currentDate, dto.accuracy);
 

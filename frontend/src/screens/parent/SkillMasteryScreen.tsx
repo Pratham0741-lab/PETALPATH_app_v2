@@ -1,159 +1,147 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import {
-  StyleSheet,
-  View,
-  Text,
-  SectionList,
-  TouchableOpacity,
-  RefreshControl,
-  useWindowDimensions,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
-import { useTheme } from '../../theme/ThemeContext';
-import { spacing, typography, radius } from '../../theme';
+import { RefreshControl, SectionList, StyleSheet, Text, View } from 'react-native';
 import { useSkillMasteryDetailed } from '../../hooks/useParentAnalytics';
-import { SkillDistributionCard } from '../../components/analytics/SkillDistributionCard';
-import { ScreenContainer } from '../../components/common/ScreenContainer';
-import { Card } from '../../components/ui/Card';
-import { Button } from '../../components/ui/Button';
-import { Skeleton } from '../../components/ui/Skeleton';
-import { ErrorState } from '../../components/common/ErrorState';
+import {
+  AppShell,
+  Card,
+  PageHeader,
+  ParentRow,
+  PetalIcon,
+  ProgressIndicator,
+  SegmentedTabs,
+  StatePanel,
+} from '../../components/design';
+import type { SegmentedTabItem } from '../../components/design';
+import { SkillDistributionCard } from '../../components/analytics';
 import { EmptyState } from '../../components/common/EmptyState';
+import { ErrorState } from '../../components/common/ErrorState';
+import { Skeleton } from '../../components/ui/Skeleton';
 import { SearchBar } from '../../components/ui/SearchBar';
+import {
+  MASTERY_STATE_LABELS,
+  MASTERY_STATE_ORDER,
+  toMasteryStateName,
+} from '../../services/api/masteryTypes';
+import type { MasteryStateName, SkillMasteryView } from '../../services/api/masteryTypes';
+import { badgeSizes, colors, progressSizes, radius, spacing, typography } from '../../theme';
 
-type SkillState = 'mastered' | 'learning' | 'needs_practice' | 'locked';
+/**
+ * Skill Mastery (spec §26) — every tracked skill, searchable and sortable.
+ *
+ * Rewired onto the real response. This screen used to type
+ * `/mastery/child/:childId` as `[{ category, skills: [...] }]` and call
+ * `cat.skills.map(...)` on each entry; the endpoint returns a flat list, so the
+ * first child with a single skill-health row would have crashed the screen
+ * inside its own `useMemo`. It never did only because the table stayed empty
+ * until the engine was wired to the completion path. Grouping is done here now,
+ * by curriculum domain, which is what the old `category` was standing in for.
+ *
+ * The state vocabulary is the engine's, too. The four words this screen invented
+ * ('mastered' / 'in_progress' / 'needs_practice' / 'locked') matched nothing the
+ * server sends — the enum is `NEW | LEARNING | WEAK | STRONG | MASTERED`, in
+ * uppercase — so every skill fell through to the default and the whole table
+ * reported "Learning". Five states are shown now, in one order (worst first),
+ * shared with the sort, the filters and the distribution legend.
+ *
+ * Scores are today's. The server applies the forgetting curve before answering,
+ * so a skill last practiced three weeks ago reports what it has decayed to; when
+ * that differs from the stored figure the row says so rather than quietly
+ * contradicting the number this screen showed last month.
+ *
+ * Styling notes from the earlier pass still hold: the state colours are tokens
+ * (§29), the chip draws its label in near-black on a tint with a coloured dot
+ * carrying the hue (§30), and the sort chips say "Lowest first" / "Highest
+ * first" with real SVG arrows instead of arrow glyphs (§7).
+ */
 
 type SortKey = 'name' | 'score_asc' | 'score_desc' | 'state';
 
-interface SkillItem {
-  name: string;
-  score: number;
-  state: SkillState;
-}
-
-interface CategorySection {
-  category: string;
-  data: SkillItem[];
-}
-
-const FILTER_OPTIONS: Array<{ key: SkillState | 'all'; label: string }> = [
-  { key: 'all', label: 'All' },
-  { key: 'mastered', label: 'Mastered' },
-  { key: 'learning', label: 'Learning' },
-  { key: 'needs_practice', label: 'Needs Practice' },
-  { key: 'locked', label: 'Locked' },
-];
-
-const SORT_OPTIONS: Array<{ key: SortKey; label: string }> = [
+const SORT_ITEMS: SegmentedTabItem<SortKey>[] = [
   { key: 'name', label: 'Name' },
-  { key: 'score_asc', label: 'Score ↑' },
-  { key: 'score_desc', label: 'Score ↓' },
+  { key: 'score_asc', label: 'Lowest first', icon: 'arrowUp' },
+  { key: 'score_desc', label: 'Highest first', icon: 'arrowDown' },
   { key: 'state', label: 'State' },
 ];
 
-const STATE_COLORS: Record<SkillState, string> = {
-  mastered: '#4CAF50',
-  learning: '#2196F3',
-  needs_practice: '#FF9800',
-  locked: '#9E9E9E',
+/**
+ * Bar and dot colour per state — a ramp from "needs help" to "done", not five
+ * unrelated hues. Red for LEARNING, which is the bottom band and not the middle
+ * one its name suggests; warning orange for WEAK just above it; blue for
+ * holding, green for finished, and grey for a skill not yet met.
+ *
+ * The ramp follows `MASTERY_STATE_ORDER`, which carries the band boundaries. It
+ * used to give LEARNING a calm purple and WEAK the only warning colour, which
+ * put the softer treatment on the worse score.
+ */
+const STATE_COLORS: Record<MasteryStateName, string> = {
+  LEARNING: colors.error,
+  WEAK: colors.warning,
+  NEW: colors.textMuted,
+  STRONG: colors.blue,
+  MASTERED: colors.success,
 };
 
-const STATE_LABELS: Record<SkillState, string> = {
-  mastered: 'Mastered',
-  learning: 'Learning',
-  needs_practice: 'Needs Practice',
-  locked: 'Locked',
+/** Chip background per state. The word on top of it is always `colors.text`. */
+const STATE_TINTS: Record<MasteryStateName, string> = {
+  LEARNING: colors.errorLight,
+  WEAK: colors.warningLight,
+  NEW: colors.skeleton,
+  STRONG: colors.blueSoft,
+  MASTERED: colors.greenSoft,
 };
 
-function mapApiState(state: string): SkillState {
-  switch (state) {
-    case 'mastered':
-      return 'mastered';
-    case 'in_progress':
-    case 'learning':
-      return 'learning';
-    case 'needs_practice':
-    case 'review':
-      return 'needs_practice';
-    case 'locked':
-      return 'locked';
-    default:
-      return 'learning';
-  }
-}
+const MasteryBadge: React.FC<{ state: MasteryStateName }> = ({ state }) => (
+  <View style={[styles.badge, { backgroundColor: STATE_TINTS[state] }]}>
+    <View style={[styles.dot, { backgroundColor: STATE_COLORS[state] }]} />
+    <Text style={styles.badgeText}>{MASTERY_STATE_LABELS[state]}</Text>
+  </View>
+);
 
-function StatsSkeleton() {
-  return (
-    <View style={styles.statsRow}>
-      {[1, 2, 3, 4].map((i) => (
-        <View key={i} style={styles.statItem}>
-          <Skeleton width={36} height={24} />
-          <Skeleton width={60} height={12} style={{ marginTop: spacing.xs }} />
-        </View>
-      ))}
-    </View>
-  );
-}
-
-function SkillProgressBar({ score, color }: { score: number; color: string }) {
-  return (
-    <View style={styles.progressTrack}>
-      <View style={[styles.progressFill, { width: `${Math.min(score, 100)}%`, backgroundColor: color }]} />
-    </View>
-  );
-}
-
-function StateBadge({ state }: { state: SkillState }) {
-  const color = STATE_COLORS[state];
-  const label = STATE_LABELS[state];
-  return (
-    <View style={[styles.badge, { backgroundColor: `${color}20` }]}>
-      <Text style={[styles.badgeText, { color }]}>{label}</Text>
-    </View>
-  );
-}
-
-function SkillRow({ skill }: { skill: SkillItem }) {
-  const { theme: { colors: themeColors } } = useTheme();
-  const stateColor = STATE_COLORS[skill.state];
-
-  return (
-    <View style={[styles.skillRow, { backgroundColor: themeColors.card }]}>
-      <View style={styles.skillTopRow}>
-        <Text style={[styles.skillName, { color: themeColors.text }]} numberOfLines={1}>
-          {skill.name}
+const SkillRow: React.FC<{ skill: SkillMasteryView }> = ({ skill }) => (
+  <Card variant="flat" padding="compact" style={styles.skillCard}>
+    <View style={styles.skillTop}>
+      <View style={styles.skillNameWrap}>
+        <Text style={[typography.presets.body, styles.skillName]} numberOfLines={2}>
+          {skill.skillName}
         </Text>
-        <StateBadge state={skill.state} />
+        {/*
+          Only when the decay has actually cost something. Saying "was 86, now
+          79" is the difference between a number that looks wrong and a number
+          that explains itself.
+        */}
+        {skill.isSlipping ? (
+          <Text style={[typography.presets.caption, styles.slipping]}>
+            {`Was ${Math.round(skill.storedScore)}% ${
+              skill.daysSincePractice === 0
+                ? 'earlier today'
+                : skill.daysSincePractice === 1
+                  ? 'yesterday'
+                  : `${skill.daysSincePractice} days ago`
+            }`}
+          </Text>
+        ) : null}
       </View>
-      <View style={styles.skillProgressRow}>
-        <SkillProgressBar score={skill.score} color={stateColor} />
-        <Text style={[styles.skillScore, { color: themeColors.textSecondary }]}>
-          {Math.round(skill.score)}%
-        </Text>
-      </View>
+      <MasteryBadge state={skill.masteryState} />
     </View>
-  );
-}
+    <ProgressIndicator
+      value={skill.masteryScore}
+      height={progressSizes.barHeightThin}
+      color={STATE_COLORS[skill.masteryState]}
+      showPercentage
+      style={styles.skillBar}
+      accessibilityLabel={`${skill.skillName}, ${MASTERY_STATE_LABELS[skill.masteryState]}, ${Math.round(
+        skill.masteryScore,
+      )} percent`}
+    />
+  </Card>
+);
 
 export const SkillMasteryScreen: React.FC = () => {
-  const { theme: { colors: themeColors } } = useTheme();
-  const { width: screenWidth } = useWindowDimensions();
-  const navigation = useNavigation<{ goBack: () => void }>();
-
-  const {
-    data: masteryData,
-    isLoading,
-    isError,
-    error,
-    refetch,
-    isFetching,
-  } = useSkillMasteryDetailed();
+  const { data: masteryData, isLoading, isError, error, refetch } = useSkillMasteryDetailed();
 
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeFilter, setActiveFilter] = useState<SkillState | 'all'>('all');
+  const [activeFilter, setActiveFilter] = useState<MasteryStateName | 'all'>('all');
   const [sortKey, setSortKey] = useState<SortKey>('name');
-  const [showSortPicker, setShowSortPicker] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   const onRefresh = useCallback(async () => {
@@ -162,179 +150,202 @@ export const SkillMasteryScreen: React.FC = () => {
     setRefreshing(false);
   }, [refetch]);
 
-  const rawSections = useMemo(() => {
-    const apiData = (masteryData?.data ?? []) as Array<{ category: string; skills: Array<{ name: string; score: number; state: string }> }>;
-    return apiData.map((cat) => ({
-      category: cat.category,
-      data: cat.skills.map((s) => ({
-        name: s.name,
-        score: s.score,
-        state: mapApiState(s.state),
-      })),
+  /**
+   * The response, normalised.
+   *
+   * `toMasteryStateName` is applied even though the server sends the enum
+   * directly: this is the one place a stale cached response, or a deployment
+   * that predates the projection, can still arrive with a lowercase word, and a
+   * skill silently missing from every total is harder to spot than one in the
+   * wrong column.
+   */
+  const allSkills = useMemo<SkillMasteryView[]>(() => {
+    const rows = (masteryData?.data ?? []) as SkillMasteryView[];
+    return rows.map((row) => ({
+      ...row,
+      masteryState: toMasteryStateName(row.masteryState),
     }));
   }, [masteryData]);
 
-  const allSkills = useMemo(() => {
-    return rawSections.flatMap((s) => s.data);
-  }, [rawSections]);
-
-  const stats = useMemo(() => {
-    const total = allSkills.length;
-    const mastered = allSkills.filter((s) => s.state === 'mastered').length;
-    const learning = allSkills.filter((s) => s.state === 'learning').length;
-    const needsPractice = allSkills.filter((s) => s.state === 'needs_practice').length;
-    const locked = allSkills.filter((s) => s.state === 'locked').length;
-    return { total, mastered, learning, needsPractice, locked };
-  }, [allSkills]);
-
-  const weakSkills = useMemo(() => {
-    return allSkills.filter((s) => s.score < 50).sort((a, b) => a.score - b.score);
-  }, [allSkills]);
-
-  const masteryGroups = useMemo(() => {
-    return [
-      { label: 'Mastered', count: stats.mastered, color: STATE_COLORS.mastered },
-      { label: 'Learning', count: stats.learning, color: STATE_COLORS.learning },
-      { label: 'Needs Practice', count: stats.needsPractice, color: STATE_COLORS.needs_practice },
-      { label: 'Locked', count: stats.locked, color: STATE_COLORS.locked },
-    ];
-  }, [stats]);
-
-  const filteredAndSortedSections = useMemo(() => {
-    let filteredSections = rawSections.map((section) => {
-      let skills = section.data;
-
-      if (searchQuery.trim()) {
-        const query = searchQuery.toLowerCase();
-        skills = skills.filter((s) => s.name.toLowerCase().includes(query));
-      }
-
-      if (activeFilter !== 'all') {
-        skills = skills.filter((s) => s.state === activeFilter);
-      }
-
-      skills = [...skills].sort((a, b) => {
-        switch (sortKey) {
-          case 'name':
-            return a.name.localeCompare(b.name);
-          case 'score_asc':
-            return a.score - b.score;
-          case 'score_desc':
-            return b.score - a.score;
-          case 'state': {
-            const order: SkillState[] = ['mastered', 'learning', 'needs_practice', 'locked'];
-            return order.indexOf(a.state) - order.indexOf(b.state);
-          }
-          default:
-            return 0;
-        }
-      });
-
-      return { ...section, data: skills };
+  /** One group per curriculum domain, alphabetical. */
+  const rawSections = useMemo(() => {
+    const byDomain = new Map<string, SkillMasteryView[]>();
+    allSkills.forEach((skill) => {
+      const key = skill.domain || 'General';
+      const bucket = byDomain.get(key);
+      if (bucket) bucket.push(skill);
+      else byDomain.set(key, [skill]);
     });
+    return [...byDomain.entries()]
+      .map(([domain, skills]) => ({ domain, skills }))
+      .sort((a, b) => a.domain.localeCompare(b.domain));
+  }, [allSkills]);
 
-    filteredSections = filteredSections.filter((s) => s.data.length > 0);
-    return filteredSections;
-  }, [rawSections, searchQuery, activeFilter, sortKey]);
+  const counts = useMemo(() => {
+    const tally: Record<MasteryStateName, number> = {
+      LEARNING: 0,
+      WEAK: 0,
+      NEW: 0,
+      STRONG: 0,
+      MASTERED: 0,
+    };
+    allSkills.forEach((skill) => {
+      tally[skill.masteryState] += 1;
+    });
+    return tally;
+  }, [allSkills]);
+
+  /*
+   * The engine's own judgement, not a score cutoff and not a single state.
+   *
+   * This card has been wrong twice. It first listed anything under 50, which
+   * missed a skill at 62 the engine had already banded WEAK. It was then narrowed
+   * to `masteryState === 'WEAK'`, which is worse in a quieter way: WEAK is
+   * 40-59, so a skill at 30 — the worst kind there is — sat in LEARNING and was
+   * left out of "Skills Needing Attention" entirely.
+   *
+   * `priority` is the server's banding of the same question, and it comes from
+   * the review cadence: 'high' is exactly the set the engine wants back
+   * tomorrow. Reading it here means this card cannot disagree with the queue.
+   */
+  const weakSkills = useMemo(
+    () =>
+      allSkills
+        .filter((skill) => skill.priority === 'high')
+        .sort((a, b) => b.priorityScore - a.priorityScore || a.masteryScore - b.masteryScore),
+    [allSkills],
+  );
+
+  const masteryGroups = useMemo(
+    () =>
+      MASTERY_STATE_ORDER.map((state) => ({
+        label: MASTERY_STATE_LABELS[state],
+        count: counts[state],
+        color: STATE_COLORS[state],
+      })),
+    [counts],
+  );
+
+  const filterItems: SegmentedTabItem<MasteryStateName | 'all'>[] = useMemo(
+    () => [
+      { key: 'all' as const, label: 'All', count: String(allSkills.length) },
+      ...MASTERY_STATE_ORDER.map((state) => ({
+        key: state,
+        label: MASTERY_STATE_LABELS[state],
+        count: String(counts[state]),
+      })),
+    ],
+    [allSkills.length, counts],
+  );
 
   const sectionListSections = useMemo(() => {
-    return filteredAndSortedSections.map((s) => ({
-      title: s.category,
-      data: s.data,
-    }));
-  }, [filteredAndSortedSections]);
+    const query = searchQuery.trim().toLowerCase();
+
+    return rawSections
+      .map((section) => {
+        let skills = section.skills;
+
+        if (query) {
+          skills = skills.filter((s) => s.skillName.toLowerCase().includes(query));
+        }
+
+        if (activeFilter !== 'all') {
+          skills = skills.filter((s) => s.masteryState === activeFilter);
+        }
+
+        skills = [...skills].sort((a, b) => {
+          switch (sortKey) {
+            case 'name':
+              return a.skillName.localeCompare(b.skillName);
+            case 'score_asc':
+              return a.masteryScore - b.masteryScore;
+            case 'score_desc':
+              return b.masteryScore - a.masteryScore;
+            case 'state':
+              return (
+                MASTERY_STATE_ORDER.indexOf(a.masteryState) -
+                MASTERY_STATE_ORDER.indexOf(b.masteryState)
+              );
+            default:
+              return 0;
+          }
+        });
+
+        return { title: section.domain, data: skills };
+      })
+      .filter((s) => s.data.length > 0);
+  }, [rawSections, searchQuery, activeFilter, sortKey]);
 
   const renderSectionHeader = useCallback(
-    ({ section }: { section: { title: string; data: SkillItem[] } }) => (
-      <View style={[styles.sectionHeader, { borderBottomColor: themeColors.borderLight }]}>
-        <Text style={[styles.sectionHeaderTitle, { color: themeColors.text }]} accessibilityRole="header">
+    ({ section }: { section: { title: string; data: SkillMasteryView[] } }) => (
+      <View style={styles.categoryHeader}>
+        <Text
+          style={[typography.presets.eyebrow, styles.categoryTitle]}
+          accessibilityRole="header"
+          numberOfLines={2}
+        >
           {section.title}
         </Text>
-        <Text style={[styles.sectionHeaderCount, { color: themeColors.textMuted }]}>
+        <Text style={[typography.presets.caption, styles.categoryCount]}>
           {section.data.length}
         </Text>
       </View>
     ),
-    [themeColors],
+    [],
   );
 
   const renderItem = useCallback(
-    ({ item }: { item: SkillItem }) => <SkillRow skill={item} />,
+    ({ item }: { item: SkillMasteryView }) => <SkillRow skill={item} />,
     [],
   );
 
-  const keyExtractor = useCallback(
-    (item: SkillItem, index: number) => `${item.name}-${index}`,
-    [],
+  const keyExtractor = useCallback((item: SkillMasteryView) => item.skillId, []);
+
+  const header = (
+    <PageHeader title="Skill Mastery" subtitle="Every skill your child is tracking" centered={false} />
   );
 
   if (isLoading) {
     return (
-      <ScreenContainer>
-        <View style={[styles.scrollContent, { backgroundColor: themeColors.background }]}>
-          <View style={styles.header}>
-            <Skeleton variant="circle" width={36} height={36} />
-            <Skeleton width={140} height={24} style={{ marginLeft: spacing.sm }} />
-          </View>
-          <StatsSkeleton />
-          <Card>
-            <Skeleton variant="text" width={120} height={18} />
-            <View style={{ marginTop: spacing.md }}>
-              {[1, 2, 3].map((i) => (
-                <Skeleton key={i} variant="card" height={70} style={{ marginTop: spacing.sm }} />
-              ))}
-            </View>
-          </Card>
-        </View>
-      </ScreenContainer>
+      <AppShell petals="light" header={header}>
+        <SkillDistributionCard masteryGroups={[]} loading style={styles.block} />
+        {[0, 1, 2, 3].map((i) => (
+          <Skeleton key={i} variant="card" height={92} style={styles.block} />
+        ))}
+      </AppShell>
     );
   }
 
   if (isError) {
     return (
-      <ScreenContainer>
-        <View style={[styles.scrollContent, { backgroundColor: themeColors.background }]}>
+      <AppShell petals="light" header={header}>
+        <StatePanel>
           <ErrorState
             title="Couldn't load skill mastery"
             message={(error as Error)?.message ?? 'An error occurred loading skill mastery data.'}
             onRetry={() => refetch()}
           />
-        </View>
-      </ScreenContainer>
+        </StatePanel>
+      </AppShell>
     );
   }
 
-  if (rawSections.length === 0) {
+  if (allSkills.length === 0) {
     return (
-      <ScreenContainer>
-        <View
-          style={[styles.scrollContent, { backgroundColor: themeColors.background }]}
-        >
-          <View style={styles.header}>
-            <TouchableOpacity
-              onPress={() => navigation.goBack()}
-              style={styles.backButton}
-              accessibilityRole="button"
-              accessibilityLabel="Go back"
-            >
-              <Ionicons name="arrow-back" size={24} color={themeColors.text} />
-            </TouchableOpacity>
-            <View style={[styles.headerIconWrap, { backgroundColor: `${themeColors.warning}18` }]}>
-              <Ionicons name="trophy" size={24} color={themeColors.warning} />
-            </View>
-            <Text style={[styles.headerTitle, { color: themeColors.text }]}>Skill Mastery</Text>
-          </View>
+      <AppShell petals="light" header={header}>
+        <StatePanel>
           <EmptyState
+            icon="medal"
             title="No skills tracked yet"
             message="Complete lessons to build skill mastery data."
           />
-        </View>
-      </ScreenContainer>
+        </StatePanel>
+      </AppShell>
     );
   }
 
   return (
-    <ScreenContainer>
+    <AppShell petals="light" scroll={false} padded={false} header={header}>
       <SectionList
         sections={sectionListSections}
         keyExtractor={keyExtractor}
@@ -342,370 +353,166 @@ export const SkillMasteryScreen: React.FC = () => {
         renderItem={renderItem}
         stickySectionHeadersEnabled={false}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={[styles.scrollContent, { backgroundColor: themeColors.background }]}
+        style={styles.list}
+        contentContainerStyle={styles.listContent}
         refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={themeColors.primary}
-            colors={[themeColors.primary]}
-          />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
         }
-        accessibilityLabel="Skill Mastery Screen"
         ListHeaderComponent={
           <>
-            <View style={styles.header}>
-              <TouchableOpacity
-                onPress={() => navigation.goBack()}
-                style={styles.backButton}
-                accessibilityRole="button"
-                accessibilityLabel="Go back"
-              >
-                <Ionicons name="arrow-back" size={24} color={themeColors.text} />
-              </TouchableOpacity>
-              <View style={[styles.headerIconWrap, { backgroundColor: `${themeColors.warning}18` }]}>
-                <Ionicons name="trophy" size={24} color={themeColors.warning} />
-              </View>
-              <Text style={[styles.headerTitle, { color: themeColors.text }]}>Skill Mastery</Text>
-            </View>
+            <SkillDistributionCard masteryGroups={masteryGroups} style={styles.block} />
 
-            <SkillDistributionCard masteryGroups={masteryGroups} style={styles.distributionCard} />
-
-            <View style={styles.statsRow} accessibilityLabel="Skill statistics" accessibilityRole="summary">
-              <View style={styles.statItem}>
-                <Text style={[styles.statValue, { color: themeColors.text }]}>{stats.total}</Text>
-                <Text style={[styles.statLabel, { color: themeColors.textMuted }]}>Total</Text>
-              </View>
-              <View style={styles.statItem}>
-                <Text style={[styles.statValue, { color: STATE_COLORS.mastered }]}>{stats.mastered}</Text>
-                <Text style={[styles.statLabel, { color: themeColors.textMuted }]}>Mastered</Text>
-              </View>
-              <View style={styles.statItem}>
-                <Text style={[styles.statValue, { color: STATE_COLORS.learning }]}>{stats.learning}</Text>
-                <Text style={[styles.statLabel, { color: themeColors.textMuted }]}>Learning</Text>
-              </View>
-              <View style={styles.statItem}>
-                <Text style={[styles.statValue, { color: STATE_COLORS.needs_practice }]}>{stats.needsPractice}</Text>
-                <Text style={[styles.statLabel, { color: themeColors.textMuted }]}>Practice</Text>
-              </View>
-              <View style={styles.statItem}>
-                <Text style={[styles.statValue, { color: STATE_COLORS.locked }]}>{stats.locked}</Text>
-                <Text style={[styles.statLabel, { color: themeColors.textMuted }]}>Locked</Text>
-              </View>
-            </View>
-
-            {weakSkills.length > 0 && (
-              <Card
-                variant="outlined"
-                style={[styles.weakCard, { borderColor: `${STATE_COLORS.needs_practice}40` }]}
-                accessibilityLabel="Weak skills warning"
-              >
-                <View style={styles.weakHeader}>
-                  <Ionicons name="warning" size={20} color={STATE_COLORS.needs_practice} />
-                  <Text style={[styles.weakTitle, { color: themeColors.text }]}>
-                    Skills Needing Attention
-                  </Text>
+            {weakSkills.length > 0 ? (
+              <Card accent={colors.warning} rail style={styles.block}>
+                <View style={styles.weakHead}>
+                  <PetalIcon name="warning" size={20} color={colors.warning} />
+                  <Text style={typography.presets.cardTitle}>Skills Needing Attention</Text>
                 </View>
-                {weakSkills.slice(0, 5).map((skill) => (
-                  <View key={skill.name} style={styles.weakRow}>
-                    <Text style={[styles.weakName, { color: themeColors.text }]} numberOfLines={1}>
-                      {skill.name}
-                    </Text>
-                    <Text style={[styles.weakScore, { color: STATE_COLORS.needs_practice }]}>
-                      {Math.round(skill.score)}%
-                    </Text>
-                  </View>
+                {weakSkills.slice(0, 5).map((skill, i) => (
+                  <ParentRow
+                    key={skill.skillId}
+                    label={skill.skillName}
+                    description={`${Math.round(skill.gap)} points below the ${Math.round(
+                      skill.threshold,
+                    )}% it needs`}
+                    value={`${Math.round(skill.masteryScore)}%`}
+                    divided={i > 0}
+                  />
                 ))}
               </Card>
-            )}
+            ) : null}
 
             <SearchBar
               value={searchQuery}
               onChangeText={setSearchQuery}
-              placeholder="Search skills..."
-              style={styles.searchBar}
+              placeholder="Search skills"
+              style={styles.block}
             />
 
-            <View style={styles.filterRow} accessibilityRole="tablist">
-              {FILTER_OPTIONS.map((opt) => {
-                const isSelected = activeFilter === opt.key;
-                return (
-                  <TouchableOpacity
-                    key={opt.key}
-                    style={[
-                      styles.filterChip,
-                      isSelected && { backgroundColor: themeColors.primary },
-                    ]}
-                    onPress={() => setActiveFilter(opt.key)}
-                    accessibilityRole="tab"
-                    accessibilityState={{ selected: isSelected }}
-                    accessibilityLabel={`Filter: ${opt.label}`}
-                  >
-                    <Text
-                      style={[
-                        styles.filterChipText,
-                        { color: isSelected ? themeColors.textInverse : themeColors.textSecondary },
-                      ]}
-                    >
-                      {opt.label}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
+            <Text style={[typography.presets.caption, styles.controlLabel]}>Show</Text>
+            <SegmentedTabs
+              items={filterItems}
+              selected={activeFilter}
+              onSelect={setActiveFilter}
+              layout="scroll"
+              accessibilityLabel="Filter skills by state"
+              style={styles.block}
+            />
 
-            <View style={styles.sortRow}>
-              <Text style={[styles.sortLabel, { color: themeColors.textSecondary }]}>Sort by:</Text>
-              {SORT_OPTIONS.map((opt) => {
-                const isSelected = sortKey === opt.key;
-                return (
-                  <TouchableOpacity
-                    key={opt.key}
-                    style={[
-                      styles.sortChip,
-                      isSelected && { backgroundColor: `${themeColors.primary}20` },
-                    ]}
-                    onPress={() => setSortKey(opt.key)}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected: isSelected }}
-                    accessibilityLabel={`Sort by ${opt.label}`}
-                  >
-                    <Text
-                      style={[
-                        styles.sortChipText,
-                        { color: isSelected ? themeColors.primary : themeColors.textMuted },
-                      ]}
-                    >
-                      {opt.label}
-                    </Text>
-                    {isSelected && (
-                      <Ionicons name="checkmark" size={14} color={themeColors.primary} style={{ marginLeft: 2 }} />
-                    )}
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-
-            {sectionListSections.length > 0 && (
-              <Text style={[styles.skillsLabel, { color: themeColors.text }]}>
-                Skills by Category
-              </Text>
-            )}
+            <Text style={[typography.presets.caption, styles.controlLabel]}>Sort by</Text>
+            <SegmentedTabs
+              items={SORT_ITEMS}
+              selected={sortKey}
+              onSelect={setSortKey}
+              layout="scroll"
+              accessibilityLabel="Sort skills"
+              style={styles.block}
+            />
           </>
         }
         ListEmptyComponent={
-          <View style={styles.emptyList}>
-            <Ionicons name="search-outline" size={40} color={themeColors.textMuted} />
-            <Text style={[styles.emptyText, { color: themeColors.textSecondary }]}>
-              No skills match your search or filter.
-            </Text>
-          </View>
+          <StatePanel>
+            <EmptyState
+              icon="search"
+              title="Nothing matches"
+              message="No skills match your search or filter."
+            />
+          </StatePanel>
         }
       />
-    </ScreenContainer>
+    </AppShell>
   );
 };
 
 const styles = StyleSheet.create({
-  scrollContent: {
-    padding: spacing.lg,
+  list: {
+    flex: 1,
+  },
+  listContent: {
+    paddingHorizontal: spacing.lg,
     paddingBottom: spacing.xxxl,
   },
-  header: {
+  block: {
+    marginBottom: spacing.lg,
+  },
+  controlLabel: {
+    color: colors.textSecondary,
+    marginBottom: spacing.xs,
+  },
+
+  // --------------------------------------------------------------- weak skills
+  weakHead: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: spacing.lg,
-  },
-  backButton: {
-    marginRight: spacing.sm,
-    padding: spacing.xs,
-  },
-  headerIconWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.full,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  headerTitle: {
-    fontSize: typography.sizes.xl,
-    fontWeight: typography.weights.bold,
-    marginLeft: spacing.md,
-  },
-  distributionCard: {
-    marginBottom: spacing.lg,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginBottom: spacing.lg,
-    flexWrap: 'wrap',
-  },
-  statItem: {
-    alignItems: 'center',
-    minWidth: 60,
+    gap: spacing.sm,
     marginBottom: spacing.sm,
   },
-  statValue: {
-    fontSize: typography.sizes.xxl,
-    fontWeight: typography.weights.black,
-  },
-  statLabel: {
-    fontSize: typography.sizes.xs,
-    marginTop: spacing.xs,
-  },
-  weakCard: {
-    marginBottom: spacing.lg,
-  },
-  weakHeader: {
+
+  // ------------------------------------------------------------- category rows
+  categoryHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: spacing.md,
-    gap: spacing.sm,
-  },
-  weakTitle: {
-    fontSize: typography.sizes.md,
-    fontWeight: typography.weights.bold,
-  },
-  weakRow: {
-    flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: spacing.xs,
-  },
-  weakName: {
-    fontSize: typography.sizes.sm,
-    flex: 1,
-    marginRight: spacing.sm,
-  },
-  weakScore: {
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.bold,
-  },
-  searchBar: {
-    marginBottom: spacing.md,
-  },
-  filterRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-    marginBottom: spacing.md,
-  },
-  filterChip: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radius.chip,
-    backgroundColor: 'transparent',
-    borderWidth: 1.5,
-    borderColor: 'transparent',
-  },
-  filterChipText: {
-    fontSize: typography.sizes.xs,
-    fontWeight: typography.weights.medium,
-  },
-  sortRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: spacing.sm,
-    marginBottom: spacing.lg,
-  },
-  sortLabel: {
-    fontSize: typography.sizes.xs,
-    fontWeight: typography.weights.medium,
-    marginRight: spacing.xs,
-  },
-  sortChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: radius.chip,
-  },
-  sortChipText: {
-    fontSize: typography.sizes.xs,
-    fontWeight: typography.weights.medium,
-  },
-  skillsLabel: {
-    fontSize: typography.sizes.lg,
-    fontWeight: typography.weights.bold,
-    marginBottom: spacing.md,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     paddingVertical: spacing.sm,
     marginTop: spacing.sm,
     borderBottomWidth: 1,
-  },
-  sectionHeaderTitle: {
-    fontSize: typography.sizes.md,
-    fontWeight: typography.weights.bold,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  sectionHeaderCount: {
-    fontSize: typography.sizes.xs,
-  },
-  skillRow: {
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    marginBottom: spacing.sm,
-    borderRadius: radius.md,
-  },
-  skillTopRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    borderBottomColor: colors.borderLight,
     marginBottom: spacing.sm,
   },
-  skillName: {
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.medium,
-    flex: 1,
-    marginRight: spacing.sm,
+  categoryTitle: {
+    color: colors.textSecondary,
+    /* Section titles come from the curriculum and share a `space-between` row
+       with the count, which is the one thing here that must never be pushed
+       off-screen. */
+    flexShrink: 1,
   },
-  badge: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 2,
-    borderRadius: radius.chip,
+  categoryCount: {
+    color: colors.textMuted,
   },
-  badgeText: {
-    fontSize: typography.sizes.xs,
-    fontWeight: typography.weights.medium,
+
+  // ---------------------------------------------------------------- skill rows
+  skillCard: {
+    marginBottom: spacing.sm,
   },
-  skillProgressRow: {
+  skillTop: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
+    marginBottom: spacing.sm,
   },
-  progressTrack: {
+  skillNameWrap: {
     flex: 1,
-    height: 8,
-    borderRadius: radius.progress,
-    backgroundColor: 'transparent',
-    overflow: 'hidden',
+    minWidth: 0,
   },
-  progressFill: {
-    height: '100%',
-    borderRadius: radius.progress,
+  skillName: {
+    color: colors.text,
   },
-  skillScore: {
-    fontSize: typography.sizes.xs,
-    fontWeight: typography.weights.bold,
-    minWidth: 36,
-    textAlign: 'right',
+  slipping: {
+    color: colors.textMuted,
   },
-  emptyList: {
-    flex: 1,
-    justifyContent: 'center',
+  skillBar: {
+    marginTop: spacing.xs,
+  },
+
+  // -------------------------------------------------------------------- badges
+  badge: {
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: spacing.huge,
-    gap: spacing.md,
+    gap: 5,
+    height: badgeSizes.sm.height,
+    paddingHorizontal: badgeSizes.sm.paddingHorizontal,
+    borderRadius: radius.pill,
   },
-  emptyText: {
-    fontSize: typography.sizes.md,
-    textAlign: 'center',
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: radius.full,
+  },
+  badgeText: {
+    ...typography.presets.caption,
+    color: colors.text,
+    fontWeight: '800',
   },
 });
+
+export default SkillMasteryScreen;

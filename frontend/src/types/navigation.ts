@@ -101,7 +101,18 @@ export type RootStackParamList = {
   WeeklyReport: undefined;
   MonthlyReport: undefined;
   CameraActivity: undefined;
-  CameraActivityLesson: { lessonId?: string; activityId?: string; activityType?: string } | undefined;
+  CameraActivityLesson:
+    | {
+        lessonId?: string;
+        activityId?: string;
+        activityType?: string;
+        /**
+         * The catalog's own pose primitive. Optional: when absent the lesson
+         * resolves it from the catalog entry for `activityId`.
+         */
+        validatorName?: string;
+      }
+    | undefined;
   Calibration: undefined;
 };
 

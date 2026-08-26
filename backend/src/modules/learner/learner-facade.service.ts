@@ -135,7 +135,7 @@ export class LearnerFacadeService {
       };
     }
 
-    // 3. Weak mastery area — practise the weakest skill.
+    // 3. Weak mastery area — practice the weakest skill.
     const weakSkill = await recommendationRepository.findWeakestSkill(childId);
     if (weakSkill) {
       return {

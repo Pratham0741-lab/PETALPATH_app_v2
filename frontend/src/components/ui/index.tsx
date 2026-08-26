@@ -28,7 +28,7 @@ export const Button: React.FC<{
       return { bg: colors.border, fg: colors.textSecondary };
     }
     switch (variant) {
-      case 'primary': return { bg: colors.purple, fg: '#FFF8ED' };
+      case 'primary': return { bg: colors.primary, fg: '#FFF8ED' };
       case 'secondary': return { bg: colors.blue, fg: '#FFF8ED' };
       case 'success': return { bg: colors.green, fg: '#FFF8ED' };
       case 'reward': return { bg: colors.yellow, fg: colors.brown };
@@ -116,7 +116,7 @@ export const Badge: React.FC<{
   label: string;
   color?: string;
   style?: StyleProp<ViewStyle>;
-}> = ({ label, color = colors.purple, style }) => (
+}> = ({ label, color = colors.primary, style }) => (
   <View style={[styles.badge, { backgroundColor: color }, style]}>
     <Text style={[styles.badgeText, { fontFamily: typography.families.rounded }]}>{label}</Text>
   </View>
@@ -131,7 +131,7 @@ export const StatCard: React.FC<{
   icon: string;
   iconColor?: string;
   style?: StyleProp<ViewStyle>;
-}> = ({ title, value, icon, iconColor = colors.purple, style }) => (
+}> = ({ title, value, icon, iconColor = colors.primary, style }) => (
   <Card style={[styles.statCard, style]}>
     <View style={[styles.statIconContainer, { backgroundColor: `${iconColor}20` }]}>
       <Ionicons name={icon as any} size={24} color={iconColor} />
@@ -217,7 +217,7 @@ export const EmotionCard: React.FC<{
     onPress={onPress}
     style={({ pressed }) => [
       styles.emotionCard,
-      { backgroundColor: color, borderColor: selected ? colors.purple : colors.border, borderWidth: selected ? 3 : 1.5 },
+      { backgroundColor: color, borderColor: selected ? colors.primary : colors.border, borderWidth: selected ? 3 : 1.5 },
       { transform: [{ scale: pressed ? 0.95 : 1 }] },
       style
     ]}

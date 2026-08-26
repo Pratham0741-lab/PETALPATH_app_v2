@@ -128,7 +128,10 @@ class ApiClient {
       case 401:
         return 'Please login again.';
       case 403:
-        return 'You don\'t have permission to do that.';
+        // A blocked lesson comes back as a 403 whose body is already a sentence
+        // written for the child. Prefer it; the generic line is the fallback for
+        // a 403 that arrived with nothing to say.
+        return serverMessage || 'You don\'t have permission to do that.';
       case 404:
         return 'The requested resource was not found.';
       case 422:

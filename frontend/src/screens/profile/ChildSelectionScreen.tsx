@@ -1,54 +1,74 @@
-import React, { useCallback, useState } from 'react';
-import {
-  StyleSheet,
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  RefreshControl,
-  Animated,
-} from 'react-native';
+/**
+ * Who is learning today? — the child picker (spec §34 phase 7).
+ *
+ * One layout for every size. This screen used to be a phone list plus a
+ * `flex: 1.2 / 1.8` tablet master/detail, and the two disagreed about what a row
+ * meant: tapping a child *activated* them on a phone, but only *highlighted*
+ * them on a tablet, where a separate pane held "Select Profile", "Edit" and
+ * "Delete". A row cannot mean two things, so tapping one starts learning as that
+ * child everywhere (the phone rule, and the reason this screen exists), and the
+ * pane's other two actions moved onto each row as explicit labelled buttons.
+ *
+ * That also closes a gap rather than trading one: **deleting a profile was
+ * impossible on a phone**, because the only delete button lived in the tablet
+ * pane. It is now available on every size, in red, behind the same confirm
+ * dialog (§26).
+ *
+ * The pane's companion detail — the mentor's name *and* description, which the
+ * compact rows have no room for — is kept as a card under the list, showing the
+ * active child. That needs no extra selection state, so `selectedChildId` and
+ * its auto-select effect are gone.
+ *
+ * Behaviour is otherwise untouched (§1): the same `/children` query, the same
+ * `switchChild` call inside the same try/catch, the same three `customAlert`
+ * flows with their exact wording, the same `MainTabs` vs `Home` split by device,
+ * and the same pull-to-refresh pair.
+ *
+ * `AVATAR_ASSETS` and its two helpers used to be *defined* here and re-exported
+ * by accident of history — `components/dashboard/*` imported them from this
+ * screen. They now live in `constants/avatars`, which is also where
+ * `AddEditChildScreen` had a byte-identical second copy of them.
+ */
+
+import React, { useCallback, useMemo, useState } from 'react';
+import { Animated, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { Ionicons } from '@expo/vector-icons';
-import { Screen } from '../../components/layout/Screen';
-import { Card } from '../../components/ui/Card';
-import { Button } from '../../components/ui/Button';
 import { Skeleton } from '../../components/ui/Skeleton';
+import { EmptyState } from '../../components/common/EmptyState';
+import {
+  AppShell,
+  AvatarGlyph,
+  Card,
+  PageHeader,
+  PetalIcon,
+  PrimaryButton,
+  SecondaryButton,
+  StatusBadge,
+} from '../../components/design';
 import { useChildStore, type Child } from '../../store/childStore';
 import { useChildSwitch } from '../../hooks/useChildSwitch';
 import { useDeviceType } from '../../hooks/useDeviceType';
+import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { useApiQuery } from '../../hooks/useReactQuery';
 import { queryKeys } from '../../utils/queryKeys';
 import { apiClient } from '../../services/api/apiClient';
-import { colors, spacing, typography, radius, shadows } from '../../theme';
+import { cardSizes, colors, radius, spacing, typography } from '../../theme';
 import type { ApiResponse } from '../../types/api';
 import { customAlert } from '../../utils/alert';
 
-export const AVATAR_ASSETS = [
-  { id: 'avatar_panda', label: 'Panda', icon: '🐼', color: '#F3F4F6' },
-  { id: 'avatar_bunny', label: 'Bunny', icon: '🐰', color: '#FEF3C7' },
-  { id: 'avatar_cat', label: 'Cat', icon: '🐱', color: '#FCE7F3' },
-  { id: 'avatar_fox', label: 'Fox', icon: '🦊', color: '#FFEDD5' },
-  { id: 'avatar_tiger', label: 'Tiger', icon: '🐯', color: '#FFE4E6' },
-  { id: 'avatar_bear', label: 'Bear', icon: '🐻', color: '#EED5C5' },
-];
-
-export const getAvatarEmoji = (avatarId: string): string => {
-  const av = AVATAR_ASSETS.find((a) => a.id === avatarId);
-  return av ? av.icon : '👶';
-};
-
-export const getAvatarBgColor = (avatarId: string): string => {
-  const av = AVATAR_ASSETS.find((a) => a.id === avatarId);
-  return av ? av.color : '#E5E7EB';
+/** Reading-column cap per size — replaces the old two-pane split (§27). */
+const COLUMN_MAX_WIDTH: Record<string, number> = {
+  mobile: 520,
+  tablet: 760,
+  desktop: 820,
 };
 
 export const ChildSelectionScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const deviceType = useDeviceType();
+  const reduceMotion = useReducedMotion();
   const { activeChild, removeChild, refreshChildren } = useChildStore();
   const { switchChild } = useChildSwitch();
-  const [selectedChildId, setSelectedChildId] = useState<string | null>(null);
   const [switchAnim] = useState(() => new Animated.Value(1));
 
   const {
@@ -63,17 +83,20 @@ export const ChildSelectionScreen: React.FC = () => {
 
   const childrenList = childrenResponse?.data ?? [];
 
-  React.useEffect(() => {
-    if (childrenList.length > 0 && !selectedChildId) {
-      setSelectedChildId(childrenList[0].id);
-    }
-  }, [childrenList, selectedChildId]);
+  /* The detail card follows the active child, so there is no second source of
+     truth for "which child am I looking at". */
+  const shownChild = useMemo(
+    () => childrenList.find((c) => c.id === activeChild?.id) ?? null,
+    [childrenList, activeChild?.id],
+  );
 
   const handleSelectChild = useCallback(async (child: Child) => {
-    Animated.sequence([
-      Animated.timing(switchAnim, { toValue: 0.95, duration: 100, useNativeDriver: true }),
-      Animated.timing(switchAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
-    ]).start();
+    if (!reduceMotion) {
+      Animated.sequence([
+        Animated.timing(switchAnim, { toValue: 0.95, duration: 100, useNativeDriver: true }),
+        Animated.timing(switchAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
+      ]).start();
+    }
 
     try {
       await switchChild(child.id);
@@ -93,7 +116,7 @@ export const ChildSelectionScreen: React.FC = () => {
         },
       },
     ]);
-  }, [deviceType, navigation, switchChild, switchAnim]);
+  }, [deviceType, navigation, switchChild, switchAnim, reduceMotion]);
 
   const handleDeleteChild = useCallback((id: string, name: string) => {
     customAlert(
@@ -107,9 +130,10 @@ export const ChildSelectionScreen: React.FC = () => {
           onPress: async () => {
             try {
               await removeChild(id);
-              if (selectedChildId === id) {
-                setSelectedChildId(childrenList[0]?.id || null);
-              }
+              /* The list on screen comes from the `/children` query, not the
+                 store, so without this the deleted row stayed until the next
+                 pull-to-refresh. */
+              await refetch();
               customAlert('Success', 'Profile deleted successfully');
             } catch (err: unknown) {
               const message = err instanceof Error ? err.message : 'Failed to delete child';
@@ -119,478 +143,264 @@ export const ChildSelectionScreen: React.FC = () => {
         },
       ],
     );
-  }, [removeChild, selectedChildId, childrenList]);
+  }, [removeChild, refetch]);
 
   const onRefresh = useCallback(() => {
     refreshChildren();
     refetch();
   }, [refreshChildren, refetch]);
 
-  const renderSkeletons = (count: number) => (
-    <View style={styles.listContainer}>
-      {Array.from({ length: count }, (_, i) => (
-        <View key={i} style={styles.skeletonRow}>
-          <Skeleton variant="circle" width={48} height={48} />
-          <View style={styles.skeletonTextGroup}>
-            <Skeleton width="60%" height={16} />
-            <Skeleton width="40%" height={12} style={{ marginTop: spacing.xs }} />
-          </View>
-        </View>
-      ))}
-    </View>
+  const maxWidth = COLUMN_MAX_WIDTH[deviceType] ?? COLUMN_MAX_WIDTH.mobile;
+
+  const header = (
+    <PageHeader
+      title="Who is learning today?"
+      subtitle="Choose a profile to pick up the journey"
+      /* Nothing to go back to when this is the entry screen — a chevron that
+         does nothing would be a fake control (§33). */
+      showBack={navigation.canGoBack()}
+    />
   );
 
-  const renderChildItem = (child: Child, isSelectedDetail: boolean) => {
-    const isCurrentlyActive = activeChild?.id === child.id;
+  if (isLoading) {
     return (
-      <TouchableOpacity
-        key={child.id}
-        onPress={() => {
-          if (deviceType === 'mobile') {
-            handleSelectChild(child);
-          } else {
-            setSelectedChildId(child.id);
-          }
-        }}
-        style={[
-          styles.childItem,
-          isSelectedDetail && styles.childItemDetailSelected,
-          isCurrentlyActive && styles.childItemActive,
-        ]}
-        accessibilityRole="button"
-        accessibilityLabel={`${child.name}, age ${child.age}`}
-      >
-        <View style={[styles.avatarCircle, { backgroundColor: getAvatarBgColor(child.avatar) }]}>
-          <Text style={styles.avatarEmoji}>{getAvatarEmoji(child.avatar)}</Text>
-        </View>
-        <View style={styles.childInfo}>
-          <Text style={styles.childName}>{child.name}</Text>
-          <Text style={styles.childSub}>{child.ageGroup} • {child.mentor?.name || 'No Mentor selected'}</Text>
-        </View>
-        {isCurrentlyActive && (
-          <View style={styles.activeBadge}>
-            <Text style={styles.activeText}>Active</Text>
-          </View>
-        )}
-        <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
-      </TouchableOpacity>
-    );
-  };
-
-  const renderEmptyState = () => (
-    <View style={styles.emptyContainer}>
-      <Ionicons name="people-outline" size={64} color={colors.textMuted} />
-      <Text style={styles.emptyTitle}>No Child Profiles Yet</Text>
-      <Text style={styles.emptyText}>
-        Create a profile for your child to start their learning journey!
-      </Text>
-      <Button
-        label="Add Your First Child"
-        onPress={() => navigation.navigate('AddChild')}
-        variant="primary"
-        style={styles.emptyBtn}
-      />
-    </View>
-  );
-
-  const renderMobile = () => {
-    if (isLoading) {
-      return (
-        <Screen scroll padded>
-          <View style={styles.header}>
-            <Skeleton width="70%" height={24} />
-            <Skeleton width="50%" height={14} style={{ marginTop: spacing.sm }} />
-          </View>
-          {renderSkeletons(3)}
-        </Screen>
-      );
-    }
-
-    return (
-      <Screen
-        scroll
-        refreshControl={
-          <RefreshControl
-            refreshing={isRefetching}
-            onRefresh={onRefresh}
-            colors={[colors.purple]}
-            tintColor={colors.purple}
-          />
-        }
-      >
-        <View style={styles.scrollContainer}>
-          <View style={styles.header}>
-            <Text style={styles.title}>Who is learning today? 🌸</Text>
-            <Text style={styles.subtitle}>Select a child profile to get started</Text>
-          </View>
-
-          {childrenList.length === 0 ? renderEmptyState() : (
-            <View style={styles.listContainer}>
-              {childrenList.map((child) => renderChildItem(child, false))}
-              <Button
-                label="Add Another Child"
-                onPress={() => navigation.navigate('AddChild')}
-                variant="outline"
-                style={styles.addBtn}
-              />
-            </View>
-          )}
-        </View>
-      </Screen>
-    );
-  };
-
-  const renderTablet = () => {
-    const selectedChild = childrenList.find((c) => c.id === selectedChildId);
-
-    return (
-      <View style={styles.splitWrapper}>
-        <View style={styles.splitLeft}>
-          <Text style={styles.sectionHeader}>Child Profiles</Text>
-          {isLoading ? (
-            renderSkeletons(3)
-          ) : childrenList.length === 0 ? (
-            <View style={styles.emptyContainer}>
-              <Ionicons name="people-outline" size={48} color={colors.textMuted} />
-              <Text style={styles.emptyText}>No profiles found.</Text>
-              <Button
-                label="Create Profile"
-                onPress={() => navigation.navigate('AddChild')}
-                variant="primary"
-                size="sm"
-                style={{ marginTop: spacing.md }}
-              />
-            </View>
-          ) : (
-            <ScrollView
-              showsVerticalScrollIndicator={false}
-              refreshControl={
-                <RefreshControl
-                  refreshing={isRefetching}
-                  onRefresh={onRefresh}
-                  colors={[colors.purple]}
-                  tintColor={colors.purple}
-                />
-              }
-            >
-              {childrenList.map((child) => renderChildItem(child, child.id === selectedChildId))}
-              <Button
-                label="Add Profile"
-                onPress={() => navigation.navigate('AddChild')}
-                variant="outline"
-                style={styles.addBtn}
-              />
-            </ScrollView>
-          )}
-        </View>
-
-        <View style={styles.splitRight}>
-          {selectedChild ? (
-            <Animated.View style={{ transform: [{ scale: switchAnim }] }}>
-              <View style={styles.detailsContainer}>
-                <View style={styles.detailsHeader}>
-                  <View style={[styles.largeAvatarCircle, { backgroundColor: getAvatarBgColor(selectedChild.avatar) }]}>
-                    <Text style={styles.largeAvatarEmoji}>{getAvatarEmoji(selectedChild.avatar)}</Text>
-                  </View>
-                  <Text style={styles.detailName}>{selectedChild.name}</Text>
-                  <Text style={styles.detailAge}>{selectedChild.ageGroup} ({selectedChild.age} years old)</Text>
-                </View>
-
-                <Card variant="outlined" style={styles.mentorDetailCard}>
-                  <Text style={styles.detailCardLabel}>Active Companion</Text>
-                  {selectedChild.mentor ? (
-                    <View style={styles.mentorBriefRow}>
-                      <View style={[styles.smallIconCircle, { backgroundColor: colors.purple }]}>
-                        <Ionicons name="paw" size={18} color={colors.white} />
-                      </View>
-                      <View style={styles.mentorBriefInfo}>
-                        <Text style={styles.mentorBriefName}>{selectedChild.mentor.name}</Text>
-                        <Text style={styles.mentorBriefDesc}>{selectedChild.mentor.description}</Text>
-                      </View>
-                    </View>
-                  ) : (
-                    <Text style={styles.noMentorText}>No companion selected yet.</Text>
-                  )}
-                </Card>
-
-                <View style={styles.actionsGroup}>
-                  <Button
-                    label="Select Profile & Start Learning"
-                    onPress={() => handleSelectChild(selectedChild)}
-                    variant="primary"
-                    fullWidth
-                  />
-                  <View style={styles.row}>
-                    <Button
-                      label="Edit Profile"
-                      onPress={() => navigation.navigate('AddChild', { childId: selectedChild.id })}
-                      variant="outline"
-                      style={{ flex: 1 }}
-                    />
-                    <Button
-                      label="Delete Profile"
-                      onPress={() => handleDeleteChild(selectedChild.id, selectedChild.name)}
-                      variant="danger"
-                      style={{ flex: 1 }}
-                    />
-                  </View>
+      <AppShell header={header} petals="light">
+        <View style={[styles.column, { maxWidth }]}>
+          {[0, 1, 2].map((i) => (
+            <Card key={i} variant="flat" padding="compact">
+              <View style={styles.row}>
+                <Skeleton variant="circle" width={48} height={48} />
+                <View style={styles.rowText}>
+                  <Skeleton width="60%" height={16} />
+                  <Skeleton width="40%" height={12} style={styles.skeletonSecondLine} />
                 </View>
               </View>
-            </Animated.View>
-          ) : (
-            <View style={styles.noSelectionContainer}>
-              <Ionicons name={"child-outline" as any} size={48} color={colors.textMuted} />
-              <Text style={styles.noSelectionText}>Select a child profile to view details</Text>
-            </View>
-          )}
+            </Card>
+          ))}
         </View>
-      </View>
+      </AppShell>
     );
-  };
+  }
 
-  const renderDesktop = () => renderTablet();
+  if (childrenList.length === 0) {
+    return (
+      <AppShell header={header} petals="light" scroll={false}>
+        <View style={styles.emptyWrap}>
+          <EmptyState
+            icon="profile"
+            title="No Child Profiles Yet"
+            message="Create a profile for your child to start their learning journey!"
+          />
+          <PrimaryButton
+            label="Add Your First Child"
+            icon="plus"
+            onPress={() => navigation.navigate('AddChild')}
+            style={styles.emptyButton}
+          />
+        </View>
+      </AppShell>
+    );
+  }
 
-  const renderLayout = () => {
-    switch (deviceType) {
-      case 'mobile': return renderMobile();
-      case 'tablet': return renderTablet();
-      case 'desktop': return renderDesktop();
-    }
-  };
+  return (
+    <AppShell
+      header={header}
+      petals="light"
+      refreshControl={
+        <RefreshControl refreshing={isRefetching} onRefresh={onRefresh} tintColor={colors.primary} />
+      }
+    >
+      <View style={[styles.column, { maxWidth }]}>
+        {childrenList.map((child) => (
+          <ChildRow
+            key={child.id}
+            child={child}
+            active={activeChild?.id === child.id}
+            onActivate={() => handleSelectChild(child)}
+            onEdit={() => navigation.navigate('AddChild', { childId: child.id })}
+            onDelete={() => handleDeleteChild(child.id, child.name)}
+          />
+        ))}
 
-  return renderLayout();
+        <SecondaryButton
+          label="Add Another Child"
+          icon="plus"
+          onPress={() => navigation.navigate('AddChild')}
+        />
+
+        {shownChild ? (
+          <Animated.View style={{ transform: [{ scale: switchAnim }] }}>
+            <Card variant="raised" padding="roomy" accent={colors.primary} rail contentStyle={styles.detail}>
+              <AvatarGlyph species={shownChild.avatar} size={88} ringColor={colors.primary} />
+              <Text style={typography.presets.title} numberOfLines={1}>
+                {shownChild.name}
+              </Text>
+              <Text style={[typography.presets.caption, styles.muted]}>
+                {shownChild.ageGroup} · {shownChild.age} years old
+              </Text>
+
+              <View style={styles.companionBlock}>
+                <Text style={[typography.presets.eyebrow, styles.muted]}>Active companion</Text>
+                {shownChild.mentor ? (
+                  <>
+                    <Text style={[typography.presets.cardTitle, styles.companionName]}>
+                      {shownChild.mentor.name}
+                    </Text>
+                    <Text style={[typography.presets.body, styles.muted]}>
+                      {shownChild.mentor.description}
+                    </Text>
+                  </>
+                ) : (
+                  <Text style={[typography.presets.body, styles.muted]}>
+                    No companion selected yet.
+                  </Text>
+                )}
+              </View>
+
+              <PrimaryButton
+                label="Start Learning"
+                iconRight="forward"
+                size="lg"
+                onPress={() => handleSelectChild(shownChild)}
+              />
+            </Card>
+          </Animated.View>
+        ) : null}
+      </View>
+    </AppShell>
+  );
 };
 
+// ---------------------------------------------------------------------------
+// One child, one row
+// ---------------------------------------------------------------------------
+
+const ChildRow: React.FC<{
+  child: Child;
+  active: boolean;
+  onActivate: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+}> = ({ child, active, onActivate, onEdit, onDelete }) => (
+  <Card
+    variant={active ? 'selected' : 'raised'}
+    accent={colors.primary}
+    padding="compact"
+    onPress={onActivate}
+    contentStyle={styles.rowCard}
+    accessibilityLabel={`${child.name}, ${child.ageGroup}.${active ? ' Active profile.' : ''}`}
+    accessibilityHint="Starts learning as this child"
+  >
+    <View style={styles.row}>
+      <AvatarGlyph
+        species={child.avatar}
+        size={48}
+        ringColor={active ? colors.primary : undefined}
+        style={styles.avatar}
+      />
+      <View style={styles.rowText}>
+        <Text style={typography.presets.cardTitle} numberOfLines={1}>
+          {child.name}
+        </Text>
+        <Text style={[typography.presets.caption, styles.muted]} numberOfLines={1}>
+          {child.ageGroup} · {child.mentor?.name || 'No companion yet'}
+        </Text>
+      </View>
+      {/* Spelled out, not just a coloured border (§30). */}
+      {active ? <StatusBadge status="current" label="Active" size="sm" /> : null}
+      <PetalIcon name="forward" size={20} color={colors.textMuted} />
+    </View>
+
+    {/* The tablet pane's other two actions, on the row they belong to. */}
+    <View style={styles.rowActions}>
+      <SecondaryButton
+        label="Edit"
+        icon="pencil"
+        size="sm"
+        tone="purple"
+        onPress={onEdit}
+        accessibilityLabel={`Edit ${child.name}'s profile`}
+        style={styles.rowAction}
+      />
+      <SecondaryButton
+        label="Delete"
+        icon="trash"
+        size="sm"
+        tone="danger"
+        onPress={onDelete}
+        accessibilityLabel={`Delete ${child.name}'s profile`}
+        accessibilityHint="Asks you to confirm first"
+        style={styles.rowAction}
+      />
+    </View>
+  </Card>
+);
+
 const styles = StyleSheet.create({
-  scrollContainer: {
-    padding: spacing.lg,
-    paddingBottom: spacing.xxl,
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: spacing.xl,
-  },
-  title: {
-    fontSize: typography.sizes.xl,
-    fontWeight: typography.weights.bold,
-    color: colors.text,
-    textAlign: 'center',
-    marginBottom: spacing.xs,
-  },
-  subtitle: {
-    fontSize: typography.sizes.sm,
-    color: colors.textMuted,
-    textAlign: 'center',
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: spacing.xxl,
-    backgroundColor: colors.backgroundSecondary,
-    borderRadius: radius.lg,
-    ...shadows.sm,
-  },
-  emptyTitle: {
-    fontSize: typography.sizes.lg,
-    fontWeight: typography.weights.bold,
-    color: colors.text,
-    marginTop: spacing.md,
-    marginBottom: spacing.xs,
-  },
-  emptyText: {
-    color: colors.textMuted,
-    fontSize: typography.sizes.sm,
-    textAlign: 'center',
-    marginBottom: spacing.md,
-    lineHeight: typography.lineHeights.sm,
-  },
-  emptyBtn: {
+  column: {
     width: '100%',
-    maxWidth: 240,
+    alignSelf: 'center',
+    paddingTop: spacing.md,
+    gap: cardSizes.gap,
   },
-  listContainer: {
-    gap: spacing.md,
-  },
-  skeletonRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: spacing.md,
-    gap: spacing.md,
-  },
-  skeletonTextGroup: {
-    flex: 1,
-    gap: spacing.xs,
-  },
-  childItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: spacing.md,
-    backgroundColor: colors.backgroundSecondary,
-    borderRadius: radius.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
-    ...shadows.sm,
-  },
-  childItemDetailSelected: {
-    borderColor: colors.purple,
-    borderWidth: 2,
-    backgroundColor: '#F5ECFF',
-  },
-  childItemActive: {
-    backgroundColor: '#EEF2FF',
-    borderColor: colors.blue,
-  },
-  avatarCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: radius.full,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: spacing.md,
-  },
-  avatarEmoji: {
-    fontSize: 24,
-  },
-  childInfo: {
-    flex: 1,
-  },
-  childName: {
-    fontSize: typography.sizes.md,
-    fontWeight: typography.weights.bold,
-    color: colors.text,
-  },
-  childSub: {
-    fontSize: typography.sizes.xs,
-    color: colors.textMuted,
-    marginTop: spacing.xs,
-  },
-  activeBadge: {
-    backgroundColor: colors.blue,
-    borderRadius: radius.md,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    marginRight: spacing.sm,
-  },
-  activeText: {
-    color: colors.white,
-    fontSize: 10,
-    fontWeight: typography.weights.bold,
-  },
-  addBtn: {
-    marginTop: spacing.md,
-  },
-  splitWrapper: {
-    flex: 1,
-    flexDirection: 'row',
-    height: '100%',
-  },
-  splitLeft: {
-    flex: 1.2,
-    borderRightWidth: 1,
-    borderRightColor: colors.border,
-    padding: spacing.lg,
-    backgroundColor: colors.background,
-  },
-  sectionHeader: {
-    fontSize: typography.sizes.lg,
-    fontWeight: typography.weights.bold,
-    color: colors.text,
-    marginBottom: spacing.md,
-  },
-  splitRight: {
-    flex: 1.8,
-    padding: spacing.xl,
-    backgroundColor: colors.backgroundSecondary,
-    justifyContent: 'center',
-  },
-  noSelectionContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.md,
-  },
-  noSelectionText: {
-    color: colors.textMuted,
-    fontSize: typography.sizes.md,
-    fontStyle: 'italic',
-  },
-  detailsContainer: {
-    flex: 1,
-    justifyContent: 'space-between',
-    paddingVertical: spacing.md,
-  },
-  detailsHeader: {
-    alignItems: 'center',
-    marginBottom: spacing.lg,
-  },
-  largeAvatarCircle: {
-    width: 96,
-    height: 96,
-    borderRadius: radius.full,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: spacing.md,
-    ...shadows.md,
-  },
-  largeAvatarEmoji: {
-    fontSize: 48,
-  },
-  detailName: {
-    fontSize: typography.sizes.lg,
-    fontWeight: typography.weights.bold,
-    color: colors.text,
-    marginBottom: spacing.xs,
-  },
-  detailAge: {
-    fontSize: typography.sizes.sm,
-    color: colors.textMuted,
-  },
-  mentorDetailCard: {
-    padding: spacing.md,
-    marginBottom: spacing.xl,
-  },
-  detailCardLabel: {
-    fontSize: typography.sizes.xs,
-    color: colors.textMuted,
-    textTransform: 'uppercase',
-    fontWeight: typography.weights.bold,
-    marginBottom: spacing.sm,
-  },
-  mentorBriefRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  smallIconCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: radius.full,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: spacing.md,
-  },
-  mentorBriefInfo: {
-    flex: 1,
-  },
-  mentorBriefName: {
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.bold,
-    color: colors.text,
-  },
-  mentorBriefDesc: {
-    fontSize: typography.sizes.xs,
-    color: colors.textMuted,
-    marginTop: 2,
-  },
-  noMentorText: {
-    color: colors.textMuted,
-    fontSize: typography.sizes.sm,
-    fontStyle: 'italic',
-  },
-  actionsGroup: {
-    gap: spacing.md,
+  rowCard: {
+    gap: spacing.sm,
   },
   row: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: spacing.md,
+  },
+  avatar: {
+    flexShrink: 0,
+  },
+  rowText: {
+    flex: 1,
+  },
+  rowActions: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    paddingTop: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: colors.borderLight,
+  },
+  rowAction: {
+    flexGrow: 1,
+    flexShrink: 1,
+    flexBasis: 0,
+  },
+  skeletonSecondLine: {
+    marginTop: spacing.xs,
+  },
+  emptyWrap: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    gap: spacing.lg,
+  },
+  emptyButton: {
+    alignSelf: 'center',
+    width: '100%',
+    maxWidth: 280,
+  },
+  detail: {
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  muted: {
+    color: colors.textSecondary,
+  },
+  companionBlock: {
+    alignSelf: 'stretch',
+    alignItems: 'center',
+    gap: 2,
+    marginTop: spacing.md,
+    marginBottom: spacing.md,
+    padding: spacing.md,
+    borderRadius: radius.cardInner,
+    backgroundColor: colors.background,
+  },
+  companionName: {
+    color: colors.primaryDark,
   },
 });
 

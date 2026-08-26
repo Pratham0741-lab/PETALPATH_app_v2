@@ -6,7 +6,7 @@ import Animated, {
   withTiming,
   Easing,
 } from 'react-native-reanimated';
-import { colors, radius, spacing, typography } from '../../theme';
+import { colors, spacing, typography, progressSizes } from '../../theme';
 
 type ProgressVariant = 'default' | 'primary' | 'success' | 'warning';
 
@@ -31,7 +31,7 @@ const progressColors: Record<ProgressVariant, string> = {
 
 export const ProgressBar: React.FC<ProgressBarProps> = ({
   progress,
-  height = radius.progress,
+  height = progressSizes.barHeight,
   color,
   backgroundColor,
   label,

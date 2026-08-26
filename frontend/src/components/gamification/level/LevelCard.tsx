@@ -40,7 +40,7 @@ export const LevelCard: React.FC<LevelCardProps> = ({
           Level {level} → {level + 1}
         </Text>
       </View>
-      <ProgressBar progress={progressToNext} color={colors.purple} style={styles.bar} />
+      <ProgressBar progress={progressToNext} color={colors.primary} style={styles.bar} />
       <View style={styles.xpRow}>
         <Text style={styles.xpText}>{currentXP} XP</Text>
         <Text style={styles.xpText}>{nextLevelXP} XP</Text>
@@ -58,7 +58,7 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: colors.purple,
+    backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },

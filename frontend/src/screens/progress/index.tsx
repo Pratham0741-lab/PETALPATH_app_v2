@@ -107,7 +107,7 @@ export const ProgressScreen: React.FC = () => {
 
     return subjects.map((subject: any, idx: number) => {
       const pct = Math.round(subject.progress ?? 0);
-      const colorsList = [colors.blue, colors.purple, colors.green, colors.peach, colors.coral, colors.skyBlue];
+      const colorsList = [colors.blue, colors.primary, colors.green, colors.peach, colors.coral, colors.skyBlue];
       const barColor = colorsList[idx % colorsList.length];
       const emojis = ['📖', '🔢', '✏️', '🎨', '🧩', '🎵'];
       const emoji = emojis[idx % emojis.length];
@@ -166,7 +166,7 @@ export const ProgressScreen: React.FC = () => {
           return (
             <View key={item.id} style={styles.timelineItem}>
               <View style={styles.timelineDot}>
-                <Ionicons name={iconName} size={16} color={colors.purple} />
+                <Ionicons name={iconName} size={16} color={colors.primary} />
               </View>
               <View style={styles.timelineConnector} />
               <View style={styles.timelineContent}>
@@ -318,7 +318,9 @@ export const ProgressScreen: React.FC = () => {
                     {rewards.recentRewards.map((rw: any) => (
                       <View key={rw.id} style={styles.rewardChip}>
                         <Ionicons name="gift" size={14} color={colors.yellow} />
-                        <Text style={styles.rewardChipText}>{rw.title}</Text>
+                        <Text style={styles.rewardChipText} numberOfLines={1}>
+                          {rw.title}
+                        </Text>
                       </View>
                     ))}
                   </View>
@@ -342,9 +344,9 @@ export const ProgressScreen: React.FC = () => {
                 pressed && { opacity: 0.7 },
               ]}
             >
-              <Ionicons name="git-branch-outline" size={18} color={colors.purple} />
+              <Ionicons name="git-branch-outline" size={18} color={colors.primary} />
               <Text style={styles.explorerLinkText}>Explore Full Curriculum</Text>
-              <Ionicons name="chevron-forward" size={16} color={colors.purple} />
+              <Ionicons name="chevron-forward" size={16} color={colors.primary} />
             </Pressable>
 
             {subjectsLoading ? (
@@ -479,7 +481,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
   },
   tabItemActive: {
-    backgroundColor: colors.purple,
+    backgroundColor: colors.primary,
   },
   tabLabel: {
     fontSize: typography.sizes.caption,
@@ -571,7 +573,7 @@ const styles = StyleSheet.create({
   },
   trendBar: {
     width: '60%',
-    backgroundColor: colors.purple,
+    backgroundColor: colors.primary,
     borderRadius: radius.xs,
     minHeight: 4,
   },
@@ -599,6 +601,8 @@ const styles = StyleSheet.create({
   rewardChipText: {
     fontSize: typography.sizes.xs,
     color: colors.text,
+    /* Reward titles are free text and these chips sit in a row. */
+    flexShrink: 1,
   },
   skillItem: {
     gap: 6,
@@ -698,8 +702,8 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   periodChipActive: {
-    backgroundColor: colors.purple,
-    borderColor: colors.purple,
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
   },
   periodLabel: {
     fontSize: typography.sizes.sm,
@@ -742,7 +746,7 @@ const styles = StyleSheet.create({
   },
   bar: {
     width: '70%',
-    backgroundColor: colors.purple,
+    backgroundColor: colors.primary,
     borderRadius: radius.xs,
     minHeight: 2,
   },
@@ -764,7 +768,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: radius.full,
-    backgroundColor: `${colors.purple}15`,
+    backgroundColor: `${colors.primary}15`,
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 1,
@@ -854,18 +858,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    backgroundColor: `${colors.purple}08`,
+    backgroundColor: `${colors.primary}08`,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
     borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: `${colors.purple}20`,
+    borderColor: `${colors.primary}20`,
   },
   explorerLinkText: {
     flex: 1,
     fontSize: typography.sizes.sm,
     fontWeight: typography.weights.medium,
-    color: colors.purple,
+    color: colors.primary,
     fontFamily: typography.families.rounded,
   },
 });

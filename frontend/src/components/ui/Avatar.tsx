@@ -119,7 +119,8 @@ const styles = StyleSheet.create({
     resizeMode: 'cover',
   },
   fallback: {
-    backgroundColor: colors.primaryLight,
+    // Solid pink, not the pale tint — the initials are white (spec §30 contrast).
+    backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,

@@ -32,6 +32,21 @@ export class ReinforcementHistoryRepository {
     });
   }
 
+  /**
+   * How many reviews this child has finished since `since`.
+   *
+   * The roadmap's `maxReviewsPerDay` cap needs to count what has already been
+   * done today, and this is the only append-only record of a review actually
+   * happening — the queue row is mutated in place, so it cannot answer "how many
+   * today". Pass the start of the child's local day; see
+   * `shared/utils/calendar-day.ts::startOfLocalDay`.
+   */
+  async countSince(childId: string, since: Date) {
+    return prisma.reinforcementHistory.count({
+      where: { childId, createdAt: { gte: since } },
+    });
+  }
+
   async findRecent(childId: string, skillId: string) {
     return prisma.reinforcementHistory.findFirst({
       where: { childId, skillId },

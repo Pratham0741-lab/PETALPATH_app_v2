@@ -6,6 +6,7 @@ import { adaptationEventRepository } from './repositories/adaptation-event.repos
 import { learningEventRepository } from './repositories/learning-event.repository.js';
 import { regressionLogRepository } from './repositories/regression-log.repository.js';
 import { skillHistoryRepository } from '../mastery/repositories/skill-history.repository.js';
+import { profileModalities } from './modality-profile.js';
 import { logger } from '../../utils/logger.js';
 
 function mapActivityTypeToModality(activityType: ActivityType): Modality | undefined {
@@ -170,26 +171,32 @@ export class AdaptiveLearningEngineService {
   }
 
   /**
-   * Computes preferred modality using modalityScore = 0.4*Accuracy + 0.4*Engagement + 0.2*Confidence.
+   * The child's preferred modality.
+   *
+   * The weighted blend used to be written out inline here — and again, slightly
+   * differently, in `adaptation.service.determinePreferredModality`, which
+   * substituted `min(attempts, 20)` for the confidence term. Both now route
+   * through `modality-profile.ts`, the single reader of
+   * `engineConfig.adaptive.modalityScoreWeights`.
+   *
+   * One behaviour change comes with that: a modality is no longer eligible on a
+   * single observation. `profileModalities` requires
+   * `minAttemptsForModalityEvidence` before ranking anything — the rule
+   * `adaptation.service` already applied — so a child whose only rows are
+   * one-offs gets the config default rather than whichever anecdote scored
+   * highest.
    */
   async calculatePreferredModality(childId: string): Promise<ActivityType> {
     const modalities = await modalityPerformanceRepository.findByChild(childId);
-    if (modalities.length === 0) {
-      return ActivityType.VIDEO; // Default modality
-    }
-
-    let bestModality: ActivityType = ActivityType.VIDEO;
-    let highestScore = -1;
-
-    for (const mod of modalities) {
-      const score = 0.4 * mod.averageAccuracy + 0.4 * mod.averageEngagement + 0.2 * mod.averageConfidence;
-      if (score > highestScore) {
-        highestScore = score;
-        bestModality = mod.activityType;
-      }
-    }
-
-    return bestModality;
+    return profileModalities(
+      modalities.map((mod) => ({
+        activityType: mod.activityType as ActivityType,
+        attempts: mod.attempts,
+        averageAccuracy: mod.averageAccuracy,
+        averageEngagement: mod.averageEngagement,
+        averageConfidence: mod.averageConfidence,
+      }))
+    ).preferred;
   }
 
   /**

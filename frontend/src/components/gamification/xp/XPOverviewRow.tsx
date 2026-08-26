@@ -11,7 +11,7 @@ interface XPOverviewRowProps {
 const XPOverviewRow: React.FC<XPOverviewRowProps> = ({ xp, level }) => {
   return (
     <View style={styles.row} accessibilityRole="text" accessibilityLabel={`XP ${xp}, Level ${level}`}>
-      <Ionicons name="star" size={14} color={colors.purple} />
+      <Ionicons name="star" size={14} color={colors.primary} />
       <Text style={styles.xpText}>XP {xp}</Text>
       <View style={styles.divider} />
       <Text style={styles.levelText}>Lv {level}</Text>

@@ -36,7 +36,7 @@ export const LevelUpModal: React.FC<LevelUpModalProps> = ({
     <Modal visible={visible} onClose={onClose} title="Level Up!">
       <View style={styles.content}>
         <Animated.View style={[styles.iconWrap, { transform: [{ scale }] }]}>
-          <Ionicons name="trophy" size={64} color={colors.purple} />
+          <Ionicons name="trophy" size={64} color={colors.primary} />
         </Animated.View>
         <Text style={styles.title}>You reached Level {level}!</Text>
         {label ? <Text style={styles.label}>{label}</Text> : null}

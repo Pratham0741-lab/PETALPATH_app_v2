@@ -1,8 +1,31 @@
+/**
+ * What the child sees instead of the camera (spec §34 phase 7).
+ *
+ * Both camera screens render this in place of the preview, so it is the first
+ * thing anyone meets when permission is missing — and it was the least designed
+ * surface in the app: four hand-rolled `Text` blocks with per-instance
+ * `typography.families.rounded` + `sizes.*`, two `Pressable`s pretending to be
+ * buttons, and Ionicons throughout (§7).
+ *
+ * It is now one layout driven by the status, built from the shared `IconWell`,
+ * `typography.presets` and real `PrimaryButton`/`SecondaryButton`s. The four
+ * `CameraStatus` branches, their exact wording, `Linking.openSettings()` and
+ * `onRequestPermission` are all unchanged (§1).
+ *
+ * Two judgments:
+ *
+ *  - The initialising state showed a *static* `reload-outline`, which looks like
+ *    a retry button you can press. An `ActivityIndicator` says the same thing
+ *    honestly, and is announced as busy rather than sitting silent.
+ *  - `container` keeps its `flex: 1` on purpose: this fills the black preview
+ *    box, and is not inside a scroll view.
+ */
+
 import React from 'react';
-import { StyleSheet, View, Text, Pressable, Linking } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { ActivityIndicator, Linking, StyleSheet, Text, View } from 'react-native';
 import { CameraStatus } from '../types/camera.types';
-import { colors, spacing, typography, radius } from '../../../theme';
+import { IconWell, PrimaryButton, SecondaryButton } from '../../../components/design';
+import { cardSizes, colors, spacing, typography, layoutSizes } from '../../../theme';
 
 interface CameraPermissionStateProps {
   status: CameraStatus;
@@ -15,103 +38,108 @@ export const CameraPermissionState: React.FC<CameraPermissionStateProps> = ({
 }) => {
   if (status === 'permission_denied') {
     return (
-      <View style={styles.container}>
-        <Ionicons name="camera-outline" size={64} color={colors.textMuted} />
-        <Text style={styles.title}>Camera Access Needed</Text>
-        <Text style={styles.subtitle}>
-          PetalPath requires camera access to preview activities. Please enable camera permissions in your device settings.
-        </Text>
-        <Pressable
-          style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}
+      <Frame
+        icon="camera"
+        color={colors.textSecondary}
+        soft={colors.surfaceSecondary}
+        title="Camera Access Needed"
+        message="PetalPath requires camera access to preview activities. Please enable camera permissions in your device settings."
+      >
+        <SecondaryButton
+          label="Open Device Settings"
+          icon="settings"
           onPress={() => Linking.openSettings()}
-        >
-          <Ionicons name="settings-outline" size={20} color={colors.card} style={styles.buttonIcon} />
-          <Text style={styles.buttonText}>Open Device Settings</Text>
-        </Pressable>
-      </View>
+          accessibilityHint="Opens the system settings app so you can turn the camera on"
+          style={styles.action}
+        />
+      </Frame>
     );
   }
 
   if (status === 'unavailable') {
     return (
-      <View style={styles.container}>
-        <Ionicons name="alert-circle-outline" size={64} color={colors.coral} />
-        <Text style={styles.title}>Camera Unavailable</Text>
-        <Text style={styles.subtitle}>
-          No compatible rear camera device was found on this device or the camera is currently in use.
-        </Text>
-      </View>
+      <Frame
+        icon="warning"
+        color={colors.error}
+        soft={colors.errorLight}
+        title="Camera Unavailable"
+        message="No compatible rear camera device was found on this device or the camera is currently in use."
+      />
     );
   }
 
   if (status === 'requesting_permission') {
     return (
-      <View style={styles.container}>
-        <Ionicons name="camera" size={64} color={colors.purple} />
-        <Text style={styles.title}>Camera Permission</Text>
-        <Text style={styles.subtitle}>
-          Tap below to grant camera access for real-time live preview.
-        </Text>
-        <Pressable
-          style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}
+      <Frame
+        icon="camera"
+        color={colors.primary}
+        soft={colors.primaryLight}
+        title="Camera Permission"
+        message="Tap below to grant camera access for real-time live preview."
+      >
+        <PrimaryButton
+          label="Grant Camera Permission"
+          icon="camera"
           onPress={onRequestPermission}
-        >
-          <Text style={styles.buttonText}>Grant Camera Permission</Text>
-        </Pressable>
-      </View>
+          style={styles.action}
+        />
+      </Frame>
     );
   }
 
   return (
     <View style={styles.container}>
-      <Ionicons name="reload-outline" size={48} color={colors.purple} />
-      <Text style={styles.title}>Initializing Camera...</Text>
+      <ActivityIndicator size="large" color={colors.primary} />
+      <Text style={[typography.presets.cardTitle, styles.title]} accessibilityRole="header">
+        Initializing Camera…
+      </Text>
     </View>
   );
 };
 
+/** One shape for all three explained states, so none of them drifts. */
+const Frame: React.FC<{
+  icon: 'camera' | 'warning';
+  color: string;
+  soft: string;
+  title: string;
+  message: string;
+  children?: React.ReactNode;
+}> = ({ icon, color, soft, title, message, children }) => (
+  <View style={styles.container}>
+    <IconWell icon={icon} color={color} soft={soft} size={cardSizes.iconWellLarge} filled />
+    <Text style={[typography.presets.section, styles.title]} accessibilityRole="header">
+      {title}
+    </Text>
+    <Text style={[typography.presets.body, styles.message]}>{message}</Text>
+    {children}
+  </View>
+);
+
 const styles = StyleSheet.create({
   container: {
+    /* Fills the preview box it replaces — not inside a scroll view, so `flex`
+       is correct here. */
     flex: 1,
     backgroundColor: colors.surface,
     justifyContent: 'center',
     alignItems: 'center',
     padding: spacing.xl,
+    gap: spacing.md,
   },
   title: {
-    fontFamily: typography.families.rounded,
-    fontSize: typography.sizes.xl,
-    color: colors.text,
-    marginTop: spacing.md,
-    marginBottom: spacing.xs,
     textAlign: 'center',
   },
-  subtitle: {
-    fontFamily: typography.families.rounded,
-    fontSize: typography.sizes.md,
-    color: colors.textMuted,
+  message: {
+    color: colors.textSecondary,
     textAlign: 'center',
-    lineHeight: 22,
-    marginBottom: spacing.xl,
+    maxWidth: layoutSizes.reading,
   },
-  button: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.purple,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    borderRadius: radius.button,
-  },
-  buttonPressed: {
-    opacity: 0.8,
-  },
-  buttonIcon: {
-    marginRight: spacing.xs,
-  },
-  buttonText: {
-    fontFamily: typography.families.rounded,
-    fontSize: typography.sizes.md,
-    color: colors.card,
-    fontWeight: '600',
+  action: {
+    marginTop: spacing.sm,
+    width: '100%',
+    maxWidth: 320,
   },
 });
+
+export default CameraPermissionState;

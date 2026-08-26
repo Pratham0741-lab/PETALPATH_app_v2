@@ -17,17 +17,21 @@ import Animated, {
   interpolateColor,
 } from 'react-native-reanimated';
 import { colors, typography } from '../../theme';
+import { summarizeSeries, useChartWidth } from './useChartWidth';
 
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 const AnimatedRect = Animated.createAnimatedComponent(Rect);
 
 interface LineChartProps {
   data: Array<{ label: string; value: number }>;
+  /** Omit to fill the parent — see `useChartWidth`. */
   width?: number;
   height?: number;
   color?: string;
   animated?: boolean;
   loading?: boolean;
+  /** Overrides the spoken series summary, e.g. to name the unit. */
+  accessibilityLabel?: string;
 }
 
 const MARGIN = { top: 20, right: 10, bottom: 30, left: 40 };
@@ -60,12 +64,17 @@ const LineSkeleton: React.FC<{ w: number; h: number }> = ({ w, h }) => {
 
 export const LineChart: React.FC<LineChartProps> = ({
   data,
-  width = 300,
+  width: widthProp,
   height = 200,
   color = colors.primary,
   animated = false,
   loading = false,
+  accessibilityLabel,
 }) => {
+  const { width, onLayout, ready } = useChartWidth(widthProp);
+  /* No explicit width → fill the parent, so the trend line is right at 360px
+     and at 430px without the screen doing arithmetic (§27). */
+  const box = { width: widthProp ?? ('100%' as const), height };
   const chartW = width - MARGIN.left - MARGIN.right;
   const chartH = height - MARGIN.top - MARGIN.bottom;
   const values = data.map(d => d.value);
@@ -125,18 +134,30 @@ export const LineChart: React.FC<LineChartProps> = ({
 
   if (loading) {
     return (
-      <View style={[styles.container, { width, height }]} accessibilityLabel="Loading chart">
-        <LineSkeleton w={width} h={height} />
+      <View style={[styles.container, box]} onLayout={onLayout} accessibilityLabel="Loading chart">
+        {ready ? <LineSkeleton w={width} h={height} /> : null}
       </View>
     );
   }
 
   if (data.length === 0) {
-    return <View style={[styles.container, { width, height }]} accessibilityLabel="No chart data" />;
+    return (
+      <View style={[styles.container, box]} onLayout={onLayout} accessibilityLabel="No chart data" />
+    );
+  }
+
+  if (!ready) {
+    /* Waiting on the first measurement — hold the height, draw nothing. */
+    return <View style={[styles.container, box]} onLayout={onLayout} />;
   }
 
   return (
-    <View style={[styles.container, { width, height }]} accessibilityLabel="Line chart">
+    <View
+      style={[styles.container, box]}
+      onLayout={onLayout}
+      accessible
+      accessibilityLabel={accessibilityLabel ?? summarizeSeries('Line chart', data)}
+    >
       <Svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
         {yTicks.map((t, i) => {
           const y = yPos(t);

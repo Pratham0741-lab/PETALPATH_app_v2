@@ -1,11 +1,18 @@
 import React from 'react';
-import { StyleSheet, View, Text, ViewStyle } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { Card } from '../ui/Card';
+import { StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native';
 import { Skeleton } from '../ui/Skeleton';
-import { ProgressRing } from '../charts/ProgressRing';
-import { useTheme } from '../../theme/ThemeContext';
-import { spacing, typography } from '../../theme';
+import { ProgressRing } from '../design/ProgressIndicator';
+import { colors, progressSizes, spacing, typography } from '../../theme';
+import { MetricCard, MetricFigure, TrendPill } from './MetricCard';
+
+/**
+ * Overall completion, as a ring.
+ *
+ * The ring used to be `charts/ProgressRing` with the percentage absolutely
+ * positioned on top of it — two elements that had to be kept in sync by hand and
+ * that a screen reader read as a progressbar followed by a loose "62%". The
+ * design-system ring has a real centre slot, so the number lives inside it.
+ */
 
 interface ProgressSummaryCardProps {
   completionPercentage: number;
@@ -13,7 +20,7 @@ interface ProgressSummaryCardProps {
   totalLessons?: number;
   trend?: 'up' | 'down' | 'stable';
   loading?: boolean;
-  style?: ViewStyle;
+  style?: StyleProp<ViewStyle>;
 }
 
 export function ProgressSummaryCard({
@@ -24,77 +31,55 @@ export function ProgressSummaryCard({
   loading = false,
   style,
 }: ProgressSummaryCardProps) {
-  const { theme: { colors: themeColors } } = useTheme();
-
-  if (loading) {
-    return (
-      <Card style={style} accessibilityLabel="Loading progress summary">
-        <Skeleton width={140} height={22} style={{ marginBottom: spacing.md }} />
-        <Skeleton variant="circle" width={110} height={110} style={{ alignSelf: 'center', marginBottom: spacing.md }} />
-        <Skeleton width={160} height={14} style={{ alignSelf: 'center', marginBottom: spacing.xs }} />
-        <Skeleton width={80} height={12} style={{ alignSelf: 'center' }} />
-      </Card>
-    );
-  }
-
-  const isUp = trend === 'up';
-  const isDown = trend === 'down';
-  const trendIcon = isUp ? 'arrow-up' : isDown ? 'arrow-down' : 'remove';
-  const trendColor = isUp ? themeColors.success : isDown ? themeColors.error : themeColors.textMuted;
-  const trendLabel = isUp ? 'Improving' : isDown ? 'Declining' : 'Stable';
+  const pct = Math.round(completionPercentage);
+  /* The dashboard calls this without `totalLessons`, and the old card printed
+     the gap as a literal "12 of ? lessons". Say what is known instead. */
+  const lessonLine =
+    typeof totalLessons === 'number'
+      ? `${lessonsCompleted} of ${totalLessons} lessons completed`
+      : `${lessonsCompleted} lessons completed`;
 
   return (
-    <Card
+    <MetricCard
+      title="Progress Summary"
+      icon="chart"
+      loading={loading}
       style={style}
-      accessibilityLabel={`Progress Summary: ${Math.round(completionPercentage)}% complete, ${lessonsCompleted} of ${totalLessons ?? '?'} lessons`}
+      accessibilityLabel={`${pct} percent complete. ${lessonLine}.`}
+      skeleton={
+        <View style={styles.skeleton}>
+          <Skeleton variant="circle" width={progressSizes.ringSizeLarge} height={progressSizes.ringSizeLarge} />
+          <Skeleton width={160} height={14} />
+          <Skeleton width={90} height={22} />
+        </View>
+      }
     >
-      <Text style={[styles.header, { color: themeColors.text }]}>Progress Summary</Text>
-      <View style={styles.ringContainer}>
-        <ProgressRing progress={completionPercentage / 100} size={110} strokeWidth={10} color={themeColors.primary} />
-        <Text style={[styles.percentage, { color: themeColors.text }]}>{Math.round(completionPercentage)}%</Text>
-      </View>
-      <Text style={[styles.subtext, { color: themeColors.textSecondary }]}>
-        {lessonsCompleted} of {totalLessons ?? '?'} lessons completed
-      </Text>
-      <View style={styles.trendRow}>
-        <Ionicons name={trendIcon as 'arrow-up' | 'arrow-down' | 'remove'} size={16} color={trendColor} />
-        <Text style={[styles.trendLabel, { color: trendColor }]}>{trendLabel}</Text>
-      </View>
-    </Card>
+      <MetricFigure
+        above={
+          <ProgressRing
+            value={completionPercentage}
+            size={progressSizes.ringSizeLarge}
+            stroke={progressSizes.ringStrokeLarge}
+            color={colors.primary}
+            accessibilityLabel="Overall completion"
+          >
+            <Text style={[typography.presets.stat, styles.ringValue]}>{pct}%</Text>
+          </ProgressRing>
+        }
+        caption={lessonLine}
+        below={<TrendPill direction={trend} />}
+      />
+    </MetricCard>
   );
 }
 
 const styles = StyleSheet.create({
-  header: {
-    fontSize: typography.sizes.cardTitle,
-    fontWeight: typography.weights.bold,
-    marginBottom: spacing.md,
-  },
-  ringContainer: {
+  skeleton: {
     alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.md,
+    gap: spacing.sm,
   },
-  percentage: {
-    fontSize: typography.sizes.xxl,
-    fontWeight: typography.weights.black,
-    position: 'absolute',
-  },
-  subtext: {
-    fontSize: typography.sizes.small,
-    textAlign: 'center',
-    marginBottom: spacing.xs,
-  },
-  trendRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.xs,
-  },
-  trendLabel: {
-    fontSize: typography.sizes.small,
-    fontWeight: typography.weights.medium,
-    textTransform: 'capitalize',
+  ringValue: {
+    color: colors.text,
   },
 });
 

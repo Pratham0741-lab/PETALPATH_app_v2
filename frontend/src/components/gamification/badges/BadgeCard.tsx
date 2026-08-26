@@ -1,9 +1,24 @@
+/**
+ * BadgeCard — one tile in the badge grid. Handles both earned and unearned
+ * badges; `BadgeDetailCard` is the larger detail-screen variant.
+ *
+ * Redesign notes (§5, §7, §30): Ionicons medal/checkmark become the `medal`,
+ * `check` and `lock` PetalIcons, and the tile is a design-system `Card` instead
+ * of an `AppCard` with its own radius and shadow. Because it lives in a ~160px
+ * grid cell at 360px, the layout is centred and vertical rather than the old
+ * side-by-side row, which used to push the "Locked" pill off the tile (§27).
+ *
+ * Earned state is no longer carried by colour alone: an earned badge gets a
+ * green check mark and an unearned one gets a lock glyph plus the word
+ * "Locked", so the distinction survives colour blindness (§30).
+ */
+
 import React from 'react';
-import { View, Text, Image, StyleSheet, StyleProp, ViewStyle } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { colors, spacing, typography, radius, shadows } from '../../../theme';
-import { AppCard } from '../../cards/AppCard';
-import { ProgressBar } from '../../../components/ui';
+import { Image, StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native';
+
+import { colors, radius, spacing, typography } from '../../../theme';
+import { Card, IconWell, ProgressIndicator } from '../../design';
+import { PetalIcon } from '../../icons';
 
 interface BadgeCardProps {
   name: string;
@@ -26,95 +41,122 @@ export const BadgeCard: React.FC<BadgeCardProps> = ({
   style,
 }) => {
   return (
-    <AppCard onPress={onPress} style={[styles.card, style]}>
-      <View style={styles.header}>
+    <Card
+      variant={earned ? 'raised' : 'muted'}
+      padding="compact"
+      onPress={onPress}
+      style={style}
+      accessibilityLabel={
+        earned ? `${name}, earned` : `${name}, locked${description ? `. ${description}` : ''}`
+      }
+      accessibilityHint={onPress ? 'Opens badge details' : undefined}
+    >
+      <View style={styles.artWrap}>
         {imagePath ? (
-          <Image source={{ uri: imagePath }} style={styles.image} />
+          <Image
+            source={{ uri: imagePath }}
+            style={[styles.image, !earned && styles.imageLocked]}
+            accessibilityIgnoresInvertColors
+          />
         ) : (
-          <View style={[styles.iconWrap, { backgroundColor: earned ? colors.lavender : colors.surfaceSecondary }]}>
-            <Ionicons name="medal" size={32} color={earned ? colors.purple : colors.textMuted} />
-          </View>
+          <IconWell
+            icon="medal"
+            color={earned ? colors.primary : colors.textMuted}
+            soft={earned ? colors.primaryLight : colors.skeleton}
+            size={60}
+            filled={earned}
+          />
         )}
-        {earned ? (
-          <View style={styles.checkWrap}>
-            <Ionicons name="checkmark-circle" size={20} color={colors.green} />
-          </View>
-        ) : (
-          <View style={styles.lockedPill}>
-            <Text style={styles.lockedText}>Locked</Text>
-          </View>
-        )}
-      </View>
-      <Text style={styles.name}>{name}</Text>
-      {description && <Text style={styles.description}>{description}</Text>}
-      {!earned && (
-        <View style={styles.progressWrap}>
-          <ProgressBar
-            progress={progress ?? 0}
-            color={colors.purple}
-            label="Progress"
+        <View style={[styles.marker, earned ? styles.markerEarned : styles.markerLocked]}>
+          <PetalIcon
+            name={earned ? 'check' : 'lock'}
+            size={13}
+            color={colors.white}
+            filled
+            strokeWidth={2.4}
           />
         </View>
+      </View>
+
+      <Text style={styles.name} numberOfLines={2}>
+        {name}
+      </Text>
+
+      {description ? (
+        <Text style={styles.description} numberOfLines={2}>
+          {description}
+        </Text>
+      ) : null}
+
+      {earned ? (
+        <Text style={styles.earnedLabel}>Earned</Text>
+      ) : (
+        <ProgressIndicator
+          value={progress ?? 0}
+          height={6}
+          color={colors.primary}
+          style={styles.progress}
+          accessibilityLabel={`${Math.round(progress ?? 0)} percent towards this badge`}
+        />
       )}
-    </AppCard>
+    </Card>
   );
 };
 
 const styles = StyleSheet.create({
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.card,
-    padding: spacing.md,
-    ...shadows.sm,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+  artWrap: {
+    alignSelf: 'center',
+    position: 'relative',
     marginBottom: spacing.sm,
   },
   image: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 60,
+    height: 60,
+    borderRadius: radius.full,
     backgroundColor: colors.surfaceSecondary,
   },
-  iconWrap: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    justifyContent: 'center',
+  imageLocked: {
+    opacity: 0.55,
+  },
+  marker: {
+    position: 'absolute',
+    right: -2,
+    bottom: -2,
+    width: 22,
+    height: 22,
+    borderRadius: radius.full,
+    borderWidth: 2,
+    borderColor: colors.surface,
     alignItems: 'center',
-  },
-  checkWrap: {
     justifyContent: 'center',
-    alignItems: 'center',
   },
-  lockedPill: {
-    backgroundColor: colors.surfaceSecondary,
-    borderRadius: radius.lg,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
+  markerEarned: {
+    backgroundColor: colors.leafGreen,
   },
-  lockedText: {
-    fontSize: typography.sizes.xs,
-    fontWeight: typography.weights.bold,
-    color: colors.textMuted,
-    fontFamily: typography.families.rounded,
+  markerLocked: {
+    backgroundColor: colors.textMuted,
   },
   name: {
-    fontSize: typography.sizes.md,
-    fontWeight: typography.weights.bold,
-    color: colors.textPrimary,
-    fontFamily: typography.families.rounded,
+    ...typography.presets.cardTitle,
+    color: colors.text,
+    textAlign: 'center',
   },
   description: {
-    fontSize: typography.sizes.small,
-    color: colors.textMuted,
-    fontFamily: typography.families.rounded,
-    marginTop: spacing.xs,
+    ...typography.presets.caption,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginTop: 2,
   },
-  progressWrap: {
+  earnedLabel: {
+    ...typography.presets.caption,
+    color: colors.successDark,
+    fontWeight: typography.weights.bold,
+    textAlign: 'center',
+    marginTop: spacing.sm,
+  },
+  progress: {
     marginTop: spacing.sm,
   },
 });
+
+export default BadgeCard;

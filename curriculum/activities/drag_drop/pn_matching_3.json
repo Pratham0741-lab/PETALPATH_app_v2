@@ -1,6 +1,6 @@
 {
   "$schema": "https://petalpath.io/schemas/drag-drop-activity/v2.1.0",
-  "id": "petalpath:activity:bfa73942-d212-481c-8602-e3bb0c7c72d4",
+  "id": "petalpath:activity:generated:pn_matching",
   "schemaVersion": "2.1.0",
   "engine": {
     "engineId": "petalpath:engine:drag-drop",
@@ -17,62 +17,48 @@
     "activityType": "drag_drop"
   },
   "metadata": {
-    "title": "l10n:activity:pn_matching_3:title",
-    "description": "l10n:activity:pn_matching_3:description",
+    "title": "Match the Pair",
+    "description": "Find the shape that is exactly the same. Drag it onto its twin.",
     "templateRef": {
-      "templateId": "opposites",
-      "templateVersion": "1.0.0"
+      "templateId": "match-identical",
+      "templateVersion": "2.0.0"
     },
-    "activityType": "drag-and-drop",
     "primaryLanguage": "en-IN",
     "supportedLanguages": [
-      "en-IN",
-      "hi-IN"
+      "en-IN"
     ],
     "tags": [
-      "pre_nursery",
-      "opposites",
-      "maths",
+      "match-identical",
       "drag-and-drop"
     ],
     "status": "published",
-    "createdAt": "2026-07-27T00:00:00.000Z",
-    "updatedAt": "2026-07-27T00:00:00.000Z"
+    "generatedAt": "2026-08-21"
   },
   "canvas": {
-    "width": 1000,
-    "height": 750,
-    "orientation": "landscape"
+    "width": 760,
+    "height": 980,
+    "orientation": "portrait"
   },
   "draggables": [
     {
       "id": "drag-item-1",
-      "contentType": "image",
-      "content": null,
+      "contentType": "text",
+      "content": "Heart",
       "contentLocalizationKey": null,
-      "assetRef": {
-        "imageAssetId": "petalpath:asset:placeholder:pn_matching_3-item-1-image",
-        "audioAssetId": "petalpath:asset:placeholder:pn_matching_3-item-1-sound"
-      },
       "position": {
-        "x": 100,
-        "y": 550,
-        "randomizePosition": true,
-        "sourceRegion": {
-          "x": 50,
-          "y": 500,
-          "width": 900,
-          "height": 200
-        }
+        "x": 168,
+        "y": 446
       },
       "dimensions": {
-        "width": 140,
-        "height": 140
+        "width": 200,
+        "height": 150
       },
       "style": {
-        "backgroundColor": "#4A90E2",
-        "borderRadius": 12,
-        "elevation": 2
+        "backgroundColor": "#E8386A",
+        "borderRadius": 24,
+        "textColor": "#FFFFFF",
+        "fontSize": 57,
+        "fontWeight": "800"
       },
       "behavior": {
         "draggable": true,
@@ -80,38 +66,30 @@
         "lockAfterCorrectDrop": true
       },
       "accessibility": {
-        "screenReaderLabel": "l10n:drag:pn_matching_3:item-1:sr-label"
+        "screenReaderLabel": "Heart",
+        "hintText": "Drag this onto the box it belongs in"
       },
       "sortOrder": 1
     },
     {
       "id": "drag-item-2",
-      "contentType": "image",
-      "content": null,
+      "contentType": "text",
+      "content": "Sun",
       "contentLocalizationKey": null,
-      "assetRef": {
-        "imageAssetId": "petalpath:asset:placeholder:pn_matching_3-item-2-image",
-        "audioAssetId": "petalpath:asset:placeholder:pn_matching_3-item-2-sound"
-      },
       "position": {
-        "x": 320,
-        "y": 550,
-        "randomizePosition": true,
-        "sourceRegion": {
-          "x": 50,
-          "y": 500,
-          "width": 900,
-          "height": 200
-        }
+        "x": 392,
+        "y": 446
       },
       "dimensions": {
-        "width": 140,
-        "height": 140
+        "width": 200,
+        "height": 150
       },
       "style": {
-        "backgroundColor": "#4A90E2",
-        "borderRadius": 12,
-        "elevation": 2
+        "backgroundColor": "#3F7FC4",
+        "borderRadius": 24,
+        "textColor": "#FFFFFF",
+        "fontSize": 57,
+        "fontWeight": "800"
       },
       "behavior": {
         "draggable": true,
@@ -119,38 +97,30 @@
         "lockAfterCorrectDrop": true
       },
       "accessibility": {
-        "screenReaderLabel": "l10n:drag:pn_matching_3:item-2:sr-label"
+        "screenReaderLabel": "Sun",
+        "hintText": "Drag this onto the box it belongs in"
       },
       "sortOrder": 2
     },
     {
       "id": "drag-item-3",
-      "contentType": "image",
-      "content": null,
+      "contentType": "text",
+      "content": "Moon",
       "contentLocalizationKey": null,
-      "assetRef": {
-        "imageAssetId": "petalpath:asset:placeholder:pn_matching_3-item-3-image",
-        "audioAssetId": "petalpath:asset:placeholder:pn_matching_3-item-3-sound"
-      },
       "position": {
-        "x": 540,
-        "y": 550,
-        "randomizePosition": true,
-        "sourceRegion": {
-          "x": 50,
-          "y": 500,
-          "width": 900,
-          "height": 200
-        }
+        "x": 168,
+        "y": 618
       },
       "dimensions": {
-        "width": 140,
-        "height": 140
+        "width": 200,
+        "height": 150
       },
       "style": {
-        "backgroundColor": "#4A90E2",
-        "borderRadius": 12,
-        "elevation": 2
+        "backgroundColor": "#D9741F",
+        "borderRadius": 24,
+        "textColor": "#FFFFFF",
+        "fontSize": 57,
+        "fontWeight": "800"
       },
       "behavior": {
         "draggable": true,
@@ -158,9 +128,41 @@
         "lockAfterCorrectDrop": true
       },
       "accessibility": {
-        "screenReaderLabel": "l10n:drag:pn_matching_3:item-3:sr-label"
+        "screenReaderLabel": "Moon",
+        "hintText": "Drag this onto the box it belongs in"
       },
       "sortOrder": 3
+    },
+    {
+      "id": "drag-item-4",
+      "contentType": "text",
+      "content": "Star",
+      "contentLocalizationKey": null,
+      "position": {
+        "x": 392,
+        "y": 618
+      },
+      "dimensions": {
+        "width": 200,
+        "height": 150
+      },
+      "style": {
+        "backgroundColor": "#7B5BD6",
+        "borderRadius": 24,
+        "textColor": "#FFFFFF",
+        "fontSize": 57,
+        "fontWeight": "800"
+      },
+      "behavior": {
+        "draggable": true,
+        "returnToOriginOnFailure": true,
+        "lockAfterCorrectDrop": true
+      },
+      "accessibility": {
+        "screenReaderLabel": "Star",
+        "hintText": "Drag this onto the box it belongs in"
+      },
+      "sortOrder": 4
     }
   ],
   "dropZones": [
@@ -169,12 +171,48 @@
       "shape": {
         "type": "rectangle",
         "position": {
-          "x": 150,
-          "y": 200
+          "x": 30,
+          "y": 212
         },
         "dimensions": {
-          "width": 160,
-          "height": 160
+          "width": 216,
+          "height": 170
+        }
+      },
+      "acceptedDraggableIds": [
+        "drag-item-4"
+      ],
+      "capacity": 1,
+      "visualState": {
+        "defaultAppearance": "visible",
+        "hoverHighlight": "glow",
+        "correctHighlight": "glow-green",
+        "incorrectHighlight": "shake",
+        "labelText": "Star",
+        "targetContent": "Star",
+        "fontSize": 62
+      },
+      "snapping": {
+        "enabled": true,
+        "snapAlignment": "center"
+      },
+      "sortOrder": 1,
+      "accessibility": {
+        "screenReaderLabel": "Box for the star",
+        "dropHintText": "Drop the matching piece into Star"
+      }
+    },
+    {
+      "id": "zone-target-2",
+      "shape": {
+        "type": "rectangle",
+        "position": {
+          "x": 272,
+          "y": 212
+        },
+        "dimensions": {
+          "width": 216,
+          "height": 170
         }
       },
       "acceptedDraggableIds": [
@@ -185,45 +223,19 @@
         "defaultAppearance": "visible",
         "hoverHighlight": "glow",
         "correctHighlight": "glow-green",
-        "incorrectHighlight": "glow-red"
+        "incorrectHighlight": "shake",
+        "labelText": "Heart",
+        "targetContent": "Heart",
+        "fontSize": 62
       },
       "snapping": {
-        "enabled": true
-      },
-      "sortOrder": 1,
-      "accessibility": {
-        "screenReaderLabel": "l10n:zone:pn_matching_3:target-1:sr-label"
-      }
-    },
-    {
-      "id": "zone-target-2",
-      "shape": {
-        "type": "rectangle",
-        "position": {
-          "x": 400,
-          "y": 200
-        },
-        "dimensions": {
-          "width": 160,
-          "height": 160
-        }
-      },
-      "acceptedDraggableIds": [
-        "drag-item-2"
-      ],
-      "capacity": 1,
-      "visualState": {
-        "defaultAppearance": "visible",
-        "hoverHighlight": "glow",
-        "correctHighlight": "glow-green",
-        "incorrectHighlight": "glow-red"
-      },
-      "snapping": {
-        "enabled": true
+        "enabled": true,
+        "snapAlignment": "center"
       },
       "sortOrder": 2,
       "accessibility": {
-        "screenReaderLabel": "l10n:zone:pn_matching_3:target-2:sr-label"
+        "screenReaderLabel": "Box for the heart",
+        "dropHintText": "Drop the matching piece into Heart"
       }
     },
     {
@@ -231,12 +243,12 @@
       "shape": {
         "type": "rectangle",
         "position": {
-          "x": 650,
-          "y": 200
+          "x": 514,
+          "y": 212
         },
         "dimensions": {
-          "width": 160,
-          "height": 160
+          "width": 216,
+          "height": 170
         }
       },
       "acceptedDraggableIds": [
@@ -247,14 +259,19 @@
         "defaultAppearance": "visible",
         "hoverHighlight": "glow",
         "correctHighlight": "glow-green",
-        "incorrectHighlight": "glow-red"
+        "incorrectHighlight": "shake",
+        "labelText": "Moon",
+        "targetContent": "Moon",
+        "fontSize": 62
       },
       "snapping": {
-        "enabled": true
+        "enabled": true,
+        "snapAlignment": "center"
       },
       "sortOrder": 3,
       "accessibility": {
-        "screenReaderLabel": "l10n:zone:pn_matching_3:target-3:sr-label"
+        "screenReaderLabel": "Box for the moon",
+        "dropHintText": "Drop the matching piece into Moon"
       }
     }
   ],
@@ -266,7 +283,7 @@
     "scoringModel": {
       "type": "per-item",
       "basePointsPerItem": 10,
-      "maxScore": 100,
+      "maxScore": 30,
       "starThresholds": {
         "oneStar": 0.4,
         "twoStars": 0.7,
@@ -278,16 +295,12 @@
     "snapping": {
       "preset": "easy",
       "snapRadius": 100,
-      "magneticAttraction": 0.7,
-      "snapAnimationDurationMs": 300,
-      "returnAnimationDurationMs": 500
+      "magneticAttraction": 0.7
     },
     "dragBehavior": {
       "touchMode": "offset",
       "dragFeedback": "both",
-      "dragScaleFactor": 1.1,
-      "multiTouch": false,
-      "boundToCanvas": true
+      "dragScaleFactor": 1.1
     },
     "inputModes": {
       "touch": true,
@@ -321,11 +334,6 @@
         {
           "type": "confetti",
           "durationMs": 2000
-        },
-        {
-          "type": "stars",
-          "durationMs": 1500,
-          "delay": 500
         }
       ]
     }
@@ -337,22 +345,7 @@
         "level": 1,
         "triggerAfterAttempts": 2,
         "hintType": "highlight-target",
-        "durationMs": 3000,
-        "repeatable": true
-      },
-      {
-        "level": 2,
-        "triggerAfterAttempts": 3,
-        "hintType": "pulse-target",
-        "durationMs": 3000,
-        "repeatable": true
-      },
-      {
-        "level": 3,
-        "triggerAfterAttempts": 4,
-        "hintType": "show-arrow",
-        "durationMs": 4000,
-        "repeatable": true
+        "durationMs": 3000
       }
     ],
     "idleHint": {
@@ -364,124 +357,39 @@
   "accessibility": {
     "screenReader": {
       "enabled": true,
-      "activityInstructionKey": "l10n:activity:pn_matching_3:instruction"
+      "announceDrops": true,
+      "announceErrors": true
     },
     "narration": {
       "enabled": true,
-      "autoPlayOnLoad": true
+      "autoPlayOnLoad": false
     },
     "visual": {
-      "highContrast": false
-    },
-    "motor": {
-      "reducedPrecision": {
-        "enabled": false
-      }
+      "colorBlindSafe": true
     }
   },
   "localization": {
-    "keyNamespace": "l10n:activity:pn_matching_3",
+    "keyNamespace": "l10n:drag:pn_matching",
     "fallbackLanguage": "en-IN",
-    "stringKeys": {
-      "title": "l10n:activity:pn_matching_3:title",
-      "description": "l10n:activity:pn_matching_3:description",
-      "sr-label": "l10n:zone:pn_matching_3:target-3:sr-label",
-      "instruction": "l10n:activity:pn_matching_3:instruction",
-      "pn_matching_3": "l10n:activity:pn_matching_3"
-    },
+    "stringKeys": {},
     "textDirection": "ltr"
   },
   "assets": {
-    "required": [
-      {
-        "assetId": "petalpath:asset:placeholder:pn_matching_3-bg",
-        "assetType": "image",
-        "purpose": "background"
-      }
-    ],
+    "required": [],
     "optional": [],
-    "preloadStrategy": "progressive"
-  },
-  "analytics": {
-    "trackingEnabled": true,
-    "metricsToCollect": {
-      "attempts": {
-        "collect": true,
-        "aggregation": "sum"
-      },
-      "correctDrops": {
-        "collect": true,
-        "aggregation": "sum"
-      },
-      "incorrectDrops": {
-        "collect": true,
-        "aggregation": "sum"
-      },
-      "accuracy": {
-        "collect": true,
-        "aggregation": "calculated",
-        "formula": "correctDrops / attempts"
-      },
-      "completionTimeMs": {
-        "collect": true,
-        "aggregation": "value"
-      },
-      "averageResponseTimeMs": {
-        "collect": true,
-        "aggregation": "average"
-      },
-      "hintUsageCount": {
-        "collect": true,
-        "aggregation": "sum"
-      },
-      "hintLevelsReached": {
-        "collect": true,
-        "aggregation": "max"
-      },
-      "retryCount": {
-        "collect": true,
-        "aggregation": "sum"
-      },
-      "dragDistanceTotal": {
-        "collect": true,
-        "aggregation": "sum"
-      },
-      "idleTimeMs": {
-        "collect": true,
-        "aggregation": "sum"
-      },
-      "score": {
-        "collect": true,
-        "aggregation": "value"
-      }
-    }
+    "preloadStrategy": "immediate"
   },
   "completionSignals": {
     "signals": [
       {
         "signalId": "activity.completed",
         "condition": "always",
-        "description": "Emitted whenever the activity is completed."
-      },
-      {
-        "signalId": "activity.perfect",
-        "condition": "all-correct-first-attempt",
-        "description": "Every item correct on first try."
+        "description": "Emitted on completion"
       },
       {
         "signalId": "activity.threeStars",
         "condition": "score-gte:starThresholds.threeStars",
-        "description": "Score meets three-star threshold."
-      },
-      {
-        "signalId": "activity.twoStars",
-        "condition": "score-gte:starThresholds.twoStars",
-        "description": "Score meets two-star threshold."
-      },
-      {
-        "signalId": "activity.oneStar",
-        "condition": "score-gte:starThresholds.oneStar",
-        "description": "Score meets one-star threshold."
+        "description": "Three stars"
       }
     ]
   }

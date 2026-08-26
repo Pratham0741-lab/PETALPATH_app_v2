@@ -1,5 +1,8 @@
 import { apiClient } from './apiClient';
 import type { ApiResponse } from '../../types/api';
+import type { SkillMasteryView } from './masteryTypes';
+
+export type { SkillMasteryView };
 
 export interface AdaptiveProfile {
   childId: string;
@@ -43,18 +46,14 @@ export interface AITutorSession {
   duration: number;
 }
 
-export interface MasteryData {
-  childId: string;
-  skillId: string;
-  skillName: string;
-  domain: string;
-  subject: string;
-  masteryScore: number;
-  masteryState: 'locked' | 'in_progress' | 'mastered' | 'review';
-  confidence: number;
-  lastAssessed: string | null;
-  dependencies: string[];
-}
+/**
+ * What `/mastery/child/:childId` and `/mastery/:skillId` return.
+ *
+ * Was a hand-written shape with a lowercase `masteryState` union and a
+ * `dependencies: string[]` the server never sent. It is the shared projection
+ * now — see `masteryTypes.ts` for why three declarations existed.
+ */
+export type MasteryData = SkillMasteryView;
 
 export interface AdaptiveRecommendation {
   kind: 'continue' | 'skill' | 'daily_challenge' | 'reinforcement' | 'ai_tutor' | 'curriculum';
@@ -67,15 +66,11 @@ export interface AdaptiveRecommendation {
   priority: 'high' | 'medium' | 'low';
 }
 
-export interface WeakSkill {
-  skillId: string;
-  skillName: string;
-  domain: string;
-  masteryScore: number;
-  threshold: number;
-  gap: number;
-  priority: 'high' | 'medium' | 'low';
-}
+/**
+ * What `/mastery/weak-skills` returns — the same projection, pre-filtered by the
+ * server to the skills below threshold and already ordered worst-first.
+ */
+export type WeakSkill = SkillMasteryView;
 
 export interface LearningEvent {
   id: string;
@@ -134,7 +129,17 @@ export const intelligenceApi = {
   getAdaptiveRecommendations: (childId: string) =>
     apiClient.get<ApiResponse<AdaptiveRecommendation[]>>(`/adaptive/recommendations?childId=${childId}`),
 
-  // --- Reinforcement ---
+  /*
+   * --- Reinforcement ---
+   *
+   * The three GETs are real routes. The three POSTs below are not: the
+   * reinforcement router serves `POST /process`, `GET /queue`, `GET /due`,
+   * `GET /history` and `GET /events`, and nothing else, so every `/start`,
+   * `/skip` and `/complete` call 404s. They are left declared rather than
+   * deleted so the gap stays visible, but nothing calls them any more —
+   * `ReinforcementQueueScreen` reads the roadmap payload's `reviews[]` now, and
+   * a review is finished by doing the lesson.
+   */
   getReinforcementQueue: (childId: string) =>
     apiClient.get<ApiResponse<ReinforcementItem[]>>(`/reinforcement/queue?childId=${childId}`),
 
@@ -144,12 +149,15 @@ export const intelligenceApi = {
   getReinforcementHistory: (childId: string) =>
     apiClient.get<ApiResponse<ReinforcementItem[]>>(`/reinforcement/history?childId=${childId}`),
 
+  /** @deprecated No such route on the server. */
   startReinforcement: (itemId: string) =>
     apiClient.post<ApiResponse<unknown>>(`/reinforcement/queue/${itemId}/start`, {}),
 
+  /** @deprecated No such route on the server. */
   skipReinforcement: (itemId: string) =>
     apiClient.post<ApiResponse<unknown>>(`/reinforcement/queue/${itemId}/skip`, {}),
 
+  /** @deprecated No such route on the server. */
   completeReinforcement: (itemId: string) =>
     apiClient.post<ApiResponse<unknown>>(`/reinforcement/queue/${itemId}/complete`, {}),
 
