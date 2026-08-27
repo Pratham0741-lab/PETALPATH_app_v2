@@ -8,9 +8,9 @@ export class WaitlistRepository {
     });
   }
 
-  async create(email: string): Promise<Waitlist> {
+  async create(name: string, email: string): Promise<Waitlist> {
     return prisma.waitlist.create({
-      data: { email },
+      data: { name, email },
     });
   }
 }

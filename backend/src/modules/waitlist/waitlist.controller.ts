@@ -11,10 +11,17 @@ export class WaitlistController {
     try {
       const parsed = JoinWaitlistSchema.safeParse(req.body);
       if (!parsed.success) {
-        throw new ValidationError('Please enter a valid email address.', parsed.error.format());
+        const firstIssue = parsed.error.issues[0];
+        throw new ValidationError(
+          firstIssue?.message || 'Validation failed',
+          parsed.error.format()
+        );
       }
 
-      const result = await this.service.joinWaitlist(parsed.data.email);
+      const result = await this.service.joinWaitlist(
+        parsed.data.name,
+        parsed.data.email
+      );
 
       logger.info(
         { alreadyRegistered: result.alreadyRegistered },

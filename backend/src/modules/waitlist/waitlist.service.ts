@@ -5,7 +5,8 @@ import { Prisma } from '@prisma/client';
 export class WaitlistService {
   constructor(private readonly repo: WaitlistRepository = waitlistRepository) {}
 
-  async joinWaitlist(email: string): Promise<JoinWaitlistResult> {
+  async joinWaitlist(name: string, email: string): Promise<JoinWaitlistResult> {
+    const trimmedName = name.trim();
     const normalizedEmail = email.trim().toLowerCase();
 
     // Check if email already exists
@@ -18,7 +19,7 @@ export class WaitlistService {
     }
 
     try {
-      await this.repo.create(normalizedEmail);
+      await this.repo.create(trimmedName, normalizedEmail);
       return {
         alreadyRegistered: false,
         message: "You're on the waitlist!",

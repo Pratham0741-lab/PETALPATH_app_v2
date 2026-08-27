@@ -21,3 +21,5 @@ export * as assessmentsApi from './assessments';
 export * as notificationsApi from './notifications';
 export * as curriculumApi from './curriculum';
 export * as storiesApi from './stories';
+export * as waitlistApi from './waitlist';
+export { joinWaitlist } from './waitlist';

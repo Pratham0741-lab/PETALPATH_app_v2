@@ -8,3 +8,5 @@ export { FormCheckbox } from './FormCheckbox';
 export { FormRadio } from './FormRadio';
 export { FormSwitch } from './FormSwitch';
 export { FormDatePicker } from './FormDatePicker';
+export { JoinWaitlistForm } from './JoinWaitlistForm';
+export type { JoinWaitlistFormProps, WaitlistFormData } from './JoinWaitlistForm';

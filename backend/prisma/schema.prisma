@@ -1651,6 +1651,7 @@ model ClassroomLearner {
 
 model Waitlist {
   id        String   @id @default(cuid())
+  name      String
   email     String   @unique
   createdAt DateTime @default(now()) @map("created_at")
 
