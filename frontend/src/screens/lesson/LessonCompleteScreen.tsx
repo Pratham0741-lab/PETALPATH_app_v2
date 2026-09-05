@@ -29,7 +29,7 @@
  */
 
 import React, { useEffect, useState, useRef } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useIsFocused } from '@react-navigation/native';
 
 import { colors, spacing, typography } from '../../theme';
@@ -50,6 +50,8 @@ import {
   StarRating,
 } from '../../components/design';
 import { CelebrationScaffold } from './CelebrationScaffold';
+import { SCREEN_BACKGROUNDS } from '../../assets/backgrounds';
+import { PetalMark } from '../../components/brand/PetalMark';
 
 const categoryBadgeMap: Record<string, string> = {
   'Shapes': 'Shape Master',
@@ -145,9 +147,9 @@ export const LessonCompleteScreen: React.FC = () => {
 
   if (loading) {
     return (
-      <AppShell scroll={false} petals="light">
+      <AppShell petals="none" backgroundImage={SCREEN_BACKGROUNDS.celebrate} scroll={false} >
         <View style={styles.center}>
-          <ActivityIndicator size="large" color={colors.primary} />
+          <PetalMark size={96} loading />
           <Text style={[typography.presets.caption, styles.loadingText]}>
             Saving your progress…
           </Text>

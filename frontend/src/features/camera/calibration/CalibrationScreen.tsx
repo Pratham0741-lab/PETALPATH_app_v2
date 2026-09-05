@@ -33,6 +33,7 @@ import {
 import type { PetalIconName } from '../../../components/icons';
 import { useCalibration } from './useCalibration';
 import { cardSizes, colors, spacing, typography, layoutSizes } from '../../../theme';
+import { SCREEN_BACKGROUNDS } from '../../../assets/backgrounds';
 
 const TOTAL_STEPS = 3;
 
@@ -101,7 +102,7 @@ export const CalibrationScreen: React.FC = () => {
         )}% ratio. You are all set!`;
 
   return (
-    <AppShell scroll={false} petals="light" header={<PageHeader title="Quick Camera Calibration" />}>
+    <AppShell petals="none" backgroundImage={SCREEN_BACKGROUNDS.camera} scroll={false} header={<PageHeader title="Quick Camera Calibration" />}>
       <View style={styles.column}>
         <ProgressIndicator
           value={(step / TOTAL_STEPS) * 100}

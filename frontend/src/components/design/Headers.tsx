@@ -12,6 +12,7 @@ import {
   getActivityColor,
 } from '../../theme';
 import { PetalIcon, PetalIconName } from '../icons';
+import { useAccentTint, PANEL_ALPHA } from './screenAccent';
 import { IconButton } from './Buttons';
 import { RewardBadge, LivesIndicator } from './Badges';
 import { ProgressIndicator } from './ProgressIndicator';
@@ -44,6 +45,8 @@ export interface AppHeaderProps {
   notificationCount?: number;
   /** Extra controls appended to the right cluster. */
   right?: React.ReactNode;
+  /** Per‑screen accent colour (matches the screen's scene). Tints the eyebrow. */
+  accent?: string;
   style?: StyleProp<ViewStyle>;
 }
 
@@ -55,12 +58,26 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   onPressNotifications,
   notificationCount = 0,
   right,
+  accent,
   style,
-}) => (
-  <View style={[styles.appHeader, style]}>
+}) => {
+  /*
+   * The greeting and title sit on their own translucent panel, matching the
+   * cards. Over a full-strength wallpaper, large display type straight on the art
+   * competes with whatever the scene has behind it (Home's sun sat right under
+   * "Learning Journey"); a panel gives the words a consistent surface to read
+   * against without hiding the scene.
+   */
+  const panelFill = useAccentTint(0.07, PANEL_ALPHA);
+
+  return (
+  <View style={[styles.appHeader, { backgroundColor: panelFill }, style]}>
     <View style={styles.appHeaderText}>
       {eyebrow ? (
-        <Text style={[typography.presets.subtle, styles.eyebrow]} numberOfLines={1}>
+        <Text
+          style={[typography.presets.subtle, styles.eyebrow, accent ? { color: accent } : null]}
+          numberOfLines={1}
+        >
           {eyebrow}
         </Text>
       ) : null}
@@ -105,7 +122,8 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
       ) : null}
     </View>
   </View>
-);
+  );
+};
 
 // ---------------------------------------------------------------------------
 // PageHeader
@@ -125,6 +143,8 @@ export interface PageHeaderProps {
   right?: React.ReactNode;
   /** Centre the title between the side slots. Default true. */
   centered?: boolean;
+  /** Per‑screen accent colour (matches the screen's scene). Tints the subtitle. */
+  accent?: string;
   style?: StyleProp<ViewStyle>;
 }
 
@@ -137,9 +157,13 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
   action,
   right,
   centered = true,
+  accent,
   style,
 }) => {
   const navigation = useNavigation<any>();
+  /* Same panel as AppHeader — see the note there. Keeps every screen's title
+     sitting on a surface rather than directly on the scene. */
+  const panelFill = useAccentTint(0.07, PANEL_ALPHA);
 
   const handleBack = () => {
     if (onBack) return onBack();
@@ -148,7 +172,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
   };
 
   return (
-    <View style={[styles.pageHeader, style]}>
+    <View style={[styles.pageHeader, { backgroundColor: panelFill }, style]}>
       <View style={styles.side}>
         {showBack ? (
           <IconButton
@@ -171,7 +195,12 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
         </Text>
         {subtitle ? (
           <Text
-            style={[typography.presets.caption, styles.pageSubtitle, centered && styles.centeredText]}
+            style={[
+              typography.presets.caption,
+              styles.pageSubtitle,
+              centered && styles.centeredText,
+              accent ? { color: accent } : null,
+            ]}
             numberOfLines={1}
           >
             {subtitle}
@@ -385,10 +414,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: spacing.lg,
+    /* Inset from the screen edge so the panel reads as a card, not a bar. */
+    marginHorizontal: spacing.lg,
+    paddingHorizontal: spacing.md,
     paddingTop: spacing.sm,
     paddingBottom: spacing.md,
     gap: spacing.md,
+    borderRadius: radius.card,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
   },
   appHeaderText: {
     flex: 1,
@@ -424,9 +458,14 @@ const styles = StyleSheet.create({
     minHeight: headerSizes.height,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: spacing.lg,
+    /* Inset so the panel reads as a card, matching AppHeader and the cards. */
+    marginHorizontal: spacing.lg,
+    paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     gap: spacing.sm,
+    borderRadius: radius.card,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
   },
   side: {
     minWidth: 44,
@@ -503,7 +542,7 @@ const styles = StyleSheet.create({
     borderRadius: stepRailSizes.node / 2,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.surface,
+    backgroundColor: colors.surfaceTranslucent,
     /* Every state carries the same border width so advancing a step never
        changes the geometry of the row — only its colours. */
     borderWidth: stepRailSizes.nodeRing,

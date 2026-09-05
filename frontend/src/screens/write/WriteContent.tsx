@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 
 import { colors, typography, spacing, buttonSizes, cardSizes, starSizes } from '../../theme';
 import { useWriteStore } from '../../store/writeStore';
+import { SCREEN_BACKGROUNDS } from '../../assets/backgrounds';
 import { useChildStore } from '../../store/childStore';
 import { enhanceMentor, MENTORS } from '../../constants/mentors';
 import {
@@ -11,14 +12,12 @@ import {
   getNextActivity,
   navigateToActivity,
 } from '../../utils/navigationFlow';
-import {
-  getGuidePoints,
-  calculateTracingAccuracy,
-  getStarsFromScore,
-} from '../../utils/tracingAccuracy';
+import { getGuidePoints, calculateTracingAccuracy } from '../../utils/tracingAccuracy';
+import { scoreActivity } from '../../utils/activityScoring';
 import { TracingCanvas } from '../../components/canvas/TracingCanvas';
 import { NavigationGuide } from '../../components/tutorial/NavigationGuide';
 import { ErrorState } from '../../components/common/ErrorState';
+import { PetalMark } from '../../components/brand/PetalMark';
 import {
   ActivityHeader,
   AppShell,
@@ -213,9 +212,11 @@ export const WriteContent: React.FC<{ variant: WriteVariant }> = ({ variant }) =
     }
 
     const guidePoints = getGuidePoints(guideName, w, h);
-    const score = calculateTracingAccuracy(strokes, guidePoints);
+    // Raw geometric accuracy drives the retry gate, so leniency never lets a
+    // scribble through — only the shown number and stars are softened.
+    const rawScore = calculateTracingAccuracy(strokes, guidePoints);
 
-    if (score < 40) {
+    if (rawScore < 40) {
       Alert.alert(
         "That's not quite right",
         "Let's try again! Try to stay as close as possible to the dashed guidelines.",
@@ -224,8 +225,10 @@ export const WriteContent: React.FC<{ variant: WriteVariant }> = ({ variant }) =
       return;
     }
 
-    const starsCount = getStarsFromScore(score);
-    await completeActivity(score, starsCount);
+    // One shared path turns the raw score into the shown accuracy + stars
+    // (softened by the honesty level), so the meter and the stars always agree.
+    const { accuracy, stars: starsCount } = scoreActivity(rawScore);
+    await completeActivity(accuracy, starsCount);
     setAnswered(true);
   };
 
@@ -249,9 +252,9 @@ export const WriteContent: React.FC<{ variant: WriteVariant }> = ({ variant }) =
 
   if (loading) {
     return (
-      <AppShell scroll={false} header={<PageHeader title="Trace & Draw" />}>
+      <AppShell petals="none" backgroundImage={SCREEN_BACKGROUNDS.trace} scroll={false} header={<PageHeader title="Trace & Draw" />}>
         <View style={styles.center}>
-          <ActivityIndicator size="large" color={colors.green} />
+          <PetalMark size={96} loading />
           <Text style={[typography.presets.caption, styles.loadingText]}>
             Loading tracing board…
           </Text>
@@ -262,7 +265,7 @@ export const WriteContent: React.FC<{ variant: WriteVariant }> = ({ variant }) =
 
   if (error || !activityId) {
     return (
-      <AppShell
+      <AppShell petals="none" backgroundImage={SCREEN_BACKGROUNDS.trace}
         scroll={false}
         header={<PageHeader title="Trace & Draw" />}
         footer={<SecondaryButton label="Go Back" icon="back" onPress={() => navigation.goBack()} />}
@@ -404,7 +407,7 @@ export const WriteContent: React.FC<{ variant: WriteVariant }> = ({ variant }) =
       // NavigationGuide is absolutely positioned over the whole screen, so it
       // has to sit outside AppShell rather than in its content column.
       <View style={styles.fill}>
-        <AppShell scroll={false} header={header} footer={footer}>
+        <AppShell scroll={false} header={header} footer={footer} petals="none" backgroundImage={SCREEN_BACKGROUNDS.trace}>
           {status}
           {board}
           {footerReserve}
@@ -418,7 +421,7 @@ export const WriteContent: React.FC<{ variant: WriteVariant }> = ({ variant }) =
 
   return (
     <View style={styles.fill}>
-      <AppShell scroll={false} padded={false} header={header} footer={footer}>
+      <AppShell scroll={false} padded={false} header={header} footer={footer} petals="none" backgroundImage={SCREEN_BACKGROUNDS.trace}>
         <View style={styles.layout}>
           <View style={styles.main}>
             {status}

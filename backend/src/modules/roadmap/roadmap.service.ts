@@ -240,9 +240,26 @@ export class RoadmapService {
       }
     }
 
-    // Fallback: If all completed, return last node
+    /*
+     * Fallback when no unlocked-and-incomplete lesson was found. There are two
+     * very different reasons that can happen, and they must NOT resolve the same
+     * way:
+     *
+     *   1. The grade is genuinely finished — every node is completed. Then the
+     *      last node is the right "current" (the end state).
+     *   2. Nothing is *unlocked* yet — a brand-new child, or a glitch in unlock
+     *      generation. Here jumping to the last node would drop the child at the
+     *      FINAL lesson with every earlier module collapsed and no way back
+     *      (Home only expands the current node's theme). The correct landing is
+     *      the FIRST incomplete lesson — the start of the journey.
+     *
+     * The old code always returned the last node, which is the reported bug.
+     */
     if (!nextLesson && enrichedNodes.length > 0) {
-      nextLesson = enrichedNodes[enrichedNodes.length - 1];
+      const allCompleted = enrichedNodes.every((n: any) => n.isCompleted);
+      nextLesson = allCompleted
+        ? enrichedNodes[enrichedNodes.length - 1]
+        : enrichedNodes.find((n: any) => !n.isCompleted) ?? enrichedNodes[0];
     }
 
     /*

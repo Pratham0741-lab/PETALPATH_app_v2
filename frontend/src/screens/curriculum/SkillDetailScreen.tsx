@@ -8,6 +8,7 @@ import { useCurriculum, useActivateSkill } from '../../hooks/useCurriculum';
 import { useAppNavigation } from '../../hooks/useAppNavigation';
 import { toUserMessage } from '../../api/errors';
 import { colors, spacing, typography, cardSizes } from '../../theme';
+import { SCREEN_BACKGROUNDS } from '../../assets/backgrounds';
 import {
   AppShell,
   Card,
@@ -78,7 +79,7 @@ const SkillDetailScreen: React.FC = () => {
 
   if (isLoading) {
     return (
-      <AppShell scroll={false} header={<PageHeader title="Skill" />}>
+      <AppShell petals="none" backgroundImage={SCREEN_BACKGROUNDS.explore} scroll={false} header={<PageHeader title="Skill" />}>
         <View style={styles.center}>
           <LoadingSpinner label="Loading skill…" />
         </View>
@@ -88,7 +89,7 @@ const SkillDetailScreen: React.FC = () => {
 
   if (isError) {
     return (
-      <AppShell scroll={false} header={<PageHeader title="Skill" />}>
+      <AppShell petals="none" backgroundImage={SCREEN_BACKGROUNDS.explore} scroll={false} header={<PageHeader title="Skill" />}>
         <View style={styles.center}>
           <ErrorState
             title="Couldn't load skill"
@@ -102,7 +103,7 @@ const SkillDetailScreen: React.FC = () => {
 
   if (!skillData) {
     return (
-      <AppShell scroll={false} header={<PageHeader title="Skill" />}>
+      <AppShell petals="none" backgroundImage={SCREEN_BACKGROUNDS.explore} scroll={false} header={<PageHeader title="Skill" />}>
         <View style={styles.center}>
           <EmptyState
             icon="search"
@@ -143,7 +144,7 @@ const SkillDetailScreen: React.FC = () => {
   ];
 
   return (
-    <AppShell
+    <AppShell petals="none" backgroundImage={SCREEN_BACKGROUNDS.explore}
       header={<PageHeader title={skill.name} backFallback={handleGoToJourney} />}
       footer={
         <View style={styles.footer}>

@@ -14,6 +14,7 @@
 #   src/modules/mastery/mastery.view.ts          — the one DTO four screens read
 #   src/modules/mastery/mastery.service.ts      — the service that delegates to them
 #   src/modules/roadmap/review-plan.ts          — which due reviews the child meets
+#   src/modules/curriculum/garden-view.ts       — subjects as patches, skills as blooms
 #   src/modules/adaptive/modality-profile.ts    — preferred vs weakest modality
 #
 # Only the persistence + logging layer is stubbed, and none of the functions
@@ -41,6 +42,7 @@ echo "==> transpiling real sources"
   src/modules/mastery/mastery.view.ts \
   src/modules/mastery/mastery.service.ts \
   src/modules/roadmap/review-plan.ts \
+  src/modules/curriculum/garden-view.ts \
   src/modules/adaptive/modality-profile.ts \
   src/shared/config/engine.config.ts \
   src/config/mastery.constants.ts \

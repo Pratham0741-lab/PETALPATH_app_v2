@@ -18,7 +18,7 @@
  */
 
 import React from 'react';
-import { StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
+import { Image, StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
 import Svg, { Circle, Ellipse, Path, Rect } from 'react-native-svg';
 
 import { colors, radius, spacing } from '../../theme';
@@ -101,40 +101,8 @@ export const GardenScene: React.FC<GardenSceneProps> = ({
           fill={colors.green}
         />
 
-        {/* Trunk and two branches */}
-        <Path
-          d="M108 158 L108 96 Q 108 90 116 90 Q 124 90 124 96 L124 158 Z"
-          fill={colors.brown}
-        />
-        <Path
-          d="M116 112 L 88 92"
-          stroke={colors.brown}
-          strokeWidth={5}
-          strokeLinecap="round"
-        />
-        <Path
-          d="M116 104 L 146 86"
-          stroke={colors.brown}
-          strokeWidth={5}
-          strokeLinecap="round"
-        />
-
-        {/* Canopy — three overlapping leaf clusters plus a highlight */}
-        <Circle cx={116} cy={64} r={44} fill={colors.leafGreen} />
-        <Circle cx={72} cy={86} r={30} fill={colors.green} />
-        <Circle cx={158} cy={82} r={28} fill={colors.green} />
-        <Circle cx={104} cy={50} r={18} fill={colors.greenSoft} opacity={0.55} />
-
-        {/* Blossoms — one per petal-point milestone */}
-        {BLOSSOM_SPOTS.slice(0, count).map((b, i) => (
-          <Circle
-            key={`${b.x}-${b.y}`}
-            cx={b.x}
-            cy={b.y}
-            r={b.r}
-            fill={i % 2 === 0 ? colors.primary : colors.primaryLight}
-          />
-        ))}
+        {/* Trunk, branches and canopy are the illustration layered above this
+            SVG — only the sky, hills and meadow are still drawn here. */}
 
         {/* Two flowers in the meadow, always there so the garden is never bare */}
         <Circle cx={44} cy={172} r={5} fill={colors.primaryLight} />
@@ -157,6 +125,40 @@ export const GardenScene: React.FC<GardenSceneProps> = ({
         <Rect x={210.5} y={104} width={3} height={17} rx={1.5} fill={colors.purple} />
       </Svg>
 
+      {/*
+        The tree itself, as artwork rather than circles. It is overlaid on the
+        drawn sky/meadow instead of replacing the whole scene, because the scene
+        is responsive (`slice`) and the blossom count is dynamic: blossoms are
+        positioned from the same BLOSSOM_SPOTS the SVG used, converted from
+        viewBox units to percentages so they keep landing on the same branches at
+        any width.
+      */}
+      <Image
+        source={require('../../assets/characters/mentor_tree_base.png')}
+        style={styles.tree}
+        resizeMode="contain"
+        accessible={false}
+      />
+      {BLOSSOM_SPOTS.slice(0, count).map((b) => (
+        <Image
+          key={`${b.x}-${b.y}`}
+          source={require('../../assets/characters/mentor_blossom.png')}
+          style={[
+            styles.blossom,
+            {
+              left: `${(b.x / VB_WIDTH) * 100}%`,
+              top: `${(b.y / VB_HEIGHT) * 100}%`,
+              width: b.r * 2.6,
+              height: b.r * 2.6,
+              marginLeft: -b.r * 1.3,
+              marginTop: -b.r * 1.3,
+            },
+          ]}
+          resizeMode="contain"
+          accessible={false}
+        />
+      ))}
+
       {/* The buddy stands on the meadow. Flexbox, not coordinates — the offset
           is a spacing token, so it holds at any width. */}
       <View style={styles.mascotLayer} pointerEvents="none">
@@ -167,6 +169,17 @@ export const GardenScene: React.FC<GardenSceneProps> = ({
 };
 
 const styles = StyleSheet.create({
+  /* Sized and placed to sit where the drawn tree used to stand. */
+  tree: {
+    position: 'absolute',
+    left: '8%',
+    bottom: '16%',
+    width: '52%',
+    height: '78%',
+  },
+  blossom: {
+    position: 'absolute',
+  },
   scene: {
     width: '100%',
     borderRadius: radius.illustrationCard,

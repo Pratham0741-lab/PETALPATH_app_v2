@@ -49,6 +49,7 @@ import { cardSizes, colors, radius, spacing, typography } from '../../theme';
 import type { ApiResponse } from '../../types/api';
 import type { Child, ChildFormData } from '../../types/child';
 import type { OnboardingStackParamList } from '../../types/navigation';
+import { SCREEN_BACKGROUNDS } from '../../assets/backgrounds';
 
 type ChildFormValues = z.infer<typeof childFormSchema>;
 
@@ -175,9 +176,9 @@ export const AddEditChildScreen: React.FC = () => {
   const maxWidth = COLUMN_MAX_WIDTH[deviceType] ?? COLUMN_MAX_WIDTH.mobile;
 
   return (
-    <AppShell
+    <AppShell petals="none" backgroundImage={SCREEN_BACKGROUNDS.profile}
       keyboardAvoid
-      petals="light"
+     
       header={
         <PageHeader
           title={isEditMode ? 'Edit Profile' : 'Create Child Profile'}

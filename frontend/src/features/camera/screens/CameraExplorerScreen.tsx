@@ -30,7 +30,7 @@
  */
 
 import React, { useMemo, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Image, StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { EmptyState } from '../../../components/common/EmptyState';
 import {
@@ -52,9 +52,13 @@ import {
   cardSizes,
   colors,
   getActivityColor,
+  radius,
   spacing,
   typography,
 } from '../../../theme';
+import { SCREEN_BACKGROUNDS } from '../../../assets/backgrounds';
+import { getPoseImage } from '../../../assets/camera';
+import { SCREEN_ACCENTS } from '../../../theme/screenAccents';
 import catalogData from '../catalog/activities.generated.json';
 
 interface CameraActivityItem {
@@ -254,8 +258,8 @@ export const CameraExplorerScreen: React.FC = () => {
   return (
     <AppShell
       withBottomNav
-      petals="light"
-      sky
+      petals="none"
+      backgroundImage={SCREEN_BACKGROUNDS.camera} accent={SCREEN_ACCENTS.camera}
       /*
        * Somewhere to be, rather than somewhere to get to. The reference sets its
        * camera activities in a garden, and this screen needs it more than most:
@@ -269,7 +273,7 @@ export const CameraExplorerScreen: React.FC = () => {
        * the garden here is planted with shrubs and claims nothing.
        */
       scene={<SceneBand progress={null} height={116} />}
-      header={<AppHeader eyebrow="Move and play" title="Camera Activities" />}
+      header={<AppHeader accent={SCREEN_ACCENTS.camera} eyebrow="Move and play" title="Camera Activities" />}
     >
       <View style={[styles.column, maxWidth ? { maxWidth } : null]}>
         {/* ---------------------------------------------------------- Intro */}
@@ -378,12 +382,24 @@ const MotionChallengeCard: React.FC<{
       contentStyle={styles.card}
     >
       <View style={styles.cardHead}>
-        <IconWell
-          icon="camera"
-          color={tone.main}
-          soft={tone.soft}
-          size={cardSizes.iconWellSmall}
-        />
+        {/*
+          The pose itself, rather than a camera glyph on every card. There are 97
+          activities but only a handful of pose families, so `getPoseImage`
+          matches on the title and falls back rather than ever showing nothing.
+        */}
+        <View
+          style={[
+            styles.poseWell,
+            { backgroundColor: tone.soft, width: cardSizes.iconWellSmall, height: cardSizes.iconWellSmall },
+          ]}
+        >
+          <Image
+            source={getPoseImage(activity.title)}
+            style={styles.poseImage}
+            resizeMode="contain"
+            accessible={false}
+          />
+        </View>
         <View style={styles.cardHeadText}>
           <Text style={[typography.presets.eyebrow, { color: difficultyColor }]} numberOfLines={1}>
             {activity.difficulty}
@@ -428,6 +444,17 @@ const Meta: React.FC<{ icon: 'replay' | 'clock'; label: string }> = ({ icon, lab
 );
 
 const styles = StyleSheet.create({
+  poseWell: {
+    borderRadius: radius.cardInner,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    flexShrink: 0,
+  },
+  poseImage: {
+    width: '86%',
+    height: '86%',
+  },
   column: {
     width: '100%',
     alignSelf: 'center',

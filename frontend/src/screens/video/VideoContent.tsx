@@ -6,6 +6,7 @@ import { useNavigation, useIsFocused } from '@react-navigation/native';
 
 import { colors, typography, spacing, radius, shadows, cardSizes } from '../../theme';
 import { useVideoStore } from '../../store/videoStore';
+import { SCREEN_BACKGROUNDS } from '../../assets/backgrounds';
 import { useRoadmapStore } from '../../store/roadmapStore';
 import {
   getActivityPosition,
@@ -26,6 +27,7 @@ import {
 } from '../../components/design';
 import { ErrorState } from '../../components/common/ErrorState';
 import { NavigationGuide } from '../../components/tutorial/NavigationGuide';
+import { PetalMark } from '../../components/brand/PetalMark';
 
 /**
  * Watch (video lesson) — one implementation for all three device variants
@@ -300,6 +302,7 @@ const VideoPlayerPane: React.FC<{
   return (
     <AppShell
       scroll={false}
+      petals="none" backgroundImage={SCREEN_BACKGROUNDS.watch}
       header={
         <WatchHeader
           title={headerTitle}
@@ -430,7 +433,7 @@ const VideoComingSoonPane: React.FC<{
   };
 
   return (
-    <AppShell
+    <AppShell petals="none" backgroundImage={SCREEN_BACKGROUNDS.watch}
       scroll={false}
       header={
         <WatchHeader
@@ -498,9 +501,9 @@ export const VideoContent: React.FC<{ variant: VideoVariant }> = ({ variant }) =
 
   if (loading) {
     return (
-      <AppShell scroll={false} header={<PageHeader title="Watch & Learn" />}>
+      <AppShell petals="none" backgroundImage={SCREEN_BACKGROUNDS.watch} scroll={false} header={<PageHeader title="Watch & Learn" />}>
         <View style={styles.center}>
-          <ActivityIndicator size="large" color={colors.primary} />
+          <PetalMark size={96} loading />
           <Text style={[typography.presets.caption, styles.loadingText]}>
             Loading video…
           </Text>
@@ -511,7 +514,7 @@ export const VideoContent: React.FC<{ variant: VideoVariant }> = ({ variant }) =
 
   if (error || !currentVideo) {
     return (
-      <AppShell
+      <AppShell petals="none" backgroundImage={SCREEN_BACKGROUNDS.watch}
         scroll={false}
         header={<PageHeader title="Watch & Learn" />}
         footer={<SecondaryButton label="Go Back" icon="back" onPress={() => navigation.goBack()} />}

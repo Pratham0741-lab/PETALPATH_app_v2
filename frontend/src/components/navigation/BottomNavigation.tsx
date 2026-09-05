@@ -1,6 +1,7 @@
 import React from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { BlurView } from 'expo-blur';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { colors, radius, shadows, spacing, typography, bottomNavSizes } from '../../theme';
 import { PetalIcon, PetalIconName } from '../icons';
@@ -43,6 +44,20 @@ export const BottomNavigation: React.FC<BottomTabBarProps> = ({
       style={[styles.container, { paddingBottom: Math.max(insets.bottom, spacing.sm) }]}
       accessibilityRole="tablist"
     >
+      {/*
+        Frosted glass: the wallpaper behind the bar is blurred rather than merely
+        shown through it, so the bar reads as a surface instead of a window. The
+        tint above it is what keeps the labels legible — blur alone does not
+        guarantee contrast, since a dark patch of scene stays dark once blurred.
+        On Android below API 31 expo-blur degrades to a plain translucent fill,
+        which is exactly the look this had before, so nothing breaks.
+      */}
+      <BlurView
+        intensity={72}
+        tint="light"
+        style={StyleSheet.absoluteFill}
+        pointerEvents="none"
+      />
       {state.routes.map((route, index) => {
         const isFocused = state.index === index;
         const cfg = TABS.find((t) => t.route === route.name);
@@ -82,13 +97,15 @@ export const BottomNavigation: React.FC<BottomTabBarProps> = ({
           >
             {/* Position, not just colour, marks the active tab. */}
             <View style={[styles.indicator, isFocused && styles.indicatorActive]} />
-            <PetalIcon
-              name={icon}
-              size={bottomNavSizes.iconSize}
-              color={tint}
-              filled={isFocused}
-              strokeWidth={isFocused ? 2 : 1.9}
-            />
+            {/* A soft tinted pill behind the active icon — a modern, premium tab cue. */}
+            <View style={[styles.iconWrap, isFocused && styles.iconWrapActive]}>
+              <PetalIcon
+                name={icon}
+                size={bottomNavSizes.iconSize}
+                color={tint}
+                filled={isFocused}
+              />
+            </View>
             <Text
               numberOfLines={1}
               style={[
@@ -108,12 +125,29 @@ export const BottomNavigation: React.FC<BottomTabBarProps> = ({
 
 const styles = StyleSheet.create({
   container: {
+    /*
+     * Floats over the screen rather than sitting below it in the layout, so the
+     * wallpaper runs on behind the bar and the translucency below actually shows
+     * the scene instead of a flat navigator background. Screens already reserve
+     * the matching space via `AppShell withBottomNav`, so nothing is covered.
+     */
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
     flexDirection: 'row',
     alignItems: 'stretch',
     justifyContent: 'space-between',
     paddingTop: spacing.xs,
     paddingHorizontal: spacing.xs,
-    backgroundColor: colors.surface,
+    /*
+     * Sits on top of the BlurView, so this is a tint rather than the whole
+     * surface: enough to lift the labels off the scene and give the bar its
+     * lavender identity, while the blur does the work of separating it.
+     */
+    backgroundColor: 'rgba(243, 240, 253, 0.62)',
+    /* Clips the blur layer to the bar's rounded top corners. */
+    overflow: 'hidden',
     borderTopLeftRadius: radius.bottomNav,
     borderTopRightRadius: radius.bottomNav,
     borderTopWidth: 1,
@@ -132,6 +166,15 @@ const styles = StyleSheet.create({
   },
   tabPressed: {
     opacity: 0.65,
+  },
+  iconWrap: {
+    paddingHorizontal: 16,
+    paddingVertical: 5,
+    borderRadius: radius.pill,
+    backgroundColor: 'transparent',
+  },
+  iconWrapActive: {
+    backgroundColor: colors.primaryLight,
   },
   indicator: {
     position: 'absolute',

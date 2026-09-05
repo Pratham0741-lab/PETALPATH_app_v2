@@ -9,6 +9,7 @@ import { toUserMessage } from '../../api/errors';
 import type { ApiResponse } from '../../types/api';
 import type { Category, Module, Lesson } from '../../store/roadmapStore';
 import { colors, spacing, typography, cardSizes } from '../../theme';
+import { SCREEN_BACKGROUNDS } from '../../assets/backgrounds';
 import {
   AppShell,
   Card,
@@ -94,7 +95,7 @@ export const ModuleScreen: React.FC = () => {
 
   if (isLoading) {
     return (
-      <AppShell scroll={false} header={<PageHeader title="Module" />}>
+      <AppShell petals="none" backgroundImage={SCREEN_BACKGROUNDS.explore} scroll={false} header={<PageHeader title="Module" />}>
         <View style={styles.center}>
           <LoadingSpinner label="Loading module…" />
         </View>
@@ -104,7 +105,7 @@ export const ModuleScreen: React.FC = () => {
 
   if (isError) {
     return (
-      <AppShell scroll={false} header={<PageHeader title="Module" />}>
+      <AppShell petals="none" backgroundImage={SCREEN_BACKGROUNDS.explore} scroll={false} header={<PageHeader title="Module" />}>
         <View style={styles.center}>
           <ErrorState
             title="Couldn't load module"
@@ -118,7 +119,7 @@ export const ModuleScreen: React.FC = () => {
 
   if (!module) {
     return (
-      <AppShell scroll={false} header={<PageHeader title="Module" />}>
+      <AppShell petals="none" backgroundImage={SCREEN_BACKGROUNDS.explore} scroll={false} header={<PageHeader title="Module" />}>
         <View style={styles.center}>
           <EmptyState
             icon="search"
@@ -135,7 +136,7 @@ export const ModuleScreen: React.FC = () => {
   const modulePercent = lessons.length > 0 ? Math.round((completed / lessons.length) * 100) : 0;
 
   return (
-    <AppShell
+    <AppShell petals="none" backgroundImage={SCREEN_BACKGROUNDS.explore}
       header={<PageHeader title={module.title} />}
       refreshControl={
         <RefreshControl refreshing={isFetching} onRefresh={refetch} tintColor={colors.primary} />

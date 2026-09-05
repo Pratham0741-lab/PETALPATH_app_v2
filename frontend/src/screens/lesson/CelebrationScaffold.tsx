@@ -23,6 +23,7 @@ import Svg, { Path } from 'react-native-svg';
 import { colors, spacing, typography, layoutSizes, illustrationSizes } from '../../theme';
 import { AppShell, IconWell, Illustration } from '../../components/design';
 import type { PetalIconName } from '../../components/icons';
+import { SCREEN_BACKGROUNDS } from '../../assets/backgrounds';
 
 /**
  * Party bunting strung across the top of the screen.
@@ -156,7 +157,7 @@ export const CelebrationScaffold: React.FC<CelebrationScaffoldProps> = ({
 
   return (
     <View style={[styles.root, style]} testID={testID}>
-      <AppShell contentContainerStyle={styles.scrollBody} footer={footer}>
+      <AppShell petals="none" backgroundImage={SCREEN_BACKGROUNDS.celebrate} contentContainerStyle={styles.scrollBody} footer={footer}>
         <View style={styles.readable}>
           <View style={styles.hero}>
             {/*

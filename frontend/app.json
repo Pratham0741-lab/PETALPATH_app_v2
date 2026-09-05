@@ -2,7 +2,7 @@
   "expo": {
     "name": "petalpath_app_v2",
     "slug": "petalpath_app_v2",
-    "owner": "morpheus0741",
+    "owner": "pratham0741",
     "newArchEnabled": true,
     "scheme": "petalpath",
     "version": "1.0.0",
@@ -27,6 +27,11 @@
       "predictiveBackGestureEnabled": false,
       "package": "com.anonymous.petalpath_app_v2",
       "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
         "android.permission.CAMERA",
         "android.permission.RECORD_AUDIO",
         "android.permission.MODIFY_AUDIO_SETTINGS",
@@ -79,13 +84,14 @@
       "favicon": "./assets/favicon.png"
     },
     "runtimeVersion": "1.0.0",
+    "updates": {
+      "url": "https://u.expo.dev/22bc5504-842c-4282-b770-b1f26f3d79f8",
+      "enabled": false
+    },
     "extra": {
       "eas": {
-        "projectId": "66d09894-bd76-4c10-9d4a-818fdc82cf5c"
+        "projectId": "22bc5504-842c-4282-b770-b1f26f3d79f8"
       }
-    },
-    "updates": {
-      "url": "https://u.expo.dev/66d09894-bd76-4c10-9d4a-818fdc82cf5c"
     }
   }
 }

@@ -35,9 +35,11 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { colors, spacing, typography } from '../../theme';
+import { SCREEN_BACKGROUNDS } from '../../assets/backgrounds';
+import { SCREEN_ACCENTS } from '../../theme/screenAccents';
 import { useChildStore } from '../../store/childStore';
 import { useMentorStore } from '../../store/mentorStore';
 import { useRewardsStore } from '../../store/rewardsStore';
@@ -54,6 +56,7 @@ import {
   RewardBadge,
 } from '../../components/design';
 import { GardenScene, MAX_BLOSSOMS } from './GardenScene';
+import { PetalMark } from '../../components/brand/PetalMark';
 
 export type MentorVariant = 'mobile' | 'tablet' | 'desktop';
 
@@ -133,13 +136,13 @@ export const MentorContent: React.FC<MentorContentProps> = ({ variant }) => {
    * control that changes it. Dropping the duplicate also gives the "Magical
    * Garden" title back roughly 75px of the row it was competing for.
    */
-  const header = <AppHeader eyebrow="Your buddies" title="Magical Garden" stars={totalStars} />;
+  const header = <AppHeader accent={SCREEN_ACCENTS.mentors} eyebrow="Your buddies" title="Magical Garden" stars={totalStars} />;
 
   if (loading && mentorList.length === 0) {
     return (
-      <AppShell scroll={false} withBottomNav header={header} petals="light">
+      <AppShell petals="none" backgroundImage={SCREEN_BACKGROUNDS.mentors} scroll={false} withBottomNav header={header}>
         <View style={styles.center}>
-          <ActivityIndicator size="large" color={colors.primary} />
+          <PetalMark size={96} loading />
           <Text style={[typography.presets.caption, styles.loadingText]}>
             Waking up the garden…
           </Text>
@@ -151,7 +154,7 @@ export const MentorContent: React.FC<MentorContentProps> = ({ variant }) => {
   const blossoms = Math.min(MAX_BLOSSOMS, Math.round(petalPoints / POINTS_PER_BLOSSOM));
 
   return (
-    <AppShell withBottomNav header={header}>
+    <AppShell withBottomNav header={header} petals="none" backgroundImage={SCREEN_BACKGROUNDS.mentors} accent={SCREEN_ACCENTS.mentors}>
       <View style={[styles.column, cfg.maxWidth ? { maxWidth: cfg.maxWidth } : null]}>
         {/* ---------------------------------------------------------- Garden */}
         <Card variant="raised" padding="normal" accent={colors.leafGreen}>

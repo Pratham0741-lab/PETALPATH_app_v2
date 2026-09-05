@@ -363,7 +363,7 @@ const styles = StyleSheet.create({
 
   // ----------------------------------------------------------- destructive
   danger: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.surfaceTranslucent,
     borderRadius: radius.card,
     borderWidth: 2,
     borderColor: colors.error,

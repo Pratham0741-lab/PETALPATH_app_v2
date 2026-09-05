@@ -19,3 +19,12 @@ export type {
   IllustrationSizes,
 } from './theme';
 export type { Child, ChildFormData } from './child';
+export type {
+  BloomStage,
+  MasteryBand,
+  GardenSkill,
+  BrightestBloom,
+  GardenSubject,
+  GardenTotals,
+  Garden,
+} from './garden';

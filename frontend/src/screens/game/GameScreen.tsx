@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
@@ -25,6 +25,8 @@ import {
 } from '../../components/design';
 
 import { getNextActivity, navigateToActivity } from '../../utils/navigationFlow';
+import { SCREEN_BACKGROUNDS } from '../../assets/backgrounds';
+import { PetalMark } from '../../components/brand/PetalMark';
 
 /**
  * Game — the host screen for Match & Learn, reference screen 9 (spec §34 phase 5).
@@ -147,9 +149,14 @@ export const GameScreen: React.FC = () => {
 
   if (isLoading) {
     return (
-      <AppShell scroll={false} header={<PageHeader title="Match & Learn" />}>
+      <AppShell
+        scroll={false}
+        petals="none"
+        backgroundImage={SCREEN_BACKGROUNDS.match}
+        header={<PageHeader title="Match & Learn" />}
+      >
         <View style={styles.center}>
-          <ActivityIndicator size="large" color={colors.orange} />
+          <PetalMark size={96} loading />
           <Text style={[typography.presets.caption, styles.loadingText]}>
             Setting up the board…
           </Text>
@@ -162,6 +169,8 @@ export const GameScreen: React.FC = () => {
     return (
       <AppShell
         scroll={false}
+        petals="none"
+        backgroundImage={SCREEN_BACKGROUNDS.match}
         header={<PageHeader title="Match & Learn" />}
         footer={<SecondaryButton label="Go Back" icon="back" onPress={() => navigation.goBack()} />}
       >
@@ -191,7 +200,12 @@ export const GameScreen: React.FC = () => {
 
   if (!gameData) {
     return (
-      <AppShell scroll={false} header={<PageHeader title="Match & Learn" />}>
+      <AppShell
+        scroll={false}
+        petals="none"
+        backgroundImage={SCREEN_BACKGROUNDS.match}
+        header={<PageHeader title="Match & Learn" />}
+      >
         <View style={styles.center}>
           <EmptyState
             icon="match"
@@ -207,6 +221,8 @@ export const GameScreen: React.FC = () => {
     return (
       <AppShell
         scroll={false}
+        petals="none"
+        backgroundImage={SCREEN_BACKGROUNDS.match}
         contentContainerStyle={styles.readable}
         header={
           <PageHeader
@@ -269,6 +285,8 @@ export const GameScreen: React.FC = () => {
   if (isCompleted) {
     return (
       <AppShell
+        petals="none"
+        backgroundImage={SCREEN_BACKGROUNDS.match}
         contentContainerStyle={styles.readable}
         header={<PageHeader title="How did it go?" showBack={false} />}
         footer={
@@ -312,6 +330,8 @@ export const GameScreen: React.FC = () => {
 
   return (
     <AppShell
+      petals="none"
+      backgroundImage={SCREEN_BACKGROUNDS.match}
       contentContainerStyle={styles.readable}
       header={<PageHeader title="Match & Learn" />}
       footer={

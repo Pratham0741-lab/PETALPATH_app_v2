@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  PetalPath flower mark — hand-authored, transparent, no wordmark or gold ring.
+
+  Rebuilt as real geometry rather than traced from the raster logo. One petal is
+  drawn as a teardrop pointing up from the centre (wide at the tip, narrowing
+  into the middle, as in the original) and then repeated on exact 72° intervals
+  about (50,50). Colours are sampled from the original artwork.
+
+  Every part carries an id so a loading animation can target the petal ring,
+  a single petal, or travel along the beaded path.
+
+  The mark is inset inside a 100x100 viewBox (petal tips reach ~r28) leaving a
+  clear margin for a glow to orbit outside the petals without clipping.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <!--
+    Translucent so the overlaps darken where petals cross, which is how the
+    original reads; opaque petals would simply hide one another.
+  -->
+  <g id="petals" opacity="0.88">
+    <path id="petal-yellow" fill="#F3DC7A" transform="rotate(0 50 50)"
+          d="M50 50 C42 44 34 38 34 29 C34 21 41 17 50 17 C59 17 66 21 66 29 C66 38 58 44 50 50 Z"/>
+    <path id="petal-green"  fill="#A6CE61" transform="rotate(72 50 50)"
+          d="M50 50 C42 44 34 38 34 29 C34 21 41 17 50 17 C59 17 66 21 66 29 C66 38 58 44 50 50 Z"/>
+    <path id="petal-teal"   fill="#5ABFC1" transform="rotate(144 50 50)"
+          d="M50 50 C42 44 34 38 34 29 C34 21 41 17 50 17 C59 17 66 21 66 29 C66 38 58 44 50 50 Z"/>
+    <path id="petal-purple" fill="#D7A7D7" transform="rotate(216 50 50)"
+          d="M50 50 C42 44 34 38 34 29 C34 21 41 17 50 17 C59 17 66 21 66 29 C66 38 58 44 50 50 Z"/>
+    <path id="petal-pink"   fill="#EE537E" transform="rotate(288 50 50)"
+          d="M50 50 C42 44 34 38 34 29 C34 21 41 17 50 17 C59 17 66 21 66 29 C66 38 58 44 50 50 Z"/>
+  </g>
+
+  <!-- The beaded trail winding through the petals: one path, dashed into dots,
+       so an animation can also travel along it. -->
+  <path id="bead-path"
+        d="M 36 66 Q 45 59 50 50 Q 55 41 64 34"
+        fill="none" stroke="#FFFFFF" stroke-width="2.4"
+        stroke-linecap="round" stroke-dasharray="0.1 4.8" opacity="0.95"/>
+
+  <circle id="centre" cx="50" cy="50" r="7.4" fill="#F1D3B0"/>
+
+  <!-- Sitting clear of the petal tips, in the surrounding space. -->
+  <g id="sparkles" fill="#FFFFFF" opacity="0.85">
+    <path d="M20 26 L21 29 L24 30 L21 31 L20 34 L19 31 L16 30 L19 29 Z"/>
+    <path d="M82 34 L82.8 36.2 L85 37 L82.8 37.8 L82 40 L81.2 37.8 L79 37 L81.2 36.2 Z"/>
+    <path d="M50 86 L50.8 88.2 L53 89 L50.8 89.8 L50 92 L49.2 89.8 L47 89 L49.2 88.2 Z"/>
+  </g>
+</svg>

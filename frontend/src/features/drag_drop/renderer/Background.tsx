@@ -37,7 +37,15 @@ export interface BackgroundProps {
   /** Virtual canvas size, so the scene can be composed in board coordinates. */
   width?: number;
   height?: number;
-  /** Escape hatch: render the plain fill with no scene. */
+  /**
+   * Draw the built-in illustrated scene behind the board.
+   *
+   * Off by default: the board is hosted in an `AppShell` that now supplies the
+   * Match wallpaper, and this component's fill is `StyleSheet.absoluteFill`, so
+   * leaving it on painted an opaque layer straight over that scene. Transparent
+   * by default lets the screen's artwork be the backdrop; pass `scene` to get the
+   * drawn one back for a host that has no wallpaper of its own.
+   */
   scene?: boolean;
 }
 
@@ -161,7 +169,7 @@ export const Background: React.FC<BackgroundProps> = ({
   backgroundColor,
   width = DEFAULT_W,
   height = DEFAULT_H,
-  scene = true,
+  scene = false,
 }) => {
   if (backgroundImageUrl && !backgroundImageUrl.startsWith('petalpath:asset:placeholder:')) {
     return (
@@ -175,13 +183,13 @@ export const Background: React.FC<BackgroundProps> = ({
 
   /* An explicit fill from the spec is an authoring decision — honour it and skip
      the scene rather than drawing art the author did not ask for. */
-  if (backgroundColor || !scene) {
-    return (
-      <View
-        style={[StyleSheet.absoluteFill, { backgroundColor: backgroundColor ?? colors.background }]}
-      />
-    );
+  if (backgroundColor) {
+    return <View style={[StyleSheet.absoluteFill, { backgroundColor }]} />;
   }
+
+  /* Nothing authored and no scene requested: stay transparent so the hosting
+     screen's wallpaper shows through instead of being covered. */
+  if (!scene) return null;
 
   return (
     <View

@@ -1,16 +1,28 @@
-import { TextStyle, Platform } from 'react-native';
+import { TextStyle } from 'react-native';
 
 /**
- * Friendly, rounded sans-serif throughout (spec §6). Nothing below 12px, and
- * anything carrying meaning is at least semibold — no thin text for important
- * information.
+ * Type system (spec §6, redesign): a distinctive **playful‑premium** pairing —
+ * **Fredoka** (rounded, characterful) for headings/display/buttons, **Nunito**
+ * (clean, highly legible) for body and small text. Loaded via `expo-font` in
+ * `App.tsx`; each weight is its own family name (custom fonts bake the weight in,
+ * so presets set `fontFamily` and omit numeric `fontWeight` to avoid Android
+ * picking the wrong face). Still no serif anywhere — this app teaches letter
+ * recognition, so every letterform the child meets must be a plain rounded sans.
  */
-const rounded = Platform.select({
-  ios: 'System',
-  android: 'sans-serif-rounded',
-  web: 'Nunito, Baloo 2, system-ui, -apple-system, sans-serif',
-  default: 'System',
-});
+const FRED = {
+  medium: 'Fredoka_500Medium',
+  semibold: 'Fredoka_600SemiBold',
+  bold: 'Fredoka_700Bold',
+};
+const NUN = {
+  regular: 'Nunito_400Regular',
+  medium: 'Nunito_500Medium',
+  semibold: 'Nunito_600SemiBold',
+  bold: 'Nunito_700Bold',
+  extrabold: 'Nunito_800ExtraBold',
+};
+/** Back‑compat alias for any consumer reading `families.rounded` directly. */
+const rounded = NUN.semibold;
 
 const weights = {
   regular: '400' as TextStyle['fontWeight'],
@@ -60,70 +72,61 @@ const presets = {
    * line.
    */
   hero: {
-    fontFamily: rounded,
+    fontFamily: FRED.bold,
     fontSize: 40,
-    lineHeight: 44,
-    fontWeight: weights.black,
+    lineHeight: 46,
     letterSpacing: -0.8,
   } as TextStyle,
   /** Big screen-level greeting, e.g. "Hi, Aanya!" */
   display: {
-    fontFamily: rounded,
+    fontFamily: FRED.bold,
     fontSize: 30,
-    lineHeight: 36,
-    fontWeight: weights.black,
+    lineHeight: 37,
     letterSpacing: -0.4,
   } as TextStyle,
   /** Screen / page title. */
   title: {
-    fontFamily: rounded,
+    fontFamily: FRED.bold,
     fontSize: 24,
     lineHeight: 30,
-    fontWeight: weights.black,
     letterSpacing: -0.3,
   } as TextStyle,
   /** Section heading above a group of cards. */
   section: {
-    fontFamily: rounded,
+    fontFamily: FRED.semibold,
     fontSize: 19,
     lineHeight: 25,
-    fontWeight: weights.bold,
     letterSpacing: -0.2,
   } as TextStyle,
   /** Card headline. */
   cardTitle: {
-    fontFamily: rounded,
+    fontFamily: FRED.semibold,
     fontSize: 17,
     lineHeight: 23,
-    fontWeight: weights.bold,
   } as TextStyle,
   /** Default running text. */
   body: {
-    fontFamily: rounded,
+    fontFamily: NUN.semibold,
     fontSize: 15,
     lineHeight: 22,
-    fontWeight: weights.medium,
   } as TextStyle,
   /** Supporting text under a title. */
   subtle: {
-    fontFamily: rounded,
+    fontFamily: NUN.semibold,
     fontSize: 14,
     lineHeight: 20,
-    fontWeight: weights.medium,
   } as TextStyle,
   /** Small metadata — counts, durations. */
   caption: {
-    fontFamily: rounded,
+    fontFamily: NUN.bold,
     fontSize: 12.5,
     lineHeight: 17,
-    fontWeight: weights.bold,
   } as TextStyle,
   /** Uppercase eyebrow above a title. */
   eyebrow: {
-    fontFamily: rounded,
+    fontFamily: NUN.extrabold,
     fontSize: 11,
     lineHeight: 15,
-    fontWeight: weights.black,
     letterSpacing: 1.1,
     textTransform: 'uppercase',
   } as TextStyle,
@@ -136,38 +139,35 @@ const presets = {
    * spindly. This is bigger, tighter and still heavy enough to hold.
    */
   sceneLabel: {
-    fontFamily: rounded,
+    fontFamily: NUN.extrabold,
     fontSize: 13,
     lineHeight: 17,
-    fontWeight: weights.black,
     letterSpacing: 0.6,
     textTransform: 'uppercase',
   } as TextStyle,
   /** Button label. */
   button: {
-    fontFamily: rounded,
+    fontFamily: FRED.semibold,
     fontSize: 16,
-    fontWeight: weights.black,
-    letterSpacing: 0.1,
+    letterSpacing: 0.2,
   } as TextStyle,
   /** Bottom-navigation label. */
   navLabel: {
-    fontFamily: rounded,
+    fontFamily: NUN.bold,
     fontSize: 11,
     lineHeight: 14,
-    fontWeight: weights.bold,
   } as TextStyle,
   /** Numeric readouts — star counts, XP. */
   stat: {
-    fontFamily: rounded,
+    fontFamily: FRED.bold,
     fontSize: 22,
     lineHeight: 27,
-    fontWeight: weights.black,
   } as TextStyle,
 };
 
 export const typography = {
-  families: { rounded },
+  /** `display` = Fredoka (headings), `body` = Nunito (text). `rounded` kept for back‑compat. */
+  families: { rounded, display: FRED, body: NUN },
   sizes,
   weights,
   lineHeights: {

@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native';
+import { Image, StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native';
 import {
   colors,
   radius,
@@ -12,6 +12,8 @@ import {
 } from '../../theme';
 import { PetalIcon, PetalIconName } from '../icons';
 import { AvatarGlyph } from './AvatarGlyph';
+import { useScreenAccent } from './screenAccent';
+import { getStickerImage } from '../../assets/rewards';
 import { Card } from './Card';
 import { PrimaryButton, IconButton } from './Buttons';
 import { StatusBadge, RewardBadge, LessonStatus } from './Badges';
@@ -363,7 +365,23 @@ export const RewardCard: React.FC<RewardCardProps> = ({
       accessibilityLabel={`${title}. ${unlocked ? 'Unlocked.' : 'Locked.'}`}
     >
       <View style={styles.row}>
-        <IconWell icon={icon} color={color} soft={soft} filled={unlocked} />
+        {/*
+          Unlocked rewards show their own sticker artwork; locked ones keep the
+          drawn glyph so the tile reads as "not yet earned" rather than as a
+          greyed-out picture of the prize.
+        */}
+        {unlocked ? (
+          <View style={[styles.stickerWell, { backgroundColor: soft }]}>
+            <Image
+              source={getStickerImage(title)}
+              style={styles.stickerImage}
+              resizeMode="contain"
+              accessible={false}
+            />
+          </View>
+        ) : (
+          <IconWell icon={icon} color={color} soft={soft} filled={unlocked} />
+        )}
         <View style={styles.rowText}>
           <Text style={[typography.presets.cardTitle, styles.title]} numberOfLines={1}>
             {title}
@@ -604,6 +622,9 @@ export const ContinueLearningCard: React.FC<ContinueLearningCardProps> = ({
   style,
 }) => {
   const m = ACTIVITY_META[nextActivityKind] ?? ACTIVITY_META.watch;
+  // The hero uses the screen's accent so it matches the background instead of a
+  // harsh flat pink block on a blue/green/etc. screen.
+  const accent = useScreenAccent();
 
   /* 18 characters is what fits on one `display` line beside the icon well at
      360px. Measured, not guessed: 328 card − 36 padding − 44 well − 12 gap
@@ -611,7 +632,7 @@ export const ContinueLearningCard: React.FC<ContinueLearningCardProps> = ({
   const heroTitle = lessonTitle.trim().length <= 18;
 
   return (
-    <View style={[styles.continue, style]}>
+    <View style={[styles.continue, { backgroundColor: accent }, style]}>
       <View style={styles.continueTop}>
         <View style={styles.continueWell}>
           <PetalIcon name={m.icon} size={22} color={colors.white} filled />
@@ -664,7 +685,7 @@ export const ContinueLearningCard: React.FC<ContinueLearningCardProps> = ({
         size="md"
         onPress={onPress}
         style={styles.continueCta}
-        labelStyle={{ color: colors.primaryDark }}
+        labelStyle={{ color: accent }}
         accessibilityHint={`Opens ${nextActivity ?? lessonTitle}`}
       />
     </View>
@@ -674,6 +695,19 @@ export const ContinueLearningCard: React.FC<ContinueLearningCardProps> = ({
 // ---------------------------------------------------------------------------
 
 const styles = StyleSheet.create({
+  stickerWell: {
+    width: cardSizes.iconWell,
+    height: cardSizes.iconWell,
+    borderRadius: radius.cardInner,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    flexShrink: 0,
+  },
+  stickerImage: {
+    width: '88%',
+    height: '88%',
+  },
   stack: {
     marginBottom: cardSizes.gap,
   },

@@ -18,6 +18,7 @@ import { useChildStore } from '../../store/childStore';
 import { useRoadmapStore, Lesson } from '../../store/roadmapStore';
 import { toUserMessage } from '../../api/errors';
 import { colors, radius, spacing, typography } from '../../theme';
+import { SCREEN_BACKGROUNDS } from '../../assets/backgrounds';
 import type {
   RoadmapNode,
   RoadmapPayload,
@@ -108,7 +109,7 @@ export const ReinforcementQueueScreen: React.FC = () => {
   // ------------------------------------------------------------------- states
   if (!activeChild) {
     return (
-      <AppShell petals="light" header={header}>
+      <AppShell petals="none" backgroundImage={SCREEN_BACKGROUNDS.lesson} header={header}>
         <StatePanel>
           <EmptyState
             icon="profile"
@@ -122,7 +123,7 @@ export const ReinforcementQueueScreen: React.FC = () => {
 
   if (isLoading) {
     return (
-      <AppShell petals="light" header={header}>
+      <AppShell petals="none" backgroundImage={SCREEN_BACKGROUNDS.lesson} header={header}>
         <Skeleton variant="card" height={132} style={styles.block} />
         {[0, 1, 2].map((i) => (
           <Skeleton key={i} variant="card" height={78} style={styles.block} />
@@ -133,7 +134,7 @@ export const ReinforcementQueueScreen: React.FC = () => {
 
   if (isError) {
     return (
-      <AppShell petals="light" header={header}>
+      <AppShell petals="none" backgroundImage={SCREEN_BACKGROUNDS.lesson} header={header}>
         <StatePanel>
           <ErrorState
             title="Couldn't load the practice queue"
@@ -155,8 +156,8 @@ export const ReinforcementQueueScreen: React.FC = () => {
   if (reviews.length === 0) {
     const held = (gate?.deferredCount ?? 0) + (gate?.unreachableCount ?? 0);
     return (
-      <AppShell
-        petals="light"
+      <AppShell petals="none" backgroundImage={SCREEN_BACKGROUNDS.lesson}
+       
         header={header}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
@@ -182,8 +183,8 @@ export const ReinforcementQueueScreen: React.FC = () => {
   const blocking = gate?.isBlocking ?? false;
 
   return (
-    <AppShell
-      petals="light"
+    <AppShell petals="none" backgroundImage={SCREEN_BACKGROUNDS.lesson}
+     
       header={header}
       refreshControl={
         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />

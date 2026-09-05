@@ -31,8 +31,8 @@
  */
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
-import { colors, spacing, typography } from '../../../theme';
+import { StyleSheet, Text, View } from 'react-native';
+import { colors, radius, spacing, typography } from '../../../theme';
 import { DragDropEngine } from '../engine/DragDropEngine';
 import { DragDropActivitySpec, ProgressiveHint } from '../types';
 import { Canvas } from './Canvas';
@@ -45,6 +45,8 @@ import { AccessibilityOverlay } from '../../../core/ui/AccessibilityOverlay';
 import { AccessibilityService } from '../../../core/accessibility/accessibilityService';
 import { ErrorState } from '../../../components/common/ErrorState';
 import { getActivityPosition } from '../../../utils/navigationFlow';
+import { PetalMark } from '../../../components/brand/PetalMark';
+import { SCREEN_BACKGROUNDS } from '../../../assets/backgrounds';
 import {
   ActivityHeader,
   AppShell,
@@ -216,9 +218,9 @@ export const DragDropRenderer: React.FC<DragDropRendererProps> = ({
 
   if (loading) {
     return (
-      <AppShell scroll={false} header={<PageHeader title="Match & Learn" onBack={onExit} />}>
+      <AppShell petals="none" backgroundImage={SCREEN_BACKGROUNDS.match} scroll={false} header={<PageHeader title="Match & Learn" onBack={onExit} />}>
         <View style={styles.center}>
-          <ActivityIndicator size="large" color={colors.orange} />
+          <PetalMark size={96} loading />
           <Text style={[typography.presets.caption, styles.loadingText]}>
             Setting up the board…
           </Text>
@@ -229,7 +231,7 @@ export const DragDropRenderer: React.FC<DragDropRendererProps> = ({
 
   if (error || !spec) {
     return (
-      <AppShell
+      <AppShell petals="none" backgroundImage={SCREEN_BACKGROUNDS.match}
         scroll={false}
         header={<PageHeader title="Match & Learn" onBack={onExit} />}
         footer={<SecondaryButton label="Go Back" icon="back" onPress={onExit} />}
@@ -272,25 +274,36 @@ export const DragDropRenderer: React.FC<DragDropRendererProps> = ({
     />
   );
 
-  const footer = isCompleted ? (
-    <View style={styles.footerRow}>
+  /*
+   * The score moved out of the footer and above the board. Sharing the footer
+   * row, the stars sat on the scene with nothing behind them and were hard to
+   * make out, and they competed with the one thing the child needs to press.
+   * Up here they land where the eye already is after finishing, on a panel that
+   * guarantees they read against any part of the artwork.
+   */
+  const scorePanel = isCompleted ? (
+    <View style={styles.scorePanel}>
       <StarRating value={finalStars} max={3} size="md" animate />
-      <PrimaryButton
-        label="Continue"
-        iconRight="forward"
-        tone="green"
-        fullWidth={false}
-        onPress={onNext || onExit}
-        accessibilityHint={`You scored ${finalScore} percent. Moves on to the next activity.`}
-      />
     </View>
+  ) : null;
+
+  const footer = isCompleted ? (
+    <PrimaryButton
+      label="Continue"
+      iconRight="forward"
+      tone="green"
+      onPress={onNext || onExit}
+      accessibilityHint={`You scored ${finalScore} percent. Moves on to the next activity.`}
+    />
   ) : undefined;
 
   return (
     /* `petals="none"`: the board now paints its own sky-and-meadow scene, and the
        shell's blossom layer showing through the letterbox margins around it
        competed with that rather than framing it. */
-    <AppShell scroll={false} padded={false} petals="none" header={header} footer={footer}>
+    <AppShell petals="none" backgroundImage={SCREEN_BACKGROUNDS.match} scroll={false} padded={false} header={header} footer={footer}>
+      {scorePanel}
+
       <Text style={[typography.presets.subtle, styles.instruction]} numberOfLines={2}>
         {instruction}
       </Text>
@@ -365,12 +378,17 @@ const styles = StyleSheet.create({
   stage: {
     flex: 1,
   },
-  footerRow: {
-    flexDirection: 'row',
+  /* Same translucent surface as the cards, so the stars read on any scene. */
+  scorePanel: {
+    alignSelf: 'center',
     alignItems: 'center',
-    /* Wraps rather than crushing the button on a 360px screen (§27). */
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    gap: spacing.md,
+    marginTop: spacing.sm,
+    marginHorizontal: spacing.lg,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    backgroundColor: colors.surfaceTranslucent,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    borderRadius: radius.card,
   },
 });

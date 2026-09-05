@@ -35,7 +35,7 @@
  */
 
 import React, { useCallback, useMemo } from 'react';
-import { ActivityIndicator, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 
 import { ErrorState } from '../../components/common/ErrorState';
@@ -47,6 +47,8 @@ import type { Lesson, Activity } from '../../store/roadmapStore';
 import { colors, spacing, typography } from '../../theme';
 import { normalizeActivityType } from '../../utils/activityNormalization';
 import { difficultyBand } from '../../utils/difficulty';
+import { PetalMark } from '../../components/brand/PetalMark';
+import { SCREEN_BACKGROUNDS } from '../../assets/backgrounds';
 import {
   ActivityCard,
   AppShell,
@@ -235,9 +237,9 @@ export const LessonScreen: React.FC = () => {
 
   if (lessonLoading || activitiesLoading) {
     return (
-      <AppShell scroll={false} header={header} petals="light">
+      <AppShell petals="none" backgroundImage={SCREEN_BACKGROUNDS.lesson} scroll={false} header={header}>
         <View style={styles.center}>
-          <ActivityIndicator size="large" color={colors.primary} />
+          <PetalMark size={96} loading />
           <Text style={[typography.presets.caption, styles.loadingText]}>Loading lesson…</Text>
         </View>
       </AppShell>
@@ -246,7 +248,7 @@ export const LessonScreen: React.FC = () => {
 
   if (lessonError || activitiesError) {
     return (
-      <AppShell scroll={false} header={header} petals="light">
+      <AppShell petals="none" backgroundImage={SCREEN_BACKGROUNDS.lesson} scroll={false} header={header}>
         <View style={styles.center}>
           <ErrorState
             title="Couldn’t load this lesson"
@@ -260,7 +262,7 @@ export const LessonScreen: React.FC = () => {
 
   if (!lesson) {
     return (
-      <AppShell scroll={false} header={header} petals="light">
+      <AppShell petals="none" backgroundImage={SCREEN_BACKGROUNDS.lesson} scroll={false} header={header}>
         <View style={styles.center}>
           <EmptyState
             icon="search"
@@ -275,7 +277,7 @@ export const LessonScreen: React.FC = () => {
   // ---- Content ------------------------------------------------------------
 
   return (
-    <AppShell
+    <AppShell petals="none" backgroundImage={SCREEN_BACKGROUNDS.lesson}
       header={header}
       refreshControl={
         <RefreshControl

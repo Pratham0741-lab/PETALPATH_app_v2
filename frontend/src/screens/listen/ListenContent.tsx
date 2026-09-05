@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { colors, typography, spacing, cardSizes, MediaOrbSizeToken, layoutSizes } from '../../theme';
 import { useListenStore } from '../../store/listenStore';
+import { SCREEN_BACKGROUNDS } from '../../assets/backgrounds';
 import { useRoadmapStore } from '../../store/roadmapStore';
 import { useChildStore } from '../../store/childStore';
 import { enhanceMentor, MENTORS } from '../../constants/mentors';
@@ -15,6 +16,7 @@ import {
 } from '../../utils/navigationFlow';
 import { NavigationGuide } from '../../components/tutorial/NavigationGuide';
 import { ErrorState } from '../../components/common/ErrorState';
+import { PetalMark } from '../../components/brand/PetalMark';
 import {
   ActivityHeader,
   AnswerGrid,
@@ -156,7 +158,7 @@ const ListenComingSoon: React.FC<{
   };
 
   return (
-    <AppShell
+    <AppShell petals="none" backgroundImage={SCREEN_BACKGROUNDS.listen}
       scroll={false}
       header={<PageHeader title={audio.title || 'Audio Guide'} />}
       footer={
@@ -329,9 +331,9 @@ export const ListenContent: React.FC<{ variant?: ListenVariant }> = ({ variant =
 
   if (loading) {
     return (
-      <AppShell scroll={false} header={<PageHeader title="Listen & Choose" />}>
+      <AppShell petals="none" backgroundImage={SCREEN_BACKGROUNDS.listen} scroll={false} header={<PageHeader title="Listen & Choose" />}>
         <View style={styles.center}>
-          <ActivityIndicator size="large" color={colors.blue} />
+          <PetalMark size={96} loading />
           <Text style={[typography.presets.caption, styles.loadingText]}>
             Loading audio guide…
           </Text>
@@ -353,7 +355,7 @@ export const ListenContent: React.FC<{ variant?: ListenVariant }> = ({ variant =
 
   if (error || !currentAudio) {
     return (
-      <AppShell
+      <AppShell petals="none" backgroundImage={SCREEN_BACKGROUNDS.listen}
         scroll={false}
         header={<PageHeader title="Listen & Choose" />}
         footer={<SecondaryButton label="Go Back" icon="back" onPress={() => navigation.goBack()} />}
@@ -533,7 +535,7 @@ export const ListenContent: React.FC<{ variant?: ListenVariant }> = ({ variant =
       // NavigationGuide has to sit outside AppShell's ScrollView — inside it the
       // absolutely-positioned hand would scroll away from the thing it points at.
       <View style={styles.fill}>
-        <AppShell header={header} footer={footer}>
+        <AppShell header={header} footer={footer} petals="none" backgroundImage={SCREEN_BACKGROUNDS.listen}>
           {playSection}
           {answerSection}
         </AppShell>
@@ -546,7 +548,7 @@ export const ListenContent: React.FC<{ variant?: ListenVariant }> = ({ variant =
 
   return (
     <View style={styles.fill}>
-      <AppShell scroll={false} padded={false} header={header} footer={footer}>
+      <AppShell scroll={false} padded={false} header={header} footer={footer} petals="none" backgroundImage={SCREEN_BACKGROUNDS.listen}>
         <View style={styles.layout}>
           <ScrollView
             style={styles.main}

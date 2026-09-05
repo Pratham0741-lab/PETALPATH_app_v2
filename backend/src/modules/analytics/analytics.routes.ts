@@ -19,6 +19,7 @@ router.get('/report', analyticsController.getReport as any);
 router.get('/overview', analyticsController.getOverview as any);
 router.get('/activity', analyticsController.getActivity as any);
 router.get('/progress', analyticsController.getProgress as any);
+router.get('/grade-progress', analyticsController.getGradeProgress as any);
 router.get('/rewards', analyticsController.getRewards as any);
 router.get('/timeline', analyticsController.getTimeline as any);
 

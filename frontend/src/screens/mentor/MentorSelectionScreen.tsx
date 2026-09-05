@@ -23,7 +23,7 @@
  */
 
 import React, { useCallback, useRef } from 'react';
-import { ActivityIndicator, Animated, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { Animated, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 
 import { useApiQuery } from '../../hooks/useReactQuery';
@@ -47,6 +47,8 @@ import {
   StatusBadge,
 } from '../../components/design';
 import type { PetalIconName } from '../../components/icons';
+import { PetalMark } from '../../components/brand/PetalMark';
+import { SCREEN_BACKGROUNDS } from '../../assets/backgrounds';
 
 interface MentorData {
   id: string;
@@ -136,9 +138,9 @@ export const MentorSelectionScreen: React.FC = () => {
 
   if (isLoading) {
     return (
-      <AppShell scroll={false} header={header} petals="light">
+      <AppShell petals="none" backgroundImage={SCREEN_BACKGROUNDS.mentors} scroll={false} header={header}>
         <View style={styles.center}>
-          <ActivityIndicator size="large" color={colors.primary} />
+          <PetalMark size={96} loading />
           <Text style={[typography.presets.caption, styles.loadingText]}>
             Gathering the buddies…
           </Text>
@@ -148,7 +150,7 @@ export const MentorSelectionScreen: React.FC = () => {
   }
 
   return (
-    <AppShell
+    <AppShell petals="none" backgroundImage={SCREEN_BACKGROUNDS.mentors}
       header={header}
       sky
       /*

@@ -47,6 +47,7 @@ import { ChildFeedbackOverlay } from '../feedback/ChildFeedbackOverlay';
 import { CameraStatus } from '../types/camera.types';
 import { ActivityType } from '../types/pose.types';
 import { colors, radius, spacing } from '../../../theme';
+import { SCREEN_BACKGROUNDS } from '../../../assets/backgrounds';
 
 const MVP_ACTIVITIES: Array<{ id: ActivityType; label: string }> = [
   { id: 'raise_hands', label: 'Raise Hands' },
@@ -99,9 +100,9 @@ export const CameraActivityScreen: React.FC = () => {
   );
 
   return (
-    <AppShell
+    <AppShell petals="none" backgroundImage={SCREEN_BACKGROUNDS.camera}
       scroll={false}
-      petals="none"
+     
       header={
         <PageHeader
           title="Pose Activity Engine"

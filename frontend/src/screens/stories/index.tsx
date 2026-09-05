@@ -18,6 +18,7 @@ import type { SegmentedTabItem } from '../../components/design';
 import { useStories } from '../../hooks/useStories';
 import { toUserMessage } from '../../api/errors';
 import { cardSizes, colors, spacing, typography } from '../../theme';
+import { SCREEN_BACKGROUNDS } from '../../assets/backgrounds';
 
 /**
  * Story Library (spec §35) — search, filter by category, pick something to read.
@@ -93,7 +94,7 @@ export const StoriesScreen: React.FC = () => {
 
   if (isLoading) {
     return (
-      <AppShell scroll={false} header={header}>
+      <AppShell petals="none" backgroundImage={SCREEN_BACKGROUNDS.watch} scroll={false} header={header}>
         <View style={styles.center}>
           <LoadingSpinner label="Loading stories…" />
         </View>
@@ -103,7 +104,7 @@ export const StoriesScreen: React.FC = () => {
 
   if (isError) {
     return (
-      <AppShell scroll={false} header={header}>
+      <AppShell petals="none" backgroundImage={SCREEN_BACKGROUNDS.watch} scroll={false} header={header}>
         <View style={styles.center}>
           <ErrorState
             title="Couldn't load stories"
@@ -116,8 +117,8 @@ export const StoriesScreen: React.FC = () => {
   }
 
   return (
-    <AppShell
-      petals="light"
+    <AppShell petals="none" backgroundImage={SCREEN_BACKGROUNDS.watch}
+     
       header={header}
       refreshControl={
         <RefreshControl refreshing={isFetching} onRefresh={onRefresh} tintColor={colors.primary} />

@@ -30,6 +30,7 @@ import { masteryEngineService as m } from './modules/mastery/mastery.service.js'
 import * as scoring from './modules/mastery/mastery-scoring.js';
 import * as cadence from './modules/mastery/review-cadence.js';
 import { planReviews, describePracticeSession } from './modules/roadmap/review-plan.js';
+import { buildGarden, BLOOM_STAGES } from './modules/curriculum/garden-view.js';
 import { toSkillMasteryView, toSkillMasteryViews } from './modules/mastery/mastery.view.js';
 import {
   modalityScore,
@@ -1380,6 +1381,124 @@ check('the stop never claims to be a lesson the app could open',
   Object.prototype.hasOwnProperty.call(practice({ surfaced: [pItem('a')] }), 'activities'),
   false
 );
+
+
+line('12. THE GARDEN — subjects as patches, skills as blooms, judged on today’s score');
+
+// A frozen "now" so decay and the band boundaries are exact.
+const G_NOW = new Date('2026-08-27T09:00:00.000Z');
+const G_DAY = 24 * 60 * 60 * 1000;
+
+// A SkillHealth-shaped row. Defaults keep decay at zero (practiced "now"), so a
+// band test lands on the raw score; the stored masteryState is deliberately
+// wrong ('NEW') to prove the projection re-bands from the score, never trusts it.
+const gh = (score, opts = {}) => ({
+  masteryScore: score,
+  retentionScore: opts.retention ?? score,
+  confidenceScore: opts.confidence ?? score,
+  masteryState: opts.masteryState ?? 'NEW',
+  lastPracticed: opts.lastPracticed ?? G_NOW,
+  decayFactor: opts.decayFactor ?? null,
+});
+const gskill = (skillId, state, health, title = skillId, difficulty = 1) => ({
+  skillId, title, difficulty, state, health,
+});
+const gardenOf = (id, skills) => buildGarden({ subjects: [{ id, name: id, skills }], now: G_NOW }).subjects[0];
+const byId = (subject) => Object.fromEntries(subject.skills.map((s) => [s.skillId, s]));
+
+// Every band boundary, mapped to a stage by NAME (never the enum's ordinal —
+// LEARNING sorts before WEAK yet is the worse band, the trap this dodges).
+const bandSkills = [
+  gskill('b39', 'COMPLETED', gh(39)),
+  gskill('b40', 'COMPLETED', gh(40)),
+  gskill('b59', 'COMPLETED', gh(59)),
+  gskill('b60', 'COMPLETED', gh(60)),
+  gskill('b84', 'COMPLETED', gh(84)),
+  gskill('b85', 'COMPLETED', gh(85)),
+  gskill('bseed', 'AVAILABLE', null),
+];
+const bandPatch = gardenOf('bands', bandSkills);
+const B = byId(bandPatch);
+
+console.log('\n  BAND BOUNDARIES — score → band → bloom stage');
+check('39 is LEARNING (the worst band), not WEAK', B.b39.masteryState, 'LEARNING');
+check('39 → sprout', B.b39.stage, 'sprout');
+check('40 crosses into WEAK', B.b40.masteryState, 'WEAK');
+check('40 → bud', B.b40.stage, 'bud');
+check('59 is still WEAK (upper edge)', B.b59.stage, 'bud');
+check('60 crosses into STRONG', B.b60.masteryState, 'STRONG');
+check('60 → opening', B.b60.stage, 'opening');
+check('84 is still STRONG (upper edge)', B.b84.stage, 'opening');
+check('85 crosses into MASTERED', B.b85.masteryState, 'MASTERED');
+check('85 → bloom', B.b85.stage, 'bloom');
+check('a never-started flower is a seed', B.bseed.stage, 'seed');
+check('a never-started flower reports no band', B.bseed.masteryState, null);
+check('a never-started flower reports mastery 0', B.bseed.masteryScore, 0);
+
+console.log('\n  PATCH AGGREGATES — one tinted patch per subject');
+// growthPercent = mean live mastery over EVERY flower, un-started counting as 0:
+// (39+40+59+60+84+85+0) / 7 = 367/7 = 52.43 → 52.
+check('growthPercent is the mean live mastery over every flower', bandPatch.growthPercent, 52);
+check('the bloom tally sums to the skill count (no flower uncounted)',
+  BLOOM_STAGES.reduce((a, k) => a + bandPatch.bloomTally[k], 0), bandPatch.skillCount);
+check('the tally puts the un-started flower in seed', bandPatch.bloomTally.seed, 1);
+check('the tally puts both WEAK flowers in bud', bandPatch.bloomTally.bud, 2);
+check('the brightest bloom is the fullest flower', bandPatch.brightestBloom?.skillId, 'b85');
+// Thirsty = COMPLETED and below the review line (85). Five of six qualify; the
+// un-started seed cannot be thirsty because it never bloomed.
+check('thirst counts finished flowers below the review line', bandPatch.thirstyCount, 5);
+
+console.log('\n  WILTING — an unwatered flower drops a stage, and Home would call it thirsty');
+const freshBloom = gardenOf('fresh', [
+  gskill('m90', 'COMPLETED', gh(90, { retention: 90, decayFactor: 0.995, lastPracticed: G_NOW })),
+]).skills[0];
+const staleBloom = gardenOf('stale', [
+  gskill('m90', 'COMPLETED', gh(90, { retention: 90, decayFactor: 0.995, lastPracticed: new Date(G_NOW.getTime() - 60 * G_DAY) })),
+]).skills[0];
+check('practiced today, 90 stays MASTERED in full bloom', freshBloom.stage, 'bloom');
+check('practiced today, it is not thirsty', freshBloom.needsWater, false);
+// 90 × (retention lost over 60 days at 0.995/day) × weight 0.25 ⇒ 84.16 → 84.
+check('60 days untouched, the same 90 has decayed to 84', staleBloom.masteryScore, 84);
+check('so it drops from bloom to opening', staleBloom.stage, 'opening');
+check('and it now reads thirsty — exactly what Home would surface', staleBloom.needsWater, true);
+
+console.log('\n  PLACEMENT NOISE — a locked row is never a sprout; a growing flower is never thirsty');
+const noisePatch = gardenOf('noise', [
+  gskill('locked', 'LOCKED', gh(50)),   // placement wrote a health row the child never earned
+  gskill('active', 'ACTIVE', null),     // just activated, no practice yet
+]);
+const N = byId(noisePatch);
+check('a LOCKED skill stays a seed despite a score-50 placement row', N.locked.stage, 'seed');
+check('and it contributes no band', N.locked.masteryState, null);
+check('a just-activated skill is a sprout, not a seed', N.active.stage, 'sprout');
+check('a growing (un-finished) flower is never thirsty', N.active.needsWater, false);
+check('the locked flower adds nothing to the patch’s growth', noisePatch.growthPercent, 0);
+
+console.log('\n  UNSEEDED PATCH — the failsafe garden: real, but every flower a seed');
+const seedPatch = gardenOf('seedbed', [
+  gskill('z1', 'AVAILABLE', null),
+  gskill('z2', 'AVAILABLE', null),
+  gskill('z3', 'AVAILABLE', null),
+]);
+check('an unseeded patch grows 0%', seedPatch.growthPercent, 0);
+check('every flower is a seed', seedPatch.bloomTally.seed, 3);
+check('no flower is thirsty', seedPatch.thirstyCount, 0);
+check('there is no brightest bloom yet', seedPatch.brightestBloom, null);
+
+console.log('\n  TOTALS — the panorama’s own summary line, over the whole garden');
+const whole = buildGarden({
+  subjects: [
+    { id: 'bands', name: 'bands', skills: bandSkills },
+    { id: 'seedbed', name: 'seedbed', skills: [gskill('z1', 'AVAILABLE', null), gskill('z2', 'AVAILABLE', null), gskill('z3', 'AVAILABLE', null)] },
+  ],
+  now: G_NOW,
+});
+check('totals count every subject', whole.totals.subjectCount, 2);
+check('totals count every skill', whole.totals.skillCount, 10);
+check('totals count finished skills', whole.totals.completedCount, 6);
+check('totals carry the thirsty backlog', whole.totals.thirstyCount, 5);
+// (367 + 0) / 10 = 36.7 → 37.
+check('overall growth is the mean over the whole garden', whole.totals.overallGrowthPercent, 37);
 
 
 // ===========================================================================

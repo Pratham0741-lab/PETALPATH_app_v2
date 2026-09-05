@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View, Alert } from 'react-native';
+import { ScrollView, StyleSheet, Text, View, Alert } from 'react-native';
 import { useAppNavigation } from '../../hooks/useAppNavigation';
 import { useRoadmapStore } from '../../store/roadmapStore';
 import { useChildStore } from '../../store/childStore';
@@ -11,6 +11,8 @@ import { difficultyBand } from '../../utils/difficulty';
 import { ErrorState } from '../../components/common/ErrorState';
 import { EmptyState } from '../../components/common/EmptyState';
 import { colors, spacing, typography, cardSizes } from '../../theme';
+import { SCREEN_BACKGROUNDS } from '../../assets/backgrounds';
+import { PetalMark } from '../../components/brand/PetalMark';
 import {
   ActivityCard,
   AppShell,
@@ -197,9 +199,9 @@ export const LessonOverviewContent: React.FC<{ variant?: LessonOverviewVariant }
 
   if (loading && activities.length === 0) {
     return (
-      <AppShell scroll={false} header={header}>
+      <AppShell petals="none" backgroundImage={SCREEN_BACKGROUNDS.lesson} scroll={false} header={header}>
         <View style={styles.center}>
-          <ActivityIndicator size="large" color={colors.primary} />
+          <PetalMark size={96} loading />
           <Text style={[typography.presets.caption, styles.loadingText]}>Loading lesson…</Text>
         </View>
       </AppShell>
@@ -208,7 +210,7 @@ export const LessonOverviewContent: React.FC<{ variant?: LessonOverviewVariant }
 
   if (error) {
     return (
-      <AppShell scroll={false} header={header}>
+      <AppShell petals="none" backgroundImage={SCREEN_BACKGROUNDS.lesson} scroll={false} header={header}>
         <View style={styles.center}>
           <ErrorState
             title="Couldn't load this lesson"
@@ -222,7 +224,7 @@ export const LessonOverviewContent: React.FC<{ variant?: LessonOverviewVariant }
 
   if (!selectedLesson) {
     return (
-      <AppShell scroll={false} header={header}>
+      <AppShell petals="none" backgroundImage={SCREEN_BACKGROUNDS.lesson} scroll={false} header={header}>
         <View style={styles.center}>
           <EmptyState
             icon="seedling"
@@ -320,7 +322,7 @@ export const LessonOverviewContent: React.FC<{ variant?: LessonOverviewVariant }
 
   if (!wide) {
     return (
-      <AppShell header={header} footer={completeButton}>
+      <AppShell petals="none" backgroundImage={SCREEN_BACKGROUNDS.lesson} header={header} footer={completeButton}>
         {infoCard}
         {sequenceHeading}
         {activityList}
@@ -331,7 +333,7 @@ export const LessonOverviewContent: React.FC<{ variant?: LessonOverviewVariant }
   // ---- Tablet / desktop: activities beside a status rail ------------------
 
   return (
-    <AppShell scroll={false} padded={false} header={header}>
+    <AppShell petals="none" backgroundImage={SCREEN_BACKGROUNDS.lesson} scroll={false} padded={false} header={header}>
       <View style={styles.layout}>
         <ScrollView
           style={styles.main}

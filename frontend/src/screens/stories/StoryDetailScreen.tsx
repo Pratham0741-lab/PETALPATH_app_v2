@@ -21,6 +21,7 @@ import {
 import { useStory, useStoryProgress, useStartStory } from '../../hooks/useStories';
 import { toUserMessage } from '../../api/errors';
 import { colors, spacing, typography, cardSizes } from '../../theme';
+import { SCREEN_BACKGROUNDS } from '../../assets/backgrounds';
 
 /**
  * Story Detail (spec §35) — reached from the recommendation card on Home.
@@ -85,7 +86,7 @@ export const StoryDetailScreen: React.FC = () => {
 
   if (isLoading) {
     return (
-      <AppShell scroll={false} header={<PageHeader title="Story" />}>
+      <AppShell petals="none" backgroundImage={SCREEN_BACKGROUNDS.watch} scroll={false} header={<PageHeader title="Story" />}>
         <View style={styles.center}>
           <LoadingSpinner label="Loading story…" />
         </View>
@@ -95,7 +96,7 @@ export const StoryDetailScreen: React.FC = () => {
 
   if (isError || !story) {
     return (
-      <AppShell scroll={false} header={<PageHeader title="Story" />}>
+      <AppShell petals="none" backgroundImage={SCREEN_BACKGROUNDS.watch} scroll={false} header={<PageHeader title="Story" />}>
         <View style={styles.center}>
           <ErrorState
             title="Couldn't load story"
@@ -131,7 +132,7 @@ export const StoryDetailScreen: React.FC = () => {
   ];
 
   return (
-    <AppShell
+    <AppShell petals="none" backgroundImage={SCREEN_BACKGROUNDS.watch}
       header={<PageHeader title={story.title} />}
       footer={
         <View style={styles.footer}>

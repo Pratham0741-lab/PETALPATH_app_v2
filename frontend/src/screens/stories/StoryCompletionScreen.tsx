@@ -17,6 +17,7 @@ import { CelebrationScaffold } from '../lesson/CelebrationScaffold';
 import { useStory, useStoryProgress } from '../../hooks/useStories';
 import { toUserMessage } from '../../api/errors';
 import { colors, radius, spacing, typography } from '../../theme';
+import { SCREEN_BACKGROUNDS } from '../../assets/backgrounds';
 
 /**
  * Story Completion (spec §28, §35) — the "you finished it" moment for a story.
@@ -59,7 +60,7 @@ export const StoryCompletionScreen: React.FC = () => {
 
   if (isLoading) {
     return (
-      <AppShell scroll={false} header={<PageHeader title="Story Complete" />}>
+      <AppShell petals="none" backgroundImage={SCREEN_BACKGROUNDS.celebrate} scroll={false} header={<PageHeader title="Story Complete" />}>
         <View style={styles.center}>
           <LoadingSpinner label="Loading results…" />
         </View>
@@ -69,7 +70,7 @@ export const StoryCompletionScreen: React.FC = () => {
 
   if (isError || !story) {
     return (
-      <AppShell scroll={false} header={<PageHeader title="Story Complete" />}>
+      <AppShell petals="none" backgroundImage={SCREEN_BACKGROUNDS.celebrate} scroll={false} header={<PageHeader title="Story Complete" />}>
         <View style={styles.center}>
           <ErrorState title="Couldn't load results" message={toUserMessage(error)} />
         </View>

@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { Animated, StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { colors, radius, spacing, typography, progressSizes } from '../../theme';
+import { useScreenAccent } from './screenAccent';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
 
 /**
@@ -38,7 +39,7 @@ const clamp = (n: number) => Math.max(0, Math.min(100, Number.isFinite(n) ? n : 
 export const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({
   value,
   height = progressSizes.barHeight,
-  color = colors.purple,
+  color,
   trackColor = colors.skeleton,
   label,
   showPercentage = false,
@@ -48,6 +49,9 @@ export const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({
 }) => {
   const pct = clamp(value);
   const reduceMotion = useReducedMotion();
+  // An explicit `color` wins; otherwise the screen's accent.
+  const screenAccent = useScreenAccent();
+  const barColor = color ?? screenAccent;
   const width = useRef(new Animated.Value(pct)).current;
 
   useEffect(() => {
@@ -105,7 +109,7 @@ export const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({
           style={[
             styles.fill,
             {
-              backgroundColor: color,
+              backgroundColor: barColor,
               width: width.interpolate({
                 inputRange: [0, 100],
                 outputRange: ['0%', '100%'],

@@ -46,6 +46,8 @@ import { useQueryClient } from '@tanstack/react-query';
 
 import { api } from '../../api/client';
 import { useAppStore } from '../../store/appStore';
+import { SCREEN_BACKGROUNDS } from '../../assets/backgrounds';
+import { SCREEN_ACCENTS } from '../../theme/screenAccents';
 import { useChildStore } from '../../store/childStore';
 import { useRoadmapStore } from '../../store/roadmapStore';
 import { useRewardsStore } from '../../store/rewardsStore';
@@ -235,8 +237,11 @@ export const ProfileContent: React.FC<ProfileContentProps> = ({ variant }) => {
   return (
     <AppShell
       withBottomNav
+      petals="none"
+      backgroundImage={SCREEN_BACKGROUNDS.profile} accent={SCREEN_ACCENTS.profile}
       header={
         <AppHeader
+          accent={SCREEN_ACCENTS.profile}
           eyebrow="Stats, achievements & settings"
           title={`${childName}'s Profile`}
           stars={totalStars}

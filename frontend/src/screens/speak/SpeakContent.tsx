@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { colors, typography, spacing, cardSizes, MediaOrbSizeToken, layoutSizes } from '../../theme';
 import { useSpeakStore } from '../../store/speakStore';
+import { SCREEN_BACKGROUNDS } from '../../assets/backgrounds';
 import { useChildStore } from '../../store/childStore';
 import { enhanceMentor, MENTORS } from '../../constants/mentors';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
@@ -14,6 +15,7 @@ import {
 } from '../../utils/navigationFlow';
 import { NavigationGuide } from '../../components/tutorial/NavigationGuide';
 import { ErrorState } from '../../components/common/ErrorState';
+import { PetalMark } from '../../components/brand/PetalMark';
 import {
   ActivityHeader,
   AppShell,
@@ -137,7 +139,7 @@ const SpeakComingSoon: React.FC<{
   };
 
   return (
-    <AppShell
+    <AppShell petals="none" backgroundImage={SCREEN_BACKGROUNDS.speak}
       scroll={false}
       header={<PageHeader title={activityTitle || 'Speak Activity'} />}
       footer={
@@ -318,9 +320,9 @@ export const SpeakContent: React.FC<{ variant?: SpeakVariant }> = ({ variant = '
 
   if (loading) {
     return (
-      <AppShell scroll={false} header={<PageHeader title="Speak & Learn" />}>
+      <AppShell petals="none" backgroundImage={SCREEN_BACKGROUNDS.speak} scroll={false} header={<PageHeader title="Speak & Learn" />}>
         <View style={styles.center}>
-          <ActivityIndicator size="large" color={colors.purple} />
+          <PetalMark size={96} loading />
           <Text style={[typography.presets.caption, styles.loadingText]}>
             Loading speaking practice…
           </Text>
@@ -341,7 +343,7 @@ export const SpeakContent: React.FC<{ variant?: SpeakVariant }> = ({ variant = '
 
   if (error || !activityId) {
     return (
-      <AppShell
+      <AppShell petals="none" backgroundImage={SCREEN_BACKGROUNDS.speak}
         scroll={false}
         header={<PageHeader title="Speak & Learn" />}
         footer={<SecondaryButton label="Go Back" icon="back" onPress={() => navigation.goBack()} />}
@@ -498,7 +500,7 @@ export const SpeakContent: React.FC<{ variant?: SpeakVariant }> = ({ variant = '
       // NavigationGuide has to sit outside AppShell's ScrollView — inside it the
       // absolutely-positioned hand would scroll away from the thing it points at.
       <View style={styles.fill}>
-        <AppShell header={header} footer={footer}>
+        <AppShell header={header} footer={footer} petals="none" backgroundImage={SCREEN_BACKGROUNDS.speak}>
           {phraseCard}
           {statusPanel}
           <View style={styles.micArea}>{micSection}</View>
@@ -512,7 +514,7 @@ export const SpeakContent: React.FC<{ variant?: SpeakVariant }> = ({ variant = '
 
   return (
     <View style={styles.fill}>
-      <AppShell scroll={false} padded={false} header={header} footer={footer}>
+      <AppShell scroll={false} padded={false} header={header} footer={footer} petals="none" backgroundImage={SCREEN_BACKGROUNDS.speak}>
         <View style={styles.layout}>
           <ScrollView
             style={styles.main}

@@ -59,6 +59,9 @@ import PlacementAssessmentResultScreen from '../screens/placement/PlacementAsses
 import NotificationCenterScreen from '../screens/notifications/NotificationCenterScreen';
 import CurriculumExplorerScreen from '../screens/curriculum/CurriculumExplorerScreen';
 import SkillDetailScreen from '../screens/curriculum/SkillDetailScreen';
+import SubjectGardenScreen from '../screens/curriculum/SubjectGardenScreen';
+import BloomDetailScreen from '../screens/curriculum/BloomDetailScreen';
+import MyStoryScreen from '../screens/curriculum/MyStoryScreen';
 import CameraActivityScreen from '../features/camera/screens/CameraActivityScreen';
 import CameraActivityLesson from '../features/camera/curriculum/CameraActivityLesson';
 import CalibrationScreen from '../features/camera/calibration/CalibrationScreen';
@@ -106,7 +109,10 @@ const MobileTabs = () => {
   return (
     <Tab.Navigator
       tabBar={(props) => <BottomNavigation {...props} />}
-      screenOptions={{ headerShown: false }}
+      // `freezeOnBlur` suspends a tab's React tree while it's in the background, so
+      // its animations, timers and query subscriptions stop consuming the JS thread
+      // until the child returns to it — a broad smoothness win across the tabs.
+      screenOptions={{ headerShown: false, freezeOnBlur: true }}
     >
       <Tab.Screen name="Home" component={HomeScreen} />
       <Tab.Screen name="Journey" component={CurriculumExplorerScreen} />
@@ -155,7 +161,7 @@ export const RootNavigator = () => {
 
   if (deviceType === 'mobile') {
     return (
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Navigator screenOptions={{ headerShown: false, freezeOnBlur: true }}>
         <Stack.Screen name="MainTabs" component={MobileTabs} />
         <Stack.Screen name="LessonOverview" component={LessonOverviewScreen} />
         <Stack.Screen name="Lesson" component={LessonScreen} />
@@ -216,6 +222,9 @@ export const RootNavigator = () => {
         <Stack.Screen name="NotificationCenter" component={NotificationCenterScreen} />
         <Stack.Screen name="CurriculumExplorer" component={CurriculumExplorerScreen} />
         <Stack.Screen name="SkillDetail" component={SkillDetailScreen} />
+        <Stack.Screen name="SubjectGarden" component={SubjectGardenScreen} />
+        <Stack.Screen name="BloomDetail" component={BloomDetailScreen} />
+        <Stack.Screen name="MyStory" component={MyStoryScreen} />
         <Stack.Screen name="CameraActivity" component={CameraActivityScreen} />
         <Stack.Screen name="CameraActivityLesson" component={CameraActivityLesson} />
         <Stack.Screen name="Calibration" component={CalibrationScreen} />
@@ -233,6 +242,7 @@ export const RootNavigator = () => {
           screenOptions={{
             headerShown: false,
             animation: 'fade', // Clean cross-fade transition on larger displays
+            freezeOnBlur: true,
           }}
         >
           <Stack.Screen name="Home" component={HomeScreen} />
@@ -300,6 +310,9 @@ export const RootNavigator = () => {
           <Stack.Screen name="NotificationCenter" component={NotificationCenterScreen} />
           <Stack.Screen name="CurriculumExplorer" component={CurriculumExplorerScreen} />
           <Stack.Screen name="SkillDetail" component={SkillDetailScreen} />
+          <Stack.Screen name="SubjectGarden" component={SubjectGardenScreen} />
+          <Stack.Screen name="BloomDetail" component={BloomDetailScreen} />
+          <Stack.Screen name="MyStory" component={MyStoryScreen} />
           <Stack.Screen name="CameraActivity" component={CameraActivityScreen} />
           <Stack.Screen name="CameraActivityLesson" component={CameraActivityLesson} />
           <Stack.Screen name="Calibration" component={CalibrationScreen} />

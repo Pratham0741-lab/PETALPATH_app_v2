@@ -68,7 +68,7 @@ const SHAPES: Shape[] = [
 
 const LIGHT_COUNT = 3;
 
-export const PetalBackground: React.FC<PetalBackgroundProps> = ({
+const PetalBackgroundBase: React.FC<PetalBackgroundProps> = ({
   density = 'normal',
   tint,
   opacity = 0.5,
@@ -117,5 +117,13 @@ export const PetalBackground: React.FC<PetalBackgroundProps> = ({
     </View>
   );
 };
+
+/**
+ * Memoized: the petal layer is on every screen and never changes for a given
+ * density/tint, so it should not re-reconcile its SVG shapes each time the screen
+ * around it re-renders.
+ */
+export const PetalBackground = React.memo(PetalBackgroundBase);
+PetalBackground.displayName = 'PetalBackground';
 
 export default PetalBackground;

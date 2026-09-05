@@ -2,10 +2,10 @@ import React from 'react';
 import {
   View,
   Text,
-  ActivityIndicator,
   StyleSheet,
 } from 'react-native';
 import { colors, typography, spacing } from '../../theme';
+import { PetalMark } from '../brand/PetalMark';
 
 interface LoadingStateProps {
   message?: string;
@@ -23,7 +23,7 @@ export const LoadingState: React.FC<LoadingStateProps> = ({
       accessibilityLabel={message ?? 'Loading'}
       accessibilityLiveRegion="polite"
     >
-      <ActivityIndicator size="large" color={colors.primary} />
+      <PetalMark size={96} loading />
       {message ? (
         <Text style={styles.message} accessibilityRole="text">{message}</Text>
       ) : null}
@@ -36,7 +36,9 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: colors.background,
+    /* Transparent: these fill the screen, and an opaque fill hid the
+       wallpaper of whatever screen was loading. */
+    backgroundColor: 'transparent',
     padding: spacing.xxl,
   },
   inline: {

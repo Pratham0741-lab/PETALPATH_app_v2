@@ -26,6 +26,7 @@ import { ActivityIndicator, Linking, StyleSheet, Text, View } from 'react-native
 import { CameraStatus } from '../types/camera.types';
 import { IconWell, PrimaryButton, SecondaryButton } from '../../../components/design';
 import { cardSizes, colors, spacing, typography, layoutSizes } from '../../../theme';
+import { PetalMark } from '../../../components/brand/PetalMark';
 
 interface CameraPermissionStateProps {
   status: CameraStatus;
@@ -89,7 +90,7 @@ export const CameraPermissionState: React.FC<CameraPermissionStateProps> = ({
 
   return (
     <View style={styles.container}>
-      <ActivityIndicator size="large" color={colors.primary} />
+      <PetalMark size={96} loading />
       <Text style={[typography.presets.cardTitle, styles.title]} accessibilityRole="header">
         Initializing Camera…
       </Text>

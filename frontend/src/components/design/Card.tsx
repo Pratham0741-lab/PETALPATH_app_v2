@@ -8,6 +8,7 @@ import {
   ViewStyle,
 } from 'react-native';
 import { colors, radius, shadows, cardSizes } from '../../theme';
+import { useScreenAccent, mixWhite, PANEL_ALPHA } from './screenAccent';
 
 /**
  * Card — the surface every piece of content sits on (spec §5, §28).
@@ -163,11 +164,16 @@ export interface CardProps {
   testID?: string;
 }
 
+/**
+ * Colour mixing lives in `screenAccent` so the card, the roadmap and anything
+ * else that tints to the screen stay in step by construction.
+ */
+
 export const Card: React.FC<CardProps> = ({
   children,
   variant = 'raised',
   padding = 'normal',
-  accent = colors.primary,
+  accent,
   rail = false,
   onPress,
   onLongPress,
@@ -180,6 +186,10 @@ export const Card: React.FC<CardProps> = ({
   testID,
 }) => {
   const interactive = !!onPress && !disabled;
+  // Rail / selected-border colour: an explicit `accent` wins; otherwise the
+  // screen's accent (so a screen's card rails share its colour identity).
+  const screenAccent = useScreenAccent();
+  const accentColor = accent ?? screenAccent;
   const scale = useRef(new Animated.Value(1)).current;
 
   const animate = (v: number) => {
@@ -187,18 +197,39 @@ export const Card: React.FC<CardProps> = ({
     Animated.spring(scale, { toValue: v, useNativeDriver: true, speed: 40, bounciness: 4 }).start();
   };
 
+  /**
+   * Cards take a soft tint of the screen's accent so the boxes visibly match the
+   * screen's background aesthetic (a light blue card on Home, light yellow on
+   * Rewards, light lavender on Profile, …) rather than reading as stark white.
+   * The tint is a light mix of the accent into white, kept pale so dark text
+   * stays crisp. Screens with no per‑screen accent (the default brand pink) keep
+   * an ordinary warm‑white card, so only the themed tab screens get the wash.
+   */
+  const themed = screenAccent !== colors.primary;
+  /*
+   * Panels are translucent so the wallpaper reads through them and the screen
+   * feels like one composition rather than cards stacked on a picture. The hue is
+   * only a whisper of the screen's accent — the transparency, not the tint, is
+   * what ties the panel to the scene. `PANEL_ALPHA` is the floor that keeps dark
+   * text legible over every wallpaper; the border stays near-opaque so the edge
+   * of the panel never dissolves.
+   */
+  const tintFill = mixWhite(screenAccent, 0.07, PANEL_ALPHA);
+  const tintBorder = mixWhite(screenAccent, 0.28, 0.9);
+  const cardFill = themed ? tintFill : `rgba(255, 255, 255, ${PANEL_ALPHA})`;
+  const cardBorder = themed ? tintBorder : colors.border;
   const surface: ViewStyle =
     variant === 'muted'
-      ? { backgroundColor: colors.backgroundSecondary, borderColor: colors.border, borderWidth: 1 }
+      ? { backgroundColor: `rgba(255, 253, 252, ${PANEL_ALPHA - 0.06})`, borderColor: colors.border, borderWidth: 1 }
       : variant === 'selected'
-      ? { backgroundColor: colors.surface, borderColor: accent, borderWidth: 2 }
+      ? { backgroundColor: cardFill, borderColor: accentColor, borderWidth: 2 }
       : variant === 'flat'
-      ? { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1 }
-      : { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: 1 };
+      ? { backgroundColor: cardFill, borderColor: cardBorder, borderWidth: 1 }
+      : { backgroundColor: cardFill, borderColor: cardBorder, borderWidth: 1 };
 
   const body = (
     <View style={styles.row}>
-      {rail ? <View style={[styles.rail, { backgroundColor: accent }]} /> : null}
+      {rail ? <View style={[styles.rail, { backgroundColor: accentColor }]} /> : null}
       <View style={[styles.content, { padding: PADDING[padding] }, contentStyle]}>{children}</View>
     </View>
   );
@@ -211,7 +242,7 @@ export const Card: React.FC<CardProps> = ({
         style={[
           styles.card,
           surface,
-          variant === 'flat' ? null : shadows.sm,
+          variant === 'flat' ? null : shadows.sticker,
           disabled && styles.disabled,
           style,
         ]}
@@ -250,7 +281,7 @@ export const Card: React.FC<CardProps> = ({
              equal-height rows. */
           styles.fill,
           surface,
-          variant === 'flat' ? null : shadows.sm,
+          variant === 'flat' ? null : shadows.sticker,
           disabled && styles.disabled,
           inner,
           pressed && styles.pressed,

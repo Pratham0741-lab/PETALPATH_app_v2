@@ -168,7 +168,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.button,
   },
   tabFitSelected: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.surfaceTranslucent,
     ...shadows.sm,
   },
   tabPill: {
@@ -176,7 +176,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.chip,
     borderWidth: 1.5,
     borderColor: colors.border,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.surfaceTranslucent,
   },
   tabPillSelected: {
     borderWidth: 2,

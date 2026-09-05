@@ -74,7 +74,7 @@ const styles = StyleSheet.create({
   tile: {
     flexGrow: 1,
     flexShrink: 1,
-    backgroundColor: colors.backgroundSecondary,
+    backgroundColor: colors.surfaceTranslucentSoft,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: radius.cardInner,

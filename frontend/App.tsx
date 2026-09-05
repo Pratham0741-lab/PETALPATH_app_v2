@@ -8,10 +8,20 @@ import { useTutorialStore } from './src/store/tutorialStore';
 import { checkServerHealth } from './src/api/health';
 import { AppProviders } from './src/providers/AppProviders';
 import { ThemeProvider, useTheme } from './src/theme/ThemeContext';
+import { useFonts, Fredoka_500Medium, Fredoka_600SemiBold, Fredoka_700Bold } from '@expo-google-fonts/fredoka';
+import {
+  Nunito_400Regular,
+  Nunito_500Medium,
+  Nunito_600SemiBold,
+  Nunito_700Bold,
+  Nunito_800ExtraBold,
+} from '@expo-google-fonts/nunito';
 import { lightColors, darkColors } from './src/theme/colors';
 import { spacing } from './src/theme/spacing';
 import { radius } from './src/theme/radius';
 import { IS_DEV, API_BASE_URL } from './src/config/api';
+import { Asset } from 'expo-asset';
+import { SCREEN_BACKGROUNDS } from './src/assets/backgrounds';
 
 if (Platform.OS !== 'web') {
   try {
@@ -85,6 +95,19 @@ const AppContent: React.FC = () => {
   const [errorDetails, setErrorDetails] = useState<string | null>(null);
   const [requestedUrl, setRequestedUrl] = useState<string | null>(null);
 
+  // The playful‑premium type system (Fredoka display + Nunito body). Hold the
+  // first paint until these are ready so no screen flashes in the system font.
+  const [fontsLoaded] = useFonts({
+    Fredoka_500Medium,
+    Fredoka_600SemiBold,
+    Fredoka_700Bold,
+    Nunito_400Regular,
+    Nunito_500Medium,
+    Nunito_600SemiBold,
+    Nunito_700Bold,
+    Nunito_800ExtraBold,
+  });
+
   const runHealthCheck = useCallback(async () => {
     setServerReady(null);
     const result = await checkServerHealth();
@@ -99,9 +122,17 @@ const AppContent: React.FC = () => {
   useEffect(() => {
     useTutorialStore.getState().loadSettings();
     runHealthCheck();
+    // Warm the screen backgrounds into the asset cache up front so the first
+    // visit to each tab shows its scene instantly instead of flashing in.
+    const bgAssets = Object.values(SCREEN_BACKGROUNDS).filter(Boolean) as number[];
+    if (bgAssets.length > 0) {
+      Asset.loadAsync(bgAssets).catch(() => {
+        // Non-fatal: the image still loads lazily on first render.
+      });
+    }
   }, [runHealthCheck]);
 
-  if (serverReady === null) {
+  if (serverReady === null || !fontsLoaded) {
     return (
       <View style={[healthStyles.container, { backgroundColor: colors.background }]}>
         <ActivityIndicator size="large" color={colors.primary} />

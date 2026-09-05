@@ -16,6 +16,7 @@ import {
 import { useStory, useStoryProgress, useStartStory, useUpdateStoryPage, useCompleteStory } from '../../hooks/useStories';
 import { toUserMessage } from '../../api/errors';
 import { colors, progressSizes, radius, spacing, typography, layoutSizes } from '../../theme';
+import { SCREEN_BACKGROUNDS } from '../../assets/backgrounds';
 
 /**
  * Story Reader (spec §35) — one page of a story at a time.
@@ -151,7 +152,7 @@ export const StoryReaderScreen: React.FC = () => {
 
   if (needsStart) {
     return (
-      <AppShell scroll={false} header={<PageHeader title={story?.title ?? 'Story'} />}>
+      <AppShell petals="none" backgroundImage={SCREEN_BACKGROUNDS.watch} scroll={false} header={<PageHeader title={story?.title ?? 'Story'} />}>
         <View style={styles.center}>
           <Card variant="raised" padding="roomy" style={styles.startCard}>
             <Text style={[typography.presets.cardTitle, styles.startTitle]}>Ready to read?</Text>
@@ -172,7 +173,7 @@ export const StoryReaderScreen: React.FC = () => {
 
   if (!initialProgressId && initializing) {
     return (
-      <AppShell scroll={false} header={<PageHeader title="Story" />}>
+      <AppShell petals="none" backgroundImage={SCREEN_BACKGROUNDS.watch} scroll={false} header={<PageHeader title="Story" />}>
         <View style={styles.center}>
           <LoadingSpinner label="Preparing story…" />
         </View>
@@ -182,7 +183,7 @@ export const StoryReaderScreen: React.FC = () => {
 
   if (isLoading || initializing) {
     return (
-      <AppShell scroll={false} header={<PageHeader title="Story" />}>
+      <AppShell petals="none" backgroundImage={SCREEN_BACKGROUNDS.watch} scroll={false} header={<PageHeader title="Story" />}>
         <View style={styles.center}>
           <LoadingSpinner label="Loading story…" />
         </View>
@@ -192,7 +193,7 @@ export const StoryReaderScreen: React.FC = () => {
 
   if (isError || !story || totalPages === 0) {
     return (
-      <AppShell scroll={false} header={<PageHeader title="Story" />}>
+      <AppShell petals="none" backgroundImage={SCREEN_BACKGROUNDS.watch} scroll={false} header={<PageHeader title="Story" />}>
         <View style={styles.center}>
           <ErrorState
             title="Couldn't load story"
@@ -208,7 +209,7 @@ export const StoryReaderScreen: React.FC = () => {
 
   if (!page) {
     return (
-      <AppShell scroll={false} header={<PageHeader title="Story" />}>
+      <AppShell petals="none" backgroundImage={SCREEN_BACKGROUNDS.watch} scroll={false} header={<PageHeader title="Story" />}>
         <View style={styles.center}>
           <ErrorState title="Page not found" message="This page could not be loaded." />
         </View>
@@ -221,8 +222,7 @@ export const StoryReaderScreen: React.FC = () => {
   const pageReadout = `Page ${currentPage + 1} of ${totalPages}`;
 
   return (
-    <AppShell
-      petals="light"
+    <AppShell petals="none" backgroundImage={SCREEN_BACKGROUNDS.watch}
       header={
         <View>
           <PageHeader title={story.title ?? 'Story'} />

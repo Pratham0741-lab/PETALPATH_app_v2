@@ -69,6 +69,7 @@ import { cameraAnalytics } from '../analytics/cameraAnalytics';
 import { offlineQueue } from '../progress/offlineQueue';
 import { ActivityType } from '../types/pose.types';
 import { cardSizes, colors, radius, spacing, typography } from '../../../theme';
+import { SCREEN_BACKGROUNDS } from '../../../assets/backgrounds';
 
 export const CameraActivityLesson: React.FC = () => {
   const route = useRoute<any>();
@@ -157,9 +158,9 @@ export const CameraActivityLesson: React.FC = () => {
   const live = hasPermission && isActive;
 
   return (
-    <AppShell
+    <AppShell petals="none" backgroundImage={SCREEN_BACKGROUNDS.camera}
       scroll={false}
-      petals="none"
+     
       header={<PageHeader title={config.title} />}
     >
       <View style={styles.body}>

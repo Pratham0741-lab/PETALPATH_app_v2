@@ -1,7 +1,8 @@
 import React from 'react';
-import { StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
+import { Image, StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
 import Svg, { Circle, Ellipse, G, Path } from 'react-native-svg';
 import { colors } from '../../theme';
+import { AVATAR_IMAGES } from '../../assets/characters';
 
 /**
  * AvatarGlyph (spec §7, §8).
@@ -206,6 +207,11 @@ export const AvatarGlyph: React.FC<AvatarGlyphProps> = ({
    */
   const inner = Math.max(1, Math.round((size - ring * 2) * 0.88));
 
+  // Prefer the real uploaded avatar art when it exists; the drawn SVG face is the
+  // fallback for any species without an image. The avatar PNGs are already round
+  // busts, so they fill the circular frame; the SVG path keeps its 88% inset.
+  const image = AVATAR_IMAGES[key];
+
   return (
     <View
       style={[
@@ -217,7 +223,7 @@ export const AvatarGlyph: React.FC<AvatarGlyphProps> = ({
              clamping it, and the clip that `overflow: 'hidden'` derives from it
              is what shapes the face. */
           borderRadius: size / 2,
-          backgroundColor: bg,
+          backgroundColor: image ? colors.surface : bg,
           borderWidth: ring,
           borderColor: ringColor ?? 'transparent',
         },
@@ -227,9 +233,13 @@ export const AvatarGlyph: React.FC<AvatarGlyphProps> = ({
       accessibilityLabel={accessibilityLabel}
       importantForAccessibility={accessibilityLabel ? 'yes' : 'no-hide-descendants'}
     >
-      <Svg width={inner} height={inner} viewBox="0 0 48 48">
-        {FACES[key]}
-      </Svg>
+      {image ? (
+        <Image source={image} resizeMode="cover" style={styles.image} />
+      ) : (
+        <Svg width={inner} height={inner} viewBox="0 0 48 48">
+          {FACES[key]}
+        </Svg>
+      )}
     </View>
   );
 };
@@ -244,6 +254,10 @@ const styles = StyleSheet.create({
        get this; the invariant belongs to the component. */
     flexShrink: 0,
     flexGrow: 0,
+  },
+  image: {
+    width: '100%',
+    height: '100%',
   },
 });
 

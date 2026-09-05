@@ -11,6 +11,7 @@ import {
 } from '../../../components/design';
 import type { PetalIconName } from '../../../components/design';
 import { useNotificationStore } from '../../../store/notificationStore';
+import { SCREEN_BACKGROUNDS } from '../../../assets/backgrounds';
 
 /**
  * Notification Preferences (spec §26, §35) — reached from the bell in the
@@ -126,8 +127,8 @@ export const NotificationPreferencesScreen: React.FC = () => {
   }, []);
 
   return (
-    <AppShell
-      petals="light"
+    <AppShell petals="none" backgroundImage={SCREEN_BACKGROUNDS.profile}
+     
       header={
         <PageHeader
           title="Notifications"

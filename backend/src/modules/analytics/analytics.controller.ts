@@ -231,6 +231,21 @@ export class AnalyticsController {
     }
   }
 
+  /**
+   * Grade-scoped progress for the parent-locked analysis panel behind Explore:
+   * accuracy by subject, mastery over time, and before/after. Ownership is
+   * enforced by `resolveChildId`, exactly like the other parent-facing reads.
+   */
+  async getGradeProgress(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const childId = await resolveChildId(req);
+      const data = await analyticsService.getGradeProgress(childId);
+      return res.status(200).json({ success: true, data });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async getRewards(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const parsed = rewardsQuerySchema.safeParse(req.query);

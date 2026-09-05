@@ -1,73 +1,67 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { EmptyState } from '../../components/common/EmptyState';
 import { ErrorState } from '../../components/common/ErrorState';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
-import { useCurriculum } from '../../hooks/useCurriculum';
+import { useGarden } from '../../hooks/useCurriculum';
 import { toUserMessage } from '../../api/errors';
-import { colors, spacing, typography, progressSizes } from '../../theme';
-import {
-  AppShell,
-  Card,
-  IconButton,
-  LessonStatus,
-  PageHeader,
-  PetalIcon,
-  ProgressIndicator,
-  SceneBand,
-  StatusBadge,
-  SubjectCard,
-} from '../../components/design';
+import { colors, radius, spacing, typography } from '../../theme';
+import { AppShell, GardenPatch, PageHeader, PetalIcon, SceneBand } from '../../components/design';
+import { ProgressAnalysisPanel } from '../../components/progress/ProgressAnalysisPanel';
+import { SCREEN_BACKGROUNDS } from '../../assets/backgrounds';
+import { SCREEN_ACCENTS } from '../../theme/screenAccents';
+import type { GardenSubject } from '../../types/garden';
+import { mixWhite, PANEL_ALPHA } from '../../components/design/screenAccent';
+
+/*
+ * The My Story banner reads as a highlight without shouting. It used to be solid
+ * brand pink, which fought the soft garden scene behind it and was the loudest
+ * thing on a screen whose subject is the garden. It now takes a translucent wash
+ * of the screen's own accent — stronger than an ordinary card so it still invites
+ * a tap, but part of the same composition — with the colour kept as a punch in
+ * the icon well rather than across the whole block.
+ */
+const STORY_FILL = mixWhite(SCREEN_ACCENTS.explore, 0.18, PANEL_ALPHA);
+const STORY_BORDER = mixWhite(SCREEN_ACCENTS.explore, 0.45, 0.9);
 
 /**
- * Explore (spec §14) — subjects, each expanding to its skills.
+ * Your Garden — the reworked Explore tab (spec §14).
  *
- * Unchanged behaviour: `useCurriculum()` is still the only data source, and
- * tapping "View" still navigates to `SkillDetail`. The one structural change
- * is that the View button is now a sibling of the row's toggle instead of a
- * Pressable nested inside another Pressable, which is unreliable on Android —
- * both the toggle and the navigation keep working, more predictably.
+ * Explore used to be a text catalog: subjects that expanded into rows of skill
+ * names, badges and a mastery percentage. None of that is legible to the two-to-
+ * six-year-old the app is for. It is now a garden a child can read without
+ * reading: every subject is a patch of ground, every skill a flower at its real
+ * stage of bloom, and "how am I doing" is answered by how much has flowered
+ * rather than by a number.
+ *
+ * One data source (`useGarden`) feeds the whole flow — this panorama, the focused
+ * subject screen, and each bloom's close-up — so the same skill shows the same
+ * flower everywhere. The backend owns every stage, thirst flag and growth figure,
+ * computed from the child's *live* (decayed) mastery, which is why this screen
+ * holds no band logic of its own.
+ *
+ * Distinct from Home, which is "the path": Home is the ordered next-step journey
+ * (a roadmap ribbon); this is the whole garden as a place, laid out as patches.
  */
-
-/** Backend skill states -> the design system's badge vocabulary. */
-const STATE_TO_STATUS: Record<string, LessonStatus> = {
-  LOCKED: 'locked',
-  AVAILABLE: 'available',
-  ACTIVE: 'current',
-  COMPLETED: 'completed',
-};
 
 const CurriculumExplorerScreen: React.FC = () => {
   const navigation = useNavigation<any>();
-  const { data, isLoading, isError, error, refetch, isFetching } = useCurriculum();
-  const [expandedSubject, setExpandedSubject] = useState<string | null>(null);
-  const [expandedSkills, setExpandedSkills] = useState<Set<string>>(new Set());
+  const { data, isLoading, isError, error, refetch, isFetching } = useGarden();
 
-  const subjects = data?.data ?? [];
+  // The garden endpoint nests its payload: { data: { subjects, totals } }.
+  const subjects: GardenSubject[] = data?.data?.subjects ?? [];
+  const totals = data?.data?.totals;
 
   /**
-   * Skills finished across the whole curriculum, as a percentage — what the
-   * garden at the foot of the screen is drawn from.
-   *
-   * Every subject row already counts its own `COMPLETED` skills for its progress
-   * bar, so this is the same figure summed rather than a new claim. Curriculum-
-   * wide rather than per-subject on purpose: the band is the long view, and a
-   * garden that changed every time a subject was expanded would be a chart, not a
-   * place.
+   * The whole garden's growth, for the scene at the foot — mean live mastery
+   * across every flower, the same figure the patches are banded from, so the
+   * ground the screen ends on agrees with the patches above it.
    */
-  const gardenProgress = useMemo(() => {
-    let total = 0;
-    let done = 0;
-    subjects.forEach((subject: any) => {
-      const skills = subject.skills ?? [];
-      total += skills.length;
-      done += skills.filter((s: any) => s.state === 'COMPLETED').length;
-    });
-    return total > 0 ? (done / total) * 100 : 0;
-  }, [subjects]);
+  const overallGrowth = totals?.overallGrowthPercent ?? 0;
+  const thirstyTotal = totals?.thirstyCount ?? 0;
 
-  // Rendered as a bottom tab (no back arrow) and also pushed as a stack screen.
+  // Rendered as a bottom tab (no back arrow) and also pushable as a stack screen.
   const showBack = useMemo(() => {
     try {
       return navigation.getState?.()?.type !== 'tab';
@@ -76,34 +70,22 @@ const CurriculumExplorerScreen: React.FC = () => {
     }
   }, [navigation]);
 
-  const toggleSubject = useCallback((subjectId: string) => {
-    setExpandedSubject((prev) => (prev === subjectId ? null : subjectId));
-    setExpandedSkills(new Set());
-  }, []);
-
-  const toggleSkill = useCallback((skillId: string) => {
-    setExpandedSkills((prev) => {
-      const next = new Set(prev);
-      if (next.has(skillId)) {
-        next.delete(skillId);
-      } else {
-        next.add(skillId);
-      }
-      return next;
-    });
-  }, []);
-
-  const handleSkillPress = useCallback(
-    (skillId: string) => {
-      navigation.navigate('SkillDetail', { skillId });
+  const handlePatchPress = useCallback(
+    (subjectId: string) => {
+      navigation.navigate('SubjectGarden', { subjectId });
     },
     [navigation],
   );
 
+  const handleStoryPress = useCallback(() => {
+    navigation.navigate('MyStory');
+  }, [navigation]);
+
   const header = (
     <PageHeader
-      title="Explore"
-      subtitle="Pick a subject to see its skills"
+      accent={SCREEN_ACCENTS.explore}
+      title="Your Garden"
+      subtitle="Every skill you grow is a flower"
       showBack={showBack}
       centered={false}
     />
@@ -111,9 +93,9 @@ const CurriculumExplorerScreen: React.FC = () => {
 
   if (isLoading) {
     return (
-      <AppShell withBottomNav petals="light" scroll={false} header={header}>
+      <AppShell petals="none" backgroundImage={SCREEN_BACKGROUNDS.explore} withBottomNav scroll={false} header={header}>
         <View style={styles.center}>
-          <LoadingSpinner label="Loading curriculum…" />
+          <LoadingSpinner label="Growing your garden…" />
         </View>
       </AppShell>
     );
@@ -121,10 +103,10 @@ const CurriculumExplorerScreen: React.FC = () => {
 
   if (isError) {
     return (
-      <AppShell withBottomNav petals="light" scroll={false} header={header}>
+      <AppShell petals="none" backgroundImage={SCREEN_BACKGROUNDS.explore} withBottomNav scroll={false} header={header}>
         <View style={styles.center}>
           <ErrorState
-            title="Couldn't load curriculum"
+            title="Couldn't open your garden"
             message={toUserMessage(error)}
             onRetry={refetch}
           />
@@ -135,151 +117,77 @@ const CurriculumExplorerScreen: React.FC = () => {
 
   if (subjects.length === 0) {
     return (
-      <AppShell withBottomNav petals="light" scroll={false} header={header}>
+      <AppShell petals="none" backgroundImage={SCREEN_BACKGROUNDS.explore} withBottomNav scroll={false} header={header}>
         <View style={styles.center}>
           <EmptyState
-            title="No curriculum available"
-            message="Curriculum content will appear here when it's ready."
+            icon="seedling"
+            title="Your garden is empty"
+            message="Subjects will appear here as patches to grow when they're ready."
           />
         </View>
       </AppShell>
     );
   }
 
+  /**
+   * The caption names what the garden is, and — when something is fading — the one
+   * thing to do about it. Kept out of the band's own reading order (the band
+   * already speaks its growth); the watering nudge is echoed in each patch that
+   * needs it, where it is actionable.
+   */
+  const caption =
+    thirstyTotal > 0
+      ? `${thirstyTotal} ${thirstyTotal === 1 ? 'flower needs' : 'flowers need'} watering — open its patch to practice`
+      : 'Every skill you grow opens a flower';
+
   return (
     <AppShell
       withBottomNav
-      petals="light"
-      sky
-      /* The same garden as Home, drawn from the same kind of number — skills
-         finished rather than lessons — so the two tabs read as one world. */
-      scene={
-        <SceneBand
-          progress={gardenProgress}
-          caption="Every skill you finish opens a flower"
-        />
-      }
+      petals="none"
+      backgroundImage={SCREEN_BACKGROUNDS.explore} accent={SCREEN_ACCENTS.explore}
       header={header}
       refreshControl={
         <RefreshControl refreshing={isFetching} onRefresh={refetch} tintColor={colors.primary} />
       }
     >
-      {subjects.map((subject: any, subjectIdx: number) => {
-        const isSubjectOpen = expandedSubject === subject.id;
-        const skills = subject.skills ?? [];
-        const completedCount = skills.filter((s: any) => s.state === 'COMPLETED').length;
+      {/* "My Story" — the child's progress retold as a comic, above the patches. */}
+      <Pressable
+        onPress={handleStoryPress}
+        accessibilityRole="button"
+        accessibilityLabel="My Story"
+        accessibilityHint="Opens your learning adventure as a comic"
+        style={({ pressed }) => [styles.storyCta, pressed && styles.storyCtaPressed]}
+      >
+        <View style={styles.storyIcon}>
+          <PetalIcon name="book" size={22} color={colors.surface} />
+        </View>
+        <View style={styles.storyText}>
+          <Text style={[typography.presets.cardTitle, styles.storyTitle]}>My Story</Text>
+          <Text style={[typography.presets.caption, styles.storySub]}>
+            See your learning adventure as a comic
+          </Text>
+        </View>
+        <PetalIcon name="sparkle" size={18} color={SCREEN_ACCENTS.explore} />
+      </Pressable>
 
-        return (
-          <SubjectCard
-            key={subject.id}
-            name={subject.name}
-            skillCount={skills.length}
-            completedCount={completedCount}
-            index={subjectIdx}
-            expanded={isSubjectOpen}
-            onPress={() => toggleSubject(subject.id)}
-          >
-            {skills.length === 0 ? (
-              <Text style={[typography.presets.caption, styles.emptySkills]}>
-                No skills in this subject yet.
-              </Text>
-            ) : (
-              skills.map((skill: any, skillIdx: number) => {
-                const status = STATE_TO_STATUS[skill.state] ?? 'locked';
-                const isSkillOpen = expandedSkills.has(skill.id);
-                const locked = status === 'locked';
+      {subjects.map((subject, idx) => (
+        <GardenPatch
+          key={subject.id}
+          name={subject.name}
+          growthPercent={subject.growthPercent}
+          skillCount={subject.skillCount}
+          thirstyCount={subject.thirstyCount}
+          skills={subject.skills}
+          index={idx}
+          onPress={() => handlePatchPress(subject.id)}
+        />
+      ))}
 
-                return (
-                  <View
-                    key={skill.id}
-                    style={[styles.skillBlock, skillIdx > 0 && styles.skillDivided]}
-                  >
-                    {/* Toggle and "View" are siblings, never nested pressables. */}
-                    <View style={styles.skillRow}>
-                      <Pressable
-                        onPress={() => toggleSkill(skill.id)}
-                        accessibilityRole="button"
-                        accessibilityLabel={skill.name}
-                        accessibilityState={{ expanded: isSkillOpen }}
-                        style={({ pressed }) => [styles.skillTap, pressed && styles.pressed]}
-                      >
-                        <View style={styles.skillText}>
-                          <Text
-                            numberOfLines={2}
-                            style={[
-                              typography.presets.subtle,
-                              { color: locked ? colors.textMuted : colors.text },
-                            ]}
-                          >
-                            {skill.name}
-                          </Text>
-                          <View style={styles.skillMeta}>
-                            <StatusBadge status={status} size="sm" />
-                            {skill.difficulty > 0 ? (
-                              <Text style={[typography.presets.caption, styles.difficulty]}>
-                                Level {skill.difficulty}
-                              </Text>
-                            ) : null}
-                          </View>
-                        </View>
-                        <PetalIcon
-                          name={isSkillOpen ? 'arrowUp' : 'arrowDown'}
-                          size={16}
-                          color={colors.textMuted}
-                        />
-                      </Pressable>
-
-                      <IconButton
-                        icon="forward"
-                        size="sm"
-                        variant="soft"
-                        onPress={() => handleSkillPress(skill.id)}
-                        accessibilityLabel={`View ${skill.name}`}
-                        accessibilityHint="Opens the skill details"
-                      />
-                    </View>
-
-                    {isSkillOpen && (skill.description || skill.masteryScore > 0) ? (
-                      <Card variant="muted" padding="compact" style={styles.skillDetail}>
-                        {skill.description ? (
-                          <Text style={[typography.presets.caption, styles.description]}>
-                            {skill.description}
-                          </Text>
-                        ) : null}
-
-                        {skill.masteryScore > 0 ? (
-                          <View style={styles.masteryBlock}>
-                            <View style={styles.masteryHead}>
-                              <Text style={[typography.presets.caption, styles.masteryLabel]}>
-                                Mastery
-                              </Text>
-                              <Text style={[typography.presets.caption, styles.masteryValue]}>
-                                {Math.round(skill.masteryScore)}%
-                              </Text>
-                            </View>
-                            <ProgressIndicator
-                              value={Math.min(skill.masteryScore, 100)}
-                              height={progressSizes.barHeightThin}
-                              color={colors.purple}
-                              accessibilityLabel={`${skill.name} mastery`}
-                            />
-                          </View>
-                        ) : null}
-
-                        {skill.masteryState ? (
-                          <Text style={[typography.presets.caption, styles.masteryState]}>
-                            {String(skill.masteryState).replace(/_/g, ' ').toLowerCase()}
-                          </Text>
-                        ) : null}
-                      </Card>
-                    ) : null}
-                  </View>
-                );
-              })
-            )}
-          </SubjectCard>
-        );
-      })}
+      {/* Parent-locked analysis. The child sees only a lock tile; the charts are
+          fetched and drawn only after the grown-up gate is passed. */}
+      <View style={styles.analysis}>
+        <ProgressAnalysisPanel />
+      </View>
     </AppShell>
   );
 };
@@ -291,75 +199,40 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: spacing.xl,
   },
-  pressed: {
-    opacity: 0.7,
-  },
-  emptySkills: {
-    color: colors.textMuted,
-    textAlign: 'center',
-    paddingVertical: spacing.md,
-  },
-  skillBlock: {
-    paddingVertical: spacing.xs,
-  },
-  skillDivided: {
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    marginTop: spacing.xs,
-    paddingTop: spacing.sm,
-  },
-  skillRow: {
+  storyCta: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: spacing.sm,
+    gap: spacing.md,
+    backgroundColor: STORY_FILL,
+    borderWidth: 1,
+    borderColor: STORY_BORDER,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    marginBottom: spacing.md,
   },
-  skillTap: {
-    flex: 1,
-    minWidth: 0,
-    flexDirection: 'row',
+  storyCtaPressed: {
+    opacity: 0.85,
+  },
+  storyIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: SCREEN_ACCENTS.explore,
     alignItems: 'center',
-    gap: spacing.sm,
-    minHeight: 48,
+    justifyContent: 'center',
   },
-  skillText: {
+  storyText: {
     flex: 1,
     minWidth: 0,
   },
-  skillMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    marginTop: 4,
+  storyTitle: {
+    color: colors.text,
   },
-  difficulty: {
-    color: colors.textMuted,
-  },
-  skillDetail: {
-    marginTop: spacing.sm,
-  },
-  description: {
-    color: colors.textSecondary,
-    lineHeight: 18,
-  },
-  masteryBlock: {
-    marginTop: spacing.sm,
-  },
-  masteryHead: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 5,
-  },
-  masteryLabel: {
+  storySub: {
     color: colors.textSecondary,
   },
-  masteryValue: {
-    color: colors.purple,
-  },
-  masteryState: {
-    color: colors.textMuted,
-    marginTop: spacing.sm,
-    textTransform: 'capitalize',
+  analysis: {
+    marginTop: spacing.lg,
   },
 });
 

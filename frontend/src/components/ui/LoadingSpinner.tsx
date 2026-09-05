@@ -1,6 +1,7 @@
 import React from 'react';
 import { StyleSheet, View, ActivityIndicator, Text } from 'react-native';
 import { colors, spacing, typography } from '../../theme';
+import { PetalMark } from '../brand/PetalMark';
 
 type SpinnerSize = 'sm' | 'md' | 'lg';
 
@@ -40,11 +41,7 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
   ];
 
   const IndicatorComponent = (
-    <ActivityIndicator
-      size={indicatorSize === 'small' || indicatorSize === 'large' ? indicatorSize : undefined}
-      color={color}
-      style={fullScreen ? undefined : { width: sSize.indicatorSize, height: sSize.indicatorSize }}
-    />
+    <PetalMark size={fullScreen ? 96 : sSize.indicatorSize} loading />
   );
 
   return (

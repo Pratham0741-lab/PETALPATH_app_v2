@@ -29,4 +29,18 @@ export const shadows = {
     shadowRadius: 24,
     elevation: 8,
   },
+  /**
+   * "Sticker" — a grounded, slightly tighter shadow for the playful‑premium look.
+   * Sits a card/button just off the surface with a crisp‑ish drop (small radius,
+   * a touch more opacity) so interactive things feel tactile and pressable,
+   * without any gradient or glow. Use on primary buttons and hero/interactive
+   * cards; keep `sm` for quiet surfaces.
+   */
+  sticker: {
+    shadowColor: colors.black,
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.13,
+    shadowRadius: 5,
+    elevation: 5,
+  },
 };

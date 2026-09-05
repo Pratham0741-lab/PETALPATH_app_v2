@@ -7,6 +7,8 @@ const router = Router();
 router.use(authMiddleware as any);
 
 router.get('/', curriculumController.getCurriculum as any);
+router.get('/garden', curriculumController.getGarden as any);
+router.get('/story', curriculumController.getStory as any);
 router.get('/available', curriculumController.getAvailableSkills as any);
 router.get('/next', curriculumController.getNextRecommendations as any);
 router.get('/subject/:subjectId', curriculumController.getSubjectCurriculum as any);

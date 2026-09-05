@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, View, ScrollView, Text, ActivityIndicator } from 'react-native';
+import { StyleSheet, View, ScrollView, Text } from 'react-native';
 import { ScreenContainer } from '../../components/common/ScreenContainer';
 import { TopBar } from '../../components/navigation/TopBar';
 import { SectionHeader, SearchBar, Chip, Card, ProgressBar } from '../../components/ui';
@@ -10,6 +10,7 @@ import { useChildStore } from '../../store/childStore';
 import { enhanceMentor, MENTORS } from '../../constants/mentors';
 import { useNavigation } from '@react-navigation/native';
 import { useRoadmapStore } from '../../store/roadmapStore';
+import { PetalMark } from '../../components/brand/PetalMark';
 
 export const JourneyDesktop: React.FC = () => {
   const navigation = useNavigation<any>();
@@ -146,7 +147,7 @@ export const JourneyDesktop: React.FC = () => {
 
               {loading && lessons.length === 0 ? (
                 <View style={styles.center}>
-                  <ActivityIndicator size="large" color={colors.primary} />
+                  <PetalMark size={96} loading />
                 </View>
               ) : error ? (
                 <View style={styles.center}>

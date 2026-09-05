@@ -165,7 +165,7 @@ export const LoginScreen: React.FC = () => {
                 style={[
                   styles.form,
                   {
-                    backgroundColor: colors.surface,
+                    backgroundColor: colors.surfaceTranslucent,
                     borderColor: colors.border,
                   },
                   shadows.md,

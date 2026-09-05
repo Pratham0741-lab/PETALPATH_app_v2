@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -14,6 +13,8 @@ import { ErrorState } from '../../components/common/ErrorState';
 import { toUserMessage } from '../../api/errors';
 import { useChildStore } from '../../store/childStore';
 import { useRoadmapStore, Lesson } from '../../store/roadmapStore';
+import { SCREEN_BACKGROUNDS } from '../../assets/backgrounds';
+import { SCREEN_ACCENTS } from '../../theme/screenAccents';
 import { colors, radius, shadows, spacing, typography, cardSizes } from '../../theme';
 import { navigateToActivity } from '../../utils/navigationFlow';
 import { NavigationGuide } from '../../components/tutorial/NavigationGuide';
@@ -31,6 +32,7 @@ import type {
   RoadmapReview,
   RoadmapReviewGate,
 } from '../../services/api/learningApi';
+import { PetalMark } from '../../components/brand/PetalMark';
 import {
   AppShell,
   AppHeader,
@@ -126,6 +128,13 @@ export const HomeContent: React.FC<HomeContentProps> = ({ variant = 'mobile' }) 
   const [showChildDropdown, setShowChildDropdown] = useState(false);
   const [activeLessonY, setActiveLessonY] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
+  /**
+   * Which module the child has manually opened, overriding the default (the
+   * theme of the current lesson). `null` = follow the current lesson. This is the
+   * escape hatch: even if `currentNode` ever lands oddly, tapping any module
+   * header opens it so no one is trapped on a single collapsed section.
+   */
+  const [openThemeId, setOpenThemeId] = useState<string | null>(null);
 
   const maxWidth = MAX_WIDTH[variant];
 
@@ -204,6 +213,7 @@ export const HomeContent: React.FC<HomeContentProps> = ({ variant = 'mobile' }) 
     setShowChildDropdown(false);
     hasAutoScrolled.current = false;
     setActiveLessonY(0);
+    setOpenThemeId(null);
     await switchChild(childId);
   };
 
@@ -259,10 +269,19 @@ export const HomeContent: React.FC<HomeContentProps> = ({ variant = 'mobile' }) 
     if (themes.length === 0 || nodes.length === 0) return [];
 
     const currentThemeId = currentLesson?.themeId ?? themes[0].id;
-    const currentThemeIdx = Math.max(
+    const defaultThemeIdx = Math.max(
       0,
       themes.findIndex((t) => t.id === currentThemeId),
     );
+    /*
+     * Which module is open. Defaults to the current lesson's theme, but the child
+     * can override it by tapping any module header (the escape hatch). If the
+     * override no longer matches a theme, fall back to the default.
+     */
+    const openIdx = openThemeId ? themes.findIndex((t) => t.id === openThemeId) : -1;
+    const expandedIdx = openIdx >= 0 ? openIdx : defaultThemeIdx;
+    // Kept for the locked/colour logic below — the journey's real position.
+    const currentThemeIdx = defaultThemeIdx;
 
     /*
      * The practice stop, built once.
@@ -298,7 +317,8 @@ export const HomeContent: React.FC<HomeContentProps> = ({ variant = 'mobile' }) 
     return themes.map((theme, tIdx) => {
       const themeNodes = nodes.filter((n) => n.themeId === theme.id);
       const done = themeNodes.filter((n) => n.isCompleted).length;
-      const expanded = tIdx === currentThemeIdx;
+      const expanded = tIdx === expandedIdx;
+      const isDefaultTheme = tIdx === defaultThemeIdx;
 
       const section: RoadmapSectionData = {
         id: theme.id,
@@ -318,13 +338,19 @@ export const HomeContent: React.FC<HomeContentProps> = ({ variant = 'mobile' }) 
             : colors.textMuted,
         expanded,
         /*
-         * The open theme's header row is dropped because the Continue card
-         * directly above it already carries both facts it would state — the
-         * theme name as its eyebrow and "N of M lessons complete" over its
-         * track. Gated on `currentLesson` so a grade with nothing left to
-         * continue keeps its header rather than losing the tally entirely.
+         * Tapping a header opens that module (and collapses whatever was open),
+         * or taps again on the open one to fall back to following the current
+         * lesson. This is the escape hatch so no one is ever stuck on a single
+         * collapsed section.
          */
-        hideHeader: expanded && !!currentLesson,
+        onPress: () => setOpenThemeId((prev) => (prev === theme.id ? null : theme.id)),
+        /*
+         * The open theme's header row is dropped ONLY when it is also the current
+         * theme, because the Continue card directly above it already states the
+         * theme name and "N of M lessons complete". A module the child opened
+         * manually has no Continue card above it, so it keeps its header.
+         */
+        hideHeader: expanded && isDefaultTheme && !!currentLesson,
       };
 
       if (!expanded) return section;
@@ -342,9 +368,13 @@ export const HomeContent: React.FC<HomeContentProps> = ({ variant = 'mobile' }) 
       const stops: RoadmapNodeData[] = [];
       let stopPlaced = false;
 
+      // The practice stop belongs only to the current theme's run; a module the
+      // child opened manually must not sprout the day's practice session.
+      const themePracticeStop = isDefaultTheme ? practiceStop : null;
+
       for (const node of themeNodes) {
-        if (practiceStop && !stopPlaced && practiceSession?.beforeLessonId === node.id) {
-          stops.push(practiceStop);
+        if (themePracticeStop && !stopPlaced && practiceSession?.beforeLessonId === node.id) {
+          stops.push(themePracticeStop);
           stopPlaced = true;
         }
 
@@ -408,8 +438,8 @@ export const HomeContent: React.FC<HomeContentProps> = ({ variant = 'mobile' }) 
        * but Home only draws the expanded section, so the end of it is the only
        * place the child would actually see it.
        */
-      if (practiceStop && !stopPlaced) {
-        stops.push(practiceStop);
+      if (themePracticeStop && !stopPlaced) {
+        stops.push(themePracticeStop);
       }
 
       section.nodes = stops;
@@ -420,6 +450,7 @@ export const HomeContent: React.FC<HomeContentProps> = ({ variant = 'mobile' }) 
     themes,
     nodes,
     currentLesson,
+    openThemeId,
     reviewById,
     practiceSession,
     navigation,
@@ -480,6 +511,7 @@ export const HomeContent: React.FC<HomeContentProps> = ({ variant = 'mobile' }) 
     <View style={styles.headerWrap}>
       <View style={[styles.column, maxWidth ? { maxWidth } : null]}>
         <AppHeader
+          accent={SCREEN_ACCENTS.home}
           eyebrow={activeChild?.name ? `Hi ${activeChild.name}!` : 'Welcome back!'}
           title="Learning Journey"
           streak={streak}
@@ -492,6 +524,10 @@ export const HomeContent: React.FC<HomeContentProps> = ({ variant = 'mobile' }) 
                 activeChild?.name ?? 'no child'
               } selected.`}
               accessibilityState={{ expanded: showChildDropdown }}
+              /* The 44px touch target now comes from hitSlop rather than a
+                 minHeight, so the control can be as tall as the avatar without
+                 the extra height pushing it off the pills' centre line. */
+              hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
               style={styles.childTrigger}
             >
               <AvatarGlyph species={activeChild?.avatar} size={34} />
@@ -555,9 +591,9 @@ export const HomeContent: React.FC<HomeContentProps> = ({ variant = 'mobile' }) 
   // ------------------------------------------------------------ early states
   if (roadmapLoading && nodes.length === 0) {
     return (
-      <AppShell withBottomNav petals="light" scroll={false}>
+      <AppShell petals="none" backgroundImage={SCREEN_BACKGROUNDS.home} withBottomNav scroll={false}>
         <View style={styles.center}>
-          <ActivityIndicator size="large" color={colors.primary} />
+          <PetalMark size={96} loading />
           <Text style={[typography.presets.body, styles.centerText]}>
             Growing your learning path…
           </Text>
@@ -568,7 +604,7 @@ export const HomeContent: React.FC<HomeContentProps> = ({ variant = 'mobile' }) 
 
   if (roadmapError && nodes.length === 0) {
     return (
-      <AppShell withBottomNav petals="light" scroll={false}>
+      <AppShell petals="none" backgroundImage={SCREEN_BACKGROUNDS.home} withBottomNav scroll={false}>
         <View style={styles.center}>
           <ErrorState
             title="Couldn't load your journey"
@@ -582,7 +618,7 @@ export const HomeContent: React.FC<HomeContentProps> = ({ variant = 'mobile' }) 
 
   if (nodes.length === 0) {
     return (
-      <AppShell withBottomNav petals="light" scroll={false}>
+      <AppShell petals="none" backgroundImage={SCREEN_BACKGROUNDS.home} withBottomNav scroll={false}>
         <View style={styles.center}>
           <AvatarGlyph species="flower" size={84} />
           <Text style={[typography.presets.section, styles.emptyTitle]}>
@@ -665,16 +701,11 @@ export const HomeContent: React.FC<HomeContentProps> = ({ variant = 'mobile' }) 
   return (
     <AppShell
       withBottomNav
-      petals="light"
-      sky
-      scene={
-        <SceneBand
-          progress={journeyProgress}
-          trail
-          caption="Your garden grows with every lesson"
-        />
-      }
+      petals="none"
+      backgroundImage={SCREEN_BACKGROUNDS.home} accent={SCREEN_ACCENTS.home}
       header={header}
+      /* The greeting introduces the page; it scrolls away with the journey. */
+      headerScrolls
       scrollRef={scrollViewRef}
       contentContainerStyle={styles.scrollContent}
       refreshControl={
@@ -891,10 +922,17 @@ const styles = StyleSheet.create({
   },
   childTrigger: {
     flexDirection: 'row',
+    /*
+     * Three things were fighting here. `minHeight: 44` made this block taller
+     * than the star and streak pills beside it, so the avatar rode low against
+     * their centre line; `paddingLeft: 2` added an extra sliver on top of the
+     * cluster's own gap, making the spacing read as uneven; and the chevron had
+     * no baseline of its own, so it floated against the 34px avatar. The touch
+     * target moved to hitSlop, the padding is gone, and both children are
+     * centred on the same axis.
+     */
     alignItems: 'center',
-    gap: 3,
-    paddingLeft: 2,
-    minHeight: 44,
+    gap: spacing.xs,
   },
   dropdown: {
     position: 'absolute',

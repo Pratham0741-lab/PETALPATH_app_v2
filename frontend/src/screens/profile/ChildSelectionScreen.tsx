@@ -55,6 +55,7 @@ import { apiClient } from '../../services/api/apiClient';
 import { cardSizes, colors, radius, spacing, typography } from '../../theme';
 import type { ApiResponse } from '../../types/api';
 import { customAlert } from '../../utils/alert';
+import { SCREEN_BACKGROUNDS } from '../../assets/backgrounds';
 
 /** Reading-column cap per size — replaces the old two-pane split (§27). */
 const COLUMN_MAX_WIDTH: Record<string, number> = {
@@ -164,7 +165,7 @@ export const ChildSelectionScreen: React.FC = () => {
 
   if (isLoading) {
     return (
-      <AppShell header={header} petals="light">
+      <AppShell petals="none" backgroundImage={SCREEN_BACKGROUNDS.childSelect} header={header} >
         <View style={[styles.column, { maxWidth }]}>
           {[0, 1, 2].map((i) => (
             <Card key={i} variant="flat" padding="compact">
@@ -184,7 +185,7 @@ export const ChildSelectionScreen: React.FC = () => {
 
   if (childrenList.length === 0) {
     return (
-      <AppShell header={header} petals="light" scroll={false}>
+      <AppShell petals="none" backgroundImage={SCREEN_BACKGROUNDS.childSelect} header={header}  scroll={false}>
         <View style={styles.emptyWrap}>
           <EmptyState
             icon="profile"
@@ -204,8 +205,10 @@ export const ChildSelectionScreen: React.FC = () => {
 
   return (
     <AppShell
+      petals="none"
+      backgroundImage={SCREEN_BACKGROUNDS.childSelect}
       header={header}
-      petals="light"
+      
       refreshControl={
         <RefreshControl refreshing={isRefetching} onRefresh={onRefresh} tintColor={colors.primary} />
       }
@@ -397,7 +400,8 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     padding: spacing.md,
     borderRadius: radius.cardInner,
-    backgroundColor: colors.background,
+    /* Nested inside a card, so it uses the softer of the two panel fills. */
+    backgroundColor: colors.surfaceTranslucentSoft,
   },
   companionName: {
     color: colors.primaryDark,

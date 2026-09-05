@@ -38,7 +38,9 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: colors.background,
+    /* Transparent: these fill the screen, and an opaque fill hid the
+       wallpaper of whatever screen was loading. */
+    backgroundColor: 'transparent',
     padding: spacing.xxl,
   },
   title: {

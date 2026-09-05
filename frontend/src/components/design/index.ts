@@ -90,10 +90,16 @@ export type {
   ProfileCardProps,
   ContinueLearningCardProps,
 } from './Cards';
+export { GardenPatch } from './GardenPatch';
+export type { GardenPatchProps } from './GardenPatch';
 
 // Illustration
 export { AvatarGlyph, resolveSpecies, speciesBackground } from './AvatarGlyph';
 export type { AvatarGlyphProps, AvatarSpecies } from './AvatarGlyph';
+export { SkillBloom, BLOOM_STAGE_ORDER, bloomStagePhrase, bloomStageLabel } from './SkillBloom';
+export type { SkillBloomProps } from './SkillBloom';
+export { ImageSlot } from './ImageSlot';
+export type { ImageSlotProps } from './ImageSlot';
 export { Illustration, ILLUSTRATIONS, hasIllustration } from './Illustration';
 export type { IllustrationProps, IllustrationName, IllustrationSize } from './Illustration';
 
@@ -110,6 +116,8 @@ export type {
 } from './Roadmap';
 
 // Parent-facing
+export { GrownUpGate } from './GrownUpGate';
+export type { GrownUpGateProps } from './GrownUpGate';
 export { ParentSection, ParentRow, ParentStatGrid, DestructiveAction } from './ParentSection';
 export type {
   ParentSectionProps,

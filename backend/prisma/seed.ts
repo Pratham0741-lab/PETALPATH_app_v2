@@ -378,7 +378,7 @@ async function main() {
   // 8. Seed Stickers
   console.log('Seeding stickers...');
   const stickersData = [
-    { name: 'Sun', description: 'Glows bright in the sky!', iconKey: 'stickers/sun.png', requiredStars: 20 },
+    { name: 'Star', description: 'Glows bright in the sky!', iconKey: 'stickers/sun.png', requiredStars: 20 },
     { name: 'Rainbow', description: 'Colorful path of colors!', iconKey: 'stickers/rainbow.png', requiredStars: 50 },
     { name: 'Rocket', description: 'Zoom through space!', iconKey: 'stickers/rocket.png', requiredStars: 100 },
     { name: 'Planet', description: 'Explore a new world!', iconKey: 'stickers/planet.png', requiredStars: 200 },
@@ -422,14 +422,16 @@ async function main() {
   ];
 
   for (const storyData of stories) {
-    const story = await prisma.story.create({ data: {
-      title: storyData.title,
-      description: storyData.description,
-      category: storyData.category,
-      difficulty: storyData.difficulty,
-      readingLevel: storyData.readingLevel,
-      estimatedDuration: storyData.readingTime || 5
-    } });
+    const story = await prisma.story.create({
+      data: {
+        title: storyData.title,
+        description: storyData.description,
+        category: storyData.category,
+        difficulty: storyData.difficulty,
+        readingLevel: storyData.readingLevel,
+        estimatedDuration: storyData.readingTime || 5
+      }
+    });
 
     const pages = [];
     for (let i = 0; i < 3; i++) {

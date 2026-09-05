@@ -2,6 +2,10 @@ import { create } from 'zustand';
 import { api } from '../api/client';
 import { useRoadmapStore } from './roadmapStore';
 import { getLessonMatchData } from '../utils/lessonActivityMatcher';
+import { scoreActivity, starsForAccuracy, stringSimilarity } from '../utils/activityScoring';
+
+/** A matched attempt below this raw similarity is treated as "not quite right". */
+const RAW_MATCH_FLOOR = 40;
 
 interface SpeakState {
   activityId: string | null;
@@ -71,7 +75,9 @@ export const useSpeakStore = create<SpeakState>((set, get) => {
           if (typeof __DEV__ !== 'undefined' && __DEV__) console.warn('Failed to load speak progress:', err);
         }
 
-        const starsCount = isCompleted ? (confidence >= 80 ? 3 : confidence >= 60 ? 2 : confidence >= 40 ? 1 : 0) : null;
+        // Stored `confidence` is an already-shown accuracy, so derive stars from it
+        // directly (no second honesty pass) — same mapping as everywhere else.
+        const starsCount = isCompleted ? starsForAccuracy(confidence) : null;
 
         set({
           activityId,
@@ -109,9 +115,21 @@ export const useSpeakStore = create<SpeakState>((set, get) => {
       const cleanTarget = cleanText(targetPhrase);
       const cleanInput = cleanText(finalTranscript);
 
-      // Verify if they said the correct phrase
-      const isMatch = cleanInput.includes(cleanTarget) || cleanTarget.includes(cleanInput) && cleanInput.length > 2;
+      // How close what they said is to the target, 0-100. This is the real
+      // measure — the old path defaulted to a flat 90% whenever the recognizer
+      // reported no confidence, which is what made the accuracy meaningless.
+      const containment = cleanInput.includes(cleanTarget) || cleanTarget.includes(cleanInput);
+      const similarity = stringSimilarity(cleanInput, cleanTarget) * 100;
+      // The recognizer's own confidence, when it actually reports one, nudges the
+      // score; it is only a minor signal because it says nothing about *which*
+      // words were heard. Normalised to 0-100.
+      let recogPercent = 0;
+      if (confidenceScore > 0) recogPercent = confidenceScore > 1 ? confidenceScore : confidenceScore * 100;
+      const rawScore = recogPercent > 0 ? similarity * 0.7 + recogPercent * 0.3 : similarity;
 
+      // Accepted if the words line up or the phrase is clearly contained; a near-
+      // miss below the floor is a genuine retry, scored 0 and no stars.
+      const isMatch = containment || rawScore >= RAW_MATCH_FLOOR;
       if (!isMatch) {
         set({
           transcript: finalTranscript,
@@ -122,16 +140,13 @@ export const useSpeakStore = create<SpeakState>((set, get) => {
         return false;
       }
 
-      // Calculate score based on similarity or reported confidence
-      let calculatedScore = confidenceScore > 0 ? confidenceScore : 0.9;
-      if (calculatedScore > 1) calculatedScore = calculatedScore / 100.0; // standardise to 0-1 scale
-
-      const percentScore = Math.round(calculatedScore * 100);
-      const starsCount = percentScore >= 80 ? 3 : percentScore >= 60 ? 2 : percentScore >= 40 ? 1 : 0;
+      // One place turns the raw score into the shown accuracy + stars, softened by
+      // the honesty level, so the meter and the stars can never disagree.
+      const { accuracy, stars: starsCount } = scoreActivity(rawScore);
 
       set({
         transcript: finalTranscript,
-        confidence: percentScore,
+        confidence: accuracy,
         stars: starsCount,
         isRecording: false,
         isCompleted: true,
@@ -140,7 +155,7 @@ export const useSpeakStore = create<SpeakState>((set, get) => {
       try {
         await api.post('/speak-progress/complete', {
           activityId,
-          score: percentScore,
+          score: accuracy,
         });
       } catch (err) {
         if (typeof __DEV__ !== 'undefined' && __DEV__) console.warn('Failed to mark speak progress complete:', err);
@@ -158,7 +173,7 @@ export const useSpeakStore = create<SpeakState>((set, get) => {
       if (!activityId) return;
 
       const finalScore = score !== undefined ? score : 95;
-      const starsCount = finalScore >= 80 ? 3 : finalScore >= 60 ? 2 : finalScore >= 40 ? 1 : 0;
+      const starsCount = starsForAccuracy(finalScore);
       set({ isCompleted: true, confidence: finalScore, stars: starsCount });
       try {
         await api.post('/speak-progress/complete', {

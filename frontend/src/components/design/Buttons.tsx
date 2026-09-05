@@ -185,7 +185,7 @@ export const PrimaryButton: React.FC<PrimaryButtonProps> = ({
         testID={testID}
         style={({ pressed }) => [
           styles.base,
-          shadows.sm,
+          shadows.sticker,
           {
             height: s.height,
             paddingHorizontal: s.paddingHorizontal,
@@ -253,7 +253,9 @@ export const SecondaryButton: React.FC<SecondaryButtonProps> = ({
   /* An outlined button is white, so its label and border are ink, not fill —
      the same conflation that made the neutral back chevron invisible. */
   const fg = fill === 'soft' ? t.onSoft : t.ink;
-  const bg = fill === 'soft' ? t.soft : colors.surface;
+  // Translucent, not solid white: outlined buttons sit on a screen wallpaper
+  // and a hard white pill reads as a sticker pasted on the scene.
+  const bg = fill === 'soft' ? t.soft : colors.surfaceTranslucent;
   const edge = fill === 'soft' ? 'transparent' : t.ink;
 
   return (

@@ -2,7 +2,10 @@
  * PetalPath colour tokens.
  *
  * Design rules baked into this file (see the redesign spec):
- *  - Pink (#F43F72) is the PRIMARY action / brand colour.
+ *  - Rose (#B85578) is the PRIMARY action / brand colour. It is a deeper,
+ *    less saturated sibling of the logo's pink (#EE537E): the old #F43F72 read
+ *    as a bright red against the soft scene wallpapers, and at 3.62:1 on white
+ *    it also failed AA. This clears 4.56:1.
  *  - Purple (#8064D8) is SECONDARY only: selected states, progress, the
  *    "current lesson" marker. The app must not read as an all-purple app.
  *  - The background is a warm off-white pink (#FFF8FA); surfaces are pure
@@ -14,11 +17,11 @@
 export const lightColors = {
   // ---------------------------------------------------------------- brand
   /** Pink. Primary CTAs, active nav, brand marks. */
-  primary: '#F43F72',
+  primary: '#B85578',
   /** Pale pink. Backgrounds/wells only — never a text colour. */
   primaryLight: '#FFE4EC',
   /** Deep pink. Text/icons sitting on primaryLight, and pressed states. */
-  primaryDark: '#C42553',
+  primaryDark: '#8E3D5B',
   /** Purple. Selected states, progress, secondary emphasis. */
   secondary: '#8064D8',
   secondaryLight: '#EFE9FC',
@@ -40,7 +43,7 @@ export const lightColors = {
   warningLight: '#FDEBDC',
   /** Text/icons sitting ON warningLight. See successDark. */
   warningDark: '#A85C1E',
-  error: '#E2544C',
+  error: '#C9564E',
   errorLight: '#FBE3E1',
   /** Text/icons sitting ON errorLight. See successDark. */
   errorDark: '#A63A33',
@@ -51,6 +54,15 @@ export const lightColors = {
   surface: '#FFFFFF',
   surfaceSecondary: '#FFFDFC',
   card: '#FFFFFF',
+  /*
+   * Panel surfaces, for anything that sits on top of a screen wallpaper: the
+   * scene shows faintly through so the screen reads as one composition instead
+   * of opaque boxes stacked on a picture. Kept in step with `PANEL_ALPHA` in
+   * `components/design/screenAccent`. `surfaceTranslucentSoft` is for tiles
+   * nested inside another panel, where the two layers already compound.
+   */
+  surfaceTranslucent: 'rgba(255, 255, 255, 0.78)',
+  surfaceTranslucentSoft: 'rgba(255, 253, 252, 0.66)',
 
   // ------------------------------------------------------------- outlines
   border: '#EDE4DE',
@@ -58,12 +70,18 @@ export const lightColors = {
   divider: '#EDE4DE',
 
   // ----------------------------------------------------------------- text
-  text: '#302C2A',
-  textPrimary: '#302C2A',
-  textSecondary: '#77716D',
-  textMuted: '#9A938E',
+  /*
+   * Panels are translucent, so type is read against a wallpaper showing faintly
+   * through rather than flat white. Secondary and muted were tuned for an opaque
+   * card and lost contrast once the scene came through; both are darkened here so
+   * every text/background pair still clears 4.5:1 on any of the scenes.
+   */
+  text: '#2A2624',
+  textPrimary: '#2A2624',
+  textSecondary: '#5C5652',
+  textMuted: '#7A736E',
   textInverse: '#FFFFFF',
-  textLink: '#F43F72',
+  textLink: '#A34C6B',
 
   // ---------------------------------------------------------------- misc
   overlay: 'rgba(48,44,42,0.45)',
@@ -79,7 +97,7 @@ export const lightColors = {
   // ------------------------------------------------------------- palette
   // Named hues used directly by illustrations, subject cards and activity
   // identity. Keep these in step with `activityColors` below.
-  pink: '#F43F72',
+  pink: '#D9628A',
   pinkSoft: '#FFD3E0',
   purple: '#8064D8',
   purpleSoft: '#DFD5F7',
@@ -96,16 +114,26 @@ export const lightColors = {
   yellow: '#F6C94A',
   yellowSoft: '#FCEEC4',
   orange: '#EE8C3C',
-  coral: '#F4776E',
+  /*
+   * Deepened from #F4776E. This is the danger-button fill with near-white
+   * label text, and the old value gave only 2.58:1 against it — the label was
+   * failing contrast on exactly the control where a misread matters most.
+   */
+  coral: '#C4564D',
   peach: '#FBD6C4',
   lavender: '#B9A6EE',
   brown: '#5A4B45',
 
   /**
-   * The dashed line a child traces over. Deliberately low-contrast: it has to
-   * read as a hint underneath their own stroke, not compete with it.
+   * The dashed line a child traces over.
+   *
+   * It still has to sit under the child's own stroke rather than compete with
+   * it, but the previous #DCD2CB gave only 1.49:1 on the white canvas — a guide
+   * a four-year-old could barely see, on the one screen where seeing the line is
+   * the entire task. This clears 3:1, the bar for a graphical object that
+   * carries meaning, while staying lighter than the green ink drawn over it.
    */
-  traceGuide: '#DCD2CB',
+  traceGuide: '#9A8D85',
 
   // --------------------------------------------------------------- scene
   /*
@@ -136,7 +164,7 @@ export const lightColors = {
 
 export const darkColors = {
   // ---------------------------------------------------------------- brand
-  primary: '#FF6B93',
+  primary: '#E8809D',
   primaryLight: '#4A2334',
   primaryDark: '#FFB3C6',
   secondary: '#A28BE6',
@@ -166,6 +194,9 @@ export const darkColors = {
   surface: '#282124',
   surfaceSecondary: '#312A2D',
   card: '#282124',
+  /** Dark-theme panels: same idea, tinted dark so light text keeps its contrast. */
+  surfaceTranslucent: 'rgba(40, 33, 36, 0.80)',
+  surfaceTranslucentSoft: 'rgba(49, 42, 45, 0.70)',
 
   // ------------------------------------------------------------- outlines
   border: '#3D3439',
@@ -178,7 +209,7 @@ export const darkColors = {
   textSecondary: '#BEB4B0',
   textMuted: '#8F8580',
   textInverse: '#1C1719',
-  textLink: '#FF6B93',
+  textLink: '#E8809D',
 
   // ---------------------------------------------------------------- misc
   overlay: 'rgba(0,0,0,0.6)',
@@ -192,7 +223,7 @@ export const darkColors = {
   sidebarDark: '#1C1719',
 
   // ------------------------------------------------------------- palette
-  pink: '#FF6B93',
+  pink: '#E8809D',
   pinkSoft: '#4A2334',
   purple: '#A28BE6',
   purpleSoft: '#332A4D',
@@ -213,7 +244,7 @@ export const darkColors = {
   brown: '#8A7168',
 
   /** See the light-theme note; lifted so it stays visible on a dark canvas. */
-  traceGuide: '#4A4144',
+  traceGuide: '#7E7378',
 
   // --------------------------------------------------------------- scene
   /*
@@ -236,8 +267,8 @@ export const darkColors = {
  *   match → yellow/orange · trace → green
  */
 export const activityColors = {
-  watch: { main: '#F43F72', soft: '#FFE4EC' },
-  video: { main: '#F43F72', soft: '#FFE4EC' },
+  watch: { main: '#B85578', soft: '#FFE4EC' },
+  video: { main: '#B85578', soft: '#FFE4EC' },
   listen: { main: '#4F91D9', soft: '#D7E7F7' },
   speak: { main: '#8064D8', soft: '#EFE9FC' },
   match: { main: '#EE8C3C', soft: '#FDEBDC' },

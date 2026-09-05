@@ -495,6 +495,169 @@ export class AnalyticsService {
     return analyticsReadRepository.getProgress(childId);
   }
 
+  /**
+   * Grade-scoped progress for the parent-locked analysis panel behind Explore.
+   *
+   * Returns exactly the three views the panel draws, each restricted to the
+   * child's own grade (the same `originalGrade` scope the Explore garden uses):
+   *   1. `accuracyBySubject` — today's accuracy and mastery per subject, from the
+   *      live `SkillHealth` rows;
+   *   2. `masteryTimeline`   — average mastery per day, from `SkillHistory`, so a
+   *      parent sees the climb over time rather than a single number;
+   *   3. `beforeAfter`       — earliest vs. latest recorded mastery, overall and
+   *      per subject, i.e. "where they started" against "where they are now".
+   *
+   * Scores are normalized to a 0-100 percentage: the sub-scores (knowledge,
+   * confidence …) are stored 0-1 while `masteryScore` is already 0-100, so any
+   * value at or below 1 is read as a fraction and scaled up.
+   */
+  async getGradeProgress(childId: string) {
+    const child = await prisma.child.findUnique({ where: { id: childId } });
+    if (!child) {
+      throw new NotFoundError('Child not found');
+    }
+
+    const gradeKey = curriculumService.resolveChildGrade(child);
+    const gradeNumber = curriculumService.resolveChildGradeNumber(child);
+    const gradeTitle = curriculumService.getCurriculumByGrade(gradeKey)?.grade?.name ?? gradeKey;
+
+    const toPct = (v: number): number => Math.round((v <= 1 ? v * 100 : v) * 10) / 10;
+
+    // Grade-scoped skills, by the grade's authoritative skill-code set (originalGrade
+    // is null in the seeded data, so it can't be the filter). Falls back to
+    // originalGrade only when the grade has no curriculum on disk.
+    const gradeSkillCodes = curriculumService.getGradeSkillCodes(gradeKey);
+    const skills = await prisma.skill.findMany({
+      where:
+        gradeSkillCodes.size > 0
+          ? { skillCode: { in: Array.from(gradeSkillCodes) } }
+          : { OR: [{ originalGrade: gradeNumber }, { originalGrade: null }] },
+      select: { id: true, subjectId: true, subject: { select: { id: true, name: true } } },
+    });
+    const skillById = new Map(skills.map((s) => [s.id, s]));
+    const skillIds = skills.map((s) => s.id);
+
+    if (skillIds.length === 0) {
+      return {
+        grade: { key: gradeKey, number: gradeNumber, title: gradeTitle },
+        accuracyBySubject: [],
+        masteryTimeline: [],
+        beforeAfter: { overall: { before: 0, after: 0 }, bySubject: [] },
+      };
+    }
+
+    const [healths, histories] = await Promise.all([
+      prisma.skillHealth.findMany({ where: { childId, skillId: { in: skillIds } } }),
+      prisma.skillHistory.findMany({
+        where: { childId, skillId: { in: skillIds } },
+        orderBy: { timestamp: 'asc' },
+      }),
+    ]);
+
+    // ---- 1) accuracy + current mastery, grouped by subject ----
+    interface SubjAcc {
+      subjectId: string;
+      subject: string;
+      accuracySum: number;
+      masterySum: number;
+      count: number;
+    }
+    const bySubject = new Map<string, SubjAcc>();
+    for (const h of healths) {
+      const skill = skillById.get(h.skillId);
+      if (!skill?.subject) continue;
+      const key = skill.subject.id;
+      const row =
+        bySubject.get(key) ??
+        { subjectId: key, subject: skill.subject.name, accuracySum: 0, masterySum: 0, count: 0 };
+      row.accuracySum += toPct(h.knowledgeScore);
+      row.masterySum += toPct(h.masteryScore);
+      row.count += 1;
+      bySubject.set(key, row);
+    }
+    const accuracyBySubject = Array.from(bySubject.values())
+      .map((r) => ({
+        subjectId: r.subjectId,
+        subject: r.subject,
+        accuracy: Math.round((r.accuracySum / r.count) * 10) / 10,
+        mastery: Math.round((r.masterySum / r.count) * 10) / 10,
+        skillCount: r.count,
+      }))
+      .sort((a, b) => a.subject.localeCompare(b.subject));
+
+    // ---- 2) mastery timeline: mean mastery per calendar day ----
+    const byDay = new Map<string, { sum: number; count: number }>();
+    for (const h of histories) {
+      const day = h.timestamp.toISOString().slice(0, 10);
+      const bucket = byDay.get(day) ?? { sum: 0, count: 0 };
+      bucket.sum += toPct(h.masteryScore);
+      bucket.count += 1;
+      byDay.set(day, bucket);
+    }
+    const masteryTimeline = Array.from(byDay.entries())
+      .map(([date, b]) => ({ date, mastery: Math.round((b.sum / b.count) * 10) / 10 }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    // ---- 3) before/after: earliest vs latest recorded mastery per skill ----
+    // Histories are already ascending, so the first row seen for a skill is its
+    // earliest and the last is its latest.
+    const firstBySkill = new Map<string, number>();
+    const lastBySkill = new Map<string, number>();
+    for (const h of histories) {
+      if (!firstBySkill.has(h.skillId)) firstBySkill.set(h.skillId, toPct(h.masteryScore));
+      lastBySkill.set(h.skillId, toPct(h.masteryScore));
+    }
+    interface SubjBA {
+      subjectId: string;
+      subject: string;
+      beforeSum: number;
+      afterSum: number;
+      count: number;
+    }
+    const baBySubject = new Map<string, SubjBA>();
+    let overallBefore = 0;
+    let overallAfter = 0;
+    let overallCount = 0;
+    for (const skillId of firstBySkill.keys()) {
+      const skill = skillById.get(skillId);
+      if (!skill?.subject) continue;
+      const before = firstBySkill.get(skillId)!;
+      const after = lastBySkill.get(skillId)!;
+      overallBefore += before;
+      overallAfter += after;
+      overallCount += 1;
+      const key = skill.subject.id;
+      const row =
+        baBySubject.get(key) ??
+        { subjectId: key, subject: skill.subject.name, beforeSum: 0, afterSum: 0, count: 0 };
+      row.beforeSum += before;
+      row.afterSum += after;
+      row.count += 1;
+      baBySubject.set(key, row);
+    }
+    const beforeAfter = {
+      overall: {
+        before: overallCount ? Math.round((overallBefore / overallCount) * 10) / 10 : 0,
+        after: overallCount ? Math.round((overallAfter / overallCount) * 10) / 10 : 0,
+      },
+      bySubject: Array.from(baBySubject.values())
+        .map((r) => ({
+          subjectId: r.subjectId,
+          subject: r.subject,
+          before: Math.round((r.beforeSum / r.count) * 10) / 10,
+          after: Math.round((r.afterSum / r.count) * 10) / 10,
+        }))
+        .sort((a, b) => a.subject.localeCompare(b.subject)),
+    };
+
+    return {
+      grade: { key: gradeKey, number: gradeNumber, title: gradeTitle },
+      accuracyBySubject,
+      masteryTimeline,
+      beforeAfter,
+    };
+  }
+
   async getRewards(childId: string) {
     return analyticsReadRepository.getRewards(childId);
   }

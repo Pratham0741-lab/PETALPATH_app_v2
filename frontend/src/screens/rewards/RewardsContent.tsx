@@ -35,10 +35,13 @@
  */
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 
 import { colors, radius, shadows, spacing, typography } from '../../theme';
+import { SCREEN_BACKGROUNDS } from '../../assets/backgrounds';
+import { REWARD_IMAGES } from '../../assets/rewards';
+import { SCREEN_ACCENTS } from '../../theme/screenAccents';
 import { useRewardsStore } from '../../store/rewardsStore';
 import { useChildStore } from '../../store/childStore';
 import { useXP, useCoins, useDailyStreak } from '../../hooks/useRewards';
@@ -59,6 +62,7 @@ import {
   StatGrid,
 } from '../../components/design';
 import type { PetalIconName } from '../../components/icons';
+import { PetalMark } from '../../components/brand/PetalMark';
 
 export type RewardsVariant = 'mobile' | 'tablet' | 'desktop';
 
@@ -141,6 +145,8 @@ export const RewardsContent: React.FC<RewardsContentProps> = ({ variant }) => {
   return (
     <AppShell
       withBottomNav
+      petals="none"
+      backgroundImage={SCREEN_BACKGROUNDS.rewards} accent={SCREEN_ACCENTS.rewards}
       refreshControl={
         <RefreshControl
           refreshing={loading && stickers.length > 0}
@@ -150,6 +156,7 @@ export const RewardsContent: React.FC<RewardsContentProps> = ({ variant }) => {
       }
       header={
         <AppHeader
+          accent={SCREEN_ACCENTS.rewards}
           eyebrow="Your collection"
           title="My Rewards"
           stars={totalStars}
@@ -269,7 +276,7 @@ export const RewardsContent: React.FC<RewardsContentProps> = ({ variant }) => {
 
         {loading && stickers.length === 0 ? (
           <View style={styles.center}>
-            <ActivityIndicator size="large" color={colors.primary} />
+            <PetalMark size={96} loading />
             <Text style={[typography.presets.caption, styles.loadingText]}>
               Opening your treasure chest…
             </Text>
@@ -285,8 +292,15 @@ export const RewardsContent: React.FC<RewardsContentProps> = ({ variant }) => {
              view's auto-height content — the wrapper's `minHeight` gives it room
              to centre in. */
           <View style={styles.emptyWrap}>
+            {/* The closed chest says "nothing collected yet" far better than a
+                glyph, and pairs with the open chest shown once there is. */}
+            <Image
+              source={REWARD_IMAGES.empty}
+              style={styles.emptyArt}
+              resizeMode="contain"
+              accessible={false}
+            />
             <EmptyState
-              icon={activeTab === 'stickers' ? 'sparkle' : 'medal'}
               title={activeTab === 'stickers' ? 'No stickers yet' : 'No badges yet'}
               message="Finish a lesson to start filling your collection."
             />
@@ -325,6 +339,11 @@ export const RewardsContent: React.FC<RewardsContentProps> = ({ variant }) => {
 };
 
 const styles = StyleSheet.create({
+  emptyArt: {
+    width: 160,
+    height: 160,
+    alignSelf: 'center',
+  },
   column: {
     width: '100%',
     alignSelf: 'center',
@@ -396,7 +415,7 @@ const styles = StyleSheet.create({
     minHeight: 52,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
-    backgroundColor: colors.surface,
+    backgroundColor: colors.surfaceTranslucent,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: radius.button,

@@ -4,7 +4,8 @@ import {
   Text,
   StyleSheet,
   Animated,
-  ActivityIndicator,
+  Image,
+  useWindowDimensions,
 } from 'react-native';
 import { useTheme } from '../../theme/ThemeContext';
 import { spacing } from '../../theme/spacing';
@@ -13,10 +14,13 @@ import { useChildStore } from '../../store/childStore';
 import { useAppStore } from '../../store/appStore';
 import { authService } from '../../services/auth/authService';
 import { typography } from '../../theme/typography';
+import { SCREEN_BACKGROUNDS } from '../../assets/backgrounds';
+import { PetalMark } from '../../components/brand/PetalMark';
 
 export const SplashScreen: React.FC = () => {
   const { theme, isDark } = useTheme();
   const { colors } = theme;
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.8)).current;
@@ -76,6 +80,15 @@ export const SplashScreen: React.FC = () => {
       accessibilityLabel="PetalPath loading"
       accessibilityRole="progressbar"
     >
+      {/* The opening scene, behind the logo. Sized in exact pixels and stretched
+          to the screen, matching how AppShell draws every other wallpaper. */}
+      <Image
+        source={SCREEN_BACKGROUNDS.welcome}
+        resizeMode="stretch"
+        style={{ position: 'absolute', top: 0, left: 0, width: windowWidth, height: windowHeight }}
+        accessible={false}
+        importantForAccessibility="no-hide-descendants"
+      />
       <Animated.View
         style={[
           styles.content,
@@ -85,18 +98,13 @@ export const SplashScreen: React.FC = () => {
           },
         ]}
       >
-        <Text
-          style={[styles.logo, { color: colors.primary }]}
-          accessibilityRole="text"
-        >
-          🌸
-        </Text>
-        <Text
-          style={[styles.appName, { color: colors.text }]}
-          accessibilityRole="header"
-        >
-          PetalPath
-        </Text>
+        <Image
+          source={require('../../assets/brand/petalpath-logo.png')}
+          style={styles.logo}
+          resizeMode="contain"
+          accessibilityRole="image"
+          accessibilityLabel="PetalPath"
+        />
         <Text
           style={[styles.tagline, { color: colors.textSecondary }]}
           accessibilityRole="text"
@@ -105,12 +113,9 @@ export const SplashScreen: React.FC = () => {
         </Text>
       </Animated.View>
 
-      <ActivityIndicator
-        size="large"
-        color={colors.primary}
-        style={styles.spinner}
-        accessibilityLabel="Loading your session"
-      />
+      <View style={styles.spinner} accessibilityLabel="Loading your session">
+        <PetalMark size={72} loading />
+      </View>
     </View>
   );
 };
@@ -126,7 +131,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   logo: {
-    fontSize: 72,
+    width: 200,
+    height: 200,
     marginBottom: spacing.lg,
   },
   appName: {

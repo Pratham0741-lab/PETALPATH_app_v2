@@ -82,6 +82,10 @@ export type RootStackParamList = {
   NotificationCenter: undefined;
   CurriculumExplorer: undefined;
   SkillDetail: { skillId: string };
+  // "Your Garden" drill-in: panorama → focused subject patch → single bloom close-up.
+  SubjectGarden: { subjectId: string };
+  BloomDetail: { skillId: string };
+  MyStory: undefined;
   Quiz: { activityId: string };
   Game: { activityId: string; dragDropSpec?: DragDropSpec; title?: string };
   AITutor: { activityId: string };

@@ -79,16 +79,16 @@ const ASPECT: Record<IllustrationName, number> = {
  * ever referenced here.
  */
 export const ILLUSTRATIONS: Partial<Record<IllustrationName, ImageSourcePropType>> = {
-  // watch: require('../../assets/illustrations/watch.png'),
-  // listen: require('../../assets/illustrations/listen.png'),
-  // speak: require('../../assets/illustrations/speak.png'),
-  // match: require('../../assets/illustrations/match.png'),
-  // trace: require('../../assets/illustrations/trace.png'),
-  // celebrate: require('../../assets/illustrations/celebrate.png'),
-  // mentor: require('../../assets/illustrations/mentor.png'),
-  // camera: require('../../assets/illustrations/camera.png'),
-  // welcome: require('../../assets/illustrations/welcome.png'),
-  // empty: require('../../assets/illustrations/empty.png'),
+  watch: require('../../assets/illustrations/watch.png'),
+  listen: require('../../assets/illustrations/listen.png'),
+  speak: require('../../assets/illustrations/speak.png'),
+  match: require('../../assets/illustrations/match.png'),
+  trace: require('../../assets/illustrations/trace.png'),
+  celebrate: require('../../assets/illustrations/celebrate.png'),
+  mentor: require('../../assets/illustrations/mentor.png'),
+  camera: require('../../assets/illustrations/camera.png'),
+  welcome: require('../../assets/illustrations/welcome.png'),
+  empty: require('../../assets/illustrations/empty.png'),
 };
 
 /** True when `name` has artwork bundled, so a caller can branch on it. */

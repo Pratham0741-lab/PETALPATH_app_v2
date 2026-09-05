@@ -23,6 +23,7 @@ import {
 import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { PetalIcon, PetalIconName } from '../icons';
 import { ProgressIndicator } from './ProgressIndicator';
+import { useAccentTint, PANEL_ALPHA } from './screenAccent';
 
 /**
  * Roadmap (spec §10, §11) — the learning journey.
@@ -477,6 +478,10 @@ const PathRun: React.FC<RunProps> = ({
   } = roadmapSizes;
   // Only one node is ever current, so a single ref covers the run.
   const currentSlotRef = useRef<View>(null);
+  // Lesson cards take a soft tint of the screen accent so they match the scene.
+  // Matches Card's wash: faint enough that the lesson cards read as crisp
+  // surfaces on top of the ambient scene rather than blending into it.
+  const cardTint = useAccentTint(0.07, PANEL_ALPHA);
 
   // Swing scales with the viewport so the path never pushes labels off-screen.
   const amp = Math.max(22, Math.min(amplitude, width * 0.16));
@@ -734,6 +739,7 @@ const PathRun: React.FC<RunProps> = ({
                 style={({ pressed }) => [
                   styles.lessonCard,
                   locked ? styles.lessonCardLocked : shadows.sm,
+                  !locked ? { backgroundColor: cardTint } : null,
                   isCurrent ? styles.lessonCardCurrent : null,
                   isReview ? styles.lessonCardReview : null,
                   pressed && !locked ? styles.lessonCardPressed : null,
@@ -815,6 +821,7 @@ const SectionHeader: React.FC<{ section: RoadmapSectionData; color: string }> = 
   section,
   color,
 }) => {
+  const tint = useAccentTint(0.07, PANEL_ALPHA);
   const content = (
     <View style={styles.sectionInner}>
       <View style={[styles.sectionIcon, { backgroundColor: `${color}1F` }]}>
@@ -859,7 +866,9 @@ const SectionHeader: React.FC<{ section: RoadmapSectionData; color: string }> = 
   );
 
   if (!section.onPress) {
-    return <View style={[styles.section, { borderLeftColor: color }]}>{content}</View>;
+    return (
+      <View style={[styles.section, { borderLeftColor: color, backgroundColor: tint }]}>{content}</View>
+    );
   }
 
   return (
@@ -870,7 +879,7 @@ const SectionHeader: React.FC<{ section: RoadmapSectionData; color: string }> = 
       accessibilityState={{ expanded: section.expanded, disabled: !!section.locked }}
       style={({ pressed }) => [
         styles.section,
-        { borderLeftColor: color },
+        { borderLeftColor: color, backgroundColor: tint },
         pressed && styles.sectionPressed,
       ]}
     >
@@ -960,7 +969,7 @@ const styles = StyleSheet.create({
    * opening nothing.
    */
   lessonCard: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.surfaceTranslucent,
     borderRadius: radius.cardInner,
     borderWidth: 1,
     borderColor: colors.borderLight,
@@ -1020,7 +1029,7 @@ const styles = StyleSheet.create({
 
   // ---------------------------------------------------------------- section
   section: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.surfaceTranslucent,
     borderRadius: radius.card,
     borderWidth: 1,
     borderColor: colors.border,
