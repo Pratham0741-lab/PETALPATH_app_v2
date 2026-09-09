@@ -1,5 +1,6 @@
 import React, { useCallback, useMemo } from 'react';
-import { ScrollView, StyleSheet, Text, View, Alert } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { customAlert } from '../../utils/alert';
 import { useAppNavigation } from '../../hooks/useAppNavigation';
 import { useRoadmapStore } from '../../store/roadmapStore';
 import { useChildStore } from '../../store/childStore';
@@ -7,7 +8,6 @@ import { enhanceMentor, MENTORS } from '../../constants/mentors';
 import { api } from '../../api/client';
 import { navigateToActivity } from '../../utils/navigationFlow';
 import { normalizeActivityType } from '../../utils/activityNormalization';
-import { difficultyBand } from '../../utils/difficulty';
 import { ErrorState } from '../../components/common/ErrorState';
 import { EmptyState } from '../../components/common/EmptyState';
 import { colors, spacing, typography, cardSizes } from '../../theme';
@@ -21,9 +21,6 @@ import {
   PageHeader,
   PetalIcon,
   PrimaryButton,
-  ProgressIndicator,
-  Stat,
-  StatGrid,
   StatusBadge,
 } from '../../components/design';
 
@@ -49,6 +46,26 @@ const SIDEBAR_WIDTH: Record<LessonOverviewVariant, number> = {
   mobile: 0,
   tablet: 280,
   desktop: 320,
+};
+
+/**
+ * Strips the lesson's own name off an activity title.
+ *
+ * Content is authored as "Letter G", "Letter G Video", "Letter G Trace" …, so on
+ * a page already headed "Letter G" every row restated it and the part that
+ * actually differs — Video, Trace — was pushed to the end of a truncating line.
+ * Falls back to the full title whenever removing the prefix would leave nothing,
+ * so a lesson whose single activity shares its name still reads properly.
+ */
+const stripLessonName = (activityTitle: string, lessonTitle?: string): string => {
+  if (!lessonTitle) return activityTitle;
+  const norm = (v: string) => v.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  const lesson = norm(lessonTitle);
+  if (!lesson || !norm(activityTitle).startsWith(lesson)) return activityTitle;
+
+  // Cut on the raw string, not the normalised one, so casing and spacing survive.
+  const rest = activityTitle.slice(lessonTitle.length).replace(/^[\s:–—-]+/, '').trim();
+  return rest.length > 0 ? rest : activityTitle;
 };
 
 export const LessonOverviewContent: React.FC<{ variant?: LessonOverviewVariant }> = ({
@@ -123,7 +140,7 @@ export const LessonOverviewContent: React.FC<{ variant?: LessonOverviewVariant }
   const handleCompleteLesson = () => {
     if (selectedLesson) {
       completeLesson(selectedLesson.id);
-      Alert.alert(
+      customAlert(
         'Lesson Completed!',
         `Congratulations, you completed "${selectedLesson.title}"!`,
         [{ text: 'OK', onPress: goToJourney }],
@@ -140,56 +157,11 @@ export const LessonOverviewContent: React.FC<{ variant?: LessonOverviewVariant }
   );
   const percent = activities.length > 0 ? Math.round((doneCount / activities.length) * 100) : 0;
 
-  const stats = useMemo<Stat[]>(() => {
-    if (!selectedLesson) return [];
-    const list: Stat[] = [
-      {
-        value: `${doneCount}/${activities.length}`,
-        label: 'Activities done',
-        icon: 'check',
-        color: colors.green,
-      },
-    ];
-
-    /*
-     * Only when the server actually sent a difficulty. This tile used to read
-     * `Level ${selectedLesson.difficulty}` unconditionally, and since the
-     * roadmap payload omitted the field it rendered the literal string
-     * "Level undefined" — which the narrow tile then clipped to "Level un…".
-     * `difficultyBand` gives one short word instead, which both fits the tile and
-     * means more to a five-year-old than a bare level number.
-     */
-    const band = difficultyBand(selectedLesson.difficulty);
-    if (band) {
-      list.push({
-        value: band.label,
-        label: 'Difficulty',
-        icon: 'chart',
-        color: colors[band.tone],
-      });
-    }
-
-    /*
-     * Short words on purpose. Three tiles across a 360px screen leaves each about
-     * 76px of text width, and "Not started" at `cardTitle` (20px) needs closer to
-     * 120px — so the old values were ellipsized to "Not st…". `StatGrid` will now
-     * wrap a long value onto a second line as a backstop, but fitting on one line
-     * reads better than either wrapping or truncating.
-     */
-    list.push({
-      value: isCompleted ? 'Done' : percent > 0 ? 'Started' : 'Not yet',
-      label: 'Status',
-      icon: isCompleted ? 'trophy' : 'clock',
-      color: isCompleted ? colors.green : colors.yellow,
-    });
-
-    return list;
-  }, [selectedLesson, doneCount, activities.length, isCompleted, percent]);
-
   const header = (
     <PageHeader
       title={selectedLesson?.title || 'Lesson Overview'}
-      subtitle={selectedLesson ? `${activities.length} activities` : undefined}
+      // No activity count here: the "Activities done" tile and the list heading
+      // below both carry it already.
       backFallback={goToJourney}
       centered={!wide}
     />
@@ -238,49 +210,11 @@ export const LessonOverviewContent: React.FC<{ variant?: LessonOverviewVariant }
 
   // ---- Pieces shared by both layouts --------------------------------------
 
-  const infoCard = (
-    <Card variant="raised" padding="roomy" accent={colors.primary} rail style={styles.card}>
-      <View style={styles.infoTop}>
-        <View style={styles.infoText}>
-          <Text style={[typography.presets.eyebrow, styles.eyebrow]}>Lesson</Text>
-          <Text style={[typography.presets.section, styles.lessonTitle]}>
-            {selectedLesson.title}
-          </Text>
-        </View>
-        <StatusBadge status={isCompleted ? 'completed' : percent > 0 ? 'current' : 'available'} />
-      </View>
-
-      <Text style={[typography.presets.body, styles.lessonDescription]}>
-        {selectedLesson.description || 'Work through the activities below to finish this lesson.'}
-      </Text>
-
-      <View style={styles.progressBlock}>
-        <View style={styles.progressHead}>
-          <Text style={[typography.presets.caption, styles.progressLabel]}>Lesson progress</Text>
-          <Text style={[typography.presets.caption, styles.progressValue]}>{percent}%</Text>
-        </View>
-        <ProgressIndicator
-          value={percent}
-          color={isCompleted ? colors.green : colors.purple}
-          accessibilityLabel={`${doneCount} of ${activities.length} activities complete`}
-        />
-      </View>
-
-      <StatGrid stats={stats} style={styles.stats} />
-    </Card>
-  );
-
   const sequenceHeading = (
     <View style={styles.sectionHeader}>
-      <PetalIcon name="explore" size={18} color={colors.text} />
-      <View style={styles.sectionText}>
-        <Text style={[typography.presets.cardTitle, styles.sectionTitle]} accessibilityRole="header">
-          Activities
-        </Text>
-        <Text style={[typography.presets.caption, styles.sectionSubtitle]}>
-          Work through each one from top to bottom.
-        </Text>
-      </View>
+      <Text style={[typography.presets.title, styles.sectionTitle]} accessibilityRole="header">
+        Activities
+      </Text>
     </View>
   );
 
@@ -297,7 +231,7 @@ export const LessonOverviewContent: React.FC<{ variant?: LessonOverviewVariant }
           key={act.id}
           // normalizeActivityType returns a strict subset of ActivityCardKind.
           kind={normalizeActivityType(act.activityType)}
-          title={act.title}
+          title={stripLessonName(act.title, selectedLesson.title)}
           meta={
             act.video?.duration ? `${Math.ceil(act.video.duration / 60)} mins` : '5 mins'
           }
@@ -323,7 +257,6 @@ export const LessonOverviewContent: React.FC<{ variant?: LessonOverviewVariant }
   if (!wide) {
     return (
       <AppShell petals="none" backgroundImage={SCREEN_BACKGROUNDS.lesson} header={header} footer={completeButton}>
-        {infoCard}
         {sequenceHeading}
         {activityList}
       </AppShell>
@@ -340,8 +273,7 @@ export const LessonOverviewContent: React.FC<{ variant?: LessonOverviewVariant }
           contentContainerStyle={styles.mainContent}
           showsVerticalScrollIndicator={false}
         >
-          {infoCard}
-          {sequenceHeading}
+            {sequenceHeading}
           {activityList}
         </ScrollView>
 
@@ -363,7 +295,6 @@ export const LessonOverviewContent: React.FC<{ variant?: LessonOverviewVariant }
             name={activeMentor.name}
             species={activeMentor.species}
             color={activeMentor.color}
-            funFact={activeMentor.funFact}
             selected
           />
         </View>
@@ -395,13 +326,6 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 0,
   },
-  eyebrow: {
-    color: colors.textSecondary,
-  },
-  lessonTitle: {
-    color: colors.text,
-    marginTop: 2,
-  },
   lessonDescription: {
     color: colors.textSecondary,
     lineHeight: 21,
@@ -426,10 +350,6 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
   },
   sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing.sm,
-    marginTop: spacing.xs,
     marginBottom: spacing.md,
   },
   sectionText: {
@@ -438,10 +358,11 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     color: colors.text,
-  },
-  sectionSubtitle: {
-    color: colors.textSecondary,
-    marginTop: 2,
+    /* Same halo as the page title: this heading sits straight on the scene now
+       that the card above it is gone. */
+    textShadowColor: 'rgba(255, 255, 255, 0.95)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 7,
   },
   activity: {
     marginBottom: spacing.sm,

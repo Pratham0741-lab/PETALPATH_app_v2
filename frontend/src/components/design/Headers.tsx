@@ -7,6 +7,7 @@ import {
   spacing,
   typography,
   headerSizes,
+  cardSizes,
   progressSizes,
   stepRailSizes,
   getActivityColor,
@@ -62,20 +63,17 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   style,
 }) => {
   /*
-   * The greeting and title sit on their own translucent panel, matching the
-   * cards. Over a full-strength wallpaper, large display type straight on the art
-   * competes with whatever the scene has behind it (Home's sun sat right under
-   * "Learning Journey"); a panel gives the words a consistent surface to read
-   * against without hiding the scene.
+   * No panel. It was here because large display type over a full-strength
+   * wallpaper competed with the art behind it — but the wallpaper is now blurred
+   * and dimmed, and the title carries its own halo, so the panel was buying
+   * contrast that is already paid for while boxing the greeting into a bar.
    */
-  const panelFill = useAccentTint(0.07, PANEL_ALPHA);
-
   return (
-  <View style={[styles.appHeader, { backgroundColor: panelFill }, style]}>
+  <View style={[styles.appHeader, style]}>
     <View style={styles.appHeaderText}>
       {eyebrow ? (
         <Text
-          style={[typography.presets.subtle, styles.eyebrow, accent ? { color: accent } : null]}
+          style={[typography.presets.section, styles.eyebrow, accent ? { color: accent } : null]}
           numberOfLines={1}
         >
           {eyebrow}
@@ -100,8 +98,11 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
     </View>
 
     <View style={styles.rightCluster}>
-      {typeof streak === 'number' ? <RewardBadge kind="streak" value={streak} size="sm" /> : null}
-      {typeof stars === 'number' ? <RewardBadge kind="stars" value={stars} size="sm" /> : null}
+      {/* Full size, not "sm": these are the child's two running totals and the
+          main thing they look for, and at sm they read as afterthoughts beside
+          the avatar rather than sitting level with it. */}
+      {typeof streak === 'number' ? <RewardBadge kind="streak" value={streak} size="lg" /> : null}
+      {typeof stars === 'number' ? <RewardBadge kind="stars" value={stars} size="lg" /> : null}
       {right}
       {onPressNotifications ? (
         <View>
@@ -161,10 +162,6 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
   style,
 }) => {
   const navigation = useNavigation<any>();
-  /* Same panel as AppHeader — see the note there. Keeps every screen's title
-     sitting on a surface rather than directly on the scene. */
-  const panelFill = useAccentTint(0.07, PANEL_ALPHA);
-
   const handleBack = () => {
     if (onBack) return onBack();
     if (navigation.canGoBack()) return navigation.goBack();
@@ -172,7 +169,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
   };
 
   return (
-    <View style={[styles.pageHeader, { backgroundColor: panelFill }, style]}>
+    <View style={[styles.pageHeader, style]}>
       <View style={styles.side}>
         {showBack ? (
           <IconButton
@@ -187,7 +184,12 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
 
       <View style={[styles.pageHeaderText, centered && styles.centered]}>
         <Text
-          style={[typography.presets.section, styles.pageTitle, centered && styles.centeredText]}
+          style={[
+            typography.presets.section,
+            styles.pageTitle,
+            styles.pageTitleLarge,
+            centered && styles.centeredText,
+          ]}
           numberOfLines={1}
           accessibilityRole="header"
         >
@@ -348,6 +350,8 @@ export const ActivityHeader: React.FC<ActivityHeaderProps> = ({
   const navigation = useNavigation<any>();
   const tone = getActivityColor(kind);
   const meta = ACTIVITY_META[kind];
+  /* Same panel as the other two headers. */
+  const panelFill = useAccentTint(0.07, PANEL_ALPHA);
 
   const handleBack = () => {
     if (onBack) return onBack();
@@ -364,7 +368,7 @@ export const ActivityHeader: React.FC<ActivityHeaderProps> = ({
   const showRail = typeof steps === 'number' && steps > 1 && steps <= stepRailSizes.maxSteps;
 
   return (
-    <View style={[styles.activityHeader, style]}>
+    <View style={[styles.activityHeader, { backgroundColor: panelFill }, style]}>
       <View style={styles.activityTop}>
         <IconButton
           icon="back"
@@ -407,6 +411,20 @@ export const ActivityHeader: React.FC<ActivityHeaderProps> = ({
   );
 };
 
+/**
+ * Contrast without a container.
+ *
+ * Dark type straight on an illustration is legible over the pale sky and lost
+ * over the meadow, so headings carry a soft white halo with them — the surface
+ * travels with the text instead of being a box drawn around it. This replaced
+ * the translucent panels that used to sit behind every screen title.
+ */
+const HALO = {
+  textShadowColor: 'rgba(255, 255, 255, 0.95)',
+  textShadowOffset: { width: 0, height: 0 },
+  textShadowRadius: 7,
+} as const;
+
 const styles = StyleSheet.create({
   // ---------------------------------------------------------------- AppHeader
   appHeader: {
@@ -414,15 +432,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    /* Inset from the screen edge so the panel reads as a card, not a bar. */
     marginHorizontal: spacing.lg,
-    paddingHorizontal: spacing.md,
+    marginBottom: cardSizes.gap,
     paddingTop: spacing.sm,
     paddingBottom: spacing.md,
     gap: spacing.md,
-    borderRadius: radius.card,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
   },
   appHeaderText: {
     flex: 1,
@@ -430,10 +444,12 @@ const styles = StyleSheet.create({
   },
   eyebrow: {
     color: colors.textSecondary,
-    marginBottom: 1,
+    marginBottom: 2,
+    ...HALO,
   },
   appTitle: {
     color: colors.text,
+    ...HALO,
   },
   rightCluster: {
     flexDirection: 'row',
@@ -458,14 +474,13 @@ const styles = StyleSheet.create({
     minHeight: headerSizes.height,
     flexDirection: 'row',
     alignItems: 'center',
-    /* Inset so the panel reads as a card, matching AppHeader and the cards. */
+    /* No panel behind the title any more. A rounded card here boxed the screen
+       name into a strip that ate ~64px of the fold and cut the wallpaper in
+       half; the title is legible without it because it carries its own halo
+       (see `pageTitle`). */
     marginHorizontal: spacing.lg,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
+    marginBottom: spacing.md,
     gap: spacing.sm,
-    borderRadius: radius.card,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
   },
   side: {
     minWidth: 44,
@@ -488,17 +503,30 @@ const styles = StyleSheet.create({
   },
   pageTitle: {
     color: colors.text,
+    ...HALO,
+  },
+  pageTitleLarge: {
+    fontSize: 26,
+    lineHeight: 32,
   },
   pageSubtitle: {
     color: colors.textSecondary,
     marginTop: 1,
+    ...HALO,
   },
 
   // ----------------------------------------------------------- ActivityHeader
   activityHeader: {
-    paddingHorizontal: spacing.lg,
+    /* Panelled like AppHeader and PageHeader, so the activity's name and
+       progress read against a surface rather than the scene behind them. */
+    marginHorizontal: spacing.lg,
+    marginBottom: cardSizes.gap,
+    paddingHorizontal: spacing.md,
     paddingTop: spacing.sm,
     paddingBottom: spacing.md,
+    borderRadius: radius.card,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
   },
   activityTop: {
     flexDirection: 'row',

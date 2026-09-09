@@ -130,7 +130,6 @@ export const ParentProfileScreen: React.FC = () => {
             <View style={styles.authCardWrapper}>
               <AuthHeader
                 title="Your Profile"
-                subtitle="Let us know a bit about you!"
                 showLogo
               />
 
@@ -171,17 +170,6 @@ export const ParentProfileScreen: React.FC = () => {
                   disabled={isLoading || skipUpdate}
                   returnKeyType="done"
                 />
-
-                <View
-                  style={[styles.infoCard, { backgroundColor: colors.surfaceSecondary, borderColor: colors.borderLight }]}
-                >
-                  <Text style={[styles.infoTitle, { color: colors.text }]}>
-                    Welcome to PetalPath!
-                  </Text>
-                  <Text style={[styles.infoText, { color: colors.textSecondary }]}>
-                    Next, you will set up a profile for your child to begin their language learning journey.
-                  </Text>
-                </View>
 
                 <Button
                   title={isLoading ? 'Saving...' : 'Save & Continue'}
@@ -225,6 +213,9 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     padding: spacing.lg,
     borderWidth: 1,
+    /* Breathing room under the heading panel, which now has a surface of its
+       own — without this the name field sat tight against its bottom edge. */
+    marginTop: spacing.lg,
   },
   errorText: {
     fontSize: typography.sizes.sm,

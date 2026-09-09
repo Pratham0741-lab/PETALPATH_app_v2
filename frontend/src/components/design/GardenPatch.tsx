@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { Image, StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native';
 
-import { colors, radius, spacing, typography } from '../../theme';
+import { colors, radius, spacing, typography, LESSON_STATE, resolveLessonState } from '../../theme';
 import { getSubjectEmblem } from '../../assets/subjects';
 import type { GardenSkill } from '../../types/garden';
 import { PetalIcon } from '../icons';
@@ -114,6 +114,20 @@ export const GardenPatch: React.FC<GardenPatchProps> = ({
   const overflow = Math.max(0, skillCount - strip.length);
   const phrase = patchPhrase(engagedCount, skillCount, growthPercent, thirsty);
 
+  /*
+   * State, not subject, is what the child needs to tell apart at a glance. The
+   * card used to be coloured entirely by subject — so a finished maths patch and
+   * an untouched one were the same blue, and the only difference was a bar
+   * length. Subject colour still owns the *flowers* (that is the patch's
+   * identity); the card's own chrome now says where the work stands.
+   */
+  const state = resolveLessonState({
+    needsPractice: thirsty,
+    done: skillCount > 0 && engagedCount >= skillCount && growthPercent >= 100,
+    progress: engagedCount,
+  });
+  const sv = LESSON_STATE[state];
+
   const spoken =
     `${name}. ${patchPhrase(engagedCount, skillCount, growthPercent, false)}.` +
     (thirsty
@@ -123,12 +137,14 @@ export const GardenPatch: React.FC<GardenPatchProps> = ({
   return (
     <Card
       variant="raised"
-      accent={v.color}
-      rail
+      accent={sv.main}
       padding="normal"
       onPress={onPress}
-      style={[styles.stack, style]}
-      accessibilityLabel={spoken}
+      /* No `rail`. The colour strip down the left said "maths" in a place the
+         child never reads as a legend, and it competed with the flowers — which
+         are the actual subject signal on this card. */
+      style={[styles.stack, { borderColor: sv.main, borderWidth: 1.5 }, style]}
+      accessibilityLabel={`${spoken} ${sv.label}.`}
       accessibilityHint="Opens this patch"
     >
       <View style={styles.row}>
@@ -156,14 +172,15 @@ export const GardenPatch: React.FC<GardenPatchProps> = ({
           </Text>
         </View>
 
-        {/* A quiet count so the patch says how much is planted here at a glance. */}
-        {skillCount > 0 ? (
-          <View style={[styles.countChip, { backgroundColor: v.soft }]}>
-            <Text style={[styles.countText, { color: v.color }]}>{skillCount}</Text>
-          </View>
-        ) : null}
+        {/* Word + icon + colour, so the state never rests on the colour alone. */}
+        <View style={[styles.stateChip, { backgroundColor: sv.soft }]}>
+          <PetalIcon name={sv.icon} size={13} color={sv.main} filled />
+          <Text style={[styles.stateText, { color: sv.main }]} numberOfLines={1}>
+            {sv.label}
+          </Text>
+        </View>
 
-        <PetalIcon name="forward" size={20} color={v.color} />
+        <PetalIcon name="forward" size={20} color={sv.main} />
       </View>
 
       {/* How grown this patch is, as a bloom‑fill bar in the subject's own colour
@@ -172,7 +189,7 @@ export const GardenPatch: React.FC<GardenPatchProps> = ({
         <View
           style={[
             styles.progressFill,
-            { width: `${Math.max(0, Math.min(100, growthPercent))}%`, backgroundColor: v.color },
+            { width: `${Math.max(0, Math.min(100, growthPercent))}%`, backgroundColor: sv.main },
           ]}
         />
       </View>
@@ -244,6 +261,19 @@ const styles = StyleSheet.create({
   emblemImg: {
     width: '100%',
     height: '100%',
+  },
+  stateChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 3,
+    borderRadius: radius.pill,
+    flexShrink: 0,
+  },
+  stateText: {
+    ...typography.presets.caption,
+    fontSize: 11,
   },
   countChip: {
     minWidth: 26,

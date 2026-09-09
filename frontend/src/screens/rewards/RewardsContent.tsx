@@ -38,13 +38,13 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Image, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 
-import { colors, radius, shadows, spacing, typography } from '../../theme';
+import { cardSizes, colors, radius, shadows, spacing, typography } from '../../theme';
 import { SCREEN_BACKGROUNDS } from '../../assets/backgrounds';
 import { REWARD_IMAGES } from '../../assets/rewards';
 import { SCREEN_ACCENTS } from '../../theme/screenAccents';
 import { useRewardsStore } from '../../store/rewardsStore';
 import { useChildStore } from '../../store/childStore';
-import { useXP, useCoins, useDailyStreak } from '../../hooks/useRewards';
+import { useXP, useDailyStreak } from '../../hooks/useRewards';
 import { enhanceMentor, MENTORS } from '../../constants/mentors';
 import { getMilestoneForLevel } from '../../services/gamification/derivations';
 import { EmptyState } from '../../components/common/EmptyState';
@@ -94,7 +94,6 @@ const QUICK_LINKS: Array<{
 }> = [
   { route: 'BadgeGallery', label: 'Badges', icon: 'medal', color: colors.primary, soft: colors.primaryLight },
   { route: 'Achievements', label: 'Achievements', icon: 'trophy', color: colors.orange, soft: colors.warningLight },
-  { route: 'DailyChallenges', label: 'Challenges', icon: 'calendar', color: colors.leafGreen, soft: colors.greenSoft },
 ];
 
 type Tab = 'stickers' | 'badges';
@@ -110,7 +109,6 @@ export const RewardsContent: React.FC<RewardsContentProps> = ({ variant }) => {
   const activeChild = useChildStore((state) => state.activeChild);
   const { totalStars, stickers, badges, loading, error, refreshRewards } = useRewardsStore();
   const xp = useXP();
-  const coins = useCoins();
   const streak = useDailyStreak();
   const [activeTab, setActiveTab] = useState<Tab>('stickers');
 
@@ -127,19 +125,31 @@ export const RewardsContent: React.FC<RewardsContentProps> = ({ variant }) => {
   const level = xp.data?.level ?? 1;
   const milestone = getMilestoneForLevel(level);
 
-  /* Level, XP, coins and streak — the four numbers the three retired cards
-     showed, in the shared stat tiles. */
+  /*
+   * XP and the current streak only. Coins were a currency the app never spends,
+   * and "Best Streak" sat beside the live one saying almost the same thing —
+   * both were numbers a five-year-old had no use for.
+   */
   const stats = useMemo(
     () => [
       { label: 'XP', value: `${xp.data?.xp ?? 0}`, icon: 'sparkle' as PetalIconName, color: colors.purple },
-      { label: 'Coins', value: `${(coins.data ?? 0).toLocaleString()}`, icon: 'coin' as PetalIconName, color: colors.yellow },
       { label: 'Day Streak', value: `${streak.data?.currentStreak ?? 0}`, icon: 'flame' as PetalIconName, color: colors.orange },
-      { label: 'Best Streak', value: `${streak.data?.longestStreak ?? 0}`, icon: 'trophy' as PetalIconName, color: colors.leafGreen },
     ],
-    [xp.data?.xp, coins.data, streak.data?.currentStreak, streak.data?.longestStreak]
+    [xp.data?.xp, streak.data?.currentStreak]
   );
 
   const items = activeTab === 'stickers' ? stickers : badges;
+
+  /*
+   * One style object for the whole grid. Inline `[styles.gridItem, { flexBasis }]`
+   * allocated a new array and a new object per card per render, which is both
+   * garbage on every frame and enough to defeat `RewardCard`'s memoisation —
+   * every card re-rendered whenever anything on the screen changed.
+   */
+  const gridItemStyle = useMemo(
+    () => [styles.gridItem, { flexBasis: cfg.cardMinWidth }],
+    [cfg.cardMinWidth],
+  );
   const isEmpty = !loading && !error && items.length === 0;
 
   return (
@@ -157,7 +167,6 @@ export const RewardsContent: React.FC<RewardsContentProps> = ({ variant }) => {
       header={
         <AppHeader
           accent={SCREEN_ACCENTS.rewards}
-          eyebrow="Your collection"
           title="My Rewards"
           stars={totalStars}
           streak={streak.data?.currentStreak ?? 0}
@@ -186,11 +195,10 @@ export const RewardsContent: React.FC<RewardsContentProps> = ({ variant }) => {
             </View>
           </View>
 
-          {/* The Hearts and Petals figures are the shipped placeholders — kept
-              exactly as they were rather than quietly changed. */}
+          {/* Hearts was a hardcoded placeholder, not a real total, so it is gone.
+              Stars and Petals are the two figures that mean something. */}
           <View style={styles.bankBadges}>
             <RewardBadge kind="stars" value={totalStars} showUnit />
-            <RewardBadge kind="hearts" value={totalStars === 0 ? 0 : 8} showUnit />
             <RewardBadge kind="petals" value={totalStars === 0 ? 0 : 12} showUnit />
           </View>
         </Card>
@@ -243,10 +251,13 @@ export const RewardsContent: React.FC<RewardsContentProps> = ({ variant }) => {
         </View>
 
         {/* ------------------------------------------------------- Collection */}
+        {/*
+          No section title above the tabs. The SegmentedTabs directly below name
+          both collections *and* carry their counts, so "Magical Stickers" was
+          the selected tab's own label restated one row higher. Only the line
+          explaining how they are unlocked — which the tabs do not say — stays.
+        */}
         <View style={styles.sectionHeading}>
-          <Text style={[typography.presets.section, styles.sectionTitle]} accessibilityRole="header">
-            {activeTab === 'stickers' ? 'Magical Stickers' : 'Learning Badges'}
-          </Text>
           <Text style={[typography.presets.subtle, styles.sectionSubtitle]}>
             {activeTab === 'stickers'
               ? 'Collect stars to unlock cute forest animals!'
@@ -318,7 +329,7 @@ export const RewardsContent: React.FC<RewardsContentProps> = ({ variant }) => {
                     starValue={s.unlocked ? undefined : s.requiredStars}
                     unlocked={s.unlocked}
                     kind="sticker"
-                    style={[styles.gridItem, { flexBasis: cfg.cardMinWidth }]}
+                    style={gridItemStyle}
                   />
                 ))
               : badges.map((b) => (
@@ -328,7 +339,7 @@ export const RewardsContent: React.FC<RewardsContentProps> = ({ variant }) => {
                     description={b.description || 'Complete activities to earn this badge'}
                     unlocked={b.earned}
                     kind="badge"
-                    style={[styles.gridItem, { flexBasis: cfg.cardMinWidth }]}
+                    style={gridItemStyle}
                   />
                 ))}
           </View>
@@ -441,20 +452,19 @@ const styles = StyleSheet.create({
   sectionHeading: {
     gap: 2,
   },
-  sectionTitle: {
-    color: colors.text,
-  },
   sectionSubtitle: {
     color: colors.textSecondary,
   },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: spacing.md,
+    gap: cardSizes.gap,
   },
   gridItem: {
     flexGrow: 1,
     flexShrink: 1,
+    /* The grid's gap owns the spacing; the card's own margin would double it. */
+    marginBottom: 0,
   },
   emptyWrap: {
     minHeight: 300,

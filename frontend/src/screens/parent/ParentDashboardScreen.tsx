@@ -361,27 +361,27 @@ export const ParentDashboardScreen: React.FC = () => {
       <ParentSection title="Quick Links" icon="parent" boxed={false}>
         <View style={styles.quickGrid}>
           {QUICK_LINKS.map((link) => (
-            // The tile carries the flex sizing rather than the Card, because an
-            // interactive Card puts its own animated wrapper between the two.
-            <View key={link.key} style={styles.quickTile}>
-              <Card
-                onPress={() => navigation.navigate(link.screen)}
-                accessibilityLabel={link.label}
-                accessibilityHint={link.hint}
-                contentStyle={styles.quickInner}
-                style={styles.quickCard}
-              >
-                <IconWell
-                  icon={link.icon}
-                  color={colors.primary}
-                  soft={colors.primaryLight}
-                  size={cardSizes.iconWellSmall}
-                />
-                <Text style={[typography.presets.cardTitle, styles.quickLabel]} numberOfLines={2}>
-                  {link.label}
-                </Text>
-              </Card>
-            </View>
+            // No wrapping View: `Card` hoists layout props (width, margins, flex)
+            // onto its own animated wrapper, so the width lands on the box the
+            // row actually measures.
+            <Card
+              key={link.key}
+              onPress={() => navigation.navigate(link.screen)}
+              accessibilityLabel={link.label}
+              accessibilityHint={link.hint}
+              contentStyle={styles.quickInner}
+              style={[styles.quickTile, isTabletOrDesktop && styles.quickTileWide]}
+            >
+              <IconWell
+                icon={link.icon}
+                color={colors.primary}
+                soft={colors.primaryLight}
+                size={cardSizes.iconWellSmall}
+              />
+              <Text style={[typography.presets.cardTitle, styles.quickLabel]} numberOfLines={2}>
+                {link.label}
+              </Text>
+            </Card>
           ))}
         </View>
       </ParentSection>
@@ -454,16 +454,26 @@ const styles = StyleSheet.create({
   quickGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: cardSizes.gap,
+    /* The column gutter is the leftover space, not a `gap`: percentage widths
+       plus a fixed `columnGap` overflow the row and force a premature wrap. */
+    justifyContent: 'space-between',
+    rowGap: cardSizes.gap,
   },
   quickTile: {
-    // Two per row at 360px, three from ~600px up — no hardcoded widths (§27).
-    flexGrow: 1,
-    flexShrink: 1,
-    flexBasis: 140,
+    /* `flexGrow: 1` with `flexBasis: 140` was the original bug: with seven tiles
+       the odd one out grew to fill its whole row, so the last link rendered as a
+       full-width slab next to two-up rows. A fixed share keeps every tile the
+       same size and leaves the last one aligned left.
+
+       Width only, and no `flex`/`height` — the row's default `align-items:
+       stretch` already gives every card in a line the same height. `flex: 1`
+       here is actively wrong: in React Native it implies `flexBasis: 0`, so
+       inside an auto-height parent the card resolves to zero height and
+       disappears (which also takes its touch target with it). */
+    width: '48%',
   },
-  quickCard: {
-    height: '100%',
+  quickTileWide: {
+    width: '31.5%',
   },
   quickInner: {
     alignItems: 'center',

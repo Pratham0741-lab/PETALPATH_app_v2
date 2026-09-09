@@ -69,7 +69,7 @@ export const ChildFeedbackOverlay: React.FC<ChildFeedbackOverlayProps> = ({
       accessibilityLiveRegion="polite"
       accessibilityLabel={message}
     >
-      <Card variant="raised" padding="compact" accent={tone.color} rail contentStyle={styles.row}>
+      <Card variant="raised" padding="compact" accent={tone.color} contentStyle={styles.row}>
         <IconWell
           icon={tone.icon}
           color={tone.color}

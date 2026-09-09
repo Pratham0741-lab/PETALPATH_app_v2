@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { customAlert } from '../../utils/alert';
 import { useNavigation } from '@react-navigation/native';
 
 import { colors, typography, spacing, buttonSizes, cardSizes, starSizes } from '../../theme';
@@ -207,7 +208,7 @@ export const WriteContent: React.FC<{ variant: WriteVariant }> = ({ variant }) =
 
   const handleCompleteTracing = async (w: number, h: number) => {
     if (strokes.length === 0) {
-      Alert.alert('Draw Something First', 'Please trace the guide lines before checking your answer.');
+      customAlert('Draw Something First', 'Please trace the guide lines before checking your answer.');
       return;
     }
 
@@ -217,7 +218,7 @@ export const WriteContent: React.FC<{ variant: WriteVariant }> = ({ variant }) =
     const rawScore = calculateTracingAccuracy(strokes, guidePoints);
 
     if (rawScore < 40) {
-      Alert.alert(
+      customAlert(
         "That's not quite right",
         "Let's try again! Try to stay as close as possible to the dashed guidelines.",
         [{ text: 'Try Again', onPress: () => clear() }]
@@ -441,7 +442,6 @@ export const WriteContent: React.FC<{ variant: WriteVariant }> = ({ variant }) =
               name={mentor.name}
               species={mentor.species}
               color={mentor.color}
-              funFact={mentor.funFact}
               selected
             />
             <Card variant="flat" padding="normal">

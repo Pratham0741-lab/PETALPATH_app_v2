@@ -165,7 +165,7 @@ export const StoryDetailScreen: React.FC = () => {
       }
     >
       {/* Identity */}
-      <Card variant="raised" padding="roomy" accent={colors.primary} rail style={styles.card}>
+      <Card variant="raised" padding="roomy" accent={colors.primary} style={styles.card}>
         <View style={styles.headerRow}>
           <IconWell
             icon="book"

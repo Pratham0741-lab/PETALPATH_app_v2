@@ -60,7 +60,7 @@ const StoryPanel: React.FC<{ beat: StoryBeat; index: number }> = ({ beat, index 
     beat.kind === 'chapter' ? `${KIND_EYEBROW.chapter} ${beat.subject ?? ''}`.trim() : KIND_EYEBROW[beat.kind];
 
   return (
-    <View style={[styles.panel, { backgroundColor: withAlpha(tint, 0.1), borderColor: withAlpha(tint, 0.35) }]}>
+    <View style={[styles.panel, { backgroundColor: colors.surfaceTranslucent, borderColor: withAlpha(tint, 0.35) }]}>
       <View style={styles.panelHead}>
         <View style={[styles.emojiWell, { backgroundColor: withAlpha(tint, 0.22) }]}>
           <Text style={styles.emoji}>{beat.emoji}</Text>
@@ -207,7 +207,7 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   bubble: {
-    backgroundColor: colors.surface,
+    backgroundColor: colors.surfaceTranslucent,
     borderRadius: radius.lg,
     padding: spacing.md,
   },

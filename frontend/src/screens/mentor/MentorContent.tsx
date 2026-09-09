@@ -37,7 +37,7 @@
 import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { colors, spacing, typography } from '../../theme';
+import { cardSizes, colors, spacing, typography } from '../../theme';
 import { SCREEN_BACKGROUNDS } from '../../assets/backgrounds';
 import { SCREEN_ACCENTS } from '../../theme/screenAccents';
 import { useChildStore } from '../../store/childStore';
@@ -136,7 +136,7 @@ export const MentorContent: React.FC<MentorContentProps> = ({ variant }) => {
    * control that changes it. Dropping the duplicate also gives the "Magical
    * Garden" title back roughly 75px of the row it was competing for.
    */
-  const header = <AppHeader accent={SCREEN_ACCENTS.mentors} eyebrow="Your buddies" title="Magical Garden" stars={totalStars} />;
+  const header = <AppHeader accent={SCREEN_ACCENTS.mentors} title="Magical Garden" stars={totalStars} />;
 
   if (loading && mentorList.length === 0) {
     return (
@@ -198,10 +198,7 @@ export const MentorContent: React.FC<MentorContentProps> = ({ variant }) => {
         {/* --------------------------------------------------- Buddy chooser */}
         <View style={styles.sectionHeading}>
           <Text style={[typography.presets.section, styles.sectionTitle]} accessibilityRole="header">
-            Choose Your Learning Buddy
-          </Text>
-          <Text style={[typography.presets.subtle, styles.sectionSubtitle]}>
-            Pick a friendly buddy to help you read, write and grow.
+            Choose Your Buddy
           </Text>
         </View>
 
@@ -219,7 +216,6 @@ export const MentorContent: React.FC<MentorContentProps> = ({ variant }) => {
                 name={mentor.name}
                 species={mentor.species}
                 color={mentor.color}
-                funFact={mentor.funFact}
                 selected={activeMentor?.id === mentor.id}
                 onPress={() => handleSelectMentor(mentor.id)}
                 style={[styles.gridItem, { flexBasis: cfg.cardMinWidth }]}
@@ -230,7 +226,7 @@ export const MentorContent: React.FC<MentorContentProps> = ({ variant }) => {
 
         {/* ------------------------------------------------- Selected buddy */}
         {activeMentor ? (
-          <Card variant="raised" padding="normal" accent={activeMentor.color} rail>
+          <Card variant="raised" padding="normal" accent={activeMentor.color}>
             <Text style={[typography.presets.eyebrow, { color: activeMentor.color }]}>
               Your buddy
             </Text>
@@ -238,22 +234,6 @@ export const MentorContent: React.FC<MentorContentProps> = ({ variant }) => {
             <Text style={[typography.presets.caption, styles.buddySpecies]}>
               {activeMentor.species}
             </Text>
-
-            <View style={styles.buddyDivider} />
-
-            <Text style={[typography.presets.eyebrow, styles.buddyLabel]}>
-              Fun fact from {activeMentor.name.split(' ')[0]}
-            </Text>
-            <Text style={[typography.presets.body, styles.buddyText]}>{activeMentor.funFact}</Text>
-
-            {activeMentor.description ? (
-              <>
-                <Text style={[typography.presets.eyebrow, styles.buddyLabel]}>About</Text>
-                <Text style={[typography.presets.body, styles.buddyText]}>
-                  {activeMentor.description}
-                </Text>
-              </>
-            ) : null}
           </Card>
         ) : (
           <Card variant="muted" padding="normal">
@@ -314,17 +294,18 @@ const styles = StyleSheet.create({
   sectionTitle: {
     color: colors.text,
   },
-  sectionSubtitle: {
-    color: colors.textSecondary,
-  },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: spacing.md,
+    gap: cardSizes.gap,
   },
   gridItem: {
     flexGrow: 1,
     flexShrink: 1,
+    /* The grid's `gap` is the single source of spacing here; without this the
+       card's own bottom margin added to it and rows sat further apart than
+       columns. */
+    marginBottom: 0,
   },
 
   // -------------------------------------------------------- Selected buddy

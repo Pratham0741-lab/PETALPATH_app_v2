@@ -1,5 +1,6 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { Alert, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { customAlert } from '../../utils/alert';
 import { useAnalyticsActivity, useWeeklyReport } from '../../hooks/useParentAnalytics';
 import { BarChart } from '../../components/charts/BarChart';
 import {
@@ -82,7 +83,7 @@ export const WeeklyReportScreen: React.FC = () => {
   }, [refetch, refetchActivity]);
 
   const handleExport = useCallback(() => {
-    Alert.alert('Export', EXPORT_MESSAGE);
+    customAlert('Export', EXPORT_MESSAGE);
   }, []);
 
   const stats: Stat[] = useMemo(
@@ -166,10 +167,10 @@ export const WeeklyReportScreen: React.FC = () => {
         />
       </ParentSection>
 
-      {report.weakSkills.length > 0 ? (
+      {(report.weakSkills ?? []).length > 0 ? (
         <ParentSection title="Weak Skills" subtitle="Worth a little extra practice" icon="warning" boxed={false}>
-          <Card accent={colors.warning} rail>
-            {report.weakSkills.map((skill, i) => (
+          <Card accent={colors.warning}>
+            {(report.weakSkills ?? []).map((skill, i) => (
               <ProgressIndicator
                 key={skill.name}
                 label={skill.name}
@@ -191,9 +192,9 @@ export const WeeklyReportScreen: React.FC = () => {
         style={styles.block}
       />
 
-      {report.recommendations.length > 0 ? (
+      {(report.recommendations ?? []).length > 0 ? (
         <ParentSection title="Recommendations" icon="sparkle" boxed>
-          {report.recommendations.map((rec, idx) => (
+          {(report.recommendations ?? []).map((rec, idx) => (
             <View key={`rec-${idx}`} style={styles.recRow}>
               <PetalIcon name="check" size={16} color={colors.primary} />
               <Text style={[typography.presets.body, styles.recText]}>{rec}</Text>

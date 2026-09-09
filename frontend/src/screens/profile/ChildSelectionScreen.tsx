@@ -156,7 +156,6 @@ export const ChildSelectionScreen: React.FC = () => {
   const header = (
     <PageHeader
       title="Who is learning today?"
-      subtitle="Choose a profile to pick up the journey"
       /* Nothing to go back to when this is the entry screen — a chevron that
          does nothing would be a fake control (§33). */
       showBack={navigation.canGoBack()}
@@ -233,7 +232,7 @@ export const ChildSelectionScreen: React.FC = () => {
 
         {shownChild ? (
           <Animated.View style={{ transform: [{ scale: switchAnim }] }}>
-            <Card variant="raised" padding="roomy" accent={colors.primary} rail contentStyle={styles.detail}>
+            <Card variant="raised" padding="roomy" accent={colors.primary} contentStyle={styles.detail}>
               <AvatarGlyph species={shownChild.avatar} size={88} ringColor={colors.primary} />
               <Text style={typography.presets.title} numberOfLines={1}>
                 {shownChild.name}

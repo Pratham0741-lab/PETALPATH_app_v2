@@ -138,7 +138,7 @@ export const NotificationPreferencesScreen: React.FC = () => {
       }
     >
       {!systemAllowed ? (
-        <Card accent={colors.warning} rail style={styles.notice}>
+        <Card accent={colors.warning} style={styles.notice}>
           <View style={styles.noticeHead}>
             <PetalIcon name="warning" size={20} color={colors.warning} />
             <Text style={typography.presets.cardTitle}>Notifications are turned off</Text>
@@ -152,7 +152,6 @@ export const NotificationPreferencesScreen: React.FC = () => {
 
       <ParentSection
         title="Reminders"
-        subtitle="Turn on the ones that help your child stay engaged"
         icon="notifications"
         boxed
         footnote="Reminders are sent based on your child's learning activity."

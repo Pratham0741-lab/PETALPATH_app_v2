@@ -10,7 +10,7 @@ import {
   View,
   ViewStyle,
 } from 'react-native';
-import Svg, { Circle, Ellipse, G, Path } from 'react-native-svg';
+import Svg, { Path } from 'react-native-svg';
 import {
   colors,
   radius,
@@ -18,12 +18,14 @@ import {
   spacing,
   typography,
   roadmapSizes,
+  LESSON_STATE,
+  resolveLessonState,
   progressSizes,
 } from '../../theme';
+import type { LessonState } from '../../theme';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { PetalIcon, PetalIconName } from '../icons';
 import { ProgressIndicator } from './ProgressIndicator';
-import { useAccentTint, PANEL_ALPHA } from './screenAccent';
 
 /**
  * Roadmap (spec §10, §11) — the learning journey.
@@ -139,8 +141,29 @@ interface NodeSkin {
   /** Word shown next to the label so state never rests on colour alone (§30). */
   word: string;
   wordColor: string;
+  /** Fill for the lesson card beside the node. */
+  cardFill: string;
+  /** Border for that card — the state's ink, so the edge holds on any wallpaper. */
+  cardBorder: string;
 }
 
+/** Roadmap vocabulary -> the app-wide state palette. */
+const NODE_STATE: Record<RoadmapNodeStatus, LessonState> = {
+  completed: 'done',
+  current: 'ongoing',
+  review: 'practice',
+  available: 'ready',
+  locked: 'locked',
+};
+
+/*
+ * The roadmap used to carry its own colours, and they disagreed with every other
+ * surface: "current" was brand pink here but purple on a LessonCard, and
+ * "review" was purple here but blue in the garden. Two screens taught the child
+ * opposite meanings for the same two hues. Colour, icon, word and card fill all
+ * come from `LESSON_STATE` now; only the geometry — node size, border weight,
+ * filled vs outlined — stays local, because that is layout rather than meaning.
+ */
 const skinFor = (status: RoadmapNodeStatus, kind: RoadmapNodeKind): NodeSkin => {
   const kindIcon: PetalIconName =
     kind === 'quiz'
@@ -151,72 +174,72 @@ const skinFor = (status: RoadmapNodeStatus, kind: RoadmapNodeKind): NodeSkin => 
           ? 'replay'
           : 'play';
 
+  const sv = LESSON_STATE[NODE_STATE[status] ?? 'locked'];
+  const shared = {
+    word: sv.label,
+    wordColor: sv.main,
+    cardFill: sv.soft,
+    cardBorder: sv.main,
+  };
+
   switch (status) {
     case 'completed':
       return {
+        ...shared,
         size: roadmapSizes.nodeCompleted,
-        fill: colors.green,
+        fill: sv.main,
         border: colors.white,
         borderWidth: 3,
         icon: 'check',
         iconColor: colors.white,
         filled: true,
-        word: 'Done',
-        wordColor: '#4F7F3D',
       };
     case 'current':
+      /* The biggest node on the path, so "where I am" is found by size as well
+         as by colour before any of it is read. */
       return {
+        ...shared,
         size: roadmapSizes.nodeCurrent,
-        fill: colors.primary,
+        fill: sv.main,
         border: colors.white,
         borderWidth: 4,
         icon: kindIcon,
         iconColor: colors.white,
         filled: true,
-        word: 'Current',
-        wordColor: colors.primaryDark,
       };
     case 'review':
-      /*
-       * Purple, not green and not pink: it must read as neither "finished" nor
-       * "the new thing", or a child who sees a tick goes looking for the next
-       * lesson instead. The replay glyph and the word carry it for anyone who
-       * does not separate the two hues (§30).
-       */
       return {
+        ...shared,
         size: roadmapSizes.nodeCompleted,
-        fill: colors.purple,
+        fill: sv.main,
         border: colors.white,
         borderWidth: 3,
-        icon: 'replay',
+        icon: sv.icon,
         iconColor: colors.white,
         filled: true,
-        word: 'Practice',
-        wordColor: colors.purpleDark,
       };
     case 'available':
+      /* Outlined rather than filled: open, but nothing has happened in it yet. */
       return {
+        ...shared,
         size: roadmapSizes.nodeCompleted,
         fill: colors.surface,
-        border: colors.primary,
+        border: sv.main,
         borderWidth: 3,
         icon: kindIcon,
-        iconColor: colors.primary,
+        iconColor: sv.main,
         filled: false,
-        word: 'Ready',
-        wordColor: colors.primaryDark,
       };
     default:
       return {
+        ...shared,
         size: roadmapSizes.nodeLocked,
-        fill: colors.skeleton,
+        fill: sv.soft,
         border: colors.border,
         borderWidth: 2,
-        icon: 'lock',
-        iconColor: colors.textMuted,
+        icon: sv.icon,
+        iconColor: sv.main,
         filled: false,
-        word: 'Locked',
-        wordColor: colors.textSecondary,
       };
   }
 };
@@ -328,7 +351,11 @@ export const LessonNode: React.FC<LessonNodeProps> = ({
       >
         <PetalIcon
           name={skin.icon}
-          size={Math.round(skin.size * 0.42)}
+          /* 0.55 of the node, up from 0.42. At the old ratio the padlock was a
+             ~18px mark adrift in a 44px circle, which read as an empty disc with
+             a speck in it — and the padlock is now the only thing saying the
+             stop is locked, since the card no longer spells it out. */
+          size={Math.round(skin.size * 0.55)}
           color={skin.iconColor}
           filled={skin.filled}
         />
@@ -341,111 +368,17 @@ export const LessonNode: React.FC<LessonNodeProps> = ({
 // Path run — the curvy SVG spine plus its nodes and alternating labels
 // ---------------------------------------------------------------------------
 
-// ---------------------------------------------------------------------------
-// Wayside decoration
-// ---------------------------------------------------------------------------
-
 /**
- * Stable pseudo-random in 0-1.
+ * Splits a leading "26. " index off a lesson title.
  *
- * `Math.random()` would re-roll on every render and make the roadside twitch as
- * the child scrolls, which is a real bug rather than a charming one. Seeded off
- * the row index instead, so a given stop always has the same rock beside it.
+ * The number is bookkeeping — it says where the stop sits in a list of
+ * twenty-seven — while "Letter Z" is the thing the child is looking for. Drawn
+ * at one size they compete, and on a two-line title the number takes a whole
+ * line of the card. Kept (a child does use it to find their place) but demoted.
  */
-const wayside = (index: number, salt: number) => {
-  const n = Math.sin((index + 1) * 12.9898 + salt * 78.233) * 43758.5453;
-  return n - Math.floor(n);
-};
-
-type WaysideKind = 'rock' | 'leaves' | 'bud';
-
-interface WaysideItem {
-  kind: WaysideKind;
-  cx: number;
-  cy: number;
-  r: number;
-  /** Which way the shape leans — ±1, so the roadside is not all one direction. */
-  flip: number;
-}
-
-/**
- * Minimum clear width needed before anything is drawn in a margin.
- *
- * Below this the decoration is closer to the node than it is to the screen edge
- * and reads as a smudge attached to the lesson. A narrow phone with a wide swing
- * simply gets no roadside, which is the correct outcome — the path and the cards
- * are the content, this is scenery.
- */
-const WAYSIDE_MIN_GUTTER = 62;
-
-/** Lens-shaped leaf growing out of (cx, cy) in direction `dir`. */
-const leafPath = (cx: number, cy: number, r: number, dir: number) =>
-  `M ${cx} ${cy}` +
-  ` C ${cx + dir * r * 0.5} ${cy - r * 0.7}, ${cx + dir * r * 1.4} ${cy - r * 0.45}, ${cx + dir * r * 1.6} ${cy}` +
-  ` C ${cx + dir * r * 1.4} ${cy + r * 0.45}, ${cx + dir * r * 0.5} ${cy + r * 0.7}, ${cx} ${cy} Z`;
-
-/**
- * One piece of scenery beside the path — a stone, a leaf spray or a bud.
- *
- * The reference design fills the space either side of its journey path with
- * exactly these three things, and they do a job the ribbon alone cannot: a path
- * with nothing beside it is a diagram, while a path with stones and leaves beside
- * it is somewhere. Three shapes rather than one so the margin does not read as a
- * repeating texture, and no more than three so it never competes with the lesson
- * cards for attention.
- *
- * Flat fills, one stroke weight, no animation — the same restraint `SceneBand`
- * keeps, for the same reason: this appears twenty times down a grade, so it has
- * to survive repetition.
- */
-const WaysideMark: React.FC<WaysideItem> = ({ kind, cx, cy, r, flip }) => {
-  if (kind === 'rock') {
-    return (
-      <G opacity={0.4}>
-        <Ellipse cx={cx} cy={cy} rx={r} ry={r * 0.62} fill={colors.soil} />
-        <Ellipse
-          cx={cx + flip * r * 0.9}
-          cy={cy + r * 0.24}
-          rx={r * 0.54}
-          ry={r * 0.36}
-          fill={colors.soil}
-        />
-      </G>
-    );
-  }
-
-  if (kind === 'leaves') {
-    return (
-      <G opacity={0.42}>
-        <Path d={leafPath(cx, cy, r * 0.8, flip)} fill={colors.leafGreen} />
-        <Path d={leafPath(cx, cy + r * 0.62, r * 0.58, -flip)} fill={colors.leafGreen} />
-      </G>
-    );
-  }
-
-  return (
-    <G opacity={0.72}>
-      <Path
-        d={`M ${cx} ${cy + r * 1.5} L ${cx} ${cy}`}
-        stroke={colors.leafGreen}
-        strokeWidth={Math.max(1.5, r * 0.16)}
-        strokeLinecap="round"
-        fill="none"
-      />
-      {[0, 72, 144, 216, 288].map((angle) => (
-        <Ellipse
-          key={angle}
-          cx={cx}
-          cy={cy - r * 0.44}
-          rx={r * 0.27}
-          ry={r * 0.46}
-          fill={colors.pinkSoft}
-          transform={`rotate(${angle} ${cx} ${cy})`}
-        />
-      ))}
-      <Circle cx={cx} cy={cy} r={r * 0.22} fill={colors.yellow} />
-    </G>
-  );
+const splitTitleIndex = (title: string): { index: string | null; topic: string } => {
+  const m = /^(\d+\.)\s*(.+)$/.exec(title);
+  return m ? { index: m[1], topic: m[2] } : { index: null, topic: title };
 };
 
 interface RunProps {
@@ -478,10 +411,14 @@ const PathRun: React.FC<RunProps> = ({
   } = roadmapSizes;
   // Only one node is ever current, so a single ref covers the run.
   const currentSlotRef = useRef<View>(null);
-  // Lesson cards take a soft tint of the screen accent so they match the scene.
-  // Matches Card's wash: faint enough that the lesson cards read as crisp
-  // surfaces on top of the ambient scene rather than blending into it.
-  const cardTint = useAccentTint(0.07, PANEL_ALPHA);
+  /*
+   * Lesson cards are not a translucent white wash. Every card looked the same
+   * regardless of state, the fill changed with whatever art sat behind it, and
+   * the only differentiators were a thin border and a word. Each card takes its
+   * state's own `soft` fill — the same tints the badges and chips use — so a
+   * finished stop is green, one in progress purple, one wanting practice blue,
+   * all at a glance and all opaque enough to hold dark text.
+   */
 
   // Swing scales with the viewport so the path never pushes labels off-screen.
   const amp = Math.max(22, Math.min(amplitude, width * 0.16));
@@ -533,49 +470,6 @@ const PathRun: React.FC<RunProps> = ({
     return out;
   }, [points, height]);
 
-  /**
-   * Scenery for the empty margin.
-   *
-   * Each row has one narrow strip nothing else can use: the node swings to one
-   * side and its card fills the opposite half, which leaves the sliver *outside*
-   * the node — about 110px on a 360px screen. That is where these go, so nothing
-   * is ever drawn under a card or under a tappable circle.
-   *
-   * Roughly two rows in three carry a piece, chosen by the same seeded function
-   * that picks the shape, so the roadside is irregular without being random. Two
-   * kinds of row are skipped outright: the one the child must act on — the
-   * current lesson, or a review standing in for it — whose node is the one thing
-   * on the screen that must be unmissable, and any row whose margin is too
-   * narrow to hold a shape at a sensible size.
-   */
-  const decor = useMemo<WaysideItem[]>(() => {
-    const out: WaysideItem[] = [];
-    points.forEach(({ node, left, x, rowTop, rowH }, i) => {
-      if (node.status === 'current' || node.status === 'review' || node.focus) return;
-      if (wayside(i, 3) <= 0.34) return;
-
-      const half = skinFor(node.status, node.kind ?? 'lesson').size / 2;
-      /* The clear strip runs from the screen edge to the node's outer edge. */
-      const gutter = left ? x - half : width - (x + half);
-      if (gutter < WAYSIDE_MIN_GUTTER) return;
-
-      const r = Math.min(11, gutter * 0.15);
-      /* Sat in the middle 30% of the strip, never against either edge. */
-      const along = 0.34 + wayside(i, 13) * 0.3;
-      const cx = left ? gutter * along : x + half + gutter * along;
-      const kindRoll = wayside(i, 19);
-
-      out.push({
-        kind: kindRoll < 0.42 ? 'rock' : kindRoll < 0.78 ? 'leaves' : 'bud',
-        cx,
-        cy: rowTop + rowH * (0.44 + wayside(i, 23) * 0.24),
-        r,
-        flip: wayside(i, 29) > 0.5 ? 1 : -1,
-      });
-    });
-    return out;
-  }, [points, width]);
-
   if (points.length === 0) return null;
 
   /**
@@ -612,14 +506,6 @@ const PathRun: React.FC<RunProps> = ({
         style={StyleSheet.absoluteFill as StyleProp<ViewStyle>}
         pointerEvents="none"
       >
-        {/* Scenery first, so a stone can never sit on top of the trail. It is
-            inside the same Svg — which is already `pointerEvents="none"` and
-            carries no accessibility label — because decoration that announced
-            itself would put "rock" into a child's journey. */}
-        {decor.map((item, i) => (
-          <WaysideMark key={i} {...item} />
-        ))}
-
         {/*
           * Three layers make a trail rather than a line. A wide soft halo so the
           * ribbon sits in the page instead of on it; a solid band in the section's
@@ -694,6 +580,8 @@ const PathRun: React.FC<RunProps> = ({
          * targets for one lesson is good for a child's aim; two announcements
          * for one lesson is a screen reader reading the journey twice.
          */
+        const { index: titleIndex, topic: titleTopic } = splitTitleIndex(node.title);
+
         const spoken = [
           node.title,
           skin.word,
@@ -739,9 +627,7 @@ const PathRun: React.FC<RunProps> = ({
                 style={({ pressed }) => [
                   styles.lessonCard,
                   locked ? styles.lessonCardLocked : shadows.sm,
-                  !locked ? { backgroundColor: cardTint } : null,
-                  isCurrent ? styles.lessonCardCurrent : null,
-                  isReview ? styles.lessonCardReview : null,
+                  { backgroundColor: skin.cardFill, borderColor: skin.cardBorder },
                   pressed && !locked ? styles.lessonCardPressed : null,
                 ]}
               >
@@ -772,24 +658,36 @@ const PathRun: React.FC<RunProps> = ({
                 <Text
                   numberOfLines={2}
                   style={[
-                    isCurrent || isReview
-                      ? typography.presets.cardTitle
-                      : typography.presets.body,
+                    typography.presets.title,
+                    isCurrent || isReview ? styles.stopTitleLarge : styles.stopTitle,
                     { color: locked ? colors.textMuted : colors.text },
                   ]}
                 >
-                  {node.title}
+                  {titleIndex ? (
+                    <Text style={styles.stopIndex}>{titleIndex} </Text>
+                  ) : null}
+                  {titleTopic}
                 </Text>
 
-                <Text
-                  numberOfLines={1}
-                  style={[
-                    typography.presets.caption,
-                    node.subtitle ? styles.labelMeta : { color: skin.wordColor },
-                  ]}
-                >
-                  {node.subtitle ?? skin.word}
-                </Text>
+                {/*
+                  A locked stop says so three times over: the padlock in the
+                  node, the grey card, and this word. The other states earn
+                  their line — "Done", "Practice", "In progress" each add
+                  something the icon alone does not — but "Locked" under a
+                  padlock is just the padlock again. Still spoken: `spoken`
+                  below carries `skin.word` for the screen reader either way.
+                */}
+                {node.subtitle || !locked ? (
+                  <Text
+                    numberOfLines={1}
+                    style={[
+                      typography.presets.subtle,
+                      node.subtitle ? styles.labelMeta : { color: skin.wordColor },
+                    ]}
+                  >
+                    {node.subtitle ?? skin.word}
+                  </Text>
+                ) : null}
 
                 {showStars ? (
                   <View style={styles.stars}>
@@ -817,11 +715,12 @@ const PathRun: React.FC<RunProps> = ({
 // Section header
 // ---------------------------------------------------------------------------
 
-const SectionHeader: React.FC<{ section: RoadmapSectionData; color: string }> = ({
-  section,
-  color,
-}) => {
-  const tint = useAccentTint(0.07, PANEL_ALPHA);
+const SectionHeader: React.FC<{
+  section: RoadmapSectionData;
+  color: string;
+  sectionFill: string;
+}> = ({ section, color, sectionFill }) => {
+  const tint = sectionFill;
   const content = (
     <View style={styles.sectionInner}>
       <View style={[styles.sectionIcon, { backgroundColor: `${color}1F` }]}>
@@ -835,7 +734,13 @@ const SectionHeader: React.FC<{ section: RoadmapSectionData; color: string }> = 
       <View style={styles.sectionText}>
         <Text
           numberOfLines={1}
-          style={[typography.presets.cardTitle, { color: section.locked ? colors.textMuted : colors.text }]}
+          style={[
+            typography.presets.cardTitle,
+            /* Near-black, not the state colour: the border, icon well and
+               progress bar already say the state; the title's job is to be
+               legible over whatever the wallpaper puts behind it. */
+            { color: section.locked ? colors.textMuted : colors.text },
+          ]}
         >
           {section.title}
         </Text>
@@ -855,19 +760,18 @@ const SectionHeader: React.FC<{ section: RoadmapSectionData; color: string }> = 
         ) : null}
       </View>
 
-      {section.expanded === undefined ? null : (
-        <PetalIcon
-          name={section.expanded ? 'arrowUp' : 'arrowDown'}
-          size={20}
-          color={section.locked ? colors.textMuted : color}
-        />
-      )}
+      {/*
+        No expand chevron. The header is a full-width pressable and the module's
+        lessons appear directly beneath it, so the arrow was pointing at a change
+        the child can already see happen. `accessibilityState.expanded` on the
+        Pressable still announces it.
+      */}
     </View>
   );
 
   if (!section.onPress) {
     return (
-      <View style={[styles.section, { borderLeftColor: color, backgroundColor: tint }]}>{content}</View>
+      <View style={[styles.section, { borderColor: color, backgroundColor: tint }]}>{content}</View>
     );
   }
 
@@ -879,7 +783,7 @@ const SectionHeader: React.FC<{ section: RoadmapSectionData; color: string }> = 
       accessibilityState={{ expanded: section.expanded, disabled: !!section.locked }}
       style={({ pressed }) => [
         styles.section,
-        { borderLeftColor: color, backgroundColor: tint },
+        { borderColor: color, backgroundColor: tint },
         pressed && styles.sectionPressed,
       ]}
     >
@@ -892,7 +796,11 @@ const SectionHeader: React.FC<{ section: RoadmapSectionData; color: string }> = 
 // Roadmap
 // ---------------------------------------------------------------------------
 
-export const Roadmap: React.FC<RoadmapProps> = ({ sections, onCurrentNodeLayout, style }) => {
+export const Roadmap: React.FC<RoadmapProps> = ({
+  sections,
+  onCurrentNodeLayout,
+  style,
+}) => {
   const window = useWindowDimensions();
   const rootRef = useRef<View>(null);
   // Sensible first paint, then corrected by the real measurement.
@@ -908,14 +816,25 @@ export const Roadmap: React.FC<RoadmapProps> = ({ sections, onCurrentNodeLayout,
   return (
     <View ref={rootRef} style={style} onLayout={onLayout} collapsable={false}>
       {sections.map((section) => {
-        const color = section.locked ? colors.textMuted : section.color ?? colors.primary;
+        /*
+         * The section's colour says how far along it is, matching the nodes
+         * inside it and every card elsewhere. It used to be `section.color` — a
+         * per-theme hue with no legend — so a finished section and an untouched
+         * one were the same colour, and only the bar's length told them apart.
+         */
+        const sectionState = resolveLessonState({
+          locked: section.locked,
+          done: (section.progress ?? 0) >= 100,
+          progress: section.progress,
+        });
+        const color = LESSON_STATE[sectionState].main;
         const nodes = section.nodes ?? [];
         const runParity = parity;
         parity = (parity + nodes.length) % 2;
 
         return (
           <View key={section.id}>
-            {section.hideHeader ? null : <SectionHeader section={section} color={color} />}
+            {section.hideHeader ? null : <SectionHeader section={section} color={color} sectionFill={LESSON_STATE[sectionState].soft} />}
             {nodes.length > 0 ? (
               <PathRun
                 nodes={nodes}
@@ -969,37 +888,44 @@ const styles = StyleSheet.create({
    * opening nothing.
    */
   lessonCard: {
-    backgroundColor: colors.surfaceTranslucent,
     borderRadius: radius.cardInner,
-    borderWidth: 1,
-    borderColor: colors.borderLight,
-    paddingVertical: spacing.sm + 2,
-    paddingHorizontal: spacing.md,
-  },
-  lessonCardCurrent: {
-    borderColor: colors.primary,
-    borderWidth: 2,
-  },
-  /* A review is a lesson wanted again, so its card is outlined like the current
-     one — same weight, different hue — rather than dimmed like a finished stop.
-     No tinted fill: under a soft gate the child may do either, and two cards of
-     equal standing should sit on the same surface. */
-  lessonCardReview: {
-    borderColor: colors.purple,
-    borderWidth: 2,
+    /* 1.5px of real border, not a near-white hairline: over an illustration a
+       `borderLight` edge disappears and the card has no shape at all. */
+    borderWidth: 1.5,
+    /* Tighter than before: the card was mostly padding around a 15px title, so
+       it read as a big box with small writing in it. Less air, larger type. */
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.sm + 2,
   },
   reviewPill: {
-    backgroundColor: colors.purple,
+    backgroundColor: LESSON_STATE.practice.main,
   },
   /* Locked stops lose the shadow and sit flat on a tinted fill: a grade is
      twenty-seven lessons and most are locked, so the ones a child cannot open
      must not each claim their own elevation. */
   lessonCardLocked: {
-    backgroundColor: colors.backgroundSecondary,
-    borderColor: colors.border,
+    /* Flat, no shadow — a locked stop should not look liftable. Its fill and
+       border still come from the skin, like every other state. */
   },
   lessonCardPressed: {
     opacity: 0.85,
+  },
+  /* The topic itself. `title` (24px) is the base; the current stop goes larger
+     still, because it is the one the child is meant to find. */
+  stopTitle: {
+    fontSize: 22,
+    lineHeight: 28,
+  },
+  stopTitleLarge: {
+    fontSize: 26,
+    lineHeight: 32,
+  },
+  /* The "26." — normal reading size, so it sits beside the topic without
+     claiming a line of its own. */
+  stopIndex: {
+    fontSize: 15,
+    lineHeight: 20,
+    color: colors.textSecondary,
   },
   labelMeta: {
     color: colors.textSecondary,
@@ -1010,7 +936,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 4,
     alignSelf: 'flex-start',
-    backgroundColor: colors.primary,
+    backgroundColor: LESSON_STATE.ongoing.main,
     borderRadius: radius.pill,
     paddingHorizontal: 8,
     paddingVertical: 3,
@@ -1029,11 +955,11 @@ const styles = StyleSheet.create({
 
   // ---------------------------------------------------------------- section
   section: {
-    backgroundColor: colors.surfaceTranslucent,
     borderRadius: radius.card,
-    borderWidth: 1,
+    /* No 6px left strip — the whole border carries the state colour instead, so
+       the card reads as one object rather than a card with a tab stuck to it. */
+    borderWidth: 1.5,
     borderColor: colors.border,
-    borderLeftWidth: 6,
     padding: spacing.md,
     marginBottom: spacing.sm,
     ...shadows.sm,

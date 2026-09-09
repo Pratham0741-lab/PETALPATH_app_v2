@@ -46,7 +46,6 @@ import type { ApiResponse } from '../../types/api';
 import type { Lesson, Activity } from '../../store/roadmapStore';
 import { colors, spacing, typography } from '../../theme';
 import { normalizeActivityType } from '../../utils/activityNormalization';
-import { difficultyBand } from '../../utils/difficulty';
 import { PetalMark } from '../../components/brand/PetalMark';
 import { SCREEN_BACKGROUNDS } from '../../assets/backgrounds';
 import {
@@ -198,28 +197,9 @@ export const LessonScreen: React.FC = () => {
       color: colors.yellow,
     });
 
-    /*
-     * Difficulty replaces the `Chip` that was illegally nested in a `Text`.
-     *
-     * This used to title-case `lesson.difficulty` with `charAt`/`slice`, on the
-     * assumption it was one of the words 'EASY' / 'MEDIUM' / 'HARD'. It is a 1-5
-     * number, and until recently the roadmap payload dropped it altogether — so
-     * the guard above was always false and this tile simply never rendered.
-     * Calling string methods on it would have crashed the screen the moment the
-     * server started sending the field.
-     */
-    const band = difficultyBand(lesson?.difficulty);
-    if (band) {
-      tiles.push({
-        value: band.label,
-        label: 'Difficulty',
-        icon: 'chart',
-        color: colors[band.tone],
-      });
-    }
 
     return tiles;
-  }, [lesson?.progress, lesson?.difficulty, completedActivityCount, activities.length, durationLabel]);
+  }, [lesson?.progress, completedActivityCount, activities.length, durationLabel]);
 
   const header = (
     <PageHeader
@@ -299,7 +279,7 @@ export const LessonScreen: React.FC = () => {
       }
     >
       <View style={styles.column}>
-        <Card variant="raised" padding="roomy" accent={colors.primary} rail>
+        <Card variant="raised" padding="roomy" accent={colors.primary}>
           <View style={styles.infoTop}>
             <View style={styles.infoText}>
               <Text style={[typography.presets.eyebrow, styles.eyebrow]}>Lesson</Text>

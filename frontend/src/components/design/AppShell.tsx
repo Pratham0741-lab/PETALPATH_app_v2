@@ -71,18 +71,34 @@ export interface AppShellProps {
    */
   backgroundImage?: ImageSourcePropType;
   /**
-   * Opacity (0–1) of a soft white veil laid over `backgroundImage`, so a detailed
-   * scene reads gently and text/cards on top stay crisp. Only applies when a
-   * `backgroundImage` is set. Default 0.28.
+   * Opacity (0–1) of a scrim laid over `backgroundImage`. Default 0.12.
+   *
+   * The scrim is a warm near-black, not white. Whitening was the wrong tool:
+   * fading the art toward the pale shell colour and then laying white on top of
+   * that made the screen *glow* — quieter in detail but brighter overall, which
+   * is its own kind of distracting. Darkening a touch settles the scene behind
+   * the content instead.
    */
   backgroundVeil?: number;
   /**
-   * Opacity (0–1) of `backgroundImage`. Defaults to 1 — the artwork is shown at
-   * its own full brightness, and it is the translucency of the cards and the tab
-   * bar (not a faded wallpaper) that keeps content the centre of attention. Drop
-   * it only for a screen that needs an unusually quiet backdrop.
+   * Opacity (0–1) of `backgroundImage`. Default 0.72.
+   *
+   * It used to be 1, on the theory that translucent cards were enough to keep
+   * content in front. They are not: these wallpapers have flowers, butterflies,
+   * trees and sparkles at full saturation, and for a two-to-six-year-old those
+   * are not background — they are things to look at. The art still sets the mood
+   * at this level; it just stops competing with the lesson.
    */
   backgroundOpacity?: number;
+  /**
+   * Blur radius applied to `backgroundImage`. Default 7.
+   *
+   * Enough to melt the flowers and butterflies into soft shapes; not so much
+   * that the scene turns to fog and stops reading as a garden at all. Blurring
+   * is what removes the *detail* a child's eye catches on while keeping the
+   * colour and shape — dimming alone only makes the same details fainter.
+   */
+  backgroundBlur?: number;
   /**
    * Per‑screen accent colour (matched to the scene). Published via context so
    * accent‑bearing components (card rails, icon wells, chips, progress bars,
@@ -138,8 +154,9 @@ export const AppShell: React.FC<AppShellProps> = ({
   sky = false,
   scene,
   backgroundImage,
-  backgroundVeil = 0,
-  backgroundOpacity = 1,
+  backgroundVeil = 0.12,
+  backgroundOpacity = 0.72,
+  backgroundBlur = 7,
   accent,
   header,
   headerScrolls = false,
@@ -196,6 +213,26 @@ export const AppShell: React.FC<AppShellProps> = ({
       onScroll={onScroll}
       scrollEventThrottle={scrollEventThrottle}
       refreshControl={refreshControl}
+      /*
+       * Scrolling feel, set once here rather than per screen.
+       *
+       * `overScrollMode="never"` was the mistake. It kills Android's stretch at
+       * the ends, so a list stops dead against an invisible wall — which reads
+       * as stiff rather than as "no more content", and is most obvious on short
+       * screens like Rewards where you hit both ends constantly. `"auto"` gives
+       * the give back.
+       *
+       * `removeClippedSubviews` is also gone. It is a win for genuinely long
+       * lists, but it detaches and reattaches native views as they cross the
+       * viewport, and on a short grid of cards that bookkeeping costs more than
+       * it saves — and on Android it is a known source of blank cells that pop
+       * in mid-scroll. Nothing here is long enough to need it: the biggest
+       * collection in the app is fifteen cards.
+       */
+      decelerationRate="normal"
+      overScrollMode="auto"
+      bounces
+      contentInsetAdjustmentBehavior="automatic"
     >
       {inlineHeader}
       {children}
@@ -223,48 +260,14 @@ export const AppShell: React.FC<AppShellProps> = ({
     // the padded SafeAreaView, so it stopped at the inset edges and read as cropped.
     <ScreenAccentProvider accent={accent}>
     <View style={[styles.root, { backgroundColor }, style]}>
-      {backgroundImage ? (
-        // The whole illustration at its natural proportions — never zoomed or
-        // cropped. `contain` fits the entire image inside the screen; any leftover
-        // strip on a taller phone shows the shell's background colour.
-        <Image
-          source={backgroundImage}
-          /*
-           * `stretch`, not `cover`/`contain`: the whole illustration is shown —
-           * nothing is cropped off the top, bottom or sides — and it is stretched
-           * on the vertical axis to meet the screen's height. The scenes are drawn
-           * 9:16 while phones are taller, so this trades a little vertical
-           * elongation (invisible on soft painted scenery) for a background that
-           * fills the screen edge to edge with no bare strip.
-           *
-           * Sized in exact pixels, never `absoluteFill`/percentages: those resolve
-           * against whatever the parent measures, which previously let the image
-           * grow to the scroll content's height and render hugely zoomed.
-           *
-           * `opacity` is what keeps the scene ambient: it blends the art toward
-           * the warm shell background so the wallpaper reads as a soft wash and
-           * the cards on top stay the centre of attention.
-           */
-          resizeMode="stretch"
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            width: windowWidth,
-            height: windowHeight,
-            opacity: backgroundOpacity,
-          }}
-          accessible={false}
-          importantForAccessibility="no-hide-descendants"
-        />
-      ) : null}
-      {backgroundImage && backgroundVeil > 0 ? (
-        // Soft white veil so a detailed scene reads gently and content stays crisp.
-        <View
-          pointerEvents="none"
-          style={[StyleSheet.absoluteFill, { backgroundColor: `rgba(255,255,255,${backgroundVeil})` }]}
-        />
-      ) : null}
+      <ScreenBackground
+        source={backgroundImage}
+        width={windowWidth}
+        height={windowHeight}
+        opacity={backgroundOpacity}
+        blur={backgroundBlur}
+        scrim={backgroundVeil}
+      />
       <SafeAreaView style={styles.flex} edges={resolvedEdges} testID={testID}>
       {sky ? (
         <View
@@ -301,6 +304,61 @@ export const AppShell: React.FC<AppShellProps> = ({
   );
 };
 
+/**
+ * The wallpaper layer, isolated and memoised.
+ *
+ * This is not tidiness — it is the whole point. On Android `blurRadius` is a
+ * CPU box-blur applied to the *decoded bitmap*, and these scenes are 941x1672,
+ * so roughly 1.6M pixels get re-blurred every time this `Image` element
+ * re-renders. Inline in `AppShell` it re-rendered on every parent render — every
+ * scroll-driven state update, every store tick — which is exactly the stutter
+ * you feel under a finger.
+ *
+ * Memoised on its six scalar props, it renders once per screen and then never
+ * again, so the blur is paid for at mount and costs nothing while scrolling.
+ */
+const ScreenBackground = React.memo<{
+  source?: ImageSourcePropType;
+  width: number;
+  height: number;
+  opacity: number;
+  blur: number;
+  scrim: number;
+}>(({ source, width, height, opacity, blur, scrim }) => {
+  if (!source) return null;
+  return (
+    <>
+      <Image
+        source={source}
+        /*
+         * `stretch`, not `cover`/`contain`: the whole illustration is shown —
+         * nothing cropped off any edge — stretched vertically to meet the
+         * screen. The scenes are drawn 9:16 while phones are taller, which
+         * trades a little elongation (invisible on soft painted scenery) for a
+         * background with no bare strip.
+         *
+         * Sized in exact pixels, never `absoluteFill`/percentages: those resolve
+         * against whatever the parent measures, which once let the image grow to
+         * the scroll content's height and render hugely zoomed.
+         */
+        resizeMode="stretch"
+        blurRadius={blur}
+        style={{ position: 'absolute', top: 0, left: 0, width, height, opacity }}
+        accessible={false}
+        importantForAccessibility="no-hide-descendants"
+      />
+      {scrim > 0 ? (
+        // Warm dark scrim: settles the scene down rather than washing it out.
+        <View
+          pointerEvents="none"
+          style={[StyleSheet.absoluteFill, { backgroundColor: `rgba(42,38,36,${scrim})` }]}
+        />
+      ) : null}
+    </>
+  );
+});
+ScreenBackground.displayName = 'ScreenBackground';
+
 const styles = StyleSheet.create({
   root: {
     flex: 1,
@@ -330,6 +388,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: GUTTER,
     paddingTop: spacing.md,
     paddingBottom: spacing.md,
+    /* Separates stacked actions — a footer often holds two buttons, and they
+       were sitting flush against each other. */
+    gap: spacing.md,
     /*
      * No fill and no rule. The sticky actions float directly on the screen's
      * scene: the buttons are solid shapes in their own right, so a strip behind

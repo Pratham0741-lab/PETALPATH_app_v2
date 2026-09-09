@@ -64,6 +64,16 @@ const EVENT_VISUALS: Record<EventType, EventVisual> = {
   },
 };
 
+const DEFAULT_PAGINATION = { page: 1, totalPages: 1, total: 0, limit: 20 };
+
+/** Shown when the server sends an event type this screen has no visual for. */
+const EVENT_FALLBACK: EventVisual = {
+  icon: 'check',
+  color: colors.textSecondary,
+  soft: colors.skeleton,
+  spoken: 'Activity completed',
+};
+
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 function formatRelativeTime(timestamp: string): string {
@@ -103,21 +113,25 @@ interface DateSection {
 export const LearningHistoryScreen: React.FC = () => {
   const [page, setPage] = useState(1);
   const [events, setEvents] = useState<TimelineEvent[]>([]);
-  const [pagination, setPagination] = useState({ page: 1, totalPages: 1, total: 0, limit: 20 });
+  const [pagination, setPagination] = useState(DEFAULT_PAGINATION);
   const [refreshing, setRefreshing] = useState(false);
 
   const { data, isLoading, isError, error, refetch, isFetching } = useLearningHistory(page);
 
   useEffect(() => {
-    if (data?.data) {
-      const result = data.data;
-      if (page === 1) {
-        setEvents(result.data);
-      } else {
-        setEvents((prev) => [...prev, ...result.data]);
-      }
-      setPagination(result.pagination);
-    }
+    if (!data?.data) return;
+    const result = data.data;
+
+    /*
+     * The response is cast to `TimelineResult`, never validated, so `result.data`
+     * and `result.pagination` are only *claimed* to exist. When they don't,
+     * `events` became `undefined` and the grouping below threw "Cannot convert
+     * undefined value to object", taking the screen down. Normalising here keeps
+     * the two pieces of state at the types the rest of the component assumes.
+     */
+    const batch = Array.isArray(result.data) ? result.data : [];
+    setEvents((prev) => (page === 1 ? batch : [...prev, ...batch]));
+    setPagination(result.pagination ?? DEFAULT_PAGINATION);
   }, [data, page]);
 
   const onRefresh = useCallback(async () => {
@@ -134,7 +148,7 @@ export const LearningHistoryScreen: React.FC = () => {
 
   const sections = useMemo<DateSection[]>(() => {
     const groups: Record<string, TimelineEvent[]> = {};
-    for (const event of events) {
+    for (const event of events ?? []) {
       const label = getDateLabel(event.timestamp);
       if (!groups[label]) groups[label] = [];
       groups[label].push(event);
@@ -247,7 +261,7 @@ export const LearningHistoryScreen: React.FC = () => {
 
 /** One finished thing. Not tappable — there is no detail screen behind it. */
 const EventRow: React.FC<{ event: TimelineEvent }> = ({ event }) => {
-  const v = EVENT_VISUALS[event.type];
+  const v = EVENT_VISUALS[event.type] ?? EVENT_FALLBACK;
   const when = formatRelativeTime(event.timestamp);
 
   return (

@@ -163,10 +163,7 @@ const SpeakComingSoon: React.FC<{
             Speaking Practice Coming Soon
           </Text>
           <Text style={[typography.presets.body, styles.comingSoonBody]}>
-            Our team is preparing a magical voice-recording practice for this lesson.
-          </Text>
-          <Text style={[typography.presets.caption, styles.comingSoonBody]}>
-            You don't have to wait — tap the button below to move on to the next activity.
+            This lesson's speaking practice is still being made.
           </Text>
         </Card>
       </View>
@@ -534,7 +531,6 @@ export const SpeakContent: React.FC<{ variant?: SpeakVariant }> = ({ variant = '
               name={mentor.name}
               species={mentor.species}
               color={mentor.color}
-              funFact={mentor.funFact}
               selected
             />
             <Card variant="flat" padding="normal">

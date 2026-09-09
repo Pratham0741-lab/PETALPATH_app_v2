@@ -147,6 +147,15 @@ model Lesson {
   description  String?
   displayOrder Int       @default(0) @map("display_order")
   difficulty   String    @default("EASY")
+  // The skill this lesson teaches.
+  //
+  // Lessons and skills were two unconnected hierarchies: lessons hang off
+  // modules, the garden is built from skills, and nothing joined them - so
+  // finishing "Letter A" never advanced the matching skill and its flower
+  // stayed a seed. Optional because existing rows have no mapping yet; a
+  // lesson without one simply does not move a flower.
+  skillId      String?   @map("skill_id")
+  skill        Skill?    @relation(fields: [skillId], references: [id], onDelete: SetNull)
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
   deletedAt    DateTime? @map("deleted_at")
@@ -525,6 +534,8 @@ model Skill {
   regressionLogs           RegressionLog[]
   reinforcementQueues         ReinforcementQueue[]
   reinforcementHistories     ReinforcementHistory[]
+  // Lessons that teach this skill; completing one completes the skill.
+  lessons                    Lesson[]
   reinforcementEvents         ReinforcementEvent[]
   childSkillCurriculums       ChildSkillCurriculum[]
   sessionBlocks               SessionBlock[]
@@ -708,7 +719,10 @@ model SkillActivity {
   skill        Skill    @relation(fields: [skillId], references: [id], onDelete: Cascade)
   title        String
   activityType String   @map("activity_type")
-  contentUrl   String?
+  // The database column is `content_url`, like every other field here. Without
+  // this @map Prisma saw the column as missing and generated a migration that
+  // DROPPED `content_url` (losing its data) and added an empty `contentUrl`.
+  contentUrl   String?  @map("content_url")
   description  String?
   displayOrder Int      @default(0) @map("display_order")
   createdAt    DateTime @default(now()) @map("created_at")

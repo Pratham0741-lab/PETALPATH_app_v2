@@ -186,7 +186,7 @@ const styles = StyleSheet.create({
   },
   actions: {
     flexDirection: 'row',
-    gap: spacing.md,
+    gap: spacing.lg,
     marginTop: spacing.lg,
   },
 });

@@ -17,7 +17,7 @@ import Animated, {
   interpolateColor,
 } from 'react-native-reanimated';
 import { colors, typography } from '../../theme';
-import { summarizeSeries, useChartWidth } from './useChartWidth';
+import { pickLabelIndices, summarizeSeries, useChartWidth } from './useChartWidth';
 
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 const AnimatedRect = Animated.createAnimatedComponent(Rect);
@@ -93,6 +93,13 @@ export const LineChart: React.FC<LineChartProps> = ({
     const step = (maxVal - minVal) / n;
     return Array.from({ length: n + 1 }, (_, i) => minVal + step * i);
   }, [minVal, maxVal]);
+
+  // Points sit at the ends of the plot, so the gap between two of them — not the
+  // plot width over the count — is the room a label has.
+  const shownLabels = useMemo(
+    () => pickLabelIndices(data.map((d) => d.label), data.length > 1 ? chartW / (data.length - 1) : chartW),
+    [data, chartW],
+  );
 
   const linePath = data
     .map((d, i) => `${i === 0 ? 'M' : 'L'}${xPos(i)},${yPos(d.value)}`)
@@ -184,19 +191,23 @@ export const LineChart: React.FC<LineChartProps> = ({
             </G>
           );
         })}
-        {data.map((d, i) => (
-          <SvgText
-            key={`xl-${i}`}
-            x={xPos(i)}
-            y={height - 6}
-            fill={colors.textMuted}
-            fontSize={10}
-            textAnchor="middle"
-            fontFamily={typography.families.rounded}
-          >
-            {d.label}
-          </SvgText>
-        ))}
+        {data.map((d, i) =>
+          shownLabels.has(i) ? (
+            <SvgText
+              key={`xl-${i}`}
+              x={xPos(i)}
+              y={height - 6}
+              fill={colors.textMuted}
+              fontSize={10}
+              /* The end points sit on the plot edges, so a centred label there
+                 hangs half its width outside the SVG and is clipped. */
+              textAnchor={i === 0 ? 'start' : i === data.length - 1 ? 'end' : 'middle'}
+              fontFamily={typography.families.rounded}
+            >
+              {d.label}
+            </SvgText>
+          ) : null,
+        )}
         <Path d={fillPath} fill={color} fillOpacity={0.12} />
         {animated ? (
           <AnimatedPath

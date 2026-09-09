@@ -363,7 +363,7 @@ export const SkillMasteryScreen: React.FC = () => {
             <SkillDistributionCard masteryGroups={masteryGroups} style={styles.block} />
 
             {weakSkills.length > 0 ? (
-              <Card accent={colors.warning} rail style={styles.block}>
+              <Card accent={colors.warning} style={styles.block}>
                 <View style={styles.weakHead}>
                   <PetalIcon name="warning" size={20} color={colors.warning} />
                   <Text style={typography.presets.cardTitle}>Skills Needing Attention</Text>

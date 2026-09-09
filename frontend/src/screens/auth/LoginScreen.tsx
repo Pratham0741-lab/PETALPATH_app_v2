@@ -158,7 +158,6 @@ export const LoginScreen: React.FC = () => {
             <View style={styles.authCardWrapper}>
               <AuthHeader
                 title="Welcome Back!"
-                subtitle="Begin your language learning journey!"
               />
 
               <View

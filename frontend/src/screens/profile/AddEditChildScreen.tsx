@@ -182,7 +182,6 @@ export const AddEditChildScreen: React.FC = () => {
       header={
         <PageHeader
           title={isEditMode ? 'Edit Profile' : 'Create Child Profile'}
-          subtitle="Personalize your child's learning journey"
         />
       }
       footer={
@@ -206,7 +205,7 @@ export const AddEditChildScreen: React.FC = () => {
     >
       <View style={[styles.column, { maxWidth }]}>
         {/* Live preview — what the child will see on their own profile. */}
-        <Card variant="raised" padding="roomy" accent={colors.primary} rail contentStyle={styles.hero}>
+        <Card variant="raised" padding="roomy" accent={colors.primary} contentStyle={styles.hero}>
           <AvatarGlyph species={selectedAvatar} size={88} ringColor={colors.primary} />
           <Text style={typography.presets.title} numberOfLines={1}>
             {previewName}

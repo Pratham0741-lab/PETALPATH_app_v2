@@ -469,15 +469,20 @@ export const TracingCanvas: React.FC<TracingCanvasProps> = ({
           d: `M ${w * 0.3} ${h * 0.2} L ${w * 0.3} ${h * 0.8} M ${w * 0.3} ${h * 0.2} L ${w * 0.7} ${h * 0.2} M ${w * 0.3} ${h * 0.5} L ${w * 0.65} ${h * 0.5}`,
         };
       case 'Letter G': {
-        // Open arc + horizontal bar
+        // A C-shaped arc that carries on past the bottom and up the right side,
+        // then turns in along the middle — one continuous stroke, the way a G is
+        // actually written. Starting at 1 o'clock and stopping at 3 o'clock leaves
+        // the opening on the right where it belongs.
         const pts: string[] = [];
         const cx = w * 0.5, cy = h * 0.5, rx = w * 0.25, ry = h * 0.3;
-        for (let i = 0; i <= 22; i++) {
-          const a = -0.4 + (i * (2 * Math.PI - 0.8)) / 22;
+        const start = (55 * Math.PI) / 180;
+        const end = 2 * Math.PI;
+        for (let i = 0; i <= 30; i++) {
+          const a = start + ((end - start) * i) / 30;
           pts.push(`${cx + rx * Math.cos(a)} ${cy - ry * Math.sin(a)}`);
         }
         return {
-          d: `M ${pts[0]} ${pts.slice(1).map(p => `L ${p}`).join(' ')} M ${w * 0.75} ${h * 0.5} L ${w * 0.5} ${h * 0.5}`,
+          d: `M ${pts[0]} ${pts.slice(1).map(p => `L ${p}`).join(' ')} L ${cx} ${cy}`,
         };
       }
       case 'Letter H':
@@ -946,7 +951,7 @@ export const TracingCanvas: React.FC<TracingCanvasProps> = ({
           </Svg>
         ) : (
           <View style={styles.centerFallback}>
-            <Text style={styles.fallbackText}>Native Drawing Canvas fallback</Text>
+            <Text style={styles.fallbackText}>Drawing area is loading…</Text>
           </View>
         )}
       </View>

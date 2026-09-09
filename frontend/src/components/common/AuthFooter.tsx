@@ -3,6 +3,8 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { useTheme } from '../../theme/ThemeContext';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
+import { radius } from '../../theme/radius';
+import { colors as tokens } from '../../theme/colors';
 
 interface AuthFooterLink {
   label: string;
@@ -44,6 +46,15 @@ const styles = StyleSheet.create({
     marginTop: spacing.lg,
     alignItems: 'center',
     gap: spacing.sm,
+    /* Panelled like the heading block: these links sit on the garden-gate
+       wallpaper, and underlined text alone was hard to pick out on the art. */
+    alignSelf: 'stretch',
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    backgroundColor: tokens.surfaceTranslucent,
+    borderWidth: 1,
+    borderColor: tokens.borderLight,
+    borderRadius: radius.card,
   },
   linkTouchable: {
     paddingVertical: spacing.xs,

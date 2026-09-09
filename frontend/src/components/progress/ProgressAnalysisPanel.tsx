@@ -82,13 +82,22 @@ export const ProgressAnalysisPanel: React.FC = () => {
         </Card>
       ) : progress ? (
         <>
-          <ChartCard title="Accuracy by subject">
+          <ChartCard
+            title="Where they're strongest"
+            hint="How often answers are right, and how well each subject has stuck."
+          >
             <AccuracyChart rows={progress.accuracyBySubject} />
           </ChartCard>
-          <ChartCard title="Mastery over time">
+          <ChartCard
+            title="How it's grown over time"
+            hint="Each point is a week. A rising line means learning is sticking."
+          >
             <MasteryTimelineChart points={progress.masteryTimeline} />
           </ChartCard>
-          <ChartCard title="Before & now">
+          <ChartCard
+            title="Since they started"
+            hint="The bar shows the distance travelled from where they began."
+          >
             <BeforeAfterChart
               overall={progress.beforeAfter.overall}
               rows={progress.beforeAfter.bySubject}
@@ -100,9 +109,19 @@ export const ProgressAnalysisPanel: React.FC = () => {
   );
 };
 
-const ChartCard: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
+/*
+ * A chart with a plain-language subtitle. These are read by parents, not
+ * analysts: a bare axis label leaves them guessing what "mastery" counts or what
+ * a good number looks like, so each card says in a sentence what it shows.
+ */
+const ChartCard: React.FC<{ title: string; hint?: string; children: React.ReactNode }> = ({
+  title,
+  hint,
+  children,
+}) => (
   <Card style={styles.chartCard}>
     <Text style={[typography.presets.cardTitle, styles.chartTitle]}>{title}</Text>
+    {hint ? <Text style={[typography.presets.caption, styles.chartHint]}>{hint}</Text> : null}
     {children}
   </Card>
 );
@@ -152,6 +171,10 @@ const styles = StyleSheet.create({
   },
   chartCard: {
     marginTop: spacing.sm,
+  },
+  chartHint: {
+    color: colors.textSecondary,
+    marginBottom: spacing.sm,
   },
   chartTitle: {
     color: colors.text,

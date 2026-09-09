@@ -132,7 +132,6 @@ export const MentorSelectionScreen: React.FC = () => {
   const header = (
     <PageHeader
       title="Choose a Companion"
-      subtitle="Pick a learning guide to join your child on their adventures."
     />
   );
 
@@ -206,12 +205,11 @@ const MentorChoice: React.FC<{
     <Card
       variant={selected ? 'selected' : 'raised'}
       accent={mentor.color}
-      rail
       padding="normal"
       onPress={onPress}
       /* `Card` puts children inside its own padded view, so the stack spacing
          has to go on `contentStyle` — on `style` it would only separate the
-         accent rail from the body. */
+         card edge from the body. */
       contentStyle={styles.cardBody}
       accessibilityLabel={`${mentor.name}, ${mentor.characterType}.${selected ? ' Chosen.' : ''}`}
       accessibilityHint={selected ? 'Continue with this buddy' : 'Choose this buddy'}

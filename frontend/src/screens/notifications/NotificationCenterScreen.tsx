@@ -23,7 +23,8 @@
  */
 
 import React, { useState, useCallback } from 'react';
-import { StyleSheet, View, Text, ScrollView, RefreshControl, Alert } from 'react-native';
+import { StyleSheet, View, Text, ScrollView, RefreshControl } from 'react-native';
+import { customAlert } from '../../utils/alert';
 
 import { ScreenContainer } from '../../components/common/ScreenContainer';
 import { TopBar } from '../../components/navigation/TopBar';
@@ -116,7 +117,7 @@ export const NotificationCenterScreen: React.FC = () => {
 
   const confirmDelete = useCallback(
     (id: string) => {
-      Alert.alert('Delete Notification', 'Remove this notification?', [
+      customAlert('Delete Notification', 'Remove this notification?', [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Delete', style: 'destructive', onPress: () => handleDelete(id) },
       ]);

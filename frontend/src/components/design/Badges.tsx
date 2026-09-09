@@ -14,7 +14,14 @@ import { PetalIcon, PetalIconName } from '../icons';
 // StatusBadge
 // ---------------------------------------------------------------------------
 
-export type LessonStatus = 'completed' | 'current' | 'locked' | 'available' | 'new';
+export type LessonStatus =
+  | 'completed'
+  | 'current'
+  | 'locked'
+  | 'available'
+  | 'new'
+  /** Finished once but faded — worth another go. */
+  | 'practice';
 
 const STATUS: Record<
   LessonStatus,
@@ -26,6 +33,7 @@ const STATUS: Record<
   locked: { label: 'Locked', icon: 'lock', fg: colors.textSecondary, bg: colors.skeleton },
   available: { label: 'Ready', icon: 'forward', fg: colors.blueDark, bg: colors.blueSoft },
   new: { label: 'New', icon: 'sparkle', fg: colors.primaryDark, bg: colors.primaryLight },
+  practice: { label: 'Practice', icon: 'replay', fg: colors.blueDark, bg: colors.blueSoft },
 };
 
 export interface StatusBadgeProps {
@@ -46,7 +54,7 @@ export const StatusBadge: React.FC<StatusBadgeProps> = ({
   style,
 }) => {
   const s = badgeSizes[size];
-  const cfg = STATUS[status];
+  const cfg = STATUS[status] ?? STATUS.available;
   const text = label ?? cfg.label;
 
   return (
@@ -113,7 +121,7 @@ export const RewardBadge: React.FC<RewardBadgeProps> = ({
   style,
 }) => {
   const s = badgeSizes[size];
-  const cfg = REWARD[kind];
+  const cfg = REWARD[kind] ?? REWARD.stars;
   const shown = `${signed ? '+' : ''}${value}${showUnit ? ` ${cfg.unit}` : ''}`;
 
   return (

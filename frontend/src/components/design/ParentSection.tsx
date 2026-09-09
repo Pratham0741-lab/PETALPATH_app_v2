@@ -283,6 +283,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.sm,
     marginBottom: spacing.md,
+    /* Section titles sit directly on a screen wallpaper, so they get the same
+       translucent surface as the cards below them. */
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    backgroundColor: colors.surfaceTranslucent,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    borderRadius: radius.card,
   },
   sectionIcon: {
     width: 32,
@@ -300,8 +308,18 @@ const styles = StyleSheet.create({
     marginTop: 1,
   },
   footnote: {
-    color: colors.textMuted,
+    /* Panelled like the section heading above it. The footnote sits on the
+       screen wallpaper below the card, where plain muted caption text on the
+       artwork was the least readable thing on the page. */
+    color: colors.textSecondary,
     marginTop: spacing.sm,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    backgroundColor: colors.surfaceTranslucent,
+    borderWidth: 1,
+    borderColor: colors.borderLight,
+    borderRadius: radius.card,
+    overflow: 'hidden',
   },
 
   // ------------------------------------------------------------------- rows

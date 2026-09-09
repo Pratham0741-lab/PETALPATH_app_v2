@@ -25,6 +25,14 @@ export function useChildSwitch() {
       queryClient.invalidateQueries({ queryKey: ['rewards'] }),
       queryClient.invalidateQueries({ queryKey: ['mastery'] }),
       queryClient.invalidateQueries({ queryKey: ['placements'] }),
+      /*
+       * Curriculum covers the Explore garden, subject screens and My Story, and
+       * it is cached for a day so those screens paint instantly. That cache is
+       * per-child data under a shared key, so without this the new child saw the
+       * previous child's flowers and companion until the cache expired.
+       */
+      queryClient.invalidateQueries({ queryKey: ['curriculum'] }),
+      queryClient.invalidateQueries({ queryKey: ['children'] }),
     ]);
   }, [queryClient, setActiveChild]);
 

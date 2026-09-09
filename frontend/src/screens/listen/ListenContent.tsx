@@ -180,10 +180,7 @@ const ListenComingSoon: React.FC<{
           />
           <Text style={[typography.presets.section, styles.comingSoonTitle]}>Audio Coming Soon</Text>
           <Text style={[typography.presets.body, styles.comingSoonBody]}>
-            Our team is preparing a magical audio guide for this lesson.
-          </Text>
-          <Text style={[typography.presets.caption, styles.comingSoonBody]}>
-            You don't have to wait — tap the button below to carry on with the learning activities.
+            This lesson's audio is still being made.
           </Text>
         </Card>
       </View>
@@ -567,7 +564,6 @@ export const ListenContent: React.FC<{ variant?: ListenVariant }> = ({ variant =
               name={mentor.name}
               species={mentor.species}
               color={mentor.color}
-              funFact={mentor.funFact}
               selected
             />
             <Card variant="flat" padding="normal">
@@ -608,11 +604,12 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   footer: {
-    gap: spacing.sm,
+    /* Buttons need clear separation, not the tight gap used inside a card. */
+    gap: spacing.md,
   },
   actionRow: {
     flexDirection: 'row',
-    gap: spacing.sm,
+    gap: spacing.md,
   },
   actionWide: {
     flex: 2,

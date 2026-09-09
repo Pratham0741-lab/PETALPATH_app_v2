@@ -116,6 +116,8 @@ export {
   layoutSizes,
   MIN_TOUCH_TARGET,
 };
+export { LESSON_STATE, resolveLessonState } from './lessonState';
+export type { LessonState, LessonStateVisual } from './lessonState';
 export type { ActivityColorKey } from './colors';
 export type { TextPreset } from './typography';
 export type {

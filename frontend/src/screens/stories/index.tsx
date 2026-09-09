@@ -87,7 +87,6 @@ export const StoriesScreen: React.FC = () => {
   const header = (
     <PageHeader
       title="Story Library"
-      subtitle="Discover and read magical stories"
       centered={false}
     />
   );

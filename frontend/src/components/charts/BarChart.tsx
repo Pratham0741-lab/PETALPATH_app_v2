@@ -16,7 +16,7 @@ import Animated, {
   interpolateColor,
 } from 'react-native-reanimated';
 import { colors, typography } from '../../theme';
-import { summarizeSeries, useChartWidth } from './useChartWidth';
+import { pickLabelIndices, summarizeSeries, useChartWidth } from './useChartWidth';
 
 const AnimatedRect = Animated.createAnimatedComponent(Rect);
 /* Hoisted: created inside the component body this is a *new component type*
@@ -95,6 +95,12 @@ export const BarChart: React.FC<BarChartProps> = ({
   const barStep = chartW / data.length;
   const barWidth = Math.max(barStep * 0.6, 4);
 
+  // Each label owns one bar's pitch; anything that does not fit is dropped.
+  const shownLabels = useMemo(
+    () => pickLabelIndices(data.map((d) => d.label), barStep),
+    [data, barStep],
+  );
+
   const animOpacity = useSharedValue(animated ? 0 : 1);
 
   useEffect(() => {
@@ -165,19 +171,21 @@ export const BarChart: React.FC<BarChartProps> = ({
             </G>
           );
         })}
-        {data.map((d, i) => (
-          <SvgText
-            key={`xl-${i}`}
-            x={MARGIN.left + i * barStep + barStep / 2}
-            y={height - 6}
-            fill={colors.textMuted}
-            fontSize={10}
-            textAnchor="middle"
-            fontFamily={typography.families.rounded}
-          >
-            {d.label}
-          </SvgText>
-        ))}
+        {data.map((d, i) =>
+          shownLabels.has(i) ? (
+            <SvgText
+              key={`xl-${i}`}
+              x={MARGIN.left + i * barStep + barStep / 2}
+              y={height - 6}
+              fill={colors.textMuted}
+              fontSize={10}
+              textAnchor="middle"
+              fontFamily={typography.families.rounded}
+            >
+              {d.label}
+            </SvgText>
+          ) : null,
+        )}
         <AnimatedG animatedProps={groupAnimProps}>
           {data.map((d, i) => {
             const barX = MARGIN.left + i * barStep + (barStep - barWidth) / 2;

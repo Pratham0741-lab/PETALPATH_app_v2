@@ -38,7 +38,7 @@
 import { prisma } from '../../config/database.js';
 import { NotFoundError } from '../../utils/errors.js';
 import { logger } from '../../utils/logger.js';
-import { ActivityType } from '../../shared/enums.js';
+import { ActivityType, CurriculumState } from '../../shared/enums.js';
 import { curriculumService } from '../curriculum/index.js';
 import { starService } from '../stars/star.service.js';
 import { rewardService } from '../rewards/rewards.service.js';
@@ -299,6 +299,33 @@ export class LessonCompletionService {
           include: { module: true },
         });
         if (lesson) {
+          /*
+           * Grow the lesson's flower.
+           *
+           * The garden is built from skills while the journey is built from
+           * lessons, and until `Lesson.skillId` existed the two were unrelated:
+           * a child could finish "Letter A" and its skill stayed at the default
+           * state, so the flower never left `seed`. Marking the skill COMPLETED
+           * here is what makes the subject patch agree with the journey.
+           *
+           * Guarded on the mapping being present: lessons authored before the
+           * column simply have no skill to advance.
+           */
+          if (lesson.skillId) {
+            await tx.childSkillCurriculum.upsert({
+              where: { childId_skillId: { childId, skillId: lesson.skillId } },
+              update: { state: CurriculumState.COMPLETED, completedAt: now, priority: 0 },
+              create: {
+                childId,
+                skillId: lesson.skillId,
+                state: CurriculumState.COMPLETED,
+                unlockRatio: 1,
+                priority: 0,
+                completedAt: now,
+              },
+            });
+          }
+
           moduleCompleted = await moduleProgressService.completeModule(childId, lesson.moduleId, tx);
           if (moduleCompleted) {
             categoryCompleted = await categoryProgressService.completeCategory(

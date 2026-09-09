@@ -134,8 +134,16 @@ const TREND: Record<TrendTone, TrendVisual> = {
   flat: { word: 'Steady', icon: 'forward', fg: colors.textSecondary, bg: colors.skeleton },
 };
 
-/** For cards that draw the trend as something other than a pill. */
-export const trendVisual = (direction: TrendDirection): TrendVisual => TREND[TREND_TONE[direction]];
+/**
+ * For cards that draw the trend as something other than a pill.
+ *
+ * Falls back to "Steady" for a direction outside the union. `TrendDirection`
+ * describes what the API is *supposed* to send, but responses are cast rather
+ * than validated, so an unexpected (or missing) value would otherwise make
+ * `TREND[undefined]` undefined and crash the caller on `.fg`.
+ */
+export const trendVisual = (direction: TrendDirection): TrendVisual =>
+  TREND[TREND_TONE[direction]] ?? TREND.flat;
 
 export interface TrendPillProps {
   direction: TrendDirection;
@@ -152,7 +160,7 @@ export interface TrendPillProps {
  * green to know which is which (§30).
  */
 export const TrendPill: React.FC<TrendPillProps> = ({ direction, change, label, style }) => {
-  const cfg = TREND[TREND_TONE[direction]];
+  const cfg = trendVisual(direction);
   const s = badgeSizes.sm;
   const word = label ?? cfg.word;
   const delta =

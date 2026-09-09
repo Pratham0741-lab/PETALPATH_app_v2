@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { View, StyleSheet } from 'react-native';
 import Svg, {
   Path,
@@ -19,6 +19,7 @@ import Animated, {
   interpolateColor,
 } from 'react-native-reanimated';
 import { colors, typography } from '../../theme';
+import { pickLabelIndices } from './useChartWidth';
 
 const AnimatedRect = Animated.createAnimatedComponent(Rect);
 
@@ -80,6 +81,11 @@ export const AreaChart: React.FC<AreaChartProps> = ({
   };
   const yPos = (v: number): number =>
     MARGIN.top + chartH - ((v - minVal) / (maxVal - minVal)) * chartH;
+
+  const shownLabels = useMemo(
+    () => pickLabelIndices(data.map((d) => d.label), data.length > 1 ? chartW / (data.length - 1) : chartW),
+    [data, chartW],
+  );
 
   const linePath = data
     .map((d, i) => `${i === 0 ? 'M' : 'L'}${xPos(i)},${yPos(d.value)}`)
@@ -145,19 +151,21 @@ export const AreaChart: React.FC<AreaChartProps> = ({
         })}
 
         {/* X-axis labels */}
-        {data.map((d, i) => (
-          <SvgText
-            key={`xl-${i}`}
-            x={xPos(i)}
-            y={height - 6}
-            fill={colors.textMuted}
-            fontSize={10}
-            textAnchor="middle"
-            fontFamily={typography.families.rounded}
-          >
-            {d.label}
-          </SvgText>
-        ))}
+        {data.map((d, i) =>
+          shownLabels.has(i) ? (
+            <SvgText
+              key={`xl-${i}`}
+              x={xPos(i)}
+              y={height - 6}
+              fill={colors.textMuted}
+              fontSize={10}
+              textAnchor={i === 0 ? 'start' : i === data.length - 1 ? 'end' : 'middle'}
+              fontFamily={typography.families.rounded}
+            >
+              {d.label}
+            </SvgText>
+          ) : null,
+        )}
 
         {/* Area fill */}
         <Path d={fillPath} fill={fill} />

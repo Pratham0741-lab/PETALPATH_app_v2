@@ -116,6 +116,7 @@ export type {
 } from './Roadmap';
 
 // Parent-facing
+export { AppAlertHost } from './AppAlert';
 export { GrownUpGate } from './GrownUpGate';
 export type { GrownUpGateProps } from './GrownUpGate';
 export { ParentSection, ParentRow, ParentStatGrid, DestructiveAction } from './ParentSection';

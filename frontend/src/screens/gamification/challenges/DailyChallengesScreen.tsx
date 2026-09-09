@@ -68,7 +68,6 @@ export const DailyChallengesScreen: React.FC = () => {
 
             <ChallengeHeader
               title="Today's Challenges"
-              subtitle="Complete challenges to earn rewards!"
             />
             <ChallengeList challenges={challenges} />
           </>

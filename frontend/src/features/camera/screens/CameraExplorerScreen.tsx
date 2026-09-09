@@ -101,19 +101,6 @@ const COLUMN_MAX_WIDTH: Record<string, number | undefined> = {
 };
 
 /**
- * The word is always shown as well as the colour, so difficulty never depends on
- * hue alone (§30). Unknown values fall back to plain secondary text.
- */
-const DIFFICULTY_COLOR: Record<string, string> = {
-  easy: colors.leafGreen,
-  beginner: colors.leafGreen,
-  medium: colors.orange,
-  intermediate: colors.orange,
-  hard: colors.primary,
-  advanced: colors.primary,
-};
-
-/**
  * Maps a catalog validator onto the coarse `ActivityType` union.
  *
  * `activityType` is still needed for analytics, the sync payload and the eight
@@ -273,11 +260,11 @@ export const CameraExplorerScreen: React.FC = () => {
        * the garden here is planted with shrubs and claims nothing.
        */
       scene={<SceneBand progress={null} height={116} />}
-      header={<AppHeader accent={SCREEN_ACCENTS.camera} eyebrow="Move and play" title="Camera Activities" />}
+      header={<AppHeader accent={SCREEN_ACCENTS.camera} title="Move &amp; Play" />}
     >
       <View style={[styles.column, maxWidth ? { maxWidth } : null]}>
         {/* ---------------------------------------------------------- Intro */}
-        <Card variant="raised" padding="normal" accent={tone.main} rail contentStyle={styles.intro}>
+        <Card variant="raised" padding="normal" accent={tone.main} contentStyle={styles.intro}>
           <View style={styles.introRow}>
             <IconWell
               icon="camera"
@@ -287,19 +274,19 @@ export const CameraExplorerScreen: React.FC = () => {
               filled
             />
             <View style={styles.introText}>
-              <Text style={typography.presets.section} numberOfLines={2}>
-                Interactive Motion &amp; Pose
-              </Text>
+              {/* One line, not a heading plus a sentence saying the same thing.
+                  "Interactive Motion & Pose" was the internal name for the
+                  feature, not something a five-year-old reads. */}
               <Text style={[typography.presets.body, styles.muted]}>
                 {companion
-                  ? `Use your camera to do fun physical exercises with ${companion}!`
-                  : 'Use your camera to do fun physical exercises!'}
+                  ? `Stand back so the camera can see you, and move with ${companion}!`
+                  : 'Stand back so the camera can see you, then copy the moves!'}
               </Text>
             </View>
           </View>
 
           <SecondaryButton
-            label="Calibrate Camera Position"
+            label="Set Up Camera"
             icon="settings"
             tone="blue"
             onPress={handleCalibrate}
@@ -367,8 +354,6 @@ const MotionChallengeCard: React.FC<{
   onStart: () => void;
 }> = ({ activity, minWidth, onStart }) => {
   const tone = getActivityColor('camera');
-  const difficultyColor =
-    DIFFICULTY_COLOR[activity.difficulty?.toLowerCase()] ?? colors.textSecondary;
 
   return (
     /* The card itself is not pressable: the Start button is the one control, so
@@ -377,7 +362,6 @@ const MotionChallengeCard: React.FC<{
       variant="raised"
       padding="normal"
       accent={tone.main}
-      rail
       style={[styles.gridItem, { flexBasis: minWidth }]}
       contentStyle={styles.card}
     >
@@ -401,9 +385,9 @@ const MotionChallengeCard: React.FC<{
           />
         </View>
         <View style={styles.cardHeadText}>
-          <Text style={[typography.presets.eyebrow, { color: difficultyColor }]} numberOfLines={1}>
-            {activity.difficulty}
-          </Text>
+          {/* No difficulty word. Telling a four-year-old a task is "hard" before
+              they try it discourages the ones who most need to try it, and the
+              engine already adapts the challenge without announcing a grade. */}
           <Text style={typography.presets.cardTitle} numberOfLines={2}>
             {activity.title}
           </Text>
@@ -492,6 +476,8 @@ const styles = StyleSheet.create({
   gridItem: {
     flexGrow: 1,
     flexShrink: 1,
+    /* The grid's gap owns the spacing; the card's own margin would double it. */
+    marginBottom: 0,
   },
   card: {
     gap: spacing.sm,

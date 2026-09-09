@@ -30,9 +30,6 @@ export const AvatarCard: React.FC<AvatarCardProps> = ({ mentor, style, onPress, 
         <View style={styles.info}>
           <Text style={styles.name}>{mentor.name}</Text>
           <Text style={styles.species}>{mentor.species}</Text>
-          <Text style={styles.funFact} numberOfLines={2}>
-            {mentor.funFact}
-          </Text>
         </View>
       </View>
     </AppCard>

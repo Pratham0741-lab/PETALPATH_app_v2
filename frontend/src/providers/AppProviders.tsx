@@ -7,6 +7,7 @@ import { AuthProvider } from './AuthProvider';
 import { ErrorBoundary } from '../components/common/ErrorBoundary';
 import { OfflineBanner } from '../components/common/OfflineBanner';
 import { PendingSyncIndicator } from '../components/common/PendingSyncIndicator';
+import { AppAlertHost } from '../components/design/AppAlert';
 
 export const AppProviders: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   return (
@@ -19,6 +20,10 @@ export const AppProviders: React.FC<{ children: React.ReactNode }> = ({ children
               <PendingSyncIndicator />
               <ErrorBoundary>
                 {children}
+                {/* Inside the boundary, not beside it. Sitting outside meant any
+                    error here white-screened the whole app with nothing to catch
+                    it; its Modal still renders above every screen from in here. */}
+                <AppAlertHost />
               </ErrorBoundary>
             </View>
           </AuthProvider>

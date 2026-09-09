@@ -191,7 +191,7 @@ export const ReinforcementQueueScreen: React.FC = () => {
       }
     >
       {/* ------------------------------------------------------------ summary */}
-      <Card variant="raised" accent={colors.purple} rail style={styles.block}>
+      <Card variant="raised" accent={colors.purple} style={styles.block}>
         <View style={styles.summaryHead}>
           <View style={styles.iconWell}>
             <PetalIcon name="replay" size={22} color={colors.purple} />

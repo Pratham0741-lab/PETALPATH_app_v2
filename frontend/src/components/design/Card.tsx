@@ -139,13 +139,8 @@ export interface CardProps {
   children: React.ReactNode;
   variant?: CardVariant;
   padding?: CardPadding;
-  /** Accent colour for `selected`, and for the optional left rail. */
+  /** Accent colour: the `selected` border, and the tint interactive cards use. */
   accent?: string;
-  /**
-   * Draws a 6px colour rail down the leading edge — how a card signals which
-   * activity type or subject it belongs to without relying on colour alone.
-   */
-  rail?: boolean;
   onPress?: () => void;
   onLongPress?: () => void;
   disabled?: boolean;
@@ -174,7 +169,6 @@ export const Card: React.FC<CardProps> = ({
   variant = 'raised',
   padding = 'normal',
   accent,
-  rail = false,
   onPress,
   onLongPress,
   disabled = false,
@@ -187,7 +181,7 @@ export const Card: React.FC<CardProps> = ({
 }) => {
   const interactive = !!onPress && !disabled;
   // Rail / selected-border colour: an explicit `accent` wins; otherwise the
-  // screen's accent (so a screen's card rails share its colour identity).
+  // screen's accent (so a screen's cards share its colour identity).
   const screenAccent = useScreenAccent();
   const accentColor = accent ?? screenAccent;
   const scale = useRef(new Animated.Value(1)).current;
@@ -227,9 +221,15 @@ export const Card: React.FC<CardProps> = ({
       ? { backgroundColor: cardFill, borderColor: cardBorder, borderWidth: 1 }
       : { backgroundColor: cardFill, borderColor: cardBorder, borderWidth: 1 };
 
+  /*
+   * No colour rail. The 6px strip down the leading edge was meant to say which
+   * subject or activity a card belonged to, but it is a legend with no key —
+   * nothing on screen ever tells a child that blue means maths — and it competed
+   * with the signals that do carry meaning: the emblem, the flowers, and the
+   * state colour on the border.
+   */
   const body = (
     <View style={styles.row}>
-      {rail ? <View style={[styles.rail, { backgroundColor: accentColor }]} /> : null}
       <View style={[styles.content, { padding: PADDING[padding] }, contentStyle]}>{children}</View>
     </View>
   );
@@ -296,7 +296,7 @@ export const Card: React.FC<CardProps> = ({
 const styles = StyleSheet.create({
   card: {
     borderRadius: radius.card,
-    // `hidden` lets the colour rail follow the rounded corner.
+    // `hidden` keeps children clipped to the rounded corner.
     overflow: 'hidden',
   },
   animatedWrap: {
@@ -308,9 +308,6 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'stretch',
-  },
-  rail: {
-    width: 6,
   },
   content: {
     flex: 1,

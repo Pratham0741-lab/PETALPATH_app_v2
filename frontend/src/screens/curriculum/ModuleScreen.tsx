@@ -142,7 +142,7 @@ export const ModuleScreen: React.FC = () => {
         <RefreshControl refreshing={isFetching} onRefresh={refetch} tintColor={colors.primary} />
       }
     >
-      <Card variant="raised" padding="roomy" accent={colors.primary} rail style={styles.card}>
+      <Card variant="raised" padding="roomy" accent={colors.primary} style={styles.card}>
         {category ? (
           <View style={styles.breadcrumb}>
             <PetalIcon name="explore" size={14} color={colors.textSecondary} />

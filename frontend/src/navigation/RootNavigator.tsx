@@ -94,7 +94,7 @@ const Tab = createBottomTabNavigator();
 // Auth Stack Navigator
 const AuthNavigator = () => {
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Navigator screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
       <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="Register" component={RegisterScreen} />
       <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
@@ -112,14 +112,47 @@ const MobileTabs = () => {
       // `freezeOnBlur` suspends a tab's React tree while it's in the background, so
       // its animations, timers and query subscriptions stop consuming the JS thread
       // until the child returns to it — a broad smoothness win across the tabs.
-      screenOptions={{ headerShown: false, freezeOnBlur: true }}
+      screenOptions={{
+        headerShown: false,
+        freezeOnBlur: true,
+        /*
+         * Tabs used to cut instantly from one screen to the next. A short cross
+         * fade makes moving between sections read as one app rather than a hard
+         * swap, and it also covers the moment a tab is mounting for the first
+         * time. `shifting` would slide the whole screen, which fights the
+         * full-bleed wallpapers — a fade leaves the scene in place.
+         */
+        animation: 'fade',
+        transitionSpec: {
+          animation: 'timing',
+          config: { duration: 220 },
+        },
+      }}
     >
       <Tab.Screen name="Home" component={HomeScreen} />
       <Tab.Screen name="Journey" component={CurriculumExplorerScreen} />
-      <Tab.Screen name="Camera" component={CameraExplorerScreen} />
-      <Tab.Screen name="Mentor" component={MentorScreen} />
       <Tab.Screen name="Rewards" component={RewardsScreen} />
-      <Tab.Screen name="Profile" component={ProfileScreen} />
+      {/*
+        All three stay tab routes so `navigate('Profile')` works from the avatar
+        menu, `navigate('Mentor')` from the buddy card in Profile and
+        `navigate('Camera')` from the Move & Play card on Home — but none is
+        drawn in the bar, which is down to three destinations.
+      */}
+      <Tab.Screen
+        name="Camera"
+        component={CameraExplorerScreen}
+        options={{ tabBarButton: () => null }}
+      />
+      <Tab.Screen
+        name="Mentor"
+        component={MentorScreen}
+        options={{ tabBarButton: () => null }}
+      />
+      <Tab.Screen
+        name="Profile"
+        component={ProfileScreen}
+        options={{ tabBarButton: () => null }}
+      />
     </Tab.Navigator>
   );
 };
@@ -148,7 +181,7 @@ export const RootNavigator = () => {
   // If user has no active child profile selected, force onboarding flow
   if (!activeChild) {
     return (
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Navigator screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
         <Stack.Screen name="ParentProfile" component={ParentProfileScreen} />
         <Stack.Screen name="ChildSelection" component={ChildSelectionScreen} />
         <Stack.Screen name="AddChild" component={AddEditChildScreen} />
@@ -161,7 +194,7 @@ export const RootNavigator = () => {
 
   if (deviceType === 'mobile') {
     return (
-      <Stack.Navigator screenOptions={{ headerShown: false, freezeOnBlur: true }}>
+      <Stack.Navigator screenOptions={{ headerShown: false, freezeOnBlur: true, animation: 'slide_from_right' }}>
         <Stack.Screen name="MainTabs" component={MobileTabs} />
         <Stack.Screen name="LessonOverview" component={LessonOverviewScreen} />
         <Stack.Screen name="Lesson" component={LessonScreen} />

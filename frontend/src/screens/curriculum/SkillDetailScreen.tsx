@@ -124,12 +124,6 @@ const SkillDetailScreen: React.FC = () => {
 
   const stats: Stat[] = [
     {
-      value: skill.difficulty > 0 ? `Level ${skill.difficulty}` : '—',
-      label: 'Difficulty',
-      icon: 'chart',
-      color: colors.blue,
-    },
-    {
       value: humanize(skill.masteryState),
       label: 'Mastery',
       icon: 'star',
@@ -161,7 +155,7 @@ const SkillDetailScreen: React.FC = () => {
       }
     >
       {/* Identity */}
-      <Card variant="raised" padding="roomy" accent={visual.color} rail style={styles.card}>
+      <Card variant="raised" padding="roomy" accent={visual.color} style={styles.card}>
         <View style={styles.headerRow}>
           <IconWell
             icon={visual.icon}

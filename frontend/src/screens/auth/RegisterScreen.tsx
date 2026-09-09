@@ -95,7 +95,6 @@ export const RegisterScreen: React.FC = () => {
             <View style={styles.authCardWrapper}>
               <AuthHeader
                 title="Join PetalPath"
-                subtitle="Create an account to track your journey!"
               />
 
               <View

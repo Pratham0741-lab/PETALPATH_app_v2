@@ -209,7 +209,7 @@ export const LessonCompleteScreen: React.FC = () => {
       </Card>
 
       {/* Message from the child's learning buddy */}
-      <Card variant="raised" padding="normal" accent={activeMentor.color} rail>
+      <Card variant="raised" padding="normal" accent={activeMentor.color}>
         <View style={styles.mentorRow}>
           <AvatarGlyph
             species={activeMentor.species}

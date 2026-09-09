@@ -48,6 +48,24 @@ const HEALTH: Record<Health, HealthVisual> = {
   behind: { label: 'Behind', icon: 'warning', tint: colors.errorLight, fg: colors.errorDark },
 };
 
+/**
+ * Used when the server sends a health value this map does not know — including
+ * no value at all.
+ *
+ * `HEALTH[data.curriculumHealth]` looks total because `Health` is a union, but
+ * that union is a *claim about the response*, not a guarantee: the payload is
+ * cast on arrival, never validated. When the field is missing the lookup
+ * returns `undefined` and the next line reads `.fg` off it, which crashed this
+ * screen — and, because the ErrorBoundary sits above the navigator, took the
+ * whole app down with it. Never index a map with a server value unguarded.
+ */
+const HEALTH_UNKNOWN: HealthVisual = {
+  label: 'Not enough data',
+  icon: 'info',
+  tint: colors.skeleton,
+  fg: colors.textSecondary,
+};
+
 const MILESTONE_ICON: Record<'module' | 'category', PetalIconName> = {
   module: 'explore',
   category: 'book',
@@ -103,7 +121,19 @@ export const CurriculumInsightsScreen: React.FC = () => {
     );
   }
 
-  if (!data) {
+  /*
+   * `data` is cast to `CurriculumInsight` on arrival, never validated, and the
+   * endpoint behind `useCurriculumInsights` (`/analytics/progress`) does not
+   * actually return that shape — it returns `ProgressSummary`. So a truthy
+   * `data` is not enough: every field below would be `undefined`, which renders
+   * as "NaN%" and "undefined days" and crashes outright on `nextMilestones`.
+   *
+   * Checking one required numeric field is enough to tell a real curriculum
+   * payload from a stand-in, and an honest empty state beats a screen of NaN.
+   * The proper fix is a backend endpoint that returns `CurriculumInsight`; until
+   * then this fails soft instead of taking the app down.
+   */
+  if (!data || typeof data.roadmapCompletion !== 'number') {
     return (
       <AppShell petals="light" header={header}>
         <StatePanel minHeight={220}>
@@ -117,7 +147,9 @@ export const CurriculumInsightsScreen: React.FC = () => {
     );
   }
 
-  const health = HEALTH[data.curriculumHealth];
+  const health = HEALTH[data.curriculumHealth] ?? HEALTH_UNKNOWN;
+  // Same reasoning as `health`: an array the response may simply not carry.
+  const milestones = data.nextMilestones ?? [];
 
   return (
     <AppShell
@@ -161,7 +193,7 @@ export const CurriculumInsightsScreen: React.FC = () => {
         style={styles.block}
       />
 
-      <ParentSection title="Pace" subtitle="How the current curriculum is going" icon="clock" boxed>
+      <ParentSection title="Pace" icon="clock" boxed>
         <ParentRow
           label="Average lesson completion"
           value={`${Math.round(data.averageLessonCompletion)}%`}
@@ -203,18 +235,18 @@ export const CurriculumInsightsScreen: React.FC = () => {
         subtitle="Coming up, soonest first"
         icon="star"
         boxed
-        empty={data.nextMilestones.length === 0}
+        empty={milestones.length === 0}
         emptyTitle="No upcoming milestones"
         emptyMessage="Complete more lessons to unlock milestones."
         emptyIcon="star"
       >
-        {data.nextMilestones.map((milestone, index) => (
+        {milestones.map((milestone, index) => (
           <ParentRow
             key={`milestone-${index}`}
             label={milestone.title}
             description={milestone.type === 'module' ? 'Module' : 'Category'}
             value={`~${milestone.etaDays}d`}
-            icon={MILESTONE_ICON[milestone.type]}
+            icon={MILESTONE_ICON[milestone.type] ?? 'star'}
             iconColor={colors.primary}
             divided={index > 0}
           />

@@ -245,7 +245,7 @@ const styles = StyleSheet.create({
   },
   hero: {
     alignItems: 'center',
-    gap: spacing.sm,
+    gap: spacing.md,
   },
   /**
    * The one place in the app that uses `hero`, and the reason the preset exists.

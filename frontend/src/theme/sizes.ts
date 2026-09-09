@@ -29,8 +29,12 @@ export const cardSizes = {
   paddingCompact: 14,
   padding: 18,
   paddingRoomy: 22,
-  /** Vertical rhythm between stacked cards. */
-  gap: 14,
+  /**
+   * Vertical rhythm between stacked cards. Raised from 14: with translucent
+   * panels the eye needs more separation than it did between opaque boxes, and
+   * at 14 a column of cards read as one crowded slab.
+   */
+  gap: 26,
   /** Minimum height for a tappable list-style card. */
   minRowHeight: 72,
   /** Leading icon well inside subject / activity / reward cards. */
@@ -65,16 +69,25 @@ export const roadmapSizes = {
    * are centred in their row and rows are absolutely positioned, so a row
    * shorter than its card would let neighbours overlap.
    */
-  rowHeight: 116,
+  /*
+   * Raised from 116. The cards outgrew their rows when the lesson title went to
+   * 22px (26px on the current stop): a two-line title plus the CURRENT pill,
+   * the state word and a star row no longer fitted, and since rows are
+   * absolutely positioned an overflowing card simply overlapped its neighbour —
+   * which is what put a lesson card on top of the section header below it.
+   */
+  rowHeight: 152,
   /**
    * Shorter row for a locked node. A locked stop carries no pill, no stars and a
    * one-line label, and a grade's worth of them at the full height turned the
    * journey into a wall of identical grey rows — twenty-seven lessons meant
    * roughly nine screens of nothing but padlocks. Nothing is hidden; the run just
-   * compresses until it reaches something the child can do. 80 is the locked
-   * card's ~62px plus clearance.
+   * compresses until it reaches something the child can do. 92 fits a two-line
+   * 22px title with clearance — "27. Capital Letters Review" wraps. The locked
+   * card no longer carries a "Locked" line, so this is 16px below what it would
+   * otherwise need.
    */
-  rowHeightLocked: 80,
+  rowHeightLocked: 92,
   nodeCompleted: 48,
   nodeLocked: 44,
   /** The current lesson is deliberately the largest thing on the path. */

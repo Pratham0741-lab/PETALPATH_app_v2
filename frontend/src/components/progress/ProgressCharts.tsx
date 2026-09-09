@@ -102,28 +102,95 @@ export const MasteryTimelineChart: React.FC<{ points: MasteryPoint[] }> = ({ poi
 
 // ---------------------------------------------------------- 3) Before / after
 
+/**
+ * Before -> now, as movement rather than a pair of numbers.
+ *
+ * This was two stacked bars per subject with "Before 42%" and "Now 61%", which
+ * left the parent to do the subtraction — the one thing they actually want to
+ * know. Each subject is now a single track with a hollow dot where the child
+ * started, a filled dot where they are now, and the distance between them drawn
+ * as a coloured bar: the length of that bar *is* the progress. Percentages stay,
+ * small and secondary, for anyone who wants the detail.
+ */
 export const BeforeAfterChart: React.FC<{
   overall: { before: number; after: number };
   rows: BeforeAfterRow[];
 }> = ({ overall, rows }) => {
   const gain = Math.round(overall.after - overall.before);
+  const improved = rows.filter((r) => r.after > r.before).length;
+
   return (
     <View>
-      <Legend items={[{ label: 'Before', color: colors.border }, { label: 'Now', color: colors.primary }]} />
-      <View style={styles.group}>
-        <Text style={[typography.presets.caption, styles.groupTitle]}>
-          Overall {gain >= 0 ? `· +${gain}` : `· ${gain}`}
-        </Text>
-        <Meter label="Before" value={overall.before} color={colors.border} />
-        <Meter label="Now" value={overall.after} color={colors.primary} />
-      </View>
+      {/* The headline a parent can read in one glance, in words. */}
+      <Text style={[typography.presets.body, styles.summary]}>
+        {gain > 0
+          ? `Moved forward in ${improved} of ${rows.length} ${rows.length === 1 ? 'subject' : 'subjects'} since starting.`
+          : gain === 0
+            ? 'Holding steady since starting.'
+            : 'Some ground to regain since starting.'}
+      </Text>
+
+      <Legend
+        items={[
+          { label: 'Where they started', color: colors.border },
+          { label: 'Where they are now', color: colors.primary },
+        ]}
+      />
+
+      <Dumbbell label="Overall" before={overall.before} after={overall.after} emphasis />
       {rows.map((r) => (
-        <View key={r.subjectId} style={styles.group}>
-          <Text style={[typography.presets.caption, styles.groupTitle]}>{r.subject}</Text>
-          <Meter label="Before" value={r.before} color={colors.border} />
-          <Meter label="Now" value={r.after} color={colors.primary} />
-        </View>
+        <Dumbbell key={r.subjectId} label={r.subject} before={r.before} after={r.after} />
       ))}
+    </View>
+  );
+};
+
+/** One subject's journey: start dot, end dot, and the gain drawn between them. */
+const Dumbbell: React.FC<{
+  label: string;
+  before: number;
+  after: number;
+  emphasis?: boolean;
+}> = ({ label, before, after, emphasis = false }) => {
+  const from = clampPct(Math.min(before, after));
+  const to = clampPct(Math.max(before, after));
+  const grew = after >= before;
+  const delta = Math.round(after - before);
+  /* Green for forward, amber for slipped — never colour alone, the words and the
+     dot positions carry it too. */
+  const moveColor = grew ? colors.success : colors.warning;
+
+  return (
+    <View style={styles.dumbbellRow}>
+      <View style={styles.dumbbellHead}>
+        <Text
+          style={[typography.presets.caption, emphasis ? styles.groupTitle : styles.meterLabel]}
+          numberOfLines={1}
+        >
+          {label}
+        </Text>
+        <Text style={[typography.presets.caption, { color: moveColor }]}>
+          {delta === 0 ? 'no change' : grew ? `+${delta}` : `${delta}`}
+        </Text>
+      </View>
+
+      <View style={styles.dumbbellTrack}>
+        {/* The distance travelled. */}
+        <View
+          style={[
+            styles.dumbbellMove,
+            { left: `${from}%`, width: `${Math.max(to - from, 0.5)}%`, backgroundColor: moveColor },
+          ]}
+        />
+        {/* Started here. */}
+        <View style={[styles.dot, styles.dotBefore, { left: `${clampPct(before)}%` }]} />
+        {/* Now here. */}
+        <View style={[styles.dot, styles.dotAfter, { left: `${clampPct(after)}%` }]} />
+      </View>
+
+      <Text style={[typography.presets.caption, styles.dumbbellScale]}>
+        {Math.round(before)}% → {Math.round(after)}%
+      </Text>
     </View>
   );
 };
@@ -146,6 +213,53 @@ const EmptyNote: React.FC<{ text: string }> = ({ text }) => (
 );
 
 const styles = StyleSheet.create({
+  summary: {
+    color: colors.text,
+    marginBottom: spacing.sm,
+  },
+  dumbbellRow: {
+    marginBottom: spacing.md,
+  },
+  dumbbellHead: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 6,
+    gap: spacing.sm,
+  },
+  /* Room above and below the track so the dots are not clipped by it. */
+  dumbbellTrack: {
+    height: 14,
+    justifyContent: 'center',
+    backgroundColor: colors.borderLight,
+    borderRadius: radius.pill,
+  },
+  dumbbellMove: {
+    position: 'absolute',
+    height: 6,
+    borderRadius: radius.pill,
+  },
+  dot: {
+    position: 'absolute',
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    marginLeft: -6,
+  },
+  dotBefore: {
+    backgroundColor: colors.surface,
+    borderWidth: 2,
+    borderColor: colors.textMuted,
+  },
+  dotAfter: {
+    backgroundColor: colors.primary,
+    borderWidth: 2,
+    borderColor: colors.surface,
+  },
+  dumbbellScale: {
+    color: colors.textMuted,
+    marginTop: 4,
+  },
   group: {
     marginBottom: spacing.md,
   },

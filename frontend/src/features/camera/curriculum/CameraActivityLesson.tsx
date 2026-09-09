@@ -169,7 +169,7 @@ export const CameraActivityLesson: React.FC = () => {
             `DebugOverlay` owns the top of the camera image at z-index 9999, and
             a child's instruction must never end up behind a metrics panel. */}
         {live ? (
-          <Card variant="raised" padding="compact" accent={colors.blue} rail>
+          <Card variant="raised" padding="compact" accent={colors.blue}>
             <Text style={[typography.presets.cardTitle, styles.instructionText]}>
               {config.instruction}
             </Text>

@@ -97,7 +97,6 @@ const SubjectGardenScreen: React.FC = () => {
   const header = (
     <PageHeader
       title={title}
-      subtitle="Every skill here is a flower"
       showBack
       backFallback={goToJourney}
       centered={false}
@@ -144,14 +143,28 @@ const SubjectGardenScreen: React.FC = () => {
 
   const visual = getSubjectVisual(subject.name, subject.displayOrder ?? 0);
 
-  if (subject.skillCount === 0) {
+  /*
+   * Only the lessons the child has actually reached.
+   *
+   * A skill leaves `seed` when its curriculum state becomes ACTIVE or COMPLETED.
+   * That signal is only trustworthy now that `Lesson.skillId` exists and lesson
+   * completion marks the skill COMPLETED — before, a finished lesson left its
+   * skill untouched and filtering here silently hid real work.
+   *
+   * Lessons still awaiting a skill mapping keep reporting `seed`, so they are
+   * hidden rather than shown as upcoming work the child has in fact done. Run
+   * `prisma/link-lessons-to-skills.ts` if a completed lesson is missing.
+   */
+  const startedSkills = subject.skills.filter((skill) => skill.stage !== 'seed');
+
+  if (subject.skillCount === 0 || startedSkills.length === 0) {
     return (
       <AppShell petals="none" backgroundImage={SCREEN_BACKGROUNDS.explore} scroll={false} header={header}>
         <View style={styles.center}>
           <EmptyState
             icon="seedling"
-            title="This patch is empty"
-            message="Flowers will appear here as skills become ready to grow."
+            title="Nothing growing yet"
+            message="Finish a lesson in this subject and your first flower will appear here."
           />
         </View>
       </AppShell>
@@ -172,14 +185,13 @@ const SubjectGardenScreen: React.FC = () => {
     <AppShell petals="none" backgroundImage={SCREEN_BACKGROUNDS.explore}
      
       sky
-      scene={<SceneBand progress={subject.growthPercent} caption={caption} />}
       header={header}
       refreshControl={
         <RefreshControl refreshing={isFetching} onRefresh={refetch} tintColor={visual.color} />
       }
     >
       <View style={styles.grid}>
-        {subject.skills.map((skill) => (
+        {startedSkills.map((skill) => (
           <BloomTile
             key={skill.skillId}
             skill={skill}

@@ -1,5 +1,6 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { Alert, RefreshControl, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { RefreshControl, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { customAlert } from '../../utils/alert';
 import { useAnalyticsActivity, useMonthlyReport } from '../../hooks/useParentAnalytics';
 import { BarChart } from '../../components/charts/BarChart';
 import {
@@ -69,7 +70,9 @@ export const MonthlyReportScreen: React.FC = () => {
 
   const barChartData = useMemo(
     () =>
-      activity.data?.data?.buckets.map((b) => ({
+      // `?.` on `buckets` too — the trailing `?? []` cannot save a `.map` call
+      // that has already thrown on an undefined receiver.
+      activity.data?.data?.buckets?.map((b) => ({
         label: b.label,
         value: b.total,
       })) ?? [],
@@ -77,7 +80,7 @@ export const MonthlyReportScreen: React.FC = () => {
   );
 
   const handleExport = useCallback(() => {
-    Alert.alert('Export', 'Export functionality coming soon.');
+    customAlert('Export', 'Export functionality coming soon.');
   }, []);
 
   const stats: Stat[] = useMemo(
@@ -89,17 +92,17 @@ export const MonthlyReportScreen: React.FC = () => {
         color: colors.primary,
       },
       { label: 'Lessons', value: String(reportData?.lessonsCompleted ?? 0), icon: 'check', color: colors.successDark },
-      { label: 'Modules', value: String(reportData?.contentCompleted.modules ?? 0), icon: 'explore', color: colors.secondary },
-      { label: 'Activities', value: String(reportData?.contentCompleted.activities ?? 0), icon: 'play', color: colors.accent },
+      { label: 'Modules', value: String(reportData?.contentCompleted?.modules ?? 0), icon: 'explore', color: colors.secondary },
+      { label: 'Activities', value: String(reportData?.contentCompleted?.activities ?? 0), icon: 'play', color: colors.accent },
     ],
     [reportData],
   );
 
   const comparisons: Comparison[] = useMemo(
     () => [
-      { label: 'Lessons', icon: 'book', value: reportData?.previousMonthComparison.lessonsChange ?? 0 },
-      { label: 'Minutes', icon: 'clock', value: reportData?.previousMonthComparison.minutesChange ?? 0 },
-      { label: 'Mastery', icon: 'medal', value: reportData?.previousMonthComparison.masteryChange ?? 0, suffix: '%' },
+      { label: 'Lessons', icon: 'book', value: reportData?.previousMonthComparison?.lessonsChange ?? 0 },
+      { label: 'Minutes', icon: 'clock', value: reportData?.previousMonthComparison?.minutesChange ?? 0 },
+      { label: 'Mastery', icon: 'medal', value: reportData?.previousMonthComparison?.masteryChange ?? 0, suffix: '%' },
     ],
     [reportData],
   );
@@ -170,7 +173,7 @@ export const MonthlyReportScreen: React.FC = () => {
         />
       </ParentSection>
 
-      <ParentSection title="Mastery Growth" subtitle="How much stronger this month made things" icon="medal" boxed>
+      <ParentSection title="Mastery Growth" icon="medal" boxed>
         <View style={styles.ringWrap}>
           <ProgressRing
             value={reportData.masteryGrowth}
@@ -197,20 +200,20 @@ export const MonthlyReportScreen: React.FC = () => {
       <ParentSection title="Content Completed" icon="book" boxed>
         <ParentRow
           label="Lessons"
-          value={String(reportData.contentCompleted.lessons)}
+          value={String(reportData.contentCompleted?.lessons ?? 0)}
           icon="book"
           iconColor={colors.secondary}
         />
         <ParentRow
           label="Modules"
-          value={String(reportData.contentCompleted.modules)}
+          value={String(reportData.contentCompleted?.modules ?? 0)}
           icon="explore"
           iconColor={colors.successDark}
           divided
         />
         <ParentRow
           label="Activities"
-          value={String(reportData.contentCompleted.activities)}
+          value={String(reportData.contentCompleted?.activities ?? 0)}
           icon="play"
           iconColor={colors.accent}
           divided
@@ -234,12 +237,12 @@ export const MonthlyReportScreen: React.FC = () => {
         title="Achievements"
         icon="trophy"
         boxed
-        empty={reportData.achievements.length === 0}
+        empty={(reportData.achievements ?? []).length === 0}
         emptyTitle="No achievements yet"
         emptyMessage="Keep learning to earn achievements."
         emptyIcon="trophy"
       >
-        {reportData.achievements.map((ach, i) => (
+        {(reportData.achievements ?? []).map((ach, i) => (
           <View key={`ach-${i}`} style={styles.listRow}>
             <PetalIcon name="trophy" size={18} color={colors.accent} />
             <Text style={[typography.presets.body, styles.listText]}>{ach}</Text>
@@ -251,12 +254,12 @@ export const MonthlyReportScreen: React.FC = () => {
         title="Recommendations"
         icon="sparkle"
         boxed
-        empty={reportData.recommendations.length === 0}
+        empty={(reportData.recommendations ?? []).length === 0}
         emptyTitle="No recommendations"
         emptyMessage="Recommendations will appear based on learning patterns."
         emptyIcon="sparkle"
       >
-        {reportData.recommendations.map((rec, i) => (
+        {(reportData.recommendations ?? []).map((rec, i) => (
           <View key={`rec-${i}`} style={styles.listRow}>
             <PetalIcon name="check" size={16} color={colors.primary} />
             <Text style={[typography.presets.body, styles.listText]}>{rec}</Text>

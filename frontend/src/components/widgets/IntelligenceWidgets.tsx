@@ -49,14 +49,6 @@ function getFace(engagement: number): string {
   return FACE_MAP.high;
 }
 
-function getDifficultyLevel(value: number): { label: string; bars: number; color: string } {
-  if (value <= 20) return { label: 'Very Easy', bars: 1, color: '#8DBB75' };
-  if (value <= 40) return { label: 'Easy', bars: 2, color: '#A8D094' };
-  if (value <= 60) return { label: 'Moderate', bars: 3, color: '#F7C94B' };
-  if (value <= 80) return { label: 'Hard', bars: 4, color: '#F2A15F' };
-  return { label: 'Very Hard', bars: 5, color: '#E57373' };
-}
-
 function getTrendIcon(trend: Trend): React.ComponentProps<typeof Ionicons>['name'] {
   if (trend === 'improving') return 'arrow-up-circle';
   if (trend === 'declining') return 'arrow-down-circle';
@@ -232,54 +224,6 @@ function WidgetConfidence({ value = 0, loading, index = 0 }: WidgetConfidencePro
         <View style={[styles.progressFill, { backgroundColor: themeColors.success, width: `${value}%` }]} />
       </View>
       <Text style={[styles.label, { color: themeColors.textMuted }]}>Confidence</Text>
-    </AnimatedView>
-  );
-}
-
-interface WidgetDifficultyProps extends BaseWidgetProps {
-  value?: number;
-}
-
-function WidgetDifficulty({ value = 0, loading, index = 0 }: WidgetDifficultyProps) {
-  const { theme: { colors: themeColors } } = useTheme();
-  const animatedStyle = useFadeInUp(index);
-  const { label, bars, color } = getDifficultyLevel(value);
-
-  if (loading) {
-    return (
-      <View style={[styles.widget, { backgroundColor: themeColors.card }]}>
-        <Skeleton variant="circle" width={28} height={28} />
-        <Skeleton width={60} height={22} style={{ marginTop: spacing.sm }} />
-        <Skeleton width={72} height={12} style={{ marginTop: spacing.xs }} />
-      </View>
-    );
-  }
-
-  return (
-    <AnimatedView
-      style={[styles.widget, { backgroundColor: themeColors.card }, animatedStyle]}
-      accessibilityLabel={`Difficulty: ${label}`}
-      accessibilityRole="summary"
-    >
-      <View style={[styles.iconWrap, { backgroundColor: `${color}18` }]}>
-        <Ionicons name="stats-chart-outline" size={18} color={color} />
-      </View>
-      <Text style={[styles.value, { color: themeColors.text }]}>{label}</Text>
-      <View style={styles.barsRow}>
-        {[1, 2, 3, 4, 5].map((b) => (
-          <View
-            key={b}
-            style={[
-              styles.bar,
-              {
-                backgroundColor: b <= bars ? color : `${themeColors.border}`,
-                height: 6 + b * 3,
-              },
-            ]}
-          />
-        ))}
-      </View>
-      <Text style={[styles.label, { color: themeColors.textMuted }]}>Difficulty</Text>
     </AnimatedView>
   );
 }
@@ -555,7 +499,6 @@ export function IntelligenceWidgets({ profile, loading = false }: IntelligenceWi
     { key: 'momentum', component: <WidgetMomentum value={profile.momentum} trend={profile.trend} index={0} /> },
     { key: 'engagement', component: <WidgetEngagement value={profile.engagement} index={1} /> },
     { key: 'confidence', component: <WidgetConfidence value={profile.confidence} index={2} /> },
-    { key: 'difficulty', component: <WidgetDifficulty value={profile.difficulty} index={3} /> },
     { key: 'learningSpeed', component: <WidgetLearningSpeed value={profile.learningSpeed} index={4} /> },
     { key: 'modality', component: <WidgetModality value={profile.preferredModality} index={5} /> },
     { key: 'consistency', component: <WidgetConsistency value={profile.consistency} index={6} /> },

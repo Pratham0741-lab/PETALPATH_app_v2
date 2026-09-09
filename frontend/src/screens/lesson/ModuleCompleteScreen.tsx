@@ -53,7 +53,7 @@ export const ModuleCompleteScreen: React.FC = () => {
       }
     >
       {nextModuleTitle ? (
-        <Card variant="raised" padding="normal" accent={colors.leafGreen} rail>
+        <Card variant="raised" padding="normal" accent={colors.leafGreen}>
           <View style={styles.unlockRow}>
             {/* `sparkle`, not `lock` — the icon set has no open padlock, and a
                 closed one next to the word "Unlocked" says the opposite thing. */}

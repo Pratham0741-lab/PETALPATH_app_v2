@@ -15,7 +15,16 @@ import { useChildStore } from '../../store/childStore';
 import { useRoadmapStore, Lesson } from '../../store/roadmapStore';
 import { SCREEN_BACKGROUNDS } from '../../assets/backgrounds';
 import { SCREEN_ACCENTS } from '../../theme/screenAccents';
-import { colors, radius, shadows, spacing, typography, cardSizes } from '../../theme';
+import {
+  colors,
+  radius,
+  shadows,
+  spacing,
+  typography,
+  cardSizes,
+  LESSON_STATE,
+  getActivityColor,
+} from '../../theme';
 import { navigateToActivity } from '../../utils/navigationFlow';
 import { NavigationGuide } from '../../components/tutorial/NavigationGuide';
 import {
@@ -134,7 +143,25 @@ export const HomeContent: React.FC<HomeContentProps> = ({ variant = 'mobile' }) 
    * escape hatch: even if `currentNode` ever lands oddly, tapping any module
    * header opens it so no one is trapped on a single collapsed section.
    */
-  const [openThemeId, setOpenThemeId] = useState<string | null>(null);
+  /**
+   * Modules the child has opened by hand, on top of the default (the current
+   * lesson's theme). Ids the child has explicitly *closed* are held too.
+   *
+   * This used to be a single id — one module open at a time — and that is what
+   * made tapping a header jump the page. Opening one module collapsed another,
+   * and when the collapsed one sat above the viewport the document shrank above
+   * a fixed scroll offset, so the child was thrown down the page (and back up on
+   * close). No amount of correcting after the fact fixes that cleanly: the
+   * correction can only run once the new layout exists, so there is always a
+   * frame showing the wrong position — the flash.
+   *
+   * With independent toggles the shift cannot happen. Tapping a header only ever
+   * adds or removes content *below* that header, so nothing above it moves and
+   * the header itself stays exactly where the finger left it. No measuring, no
+   * correction, no flash.
+   */
+  const [openThemeIds, setOpenThemeIds] = useState<Set<string>>(() => new Set());
+  const [closedThemeIds, setClosedThemeIds] = useState<Set<string>>(() => new Set());
 
   const maxWidth = MAX_WIDTH[variant];
 
@@ -213,7 +240,8 @@ export const HomeContent: React.FC<HomeContentProps> = ({ variant = 'mobile' }) 
     setShowChildDropdown(false);
     hasAutoScrolled.current = false;
     setActiveLessonY(0);
-    setOpenThemeId(null);
+    setOpenThemeIds(new Set());
+    setClosedThemeIds(new Set());
     await switchChild(childId);
   };
 
@@ -278,8 +306,6 @@ export const HomeContent: React.FC<HomeContentProps> = ({ variant = 'mobile' }) 
      * can override it by tapping any module header (the escape hatch). If the
      * override no longer matches a theme, fall back to the default.
      */
-    const openIdx = openThemeId ? themes.findIndex((t) => t.id === openThemeId) : -1;
-    const expandedIdx = openIdx >= 0 ? openIdx : defaultThemeIdx;
     // Kept for the locked/colour logic below — the journey's real position.
     const currentThemeIdx = defaultThemeIdx;
 
@@ -317,7 +343,11 @@ export const HomeContent: React.FC<HomeContentProps> = ({ variant = 'mobile' }) 
     return themes.map((theme, tIdx) => {
       const themeNodes = nodes.filter((n) => n.themeId === theme.id);
       const done = themeNodes.filter((n) => n.isCompleted).length;
-      const expanded = tIdx === expandedIdx;
+      /* Open if the child opened it, or it is the default and they have not
+         closed it. */
+      const expanded =
+        openThemeIds.has(theme.id) ||
+        (tIdx === defaultThemeIdx && !closedThemeIds.has(theme.id));
       const isDefaultTheme = tIdx === defaultThemeIdx;
 
       const section: RoadmapSectionData = {
@@ -343,7 +373,23 @@ export const HomeContent: React.FC<HomeContentProps> = ({ variant = 'mobile' }) 
          * lesson. This is the escape hatch so no one is ever stuck on a single
          * collapsed section.
          */
-        onPress: () => setOpenThemeId((prev) => (prev === theme.id ? null : theme.id)),
+        /* Toggles only this module. Nothing else opens or closes, so nothing
+           above the header changes height. */
+        onPress: () => {
+          const isOpen = expanded;
+          setOpenThemeIds((prev) => {
+            const next = new Set(prev);
+            if (isOpen) next.delete(theme.id);
+            else next.add(theme.id);
+            return next;
+          });
+          setClosedThemeIds((prev) => {
+            const next = new Set(prev);
+            if (isOpen) next.add(theme.id);
+            else next.delete(theme.id);
+            return next;
+          });
+        },
         /*
          * The open theme's header row is dropped ONLY when it is also the current
          * theme, because the Continue card directly above it already states the
@@ -450,7 +496,8 @@ export const HomeContent: React.FC<HomeContentProps> = ({ variant = 'mobile' }) 
     themes,
     nodes,
     currentLesson,
-    openThemeId,
+    openThemeIds,
+    closedThemeIds,
     reviewById,
     practiceSession,
     navigation,
@@ -517,7 +564,28 @@ export const HomeContent: React.FC<HomeContentProps> = ({ variant = 'mobile' }) 
           streak={streak}
           stars={xpState.xp}
           right={
-            <Pressable
+            <>
+              {/*
+                MOVE & PLAY, sized to the pills beside it so the cluster reads as
+                one row of controls. It sits with the streak and stars rather
+                than in the page body because it is a thing the child *does*, not
+                a step in the journey below.
+              */}
+              <Pressable
+                onPress={() => navigation.navigate('MainTabs', { screen: 'Camera' })}
+                accessibilityRole="button"
+                accessibilityLabel="Move and Play"
+                accessibilityHint="Camera games that get you moving"
+                hitSlop={8}
+                style={({ pressed }) => [
+                  styles.moveIcon,
+                  { backgroundColor: MOVE_TONE.soft },
+                  pressed && styles.movePressed,
+                ]}
+              >
+                <PetalIcon name="camera" size={26} color={MOVE_TONE.main} filled />
+              </Pressable>
+              <Pressable
               onPress={() => setShowChildDropdown((v) => !v)}
               accessibilityRole="button"
               accessibilityLabel={`Switch profile. Currently ${
@@ -530,15 +598,29 @@ export const HomeContent: React.FC<HomeContentProps> = ({ variant = 'mobile' }) 
               hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
               style={styles.childTrigger}
             >
-              <AvatarGlyph species={activeChild?.avatar} size={34} />
-              <PetalIcon
-                name={showChildDropdown ? 'arrowUp' : 'arrowDown'}
-                size={14}
-                color={colors.textSecondary}
-              />
-            </Pressable>
+              {/* No chevron. It was a 14px grey mark competing with the child's
+                  own face for the same tap target, and the avatar is already the
+                  obvious thing to press — the expanded state is still announced
+                  through `accessibilityState`. */}
+              <AvatarGlyph species={activeChild?.avatar} size={48} />
+              </Pressable>
+            </>
           }
         />
+
+        {/*
+          A full-screen catcher behind the menu. Previously only a second tap on
+          the avatar closed it, so tapping the page left the menu hanging over
+          the content — the behaviour every other dropdown on a phone has.
+        */}
+        {showChildDropdown ? (
+          <Pressable
+            style={styles.dropdownScrim}
+            onPress={() => setShowChildDropdown(false)}
+            accessibilityRole="button"
+            accessibilityLabel="Close profile menu"
+          />
+        ) : null}
 
         {showChildDropdown ? (
           <Card variant="raised" padding="compact" style={styles.dropdown}>
@@ -566,20 +648,21 @@ export const HomeContent: React.FC<HomeContentProps> = ({ variant = 'mobile' }) 
               </Text>
             )}
             <View style={styles.dropdownDivider} />
+            {/* Profile left the tab bar, so this is now its way in. */}
             <Pressable
               style={styles.dropdownItem}
               onPress={() => {
                 setShowChildDropdown(false);
-                navigation.navigate('ChildSelection');
+                navigation.navigate('Profile');
               }}
               accessibilityRole="button"
-              accessibilityLabel="Manage profiles"
+              accessibilityLabel="Your profile"
             >
               <View style={styles.manageIcon}>
-                <PetalIcon name="settings" size={14} color={colors.primary} />
+                <PetalIcon name="profile" size={14} color={colors.primary} />
               </View>
               <Text style={[typography.presets.subtle, { color: colors.primary }]}>
-                Manage Profiles
+                Your Profile
               </Text>
             </Pressable>
           </Card>
@@ -716,6 +799,7 @@ export const HomeContent: React.FC<HomeContentProps> = ({ variant = 'mobile' }) 
         {/* CONTINUE LEARNING — the loudest thing on the screen (spec §13) */}
         {continueCard}
 
+
         {/* DAY COMPLETE */}
         {isTodayComplete ? (
           <Card variant="raised" padding="roomy" accent={colors.green} style={styles.doneCard}>
@@ -759,23 +843,33 @@ export const HomeContent: React.FC<HomeContentProps> = ({ variant = 'mobile' }) 
         {reviews.length > 0 ? (
           <View style={styles.reviewBlock}>
             <Text style={[typography.presets.eyebrow, styles.sectionEyebrow]}>Practice first</Text>
-            <Card variant="raised" padding="normal" accent={colors.purple} rail>
+            {/* Practice blue, filled — the same colour the practice stops and
+                badges use, so this card is recognisable as one of them rather
+                than another white panel. */}
+            <Card
+              variant="raised"
+              padding="normal"
+              accent={LESSON_STATE.practice.main}
+              style={{
+                backgroundColor: LESSON_STATE.practice.soft,
+                borderColor: LESSON_STATE.practice.main,
+                borderWidth: 1.5,
+              }}
+            >
               <View style={styles.recRow}>
                 <View style={styles.reviewIcon}>
-                  <PetalIcon name="replay" size={22} color={colors.purple} />
+                  <PetalIcon name="replay" size={22} color={LESSON_STATE.practice.main} />
                 </View>
                 <View style={styles.flex}>
-                  <Text style={[typography.presets.cardTitle, { color: colors.text }]}>
+                  {/* Heading only. The line under it restated what the heading
+                      and the eyebrow above already say, and the per-skill
+                      "reason" sentence below repeated it a third time. */}
+                  <Text style={[typography.presets.title, { color: colors.text }]}>
                     {reviewGate?.isBlocking
                       ? 'Practice this first'
                       : reviews.length === 1
                       ? 'One thing to practice'
                       : `${reviews.length} things to practice`}
-                  </Text>
-                  <Text style={[typography.presets.caption, styles.muted]}>
-                    {reviewGate?.isBlocking
-                      ? 'The next lesson opens once this is done.'
-                      : 'A quick go now keeps it from slipping.'}
                   </Text>
                 </View>
               </View>
@@ -797,13 +891,13 @@ export const HomeContent: React.FC<HomeContentProps> = ({ variant = 'mobile' }) 
                     <View style={styles.flex}>
                       <Text
                         numberOfLines={1}
-                        style={[typography.presets.body, { color: colors.text }]}
+                        style={[
+                          typography.presets.section,
+                          styles.reviewTitle,
+                          { color: colors.text },
+                        ]}
                       >
                         {review.title}
-                      </Text>
-                      {/* The server's sentence, in full — two lines of room. */}
-                      <Text numberOfLines={2} style={[typography.presets.caption, styles.muted]}>
-                        {review.reason}
                       </Text>
                       {typeof review.stars === 'number' ? (
                         <View style={styles.reviewStars}>
@@ -811,7 +905,7 @@ export const HomeContent: React.FC<HomeContentProps> = ({ variant = 'mobile' }) 
                             <PetalIcon
                               key={si}
                               name="star"
-                              size={13}
+                              size={22}
                               filled={si < review.stars}
                               color={si < review.stars ? colors.yellow : colors.border}
                             />
@@ -819,7 +913,7 @@ export const HomeContent: React.FC<HomeContentProps> = ({ variant = 'mobile' }) 
                         </View>
                       ) : null}
                     </View>
-                    <PetalIcon name="forward" size={20} color={colors.purple} />
+                    <PetalIcon name="forward" size={20} color={LESSON_STATE.practice.main} />
                   </Pressable>
                 );
               })}
@@ -879,7 +973,32 @@ export const HomeContent: React.FC<HomeContentProps> = ({ variant = 'mobile' }) 
   );
 };
 
+/** Same halo the screen headers use — see `Headers.tsx`. */
+/** The camera activities' own colour, shared with the Move & Play screen. */
+const MOVE_TONE = getActivityColor('camera');
+
+const HOME_HALO = {
+  textShadowColor: 'rgba(255, 255, 255, 0.95)',
+  textShadowOffset: { width: 0, height: 0 },
+  textShadowRadius: 7,
+} as const;
+
 const styles = StyleSheet.create({
+  movePressed: {
+    opacity: 0.7,
+  },
+  moveIcon: {
+    /* Matched to the avatar, not to the pills: the two round controls at the end
+       of the cluster are a pair, and a smaller circle between the pills and the
+       avatar read as a third size in a row that already had two. The same
+       optical nudge as `childTrigger` keeps both circles on one line. */
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    transform: [{ translateY: -6 }],
+  },
   flex: {
     flex: 1,
     minWidth: 0,
@@ -933,6 +1052,21 @@ const styles = StyleSheet.create({
      */
     alignItems: 'center',
     gap: spacing.xs,
+    /*
+     * A 3px nudge up. The avatar is 48px against 34px pills, and geometric
+     * centring leaves a round face looking low beside pill shapes — the pills'
+     * visual weight sits on their text, which is above their true centre. This
+     * is optical alignment, not a layout fix.
+     */
+    transform: [{ translateY: -6 }],
+  },
+  dropdownScrim: {
+    position: 'absolute',
+    top: -1000,
+    left: -1000,
+    right: -1000,
+    bottom: -1000,
+    zIndex: 25,
   },
   dropdown: {
     position: 'absolute',
@@ -978,8 +1112,17 @@ const styles = StyleSheet.create({
   // --------------------------------------------------------------- roadmap
   sectionEyebrow: {
     color: colors.textSecondary,
-    marginTop: spacing.sm,
+    /* These label whole regions of the page, not the card beneath them, so they
+       are set larger than the 11px `eyebrow` preset and centred — a centred
+       label reads as a divider between sections, where a left-aligned one reads
+       as a caption belonging to whatever follows it. */
+    fontSize: 15,
+    lineHeight: 20,
+    letterSpacing: 1.4,
+    textAlign: 'center',
+    marginTop: spacing.md,
     marginBottom: spacing.sm,
+    ...HOME_HALO,
   },
   roadmap: {
     /* Zero, not a gutter: the garden band is rendered immediately below this and
@@ -1048,17 +1191,26 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    paddingVertical: spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: colors.borderLight,
+    /* No top rule. It was there to separate stacked review rows from the card
+       heading, but with one review it drew a line across an otherwise clean
+       card — and now that the card is filled with the practice tint, a
+       near-white hairline reads as a crack in it rather than a separator. The
+       vertical gap does the same job silently. */
+    paddingVertical: spacing.md,
   },
   reviewRowPressed: {
     opacity: 0.85,
   },
+  reviewTitle: {
+    fontSize: 21,
+    lineHeight: 27,
+  },
   reviewStars: {
     flexDirection: 'row',
-    gap: 2,
-    marginTop: 3,
+    /* Gap and top margin scale with the 22px stars — at the old 2/3 they
+       collided with each other and sat tight under the title. */
+    gap: 5,
+    marginTop: 6,
   },
   reviewNote: {
     color: colors.textSecondary,

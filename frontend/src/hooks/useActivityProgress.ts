@@ -20,6 +20,13 @@ export function useVideoProgress() {
     invalidateQueries(queryClient, queryKeys.dashboard.overview(childId));
     invalidateQueries(queryClient, queryKeys.rewards.overview(childId));
     invalidateQueries(queryClient, queryKeys.mastery.child(childId));
+    /*
+     * The garden reads from `curriculum`, and finishing an activity is exactly
+     * what moves a skill off `seed` and grows its flower. Without this the
+     * Explore panorama and the subject patch kept showing the state from before
+     * the lesson — the patch's flowers disagreeing with the journey.
+     */
+    queryClient.invalidateQueries({ queryKey: ['curriculum'] });
   };
 
   const saveProgress = useMutation({
@@ -119,6 +126,13 @@ export function useSubmitQuiz() {
         invalidateQueries(queryClient, queryKeys.dashboard.overview(childId));
         invalidateQueries(queryClient, queryKeys.rewards.overview(childId));
         invalidateQueries(queryClient, queryKeys.mastery.child(childId));
+    /*
+     * The garden reads from `curriculum`, and finishing an activity is exactly
+     * what moves a skill off `seed` and grows its flower. Without this the
+     * Explore panorama and the subject patch kept showing the state from before
+     * the lesson — the patch's flowers disagreeing with the journey.
+     */
+    queryClient.invalidateQueries({ queryKey: ['curriculum'] });
       }
     },
   });
@@ -194,6 +208,13 @@ export function useCompleteLessonSync() {
         invalidateQueries(queryClient, queryKeys.rewards.overview(childId));
         invalidateQueries(queryClient, queryKeys.dashboard.overview(childId));
         invalidateQueries(queryClient, queryKeys.mastery.child(childId));
+    /*
+     * The garden reads from `curriculum`, and finishing an activity is exactly
+     * what moves a skill off `seed` and grows its flower. Without this the
+     * Explore panorama and the subject patch kept showing the state from before
+     * the lesson — the patch's flowers disagreeing with the journey.
+     */
+    queryClient.invalidateQueries({ queryKey: ['curriculum'] });
       }
     },
   });

@@ -62,3 +62,15 @@ export const useAccentTint = (ratio = 0.16, alpha = 1): string => {
  * the wallpapers. Lower it for more scene, raise it for more contrast.
  */
 export const PANEL_ALPHA = 0.78;
+
+/**
+ * For panels that carry body text straight over a screen wallpaper.
+ *
+ * 0.78 is a pleasant wash when a panel only has to separate itself from the
+ * art, but text on it inherits whatever is behind: over a pale sky a lesson
+ * title reads fine, and over the meadow or a tree the same near-black type
+ * loses most of its contrast. Contrast has to be a property of the surface, not
+ * of the pixels that happen to sit under it — so anything with a title on it
+ * uses this instead and keeps only a hint of the scene.
+ */
+export const READABLE_PANEL_ALPHA = 0.95;

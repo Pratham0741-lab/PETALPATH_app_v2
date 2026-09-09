@@ -227,12 +227,31 @@ export const useAppStore = create<AppState>((set) => ({
         await storage.setItem('user', JSON.stringify(user));
       }
 
-      // Hydrate child store activeChild
-      const rawActiveChild = await storage.getItem('activeChild');
+      /*
+       * Hydrate the active child.
+       *
+       * This read used the key 'activeChild', but `childStore.setActiveChild`
+       * saves under `StorageKeys.ACTIVE_CHILD` ('petalpath_active_child') via
+       * `storageService` — so the restore always came back null, the navigator
+       * saw no active child and forced onboarding, and the app asked for the
+       * parent's name on every single launch. Now it reads the key that is
+       * actually written, keeping the old one as a fallback for anyone whose
+       * device still has data under it.
+       */
       let activeChild = null;
       try {
-        activeChild = rawActiveChild ? (typeof rawActiveChild === 'string' ? JSON.parse(rawActiveChild) : rawActiveChild) : null;
+        const { storageService, StorageKeys } = await import('../services/storage');
+        activeChild = await storageService.getItem<any>(StorageKeys.ACTIVE_CHILD);
       } catch {}
+
+      if (!activeChild) {
+        const rawActiveChild = await storage.getItem('activeChild');
+        try {
+          activeChild = rawActiveChild
+            ? (typeof rawActiveChild === 'string' ? JSON.parse(rawActiveChild) : rawActiveChild)
+            : null;
+        } catch {}
+      }
 
       const { useChildStore } = await import('./childStore');
       useChildStore.setState({ activeChild });

@@ -9,7 +9,9 @@ import {
   cardSizes,
   progressSizes,
   getActivityColor,
+  LESSON_STATE,
 } from '../../theme';
+import type { LessonState } from '../../theme';
 import { PetalIcon, PetalIconName } from '../icons';
 import { AvatarGlyph } from './AvatarGlyph';
 import { useScreenAccent } from './screenAccent';
@@ -96,7 +98,6 @@ export const SubjectCard: React.FC<SubjectCardProps> = ({
     <Card
       variant={expanded ? 'selected' : 'raised'}
       accent={v.color}
-      rail
       padding="normal"
       onPress={onPress}
       style={[styles.stack, style]}
@@ -153,6 +154,16 @@ export interface LessonCardProps {
   style?: StyleProp<ViewStyle>;
 }
 
+/** Badge vocabulary -> state palette. Both are needed: the badge says the word. */
+const STATUS_STATE: Record<LessonStatus, LessonState> = {
+  completed: 'done',
+  current: 'ongoing',
+  locked: 'locked',
+  available: 'ready',
+  new: 'ready',
+  practice: 'practice',
+};
+
 export const LessonCard: React.FC<LessonCardProps> = ({
   title,
   eyebrow,
@@ -165,14 +176,20 @@ export const LessonCard: React.FC<LessonCardProps> = ({
   style,
 }) => {
   const locked = status === 'locked';
-  const accent =
-    status === 'completed' ? colors.green : status === 'current' ? colors.purple : colors.primary;
+  /*
+   * One palette for the four states, shared with the garden patches and the
+   * activity rows (see `theme/lessonState`). This used to fall back to brand
+   * pink for anything that was not completed or current, so "ready to start"
+   * and "brand new" were indistinguishable from each other and from the app's
+   * accent colour.
+   */
+  const state = STATUS_STATE[status] ?? 'ready';
+  const accent = LESSON_STATE[state].main;
 
   return (
     <Card
       variant={locked ? 'muted' : status === 'current' ? 'selected' : 'raised'}
-      accent={locked ? colors.textMuted : accent}
-      rail
+      accent={accent}
       padding="normal"
       onPress={locked ? undefined : onPress}
       disabled={locked}
@@ -278,16 +295,22 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
   const m = ACTIVITY_META[kind] ?? ACTIVITY_META.watch;
   const tone = locked ? getActivityColor('locked') : getActivityColor(kind);
   const label = title ?? m.word;
+  /*
+   * The rail keeps the *activity* colour (§15: watch is pink, trace is green —
+   * that is what the child learns the shape of). The border carries the state,
+   * so the two signals stack instead of fighting: what kind of thing this is,
+   * and whether it is open, running or finished.
+   */
+  const sv = LESSON_STATE[locked ? 'locked' : completed ? 'done' : 'ready'];
 
   return (
     <Card
       variant={locked ? 'muted' : 'raised'}
       accent={tone.main}
-      rail
       padding="compact"
       onPress={locked ? undefined : onPress}
       disabled={locked}
-      style={[styles.stack, style]}
+      style={[styles.stack, { borderColor: sv.main, borderWidth: 1.5 }, style]}
       accessibilityLabel={`${label}. ${locked ? 'Locked.' : completed ? 'Completed.' : 'Ready to start.'}`}
     >
       <View style={[styles.row, styles.rowTall]}>
@@ -337,7 +360,14 @@ export interface RewardCardProps {
   style?: StyleProp<ViewStyle>;
 }
 
-export const RewardCard: React.FC<RewardCardProps> = ({
+/*
+ * Memoised: the rewards grid renders one of these per sticker and per badge —
+ * dozens in a single scrolling view — and every prop here is a scalar, so a
+ * shallow compare is exactly right. Without it, any state change on the screen
+ * (a tab switch, a refresh, the star counter ticking) re-rendered every card in
+ * the collection, which is what made that list stutter under a finger.
+ */
+export const RewardCard: React.FC<RewardCardProps> = React.memo(({
   title,
   description,
   unlocked,
@@ -370,18 +400,24 @@ export const RewardCard: React.FC<RewardCardProps> = ({
           drawn glyph so the tile reads as "not yet earned" rather than as a
           greyed-out picture of the prize.
         */}
-        {unlocked ? (
-          <View style={[styles.stickerWell, { backgroundColor: soft }]}>
+        {/*
+          No well behind the mark. A tinted rounded box inside an already-rounded
+          card read as a card within a card, which is noise on a tile whose whole
+          job is to show one thing. The sticker art and the lock now sit directly
+          on the card surface.
+        */}
+        <View style={styles.rewardMark}>
+          {unlocked ? (
             <Image
               source={getStickerImage(title)}
               style={styles.stickerImage}
               resizeMode="contain"
               accessible={false}
             />
-          </View>
-        ) : (
-          <IconWell icon={icon} color={color} soft={soft} filled={unlocked} />
-        )}
+          ) : (
+            <PetalIcon name={icon} size={30} color={color} />
+          )}
+        </View>
         <View style={styles.rowText}>
           <Text style={[typography.presets.cardTitle, styles.title]} numberOfLines={1}>
             {title}
@@ -400,7 +436,8 @@ export const RewardCard: React.FC<RewardCardProps> = ({
       </View>
     </Card>
   );
-};
+});
+RewardCard.displayName = 'RewardCard';
 
 // ---------------------------------------------------------------------------
 // MentorCard
@@ -413,7 +450,6 @@ export interface MentorCardProps {
   /** The mentor's signature colour, from `constants/mentors`. */
   color?: string;
   /** Shown when the card is selected. */
-  funFact?: string;
   selected?: boolean;
   onPress?: () => void;
   style?: StyleProp<ViewStyle>;
@@ -423,7 +459,6 @@ export const MentorCard: React.FC<MentorCardProps> = ({
   name,
   species,
   color = colors.primary,
-  funFact,
   selected = false,
   onPress,
   style,
@@ -455,11 +490,6 @@ export const MentorCard: React.FC<MentorCardProps> = ({
         {species ? (
           <Text style={[typography.presets.eyebrow, { color }]} numberOfLines={1}>
             {species}
-          </Text>
-        ) : null}
-        {funFact ? (
-          <Text style={[typography.presets.caption, styles.meta]} numberOfLines={2}>
-            {funFact}
           </Text>
         ) : null}
       </View>
@@ -695,13 +725,11 @@ export const ContinueLearningCard: React.FC<ContinueLearningCardProps> = ({
 // ---------------------------------------------------------------------------
 
 const styles = StyleSheet.create({
-  stickerWell: {
+  rewardMark: {
     width: cardSizes.iconWell,
     height: cardSizes.iconWell,
-    borderRadius: radius.cardInner,
     alignItems: 'center',
     justifyContent: 'center',
-    overflow: 'hidden',
     flexShrink: 0,
   },
   stickerImage: {

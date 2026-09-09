@@ -9,7 +9,7 @@ import { PetalIcon, PetalIconName } from '../icons';
 /**
  * BottomNavigation (spec §9).
  *
- * Six destinations, each an SVG icon plus a always-visible label. The active
+ * Three destinations, each an SVG icon plus a always-visible label. The active
  * item is pink — filled icon, pink label, and a pink indicator bar above it —
  * so the selected state is carried by shape and position as well as colour
  * (§30). Sticky, with the bottom safe-area inset respected; screens reserve
@@ -24,10 +24,14 @@ const TABS: TabConfig[] = [
   { route: 'Home', icon: 'home', label: 'Home' },
   // The stack route is called "Journey"; it is the Explore tab to the child.
   { route: 'Journey', icon: 'explore', label: 'Explore' },
-  { route: 'Camera', icon: 'camera', label: 'Camera' },
-  { route: 'Mentor', icon: 'mentors', label: 'Mentors' },
   { route: 'Rewards', icon: 'rewards', label: 'Rewards' },
-  { route: 'Profile', icon: 'profile', label: 'Profile' },
+  /*
+   * Move & Play and Mentors are deliberately absent, for the same reason: both
+   * are places a child is *sent* rather than places they navigate to between
+   * lessons. Move & Play has a card on Home beside the lesson they are doing;
+   * the garden is a section inside Profile. Both routes still exist and are
+   * still reachable — neither is a permanent destination in the bar.
+   */
 ];
 
 const FALLBACK: Omit<TabConfig, 'route'> = { icon: 'sparkle', label: '' };
@@ -61,8 +65,15 @@ export const BottomNavigation: React.FC<BottomTabBarProps> = ({
       {state.routes.map((route, index) => {
         const isFocused = state.index === index;
         const cfg = TABS.find((t) => t.route === route.name);
-        const icon = cfg?.icon ?? FALLBACK.icon;
-        const label = cfg?.label || route.name;
+        /*
+         * A route with no entry in TABS is reachable but not a destination in
+         * the bar — Profile now opens from the avatar menu instead. Without
+         * this the navigator's sixth route still drew a tab, with the fallback
+         * sparkle icon and its raw route name as the label.
+         */
+        if (!cfg) return null;
+        const icon = cfg.icon;
+        const label = cfg.label;
 
         const options = descriptors[route.key]?.options;
 
@@ -139,7 +150,7 @@ const styles = StyleSheet.create({
     alignItems: 'stretch',
     justifyContent: 'space-between',
     paddingTop: spacing.xs,
-    paddingHorizontal: spacing.xs,
+    paddingHorizontal: spacing.sm,
     /*
      * Sits on top of the BlurView, so this is a tint rather than the whole
      * surface: enough to lift the labels off the scene and give the bar its
@@ -153,11 +164,14 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderColor: colors.border,
     ...shadows.lg,
-    // The bar must sit above page content on both platforms.
-    ...Platform.select({ android: { elevation: 12 }, default: null }),
+    /* No Android elevation: it would composite this translucent, blurred bar
+       against an opaque backing and defeat the frosted effect. Being absolutely
+       positioned already puts it above the page content. */
   },
   tab: {
     flex: 1,
+    /* Three destinations, so each gets a generous share of the bar. */
+    paddingHorizontal: 2,
     minHeight: bottomNavSizes.height,
     alignItems: 'center',
     justifyContent: 'center',
@@ -168,7 +182,7 @@ const styles = StyleSheet.create({
     opacity: 0.65,
   },
   iconWrap: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     paddingVertical: 5,
     borderRadius: radius.pill,
     backgroundColor: 'transparent',

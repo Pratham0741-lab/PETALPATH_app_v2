@@ -40,7 +40,9 @@
  */
 
 import React, { useCallback, useMemo, useState } from 'react';
-import { Alert, Platform, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import Animated, { FadeInDown, FadeOut, LinearTransition } from 'react-native-reanimated';
+import { customAlert } from '../../utils/alert';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useQueryClient } from '@tanstack/react-query';
 
@@ -53,6 +55,7 @@ import { useRoadmapStore } from '../../store/roadmapStore';
 import { useRewardsStore } from '../../store/rewardsStore';
 import { useProgressStore } from '../../store/progressStore';
 import { useTutorialStore } from '../../store/tutorialStore';
+import { enhanceMentor } from '../../constants/mentors';
 import { colors, radius, spacing, typography, cardSizes } from '../../theme';
 import {
   AppHeader,
@@ -149,6 +152,21 @@ export const ProfileContent: React.FC<ProfileContentProps> = ({ variant }) => {
     setShowChallenge(true);
   };
 
+  /**
+   * Unlocking swaps a small card for a whole dashboard's worth of settings, and
+   * doing that with a bare conditional makes the page jump — the content below
+   * the fold teleports and the eye loses its place. These fade the new block in
+   * and let the siblings slide rather than snap. Honours the reduce-motion
+   * preference the same screen offers a few rows further down.
+   */
+  const motion = reduceMotion
+    ? {}
+    : {
+        entering: FadeInDown.duration(220),
+        exiting: FadeOut.duration(140),
+        layout: LinearTransition.duration(220),
+      };
+
   const handleChallengeSubmit = () => {
     const correct = challengeA * challengeB;
     if (parseInt(challengeAnswer, 10) === correct) {
@@ -189,13 +207,9 @@ export const ProfileContent: React.FC<ProfileContentProps> = ({ variant }) => {
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [resetting, setResetting] = useState(false);
 
-  const notify = (title: string, message: string) => {
-    if (Platform.OS === 'web') {
-      window.alert(message);
-    } else {
-      Alert.alert(title, message);
-    }
-  };
+  // `customAlert` already forks on platform, so the branch that used to live
+  // here would only have dropped the title on web.
+  const notify = (title: string, message: string) => customAlert(title, message);
 
   const handleResetConfirmed = async () => {
     if (!activeChild) return;
@@ -234,6 +248,9 @@ export const ProfileContent: React.FC<ProfileContentProps> = ({ variant }) => {
 
   const childName = activeChild?.name || 'Explorer';
 
+  const buddy = activeChild?.mentor ? enhanceMentor(activeChild.mentor) : null;
+  const buddyColor = buddy?.color || colors.leafGreen;
+
   return (
     <AppShell
       withBottomNav
@@ -242,15 +259,16 @@ export const ProfileContent: React.FC<ProfileContentProps> = ({ variant }) => {
       header={
         <AppHeader
           accent={SCREEN_ACCENTS.profile}
-          eyebrow="Stats, achievements & settings"
-          title={`${childName}'s Profile`}
+          /* Just "Profile": the card directly below opens with the child's
+             name in 24px type, so the header repeated it one row later. */
+          title="Profile"
           stars={totalStars}
         />
       }
     >
       <View style={[styles.column, cfg.maxWidth ? { maxWidth: cfg.maxWidth } : null]}>
         {/* ------------------------------------------------------ Active child */}
-        <Card variant="raised" padding="roomy" accent={colors.primary} rail>
+        <Card variant="raised" padding="roomy" accent={colors.primary}>
           <View style={styles.heroRow}>
             <AvatarGlyph
               species={activeChild?.avatar}
@@ -316,6 +334,40 @@ export const ProfileContent: React.FC<ProfileContentProps> = ({ variant }) => {
           </View>
         ) : null}
 
+        {/* ------------------------------------------------------ Learning buddy */}
+        {/*
+          The garden used to be a permanent tab. It is a place a child visits to
+          choose a buddy and water the tree, not somewhere to return to between
+          activities, so it lives here instead — beside the rest of "who I am".
+        */}
+        <Card
+          variant="raised"
+          padding="normal"
+          accent={buddyColor}
+          onPress={() => navigation.navigate('MainTabs', { screen: 'Mentor' })}
+          accessibilityLabel={
+            buddy ? `Learning buddy: ${buddy.name}, ${buddy.species}` : 'Choose a learning buddy'
+          }
+          accessibilityHint="Opens the magical garden"
+        >
+          <View style={styles.buddyRow}>
+            <AvatarGlyph
+              species={buddy?.species}
+              size={cardSizes.iconWellSmall}
+              ringColor={buddyColor}
+            />
+            <View style={styles.heroText}>
+              <Text style={[typography.presets.cardTitle, styles.buddyName]} numberOfLines={1}>
+                {buddy ? buddy.name : 'Choose a buddy'}
+              </Text>
+              <Text style={[typography.presets.caption, styles.muted]} numberOfLines={1}>
+                {buddy ? buddy.species : 'Pick someone to learn alongside'}
+              </Text>
+            </View>
+            <PetalIcon name="forward" size={18} color={colors.textMuted} />
+          </View>
+        </Card>
+
         {/* ------------------------------------------------------------ Logout */}
         <SecondaryButton label="Log Out" icon="logout" fill="outline" onPress={handleLogout} />
 
@@ -355,6 +407,7 @@ export const ProfileContent: React.FC<ProfileContentProps> = ({ variant }) => {
 
         {/* ---------------------------------------------------- Math challenge */}
         {showChallenge && !parentSectionOpen ? (
+          <Animated.View {...motion}>
           <Card variant="raised" padding="roomy" accent={colors.purple}>
             <View style={styles.challenge}>
               <Text style={[typography.presets.eyebrow, styles.muted]}>Parental verification</Text>
@@ -395,11 +448,12 @@ export const ProfileContent: React.FC<ProfileContentProps> = ({ variant }) => {
               ) : null}
             </View>
           </Card>
+          </Animated.View>
         ) : null}
 
         {/* --------------------------------------------------- Parent content */}
         {parentSectionOpen ? (
-          <View style={styles.parentBlock}>
+          <Animated.View {...motion} style={styles.parentBlock}>
             <PrimaryButton
               label="Parent Dashboard"
               icon="chart"
@@ -434,7 +488,6 @@ export const ProfileContent: React.FC<ProfileContentProps> = ({ variant }) => {
             {/* --------------------------------------------- Children profiles */}
             <ParentSection
               title="Children Profiles"
-              subtitle="Tap a child to make their profile active."
               icon="profile"
               boxed={false}
               right={
@@ -598,7 +651,7 @@ export const ProfileContent: React.FC<ProfileContentProps> = ({ variant }) => {
                 </View>
               </View>
             )}
-          </View>
+          </Animated.View>
         ) : null}
       </View>
     </AppShell>
@@ -656,6 +709,16 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   heroName: {
+    color: colors.text,
+  },
+
+  // ------------------------------------------------------------ learning buddy
+  buddyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  buddyName: {
     color: colors.text,
   },
   heroStats: {

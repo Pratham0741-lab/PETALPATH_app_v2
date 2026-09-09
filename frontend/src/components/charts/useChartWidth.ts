@@ -39,6 +39,47 @@ export function useChartWidth(explicit?: number): ChartWidth {
 }
 
 /**
+ * Which x-axis labels to actually draw.
+ *
+ * Every chart here drew a label under *every* point. That is fine for a 7-bar
+ * week and illegible for a 30-day month: at ~280px of plot the slots are 9px
+ * wide, so "Sep 14" is drawn over "Sep 15" over "Sep 16" and the axis turns
+ * into a grey smear. SVG text does not wrap, ellipsize or collide-detect, so
+ * nothing prevents it — the chart has to thin the labels itself.
+ *
+ * Rather than rotating them (hard to read, and it steals vertical space from
+ * the plot) this keeps every nth label, choosing n from the widest label and
+ * the room available. The first label is always kept so the axis has an anchor,
+ * and the last is added when it would not collide with the one before it.
+ *
+ * `slotWidth` is the horizontal room one label owns: the bar pitch for a bar
+ * chart, the point spacing for a line.
+ */
+export function pickLabelIndices(
+  labels: string[],
+  slotWidth: number,
+  fontSize = 10,
+): Set<number> {
+  const keep = new Set<number>();
+  if (labels.length === 0) return keep;
+  if (!Number.isFinite(slotWidth) || slotWidth <= 0) return new Set(labels.map((_, i) => i));
+
+  // No text measurement API in react-native-svg, so estimate: for the rounded
+  // sans used here an average glyph is a little over half the point size, and
+  // 6px of breathing room keeps neighbours from touching.
+  const widest = labels.reduce((m, l) => Math.max(m, l.length), 0) * fontSize * 0.62;
+  const stride = Math.max(1, Math.ceil((widest + 6) / slotWidth));
+
+  for (let i = 0; i < labels.length; i += stride) keep.add(i);
+
+  const last = labels.length - 1;
+  const lastKept = Math.max(...keep);
+  if (last - lastKept >= stride) keep.add(last);
+
+  return keep;
+}
+
+/**
  * A chart with no label is announced as "bar chart" and nothing else, which is
  * worth about as much to a screen reader as an unlabelled image. This reads the
  * series out instead, so a parent using VoiceOver gets the numbers (§30).
