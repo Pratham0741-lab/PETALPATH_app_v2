@@ -26,6 +26,7 @@ model User {
   refreshTokens RefreshToken[]
   notifications Notification[]
   classrooms    Classroom[]
+  feedback      Feedback[]
 
   @@map("users")
 }
@@ -86,6 +87,7 @@ model Child {
   storyProgress           StoryProgress[]
   notifications           Notification[]
   classrooms              ClassroomLearner[]
+  feedback                Feedback[]
 
   @@map("children")
 }
@@ -162,6 +164,7 @@ model Lesson {
 
   activities     Activity[]
   lessonProgress LessonProgress[]
+  feedback       Feedback[]
 
   @@map("lessons")
 }
@@ -1673,4 +1676,38 @@ model Waitlist {
   @@map("waitlists")
 }
 
+// A grown-up's rating of a lesson, given on the lesson-complete screen.
+//
+// Keyed on `lesson.id`, not the skill: two lessons can teach one skill, and
+// the rating is about the content the child just watched.
+//
+// `id` may be supplied by the client. The rating is sent the moment a star is
+// tapped and the optional reasons/comment follow in a second request, so both
+// target the same row; a client-chosen id also makes a replayed offline
+// submission idempotent instead of a duplicate.
+//
+// `lessonId` is RESTRICT on delete, deliberately unlike the progress tables:
+// `prisma/seed.ts` wipes every lesson, and a reseed should fail loudly rather
+// than silently take parent feedback with it. Child and parent cascade, so
+// deleting an account removes what that family wrote.
+model Feedback {
+  id         String   @id @default(uuid())
+  lessonId   String   @map("lesson_id")
+  lesson     Lesson   @relation(fields: [lessonId], references: [id], onDelete: Restrict)
+  childId    String   @map("child_id")
+  child      Child    @relation(fields: [childId], references: [id], onDelete: Cascade)
+  parentId   String   @map("parent_id")
+  parent     User     @relation(fields: [parentId], references: [id], onDelete: Cascade)
+  /// 1-5. Also enforced by a CHECK constraint in the migration.
+  rating     Int
+  /// Quick-reason codes: TOO_EASY, TOO_HARD, TOO_LONG, LOST_INTEREST, LOVED_IT.
+  reasons    String[] @default([])
+  comment    String?  @db.VarChar(1000)
+  appVersion String?  @map("app_version") @db.VarChar(32)
+  createdAt  DateTime @default(now()) @map("created_at")
 
+  @@index([lessonId])
+  @@index([parentId, createdAt])
+  @@index([createdAt])
+  @@map("feedback")
+}

@@ -375,6 +375,8 @@ export async function createTestStoryWithPages(pageCount: number = 3, overrides:
 
 export async function cleanDatabase() {
   const tables: string[] = [
+    // Before lessons: its lesson FK is RESTRICT.
+    'feedback',
     'session_events', 'session_blocks', 'session_plans', 'session_templates',
     'practices', 'learning_debts', 'recovery_modes', 'dynamic_roadmaps',
     'topic_reinforcement_queues', 'topic_states', 'knowledge_states', 'metric_snapshots',

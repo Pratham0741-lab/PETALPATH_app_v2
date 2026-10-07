@@ -12,6 +12,7 @@ export type OfflineRequestCategory =
   | 'audio-progress'
   | 'speak-progress'
   | 'write-progress'
+  | 'lesson-feedback'
   | 'generic';
 
 export interface QueuedRequest {

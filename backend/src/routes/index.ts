@@ -42,6 +42,7 @@ import { adaptationRoutes } from '../modules/adaptation/adaptation.routes.js';
 import { dashboardRoutes } from '../modules/dashboard/dashboard.routes.js';
 import { teacherDashboardRoutes } from '../modules/teacher-dashboard/teacher-dashboard.routes.js';
 import { waitlistRoutes } from '../modules/waitlist/waitlist.routes.js';
+import { feedbackRoutes } from '../modules/feedback/feedback.routes.js';
 
 const router = Router();
 
@@ -117,6 +118,8 @@ router.use('/v1/teacher/dashboard', teacherDashboardRoutes);
 
 router.use('/waitlist', waitlistRoutes);
 router.use('/v1/waitlist', waitlistRoutes);
+
+router.use('/feedback', feedbackRoutes);
 
 export { router as rootRouter };
 

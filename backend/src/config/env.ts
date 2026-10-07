@@ -41,6 +41,10 @@ const envSchema = z.object({
   RATE_LIMIT_AUTH_MAX: z.coerce.number().default(100),
   RATE_LIMIT_STRICT_MAX: z.coerce.number().default(100),
   RATE_LIMIT_MODERATE_MAX: z.coerce.number().default(100),
+  // Lesson feedback, per signed-in parent per 10 minutes. A lesson costs at
+  // most a few requests (rating, a changed star, reasons/comment), plus any
+  // backlog an offline device replays on reconnect.
+  RATE_LIMIT_FEEDBACK_MAX: z.coerce.number().default(30),
 
   // Jobs
   JOBS_CLEANUP_INTERVAL_MINUTES: z.coerce.number().default(60),

@@ -13,6 +13,8 @@ process.env.CORS_ORIGINS = 'http://localhost:8081';
 process.env.CDN_BASE_URL = 'https://test-cdn.example.com';
 process.env.GOOGLE_CLIENT_ID = 'test-google-client-id';
 process.env.GOOGLE_CLIENT_SECRET = 'test-google-client-secret';
+// Low enough that the feedback rate-limit test can reach it quickly.
+process.env.RATE_LIMIT_FEEDBACK_MAX = '5';
 
 try {
   const migrationDir = path.join(__dirname, '..', '..', '..', 'prisma', 'migrations');

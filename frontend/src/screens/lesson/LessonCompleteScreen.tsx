@@ -52,6 +52,8 @@ import {
 import { CelebrationScaffold } from './CelebrationScaffold';
 import { SCREEN_BACKGROUNDS } from '../../assets/backgrounds';
 import { PetalMark } from '../../components/brand/PetalMark';
+import { useReducedMotion } from '../../hooks/useReducedMotion';
+import { LessonFeedbackCard } from './LessonFeedbackCard';
 
 const categoryBadgeMap: Record<string, string> = {
   'Shapes': 'Shape Master',
@@ -62,6 +64,14 @@ const categoryBadgeMap: Record<string, string> = {
 
 /** Stars a single lesson can award — the value the backend scores against. */
 const STARS_PER_LESSON = 8;
+
+/**
+ * When the star row's entrance finishes — `StarRating` pops each earned star in
+ * for 320ms, 140ms apart — plus a beat, so the feedback card arrives after the
+ * celebration rather than competing with it.
+ */
+const celebrationMs = (starsEarned: number) =>
+  Math.max(0, Math.min(starsEarned, STARS_PER_LESSON) - 1) * 140 + 320 + 400;
 
 const MENTOR_MESSAGE =
   'You worked so hard today! Watching the tutorial, listening, speaking, and drawing. You are an absolute superstar!';
@@ -80,6 +90,8 @@ export const LessonCompleteScreen: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [completionResult, setCompletionResult] = useState<any>(null);
   const completionStartedRef = useRef<string | null>(null);
+  const reduceMotion = useReducedMotion();
+  const [showFeedback, setShowFeedback] = useState(false);
 
   useEffect(() => {
     const performCompletion = async () => {
@@ -103,6 +115,15 @@ export const LessonCompleteScreen: React.FC = () => {
 
     performCompletion();
   }, [selectedLesson, completeLessonBackend, completeLesson, loadCategories, isFocused]);
+
+  // Reveal the grown-up feedback card once the celebration has played. Purely
+  // additive: nothing here gates Continue or the completion call.
+  const feedbackStars = completionResult?.starsEarned ?? 0;
+  useEffect(() => {
+    if (loading || showFeedback) return;
+    const t = setTimeout(() => setShowFeedback(true), reduceMotion ? 0 : celebrationMs(feedbackStars));
+    return () => clearTimeout(t);
+  }, [loading, showFeedback, reduceMotion, feedbackStars]);
 
   const findLessonContext = (lessonId: string) => {
     for (const category of categories) {
@@ -168,6 +189,7 @@ export const LessonCompleteScreen: React.FC = () => {
       iconColor={colors.yellow}
       iconSoft={colors.yellowSoft}
       title="Amazing!"
+      keyboardAvoid
       message={`Outstanding job${activeChild?.name ? `, ${activeChild.name}` : ''}! You finished all the activities in “${selectedLesson?.title || 'this lesson'}”!`}
       footer={
         <View style={styles.footer}>
@@ -225,6 +247,14 @@ export const LessonCompleteScreen: React.FC = () => {
           </View>
         </View>
       </Card>
+
+      {showFeedback && selectedLesson && activeChild ? (
+        <LessonFeedbackCard
+          key={selectedLesson.id}
+          lessonId={selectedLesson.id}
+          childId={activeChild.id}
+        />
+      ) : null}
     </CelebrationScaffold>
   );
 };

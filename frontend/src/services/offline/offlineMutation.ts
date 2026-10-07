@@ -14,6 +14,8 @@ export interface OfflineMutationOptions {
 export interface OfflineMutationResult {
   status: 'success' | 'queued' | 'error';
   error?: string;
+  /** The original error, so callers can inspect e.g. `ApiError.statusCode`. */
+  cause?: unknown;
 }
 
 function isNetworkError(err: unknown): boolean {
@@ -64,6 +66,7 @@ export async function runOfflineSafeMutation(
     return {
       status: 'error',
       error: err instanceof Error ? err.message : 'Request failed',
+      cause: err,
     };
   }
 }

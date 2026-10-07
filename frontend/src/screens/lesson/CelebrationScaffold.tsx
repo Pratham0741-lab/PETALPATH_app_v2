@@ -135,6 +135,8 @@ export interface CelebrationScaffoldProps {
    * to the scrolled content instead of the screen.
    */
   overlay?: React.ReactNode;
+  /** Lift the content clear of the keyboard — for a card with a text field. */
+  keyboardAvoid?: boolean;
   style?: StyleProp<ViewStyle>;
   testID?: string;
 }
@@ -149,6 +151,7 @@ export const CelebrationScaffold: React.FC<CelebrationScaffoldProps> = ({
   children,
   footer,
   overlay,
+  keyboardAvoid = false,
   style,
   testID,
 }) => {
@@ -157,7 +160,7 @@ export const CelebrationScaffold: React.FC<CelebrationScaffoldProps> = ({
 
   return (
     <View style={[styles.root, style]} testID={testID}>
-      <AppShell petals="none" backgroundImage={SCREEN_BACKGROUNDS.celebrate} contentContainerStyle={styles.scrollBody} footer={footer}>
+      <AppShell petals="none" backgroundImage={SCREEN_BACKGROUNDS.celebrate} contentContainerStyle={styles.scrollBody} footer={footer} keyboardAvoid={keyboardAvoid}>
         <View style={styles.readable}>
           <View style={styles.hero}>
             {/*
