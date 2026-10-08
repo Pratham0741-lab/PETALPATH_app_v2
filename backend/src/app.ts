@@ -15,11 +15,37 @@ import { NotFoundError } from './utils/errors.js';
 import { env } from './config/env.js';
 import { metricsService } from './modules/metrics/metrics.service.js';
 import { authLimiter, moderateLimiter } from './middleware/rate-limit.middleware.js';
+import {
+  WAITLIST_PATHS,
+  isWaitlistPath,
+  waitlistCors,
+  waitlistErrorHandler,
+  waitlistGlobalLimiter,
+  waitlistIpLimiter,
+} from './modules/waitlist/waitlist.middleware.js';
+import { logger } from './utils/logger.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
+
+/*
+ * Reverse proxies. With TRUST_PROXY = N, Express takes req.ip from the
+ * X-Forwarded-For entry N hops from the right, i.e. it trusts exactly the N
+ * proxies nearest this process:
+ *   nginx -> node                    TRUST_PROXY=1
+ *   CloudFront -> nginx -> node      TRUST_PROXY=2
+ * Unset: no proxy trusted; behind nginx every client would then share
+ * nginx's address and one rate-limit bucket. Set it too high, or leave a path
+ * where clients can reach node or nginx without passing the proxies counted,
+ * and a client can forge X-Forwarded-For to pick its own IP.
+ */
+if (env.TRUST_PROXY) {
+  app.set('trust proxy', env.TRUST_PROXY);
+} else if (env.NODE_ENV === 'production') {
+  logger.warn('TRUST_PROXY is not set: behind a proxy, per-IP rate limits key on the proxy address');
+}
 
 // Security hardening
 app.disable('x-powered-by');
@@ -51,15 +77,21 @@ app.use(
 // Gzip compression
 app.use(compression());
 
-// CORS
+// CORS for the public waitlist: its own origins (WAITLIST_ALLOWED_ORIGINS),
+// no credentials. Mounted first so it also answers the preflight.
+app.use(WAITLIST_PATHS, waitlistCors);
+
+// CORS (app-wide). Skipped on the waitlist paths, so they never pick up the
+// app's credentialed CORS headers.
 const allowedOrigins = env.CORS_ORIGINS.split(',').map(s => s.trim()).filter(Boolean);
 if (env.NODE_ENV === 'development') {
   allowedOrigins.push('http://localhost:8081', 'http://localhost:19006');
 }
-app.use(cors({
+const appCors = cors({
   origin: allowedOrigins,
   credentials: true,
-}));
+});
+app.use((req, res, next) => (isWaitlistPath(req.path) ? next() : appCors(req, res, next)));
 
 // Request ID — must run before logger and routes
 app.use(requestIdMiddleware);
@@ -93,6 +125,11 @@ app.use('/storage', express.static(path.join(__dirname, '../storage')));
 app.use('/health', healthRoutes);
 app.use('/api/health', healthRoutes);
 
+// Waitlist rate limits, in every environment and on every waitlist path:
+// per client IP first, then the route-wide hourly ceiling. Mounted before the
+// root alias below, which would otherwise answer first and never be limited.
+app.use(WAITLIST_PATHS, waitlistIpLimiter, waitlistGlobalLimiter);
+
 // Waitlist route alias at root level
 app.use('/waitlist', waitlistRoutes);
 
@@ -114,8 +151,6 @@ if (isProduction) {
   // Per-endpoint rate limiters (applied before the global limiter)
   app.use('/api/auth/login', authLimiter);
   app.use('/api/auth/register', authLimiter);
-  app.use('/api/waitlist', authLimiter);
-  app.use('/waitlist', authLimiter);
   app.use('/api/session-planner/generate', moderateLimiter);
   app.use('/api/stories', moderateLimiter);
   app.use('/api/assessments', moderateLimiter);
@@ -129,6 +164,10 @@ app.use('/api', isProduction ? apiLimiter : (req, res, next) => next(), rootRout
 app.use((req, res, next) => {
   next(new NotFoundError(`Cannot ${req.method} ${req.originalUrl}`));
 });
+
+// Waitlist errors raised before its controller (malformed JSON, oversized
+// body) keep the waitlist's { ok: false, error } shape.
+app.use(WAITLIST_PATHS, waitlistErrorHandler);
 
 // Global Error handler
 app.use(errorHandler);

@@ -15,6 +15,10 @@ process.env.GOOGLE_CLIENT_ID = 'test-google-client-id';
 process.env.GOOGLE_CLIENT_SECRET = 'test-google-client-secret';
 // Low enough that the feedback rate-limit test can reach it quickly.
 process.env.RATE_LIMIT_FEEDBACK_MAX = '5';
+// High, so suites that post to the waitlist many times are not throttled;
+// waitlist-limits.test.ts lowers them for its own fresh app instance.
+process.env.WAITLIST_RATE_LIMIT_PER_MINUTE = process.env.WAITLIST_RATE_LIMIT_PER_MINUTE || '1000';
+process.env.WAITLIST_RATE_LIMIT_PER_HOUR = process.env.WAITLIST_RATE_LIMIT_PER_HOUR || '100000';
 
 try {
   const migrationDir = path.join(__dirname, '..', '..', '..', 'prisma', 'migrations');

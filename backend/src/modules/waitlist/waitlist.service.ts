@@ -1,42 +1,21 @@
 import { waitlistRepository, WaitlistRepository } from './waitlist.repository.js';
-import { JoinWaitlistResult } from './waitlist.types.js';
-import { Prisma } from '@prisma/client';
+import { JoinWaitlistOutcome, JoinWaitlistParams } from './waitlist.types.js';
 
 export class WaitlistService {
   constructor(private readonly repo: WaitlistRepository = waitlistRepository) {}
 
-  async joinWaitlist(name: string, email: string): Promise<JoinWaitlistResult> {
-    const trimmedName = name.trim();
-    const normalizedEmail = email.trim().toLowerCase();
-
-    // Check if email already exists
-    const existing = await this.repo.findByEmail(normalizedEmail);
-    if (existing) {
-      return {
-        alreadyRegistered: true,
-        message: "You're already on the waitlist!",
-      };
-    }
-
-    try {
-      await this.repo.create(trimmedName, normalizedEmail);
-      return {
-        alreadyRegistered: false,
-        message: "You're on the waitlist!",
-      };
-    } catch (error) {
-      // Handle unique constraint race condition gracefully
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === 'P2002'
-      ) {
-        return {
-          alreadyRegistered: true,
-          message: "You're already on the waitlist!",
-        };
-      }
-      throw error;
-    }
+  /**
+   * Idempotent on email. The outcome is for logging only; the caller answers
+   * both outcomes identically so the endpoint never reveals whether an address
+   * is already on the list.
+   */
+  async join({ email, name, sourcePage }: JoinWaitlistParams): Promise<JoinWaitlistOutcome> {
+    const created = await this.repo.insertIfAbsent({
+      email: email.trim().toLowerCase(),
+      name: name?.trim() || undefined,
+      sourcePage,
+    });
+    return created ? 'created' : 'duplicate';
   }
 }
 

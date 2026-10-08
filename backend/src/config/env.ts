@@ -46,6 +46,32 @@ const envSchema = z.object({
   // backlog an offline device replays on reconnect.
   RATE_LIMIT_FEEDBACK_MAX: z.coerce.number().default(30),
 
+  // Public waitlist (POST /api/waitlist), called by the marketing site.
+  // Browser origins allowed to call it cross-origin; comma-separated, exact
+  // origins only (scheme + host, no path, no wildcard).
+  WAITLIST_ALLOWED_ORIGINS: z
+    .string()
+    .default('https://petalpath.co.in,https://www.petalpath.co.in')
+    .refine(
+      (value) =>
+        value
+          .split(',')
+          .map((s) => s.trim())
+          .filter(Boolean)
+          .every((origin) => /^https?:\/\/[a-z0-9.-]+(:\d+)?$/i.test(origin)),
+      'WAITLIST_ALLOWED_ORIGINS must be exact origins like https://petalpath.co.in (no "*", no path)'
+    ),
+  // Per client IP per minute, and for the whole route per hour.
+  WAITLIST_RATE_LIMIT_PER_MINUTE: z.coerce.number().int().min(1).default(5),
+  WAITLIST_RATE_LIMIT_PER_HOUR: z.coerce.number().int().min(1).default(300),
+
+  // Number of reverse proxies in front of this process that append to
+  // X-Forwarded-For: 1 for nginx only, 2 for CloudFront -> nginx. Unset means
+  // no proxy is trusted and req.ip is the socket address. Only set it if
+  // every request really passes through that many proxies; otherwise clients
+  // can forge X-Forwarded-For and dodge per-IP rate limits. See app.ts.
+  TRUST_PROXY: z.coerce.number().int().min(1).max(5).optional(),
+
   // Jobs
   JOBS_CLEANUP_INTERVAL_MINUTES: z.coerce.number().default(60),
   NOTIFICATION_RETENTION_DAYS: z.coerce.number().default(30),

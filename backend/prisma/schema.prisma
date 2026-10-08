@@ -1666,11 +1666,21 @@ model ClassroomLearner {
 // Waitlist
 // =============================================================================
 
+// Written by the app's JoinWaitlistForm and by the public marketing-site
+// endpoint (POST /api/waitlist). Reconciled additively in
+// 20261008120000_reconcile_waitlist; the table keeps its name and history.
+// No IP address, IP hash or other tracking column, by design.
 model Waitlist {
-  id        String   @id @default(cuid())
-  name      String
-  email     String   @unique
-  createdAt DateTime @default(now()) @map("created_at")
+  // Existing rows keep their cuid ids; new rows get a UUID string. The column
+  // stays TEXT so no existing id has to change.
+  id         String   @id @default(uuid())
+  /// Optional: the marketing-site form does not ask for it.
+  name       String?  @db.VarChar(100)
+  /// Trimmed and lowercased before insert, so the unique index is case-safe.
+  email      String   @unique @db.VarChar(254)
+  /// Where the signup came from, e.g. "/" or "/faq"; "app" for the app form.
+  sourcePage String   @default("app") @map("source_page") @db.VarChar(64)
+  createdAt  DateTime @default(now()) @map("created_at")
 
   @@index([createdAt])
   @@map("waitlists")
