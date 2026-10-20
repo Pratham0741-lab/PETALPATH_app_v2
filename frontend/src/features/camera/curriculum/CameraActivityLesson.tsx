@@ -67,6 +67,10 @@ const DebugOverlay: React.FC<{ isVisible?: boolean }> | null =
   process.env.EXPO_PUBLIC_ENABLE_DEV_TOOLS === 'true'
     ? require('../../../camera/DebugOverlay').DebugOverlay
     : null;
+const PoseDebugView: React.ComponentType<any> | null =
+  process.env.EXPO_PUBLIC_ENABLE_DEV_TOOLS === 'true'
+    ? require('../pose/PoseDebugView').PoseDebugView
+    : null;
 import { useActivitySession } from '../session/useActivitySession';
 import { getDefaultCurriculumConfig, getActivityDefinition } from '../session/activityDefinitions';
 import { CameraPermissionState } from '../components/CameraPermissionState';
@@ -78,6 +82,7 @@ import { cameraSyncService } from '../progress/cameraSyncService';
 import { cameraAnalytics } from '../analytics/cameraAnalytics';
 import { offlineQueue } from '../progress/offlineQueue';
 import { ActivityType } from '../types/pose.types';
+import { getPoseThresholds } from '../pose/thresholds';
 import { cardSizes, colors, radius, spacing, typography } from '../../../theme';
 import { SCREEN_BACKGROUNDS } from '../../../assets/backgrounds';
 
@@ -160,6 +165,21 @@ export const CameraActivityLesson: React.FC = () => {
     }
   }, [sessionState, lessonId, activityId, activityType]);
 
+  /**
+   * Stuck for `stuckTimeoutMs` (30 s): praise the effort and move on by itself.
+   * Nothing is recorded — this is not a pass, the activity simply waits for
+   * another day. There is deliberately no "skip" in production; this is the
+   * only way past a pose the camera cannot see.
+   */
+  useEffect(() => {
+    if (sessionState !== 'timed_out') return;
+    cameraAnalytics.logEvent('activity_timed_out', { lessonId, activityId, activityType });
+    const t = setTimeout(() => {
+      if (navigation.canGoBack()) navigation.goBack();
+    }, getPoseThresholds().stuckAutoContinueMs);
+    return () => clearTimeout(t);
+  }, [sessionState, navigation, lessonId, activityId, activityType]);
+
   const handleRestart = () => {
     resetSession();
     startSession(activityType, 3, activityId);
@@ -197,7 +217,7 @@ export const CameraActivityLesson: React.FC = () => {
               {sessionState === 'starting' ? (
                 <ActivityTimerRing
                   progressMs={0}
-                  targetMs={technicalDef.holdDurationMs}
+                  targetMs={snapshot.targetHoldMs || technicalDef.holdDurationMs}
                   countdownSec={snapshot.countdownSec}
                   isStarting
                 />
@@ -205,7 +225,7 @@ export const CameraActivityLesson: React.FC = () => {
                 <>
                   <ActivityTimerRing
                     progressMs={snapshot.holdProgressMs}
-                    targetMs={technicalDef.holdDurationMs}
+                    targetMs={snapshot.targetHoldMs || technicalDef.holdDurationMs}
                   />
                   <RepetitionCounter
                     currentReps={snapshot.currentReps}
@@ -253,32 +273,37 @@ export const CameraActivityLesson: React.FC = () => {
               </View>
             ) : sessionState === 'timed_out' ? (
               <View style={styles.resultWrap} accessibilityLiveRegion="polite">
-                <Card variant="raised" padding="roomy" accent={colors.orange} contentStyle={styles.result}>
+                <Card variant="raised" padding="roomy" accent={colors.purple} contentStyle={styles.result}>
                   <IconWell
-                    icon="clock"
-                    color={colors.orange}
-                    soft={colors.warningLight}
+                    icon="sparkle"
+                    color={colors.purple}
+                    soft={colors.secondaryLight}
                     size={cardSizes.iconWellLarge}
+                    filled
                   />
                   <Text style={[typography.presets.title, styles.resultTitle]} accessibilityRole="header">
-                    Time Up!
+                    Great work!
                   </Text>
                   <Text style={[typography.presets.body, styles.resultNote]}>
-                    Take a breath and try again whenever you are ready!
+                    Let's try that later.
                   </Text>
 
                   <PrimaryButton
-                    label="Try Again"
-                    icon="replay"
+                    label="Continue"
+                    iconRight="forward"
                     size="lg"
-                    onPress={handleRestart}
+                    onPress={() => navigation.canGoBack() && navigation.goBack()}
                     style={styles.resultButton}
                   />
                 </Card>
               </View>
             ) : (
               <ChildFeedbackOverlay
-                message={activityResult.feedback}
+                message={
+                  // After `hintAfterMs` without progress, say what the camera is
+                  // waiting for ("Bend your elbows out") instead of the name.
+                  snapshot.showHint && activityResult.hint ? activityResult.hint : activityResult.feedback
+                }
                 category={
                   activityResult.state === 'completed'
                     ? 'completion'
@@ -291,6 +316,17 @@ export const CameraActivityLesson: React.FC = () => {
 
             {/* Phase 3 diagnostics — the surface the camera bug was traced on. */}
             {DebugOverlay ? <DebugOverlay isVisible={true} /> : null}
+            {PoseDebugView ? (
+              <PoseDebugView
+                debug={activityResult.debug}
+                validatorName={activityResult.validatorName}
+                windowHits={snapshot.windowHits}
+                windowFrames={snapshot.windowFrames}
+                windowPassing={snapshot.windowPassing}
+                holdMs={snapshot.holdProgressMs}
+                targetHoldMs={snapshot.targetHoldMs}
+              />
+            ) : null}
           </>
         ) : (
           <CameraPermissionState

@@ -1,5 +1,6 @@
 import { ActivityType } from '../types/pose.types';
 import { ActivityCatalog } from '../catalog/ActivityCatalog';
+import { getPoseThresholds } from '../pose/thresholds';
 
 export interface ActivityDefinition {
   id: ActivityType;
@@ -43,6 +44,15 @@ export interface CurriculumActivityConfig {
  */
 export const BASE_CONFIDENCE_THRESHOLD = 0.65;
 
+/**
+ * What the session actually compares against: `passScore` from
+ * poseThresholds.json (0.6). Config-scored poses report their raw 0-1 score, so
+ * this is their pass mark; the remaining primitives report 0.6-1.0 whenever they
+ * detect, so for them it means "detected". Replaces BASE_CONFIDENCE_THRESHOLD
+ * (0.65), which rejected primitive detections in the bottom eighth of tolerance.
+ */
+const sessionThreshold = () => getPoseThresholds().passScore;
+
 /** Fallback timings, used when an activity is not in the catalog. */
 const FALLBACK_HOLD_MS = 1500;
 const FALLBACK_TIMEOUT_MS = 30000;
@@ -67,7 +77,7 @@ export function getActivityDefinition(type: ActivityType, activityId?: string): 
       holdDurationMs: catItem.holdDuration,
       repetitions: catItem.repetitions,
       timeoutMs: catItem.timeout,
-      confidenceThreshold: BASE_CONFIDENCE_THRESHOLD,
+      confidenceThreshold: sessionThreshold(),
     };
   }
 
@@ -77,7 +87,7 @@ export function getActivityDefinition(type: ActivityType, activityId?: string): 
     holdDurationMs: FALLBACK_HOLD_MS,
     repetitions: 1,
     timeoutMs: FALLBACK_TIMEOUT_MS,
-    confidenceThreshold: BASE_CONFIDENCE_THRESHOLD,
+    confidenceThreshold: sessionThreshold(),
   };
 }
 

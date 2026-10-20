@@ -49,6 +49,8 @@ import {
   // Participation
   isChildParticipating,
 } from '../validators/primitives';
+import { POSE_CONFIGS } from '../pose/poseConfig';
+import { scorePose } from '../pose/poseScorer';
 
 export type PrimitiveValidatorFn = (pose: PoseFrame, history?: PoseFrame[]) => ValidationResult;
 
@@ -103,6 +105,16 @@ export class ValidatorRegistry {
 
     // --- Participation ----------------------------------------------------
     this.registerTemporal('isChildParticipating', isChildParticipating);
+
+    // --- Static poses with a config: tolerant scoring replaces the primitive.
+    // The primitives stay as the reference implementation and for any static
+    // validator without a config (areHandsBehindBack).
+    for (const name of Object.keys(POSE_CONFIGS)) {
+      this.validators.set(name, (pose) => {
+        const s = scorePose(name, pose)!;
+        return { detected: s.pass, confidence: s.score, primitiveName: name, feedback: s.hint, debug: s };
+      });
+    }
   }
 
   private registerStatic(name: string, fn: StaticFn): void {

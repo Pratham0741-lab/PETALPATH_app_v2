@@ -129,6 +129,7 @@ export class ActivityEngine {
         hint: result.feedback,
         validatorName: result.primitiveName,
         participationOnly,
+        debug: result.debug,
       };
     }
 
@@ -141,6 +142,7 @@ export class ActivityEngine {
       hint: result.feedback,
       validatorName: result.primitiveName,
       participationOnly,
+      debug: result.debug,
     };
   }
 

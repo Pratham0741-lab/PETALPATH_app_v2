@@ -49,6 +49,7 @@
   "devDependencies": {
     "@types/react": "~19.2.2",
     "concurrently": "^10.0.3",
+    "tsx": "^4.23.15",
     "typescript": "~6.0.3"
   },
   "scripts": {
@@ -56,6 +57,7 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
+    "test:pose": "tsx --test src/features/camera/__tests__/pose.test.ts",
     "dev": "concurrently \"npm run dev --prefix server\" \"npm start\""
   },
   "private": true

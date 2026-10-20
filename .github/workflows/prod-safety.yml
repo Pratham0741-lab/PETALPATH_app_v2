@@ -2,7 +2,7 @@ name: prod-safety
 
 # Fails a PR if a production build would still ship developer/testing tools,
 # if the dev-only API routes are reachable with the flag off, if a lesson can
-# be completed without its activities.
+# be completed without its activities, or if the pose tests fail.
 
 on:
   pull_request:
@@ -24,6 +24,8 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
       - run: npx tsc --noEmit
+      - name: Pose detection tests
+        run: npm run test:pose
       - name: Production bundle has no dev tools
         run: node scripts/check-prod-bundle.mjs
       - name: Dev-tools bundle still has them (the check is not vacuous)

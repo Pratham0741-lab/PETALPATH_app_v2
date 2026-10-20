@@ -1,3 +1,5 @@
+import type { PoseScore } from '../pose/poseScorer';
+
 export interface Point3D {
   x: number;
   y: number;
@@ -44,6 +46,8 @@ export interface ValidationResult {
   confidence: number;
   primitiveName: string;
   feedback?: string;
+  /** Per-check breakdown, for poses scored by `pose/poseConfig.ts`. */
+  debug?: PoseScore;
 }
 
 export type ActivityType =
@@ -78,4 +82,6 @@ export interface ActivityEngineResult {
    * cannot see). UI should avoid claiming the pose itself was verified.
    */
   participationOnly?: boolean;
+  /** Per-check breakdown from the pose scorer (dev debug view). */
+  debug?: PoseScore;
 }

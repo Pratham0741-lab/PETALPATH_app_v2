@@ -29,6 +29,7 @@ const MARKERS = [
   ['Lesson "Mark Lesson Complete"', 'Mark Lesson Complete'],
   ['Camera engine DebugOverlay', 'Show camera engine metrics'],
   ['CameraActivity diagnostics screen', 'Live preview with engine diagnostics'],
+  ['Pose debug view', 'POSE_DEBUG_VIEW'],
 ];
 
 /** Dev-only server routes: no production code may call them. */

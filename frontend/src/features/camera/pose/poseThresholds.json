@@ -1,0 +1,22 @@
+{
+  "_doc": "Pose tolerance tuning. Edit values here, not in code; ships with an OTA update. Distances are in torso lengths (shoulder midpoint to hip midpoint), angles in degrees. Per-pose overrides go under poses.<validatorName>.checks.<checkId> (tol, min, max, target, weight) or poses.<validatorName>.passScore. See pose/poseConfig.ts for the check ids.",
+  "passScore": 0.6,
+  "angleToleranceDeg": 30,
+  "distanceTolerance": 0.35,
+  "minVisibility": 0.3,
+  "minCoverage": 0.5,
+  "minBlend": 0.5,
+  "acceptMirrored": true,
+  "strictSides": false,
+  "window": {
+    "size": 12,
+    "required": 8,
+    "minSpanMs": 500
+  },
+  "maxHoldMs": 600,
+  "holdDecay": 0.5,
+  "hintAfterMs": 10000,
+  "stuckTimeoutMs": 30000,
+  "stuckAutoContinueMs": 4000,
+  "poses": {}
+}
