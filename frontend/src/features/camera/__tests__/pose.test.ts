@@ -15,11 +15,17 @@ import { ARMS_DOWN, skeleton, type SkeletonSpec } from './poseFixtures';
 import { POSE_CONFIGS } from '../pose/poseConfig';
 import { resetPoseThresholds, scorePose, setPoseThresholds, getPoseThresholds } from '../pose/poseScorer';
 import { PoseWindow } from '../pose/PoseWindow';
+import { setPoseMirrored } from '../validators/primitives';
 import { ActivitySessionEngine } from '../session/ActivitySessionEngine';
 import type { ActivityDefinition } from '../session/activityDefinitions';
 import type { ActivityEngineResult, PoseFrame } from '../types/pose.types';
 
-afterEach(() => resetPoseThresholds());
+// Fixtures label limbs as the child's own sides; that is an unmirrored camera.
+setPoseMirrored(false);
+afterEach(() => {
+  resetPoseThresholds();
+  setPoseMirrored(false);
+});
 
 const score = (validator: string, spec: SkeletonSpec | PoseFrame) =>
   scorePose(validator, 'landmarks' in spec ? spec : skeleton(spec))!;
@@ -69,9 +75,17 @@ for (const c of POSE_CASES) {
       assert.ok(!s.pass, `wrong pose scored ${s.score.toFixed(2)}`);
       assert.ok(s.hint, 'a rejected pose says what to fix');
     });
-    it('accepts the mirrored pose', () => {
-      assert.ok(score(c.validator, mirrorFrame(skeleton(c.correct))).pass);
-    });
+    if (POSE_CONFIGS[c.validator].sideSpecific) {
+      it('rejects the mirrored pose (wrong side)', () => {
+        const s = score(c.validator, mirrorFrame(skeleton(c.correct)));
+        assert.ok(!s.pass, `other hand scored ${s.score.toFixed(2)}`);
+        assert.match(s.hint ?? '', /LEFT|RIGHT/);
+      });
+    } else {
+      it('accepts the mirrored pose', () => {
+        assert.ok(score(c.validator, mirrorFrame(skeleton(c.correct))).pass);
+      });
+    }
     it('is the same near and far from the camera', () => {
       for (const torso of [0.14, 0.4]) {
         const s = score(c.validator, { ...c.correct, torso, cx: 0.45, shoulderY: torso > 0.3 ? 0.5 : 0.25 });
@@ -126,12 +140,27 @@ describe('thresholds are configuration', () => {
     setPoseThresholds({ poses: { areHandsNearHips: { checks: { leftElbowBent: { target: 175, tol: 5 }, rightElbowBent: { target: 175, tol: 5 } } } } });
     assert.ok(!score(c.validator, c.correct).pass);
   });
-  it('mirroring can be switched off', () => {
+  it('side-specific poses can be relaxed with strictSides: false', () => {
     const c = POSE_CASES.find((x) => x.validator === 'isLeftHandRaised')!;
     const mirrored = mirrorFrame(skeleton(c.correct));
-    assert.ok(score(c.validator, mirrored).pass);
-    setPoseThresholds({ acceptMirrored: false });
     assert.ok(!score(c.validator, mirrored).pass);
+    setPoseThresholds({ strictSides: false });
+    assert.ok(score(c.validator, mirrored).pass);
+  });
+});
+
+describe("left and right are the child's own", () => {
+  const leftUp = { ...ARMS_DOWN, leftArm: { upper: -100, lower: -95 } };
+  it('the left hand passes "left" and fails "right"', () => {
+    assert.ok(score('isLeftHandRaised', leftUp).pass);
+    assert.ok(!score('isRightHandRaised', leftUp).pass);
+  });
+  it('follows the front camera mirroring the image', () => {
+    // A mirrored front camera labels the child's left wrist as rightWrist.
+    const asSeen = mirrorFrame(skeleton(leftUp));
+    setPoseMirrored(true);
+    assert.ok(score('isLeftHandRaised', asSeen).pass);
+    assert.ok(!score('isRightHandRaised', asSeen).pass);
   });
 });
 

@@ -7,7 +7,7 @@
   "minCoverage": 0.5,
   "minBlend": 0.5,
   "acceptMirrored": true,
-  "strictSides": false,
+  "strictSides": true,
   "window": {
     "size": 12,
     "required": 8,

@@ -17,7 +17,8 @@
  *  - Only the landmarks a pose needs are read. Checks whose landmarks are not
  *    visible are skipped (unless `required`), so a half-visible child is judged
  *    on what the camera can see.
- *  - One-sided poses are tried mirrored too, so "either hand" needs one spec.
+ *  - "Either hand" poses are tried mirrored too, so they need one spec.
+ *    Poses that name a side (`sideSpecific`) are not: the wrong hand fails.
  *
  * Tolerances are tuned in `poseThresholds.json`, not here.
  *
@@ -176,10 +177,12 @@ export const POSE_CONFIGS: Readonly<Record<string, PoseSpec>> = {
     notVisibleHint: 'Show both hands to the camera!',
   },
 
+  // Side-specific: never accepted with the other hand (strictSides), so the
+  // child learns left from right. The hint names the side.
   isLeftHandRaised: {
     sideSpecific: true,
     checks: [
-      wristUp('left'),
+      { ...wristUp('left'), hint: 'Raise your LEFT hand!' },
       {
         id: 'otherHandDown',
         kind: 'dy',
@@ -187,7 +190,7 @@ export const POSE_CONFIGS: Readonly<Record<string, PoseSpec>> = {
         b: 'rightShoulder',
         min: 0.05,
         tol: 0.25,
-        hint: 'Just one hand — keep the other one down!',
+        hint: 'Just your LEFT hand — keep the right one down!',
       },
     ],
     notVisibleHint: 'Show your hand to the camera!',
@@ -196,7 +199,7 @@ export const POSE_CONFIGS: Readonly<Record<string, PoseSpec>> = {
   isRightHandRaised: {
     sideSpecific: true,
     checks: [
-      wristUp('right'),
+      { ...wristUp('right'), hint: 'Raise your RIGHT hand!' },
       {
         id: 'otherHandDown',
         kind: 'dy',
@@ -204,7 +207,7 @@ export const POSE_CONFIGS: Readonly<Record<string, PoseSpec>> = {
         b: 'leftShoulder',
         min: 0.05,
         tol: 0.25,
-        hint: 'Just one hand — keep the other one down!',
+        hint: 'Just your RIGHT hand — keep the left one down!',
       },
     ],
     notVisibleHint: 'Show your hand to the camera!',
