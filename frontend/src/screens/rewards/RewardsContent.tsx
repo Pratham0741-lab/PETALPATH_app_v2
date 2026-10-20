@@ -35,7 +35,7 @@
  */
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { Image, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 
 import { cardSizes, colors, radius, shadows, spacing, typography } from '../../theme';
@@ -63,6 +63,7 @@ import {
 } from '../../components/design';
 import type { PetalIconName } from '../../components/icons';
 import { PetalMark } from '../../components/brand/PetalMark';
+import { useTwoPane } from '../../hooks/useTwoPane';
 
 export type RewardsVariant = 'mobile' | 'tablet' | 'desktop';
 
@@ -80,7 +81,7 @@ const VARIANTS: Record<
   }
 > = {
   mobile: { cardMinWidth: 280 },
-  tablet: { maxWidth: 900, cardMinWidth: 300 },
+  tablet: { maxWidth: 900, cardMinWidth: 250 }, // two across beside the wider landscape sidebar
   desktop: { maxWidth: 1120, cardMinWidth: 320 },
 };
 
@@ -104,6 +105,7 @@ export interface RewardsContentProps {
 
 export const RewardsContent: React.FC<RewardsContentProps> = ({ variant }) => {
   const cfg = VARIANTS[variant];
+  const twoPane = useTwoPane();
   const navigation = useNavigation() as any;
 
   const activeChild = useChildStore((state) => state.activeChild);
@@ -146,11 +148,249 @@ export const RewardsContent: React.FC<RewardsContentProps> = ({ variant }) => {
    * garbage on every frame and enough to defeat `RewardCard`'s memoisation —
    * every card re-rendered whenever anything on the screen changed.
    */
-  const gridItemStyle = useMemo(
-    () => [styles.gridItem, { flexBasis: cfg.cardMinWidth }],
-    [cfg.cardMinWidth],
-  );
+  /*
+   * Exact column widths from the measured grid once it has been laid out. With
+   * flex-grow alone, an odd last card stretched across the whole row — on a wide
+   * tablet one sticker became a banner twice the size of its neighbours.
+   */
+  const [gridWidth, setGridWidth] = useState(0);
+  const gridItemStyle = useMemo(() => {
+    if (gridWidth <= 0) return [styles.gridItem, { flexBasis: cfg.cardMinWidth }];
+    const gap = cardSizes.gap;
+    const cols = Math.max(1, Math.floor((gridWidth + gap) / (cfg.cardMinWidth + gap)));
+    return [styles.gridItem, { width: (gridWidth - gap * (cols - 1)) / cols, flexGrow: 0 }];
+  }, [cfg.cardMinWidth, gridWidth]);
   const isEmpty = !loading && !error && items.length === 0;
+
+  /* The child's totals and the collection, as two blocks: stacked on a phone,
+     side by side on a landscape tablet. */
+  const overview = (
+    <>
+      {/* ------------------------------------------------------- Star Bank */}
+      <Card variant="raised" padding="normal" accent={mentor.color}>
+        <View style={styles.bankRow}>
+          <AvatarGlyph
+            species={mentor.species}
+            size={64}
+            ringColor={mentor.color}
+            accessibilityLabel={`${mentor.name}, who looks after your treasure`}
+          />
+
+          <View style={styles.bankText}>
+            <Text style={[typography.presets.eyebrow, { color: mentor.color }]} numberOfLines={1}>
+              {mentor.name.split(' ')[0]}’s Treasure
+            </Text>
+            <Text style={[typography.presets.section, styles.bankTitle]} numberOfLines={2}>
+              {childName}’s Star Bank
+            </Text>
+          </View>
+        </View>
+
+        {/* Hearts was a hardcoded placeholder, not a real total, so it is gone.
+            Stars and Petals are the two figures that mean something. */}
+        <View style={styles.bankBadges}>
+          <RewardBadge kind="stars" value={totalStars} showUnit />
+          <RewardBadge kind="petals" value={totalStars === 0 ? 0 : 12} showUnit />
+        </View>
+      </Card>
+
+      {/* ---------------------------------------------------- Level & stats */}
+      <Card variant="raised" padding="normal" accent={colors.purple}>
+        <View style={styles.levelRow}>
+          <Text style={[typography.presets.cardTitle, styles.levelTitle]} numberOfLines={2}>
+            Level {level}
+            {milestone ? ` · ${milestone.label}` : ''}
+          </Text>
+          {milestone?.reward ? (
+            <Text style={[typography.presets.caption, styles.levelReward]} numberOfLines={1}>
+              {milestone.reward}
+            </Text>
+          ) : null}
+        </View>
+
+        <ProgressIndicator
+          value={xp.data?.progressToNext ?? 0}
+          label={`${xp.data?.xp ?? 0} of ${xp.data?.nextLevelXP ?? 100} XP`}
+          showPercentage
+          style={styles.levelProgress}
+          accessibilityLabel={`Level ${level}. ${xp.data?.xp ?? 0} of ${
+            xp.data?.nextLevelXP ?? 100
+          } experience points.`}
+        />
+
+        <StatGrid stats={stats} style={styles.statGrid} />
+      </Card>
+
+      {/* ------------------------------------------------------ Quick links */}
+      <View style={styles.quickNav}>
+        {QUICK_LINKS.map((link) => (
+          <Pressable
+            key={link.route}
+            onPress={() => navigation.navigate(link.route)}
+            accessibilityRole="button"
+            accessibilityLabel={link.label}
+            style={({ pressed }) => [styles.quickNavItem, pressed && styles.quickNavPressed]}
+          >
+            <View style={[styles.quickNavIcon, { backgroundColor: link.soft }]}>
+              <PetalIcon name={link.icon} size={18} color={link.color} filled />
+            </View>
+            <Text style={[typography.presets.caption, styles.quickNavText]} numberOfLines={1}>
+              {link.label}
+            </Text>
+          </Pressable>
+        ))}
+      </View>
+    </>
+  );
+
+  const collection = (
+    <>
+      {/* ------------------------------------------------------- Collection */}
+      {/*
+        No section title above the tabs. The SegmentedTabs directly below name
+        both collections *and* carry their counts, so "Magical Stickers" was
+        the selected tab's own label restated one row higher. Only the line
+        explaining how they are unlocked — which the tabs do not say — stays.
+      */}
+      <View style={styles.sectionHeading}>
+        <Text style={[typography.presets.subtle, styles.sectionSubtitle]}>
+          {activeTab === 'stickers'
+            ? 'Collect stars to unlock cute forest animals!'
+            : 'Earned by completing subject paths!'}
+        </Text>
+      </View>
+
+      <SegmentedTabs
+        items={[
+          {
+            key: 'stickers' as Tab,
+            label: 'Stickers',
+            icon: 'sparkle',
+            count: `${unlockedStickersCount}/${stickers.length}`,
+          },
+          {
+            key: 'badges' as Tab,
+            label: 'Badges',
+            icon: 'medal',
+            count: `${earnedBadgesCount}/${badges.length}`,
+          },
+        ]}
+        selected={activeTab}
+        onSelect={setActiveTab}
+        accessibilityLabel="Collection"
+      />
+
+      {loading && stickers.length === 0 ? (
+        <View style={styles.center}>
+          <PetalMark size={96} loading />
+          <Text style={[typography.presets.caption, styles.loadingText]}>
+            Opening your treasure chest…
+          </Text>
+        </View>
+      ) : error ? (
+        <ErrorState
+          title="Couldn’t load your rewards"
+          message={error}
+          onRetry={refreshRewards}
+        />
+      ) : isEmpty ? (
+        /* `EmptyState` is `flex: 1`, which resolves to nothing inside a scroll
+           view's auto-height content — the wrapper's `minHeight` gives it room
+           to centre in. */
+        <View style={styles.emptyWrap}>
+          {/* The closed chest says "nothing collected yet" far better than a
+              glyph, and pairs with the open chest shown once there is. */}
+          <Image
+            source={REWARD_IMAGES.empty}
+            style={styles.emptyArt}
+            resizeMode="contain"
+            accessible={false}
+          />
+          <EmptyState
+            title={activeTab === 'stickers' ? 'No stickers yet' : 'No badges yet'}
+            message="Finish a lesson to start filling your collection."
+          />
+        </View>
+      ) : (
+        <View style={styles.grid} onLayout={(e) => setGridWidth(e.nativeEvent.layout.width)}>
+          {activeTab === 'stickers'
+            ? stickers.map((s) => (
+                <RewardCard
+                  key={s.id}
+                  title={s.name}
+                  description={s.description || `Unlocks at ${s.requiredStars} stars`}
+                  /* The requirement is only useful while it is still a
+                     requirement; an unlocked sticker shows a tick instead. */
+                  starValue={s.unlocked ? undefined : s.requiredStars}
+                  unlocked={s.unlocked}
+                  kind="sticker"
+                  style={gridItemStyle}
+                />
+              ))
+            : badges.map((b) => (
+                <RewardCard
+                  key={b.id}
+                  title={b.name}
+                  description={b.description || 'Complete activities to earn this badge'}
+                  unlocked={b.earned}
+                  kind="badge"
+                  style={gridItemStyle}
+                />
+              ))}
+        </View>
+      )}
+    </>
+  );
+
+  /*
+   * Landscape tablet: the Star Bank, level and links stay in a fixed left
+   * column while the collection gets the rest of the screen and scrolls on its
+   * own. Stacked, the collection started a full screen down — on a tablet the
+   * stickers a child is working towards were the part they never saw.
+   */
+  if (twoPane) {
+    return (
+      <AppShell
+        withBottomNav
+        petals="none"
+        backgroundImage={SCREEN_BACKGROUNDS.rewards} accent={SCREEN_ACCENTS.rewards}
+        header={
+          <AppHeader
+            accent={SCREEN_ACCENTS.rewards}
+            title="My Rewards"
+            stars={totalStars}
+            streak={streak.data?.currentStreak ?? 0}
+            onPressNotifications={() => navigation.navigate('NotificationPreferences')}
+          />
+        }
+        scroll={false}
+      >
+        <View style={styles.panes}>
+          <ScrollView
+            style={styles.overviewPane}
+            contentContainerStyle={styles.paneContent}
+            showsVerticalScrollIndicator={false}
+          >
+            {overview}
+          </ScrollView>
+          <ScrollView
+            style={styles.collectionPane}
+            contentContainerStyle={styles.paneContent}
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl
+                refreshing={loading && stickers.length > 0}
+                onRefresh={refreshRewards}
+                tintColor={colors.primary}
+              />
+            }
+          >
+            {collection}
+          </ScrollView>
+        </View>
+      </AppShell>
+    );
+  }
 
   return (
     <AppShell
@@ -175,175 +415,8 @@ export const RewardsContent: React.FC<RewardsContentProps> = ({ variant }) => {
       }
     >
       <View style={[styles.column, cfg.maxWidth ? { maxWidth: cfg.maxWidth } : null]}>
-        {/* ------------------------------------------------------- Star Bank */}
-        <Card variant="raised" padding="normal" accent={mentor.color}>
-          <View style={styles.bankRow}>
-            <AvatarGlyph
-              species={mentor.species}
-              size={64}
-              ringColor={mentor.color}
-              accessibilityLabel={`${mentor.name}, who looks after your treasure`}
-            />
-
-            <View style={styles.bankText}>
-              <Text style={[typography.presets.eyebrow, { color: mentor.color }]} numberOfLines={1}>
-                {mentor.name.split(' ')[0]}’s Treasure
-              </Text>
-              <Text style={[typography.presets.section, styles.bankTitle]} numberOfLines={2}>
-                {childName}’s Star Bank
-              </Text>
-            </View>
-          </View>
-
-          {/* Hearts was a hardcoded placeholder, not a real total, so it is gone.
-              Stars and Petals are the two figures that mean something. */}
-          <View style={styles.bankBadges}>
-            <RewardBadge kind="stars" value={totalStars} showUnit />
-            <RewardBadge kind="petals" value={totalStars === 0 ? 0 : 12} showUnit />
-          </View>
-        </Card>
-
-        {/* ---------------------------------------------------- Level & stats */}
-        <Card variant="raised" padding="normal" accent={colors.purple}>
-          <View style={styles.levelRow}>
-            <Text style={[typography.presets.cardTitle, styles.levelTitle]} numberOfLines={2}>
-              Level {level}
-              {milestone ? ` · ${milestone.label}` : ''}
-            </Text>
-            {milestone?.reward ? (
-              <Text style={[typography.presets.caption, styles.levelReward]} numberOfLines={1}>
-                {milestone.reward}
-              </Text>
-            ) : null}
-          </View>
-
-          <ProgressIndicator
-            value={xp.data?.progressToNext ?? 0}
-            label={`${xp.data?.xp ?? 0} of ${xp.data?.nextLevelXP ?? 100} XP`}
-            showPercentage
-            style={styles.levelProgress}
-            accessibilityLabel={`Level ${level}. ${xp.data?.xp ?? 0} of ${
-              xp.data?.nextLevelXP ?? 100
-            } experience points.`}
-          />
-
-          <StatGrid stats={stats} style={styles.statGrid} />
-        </Card>
-
-        {/* ------------------------------------------------------ Quick links */}
-        <View style={styles.quickNav}>
-          {QUICK_LINKS.map((link) => (
-            <Pressable
-              key={link.route}
-              onPress={() => navigation.navigate(link.route)}
-              accessibilityRole="button"
-              accessibilityLabel={link.label}
-              style={({ pressed }) => [styles.quickNavItem, pressed && styles.quickNavPressed]}
-            >
-              <View style={[styles.quickNavIcon, { backgroundColor: link.soft }]}>
-                <PetalIcon name={link.icon} size={18} color={link.color} filled />
-              </View>
-              <Text style={[typography.presets.caption, styles.quickNavText]} numberOfLines={1}>
-                {link.label}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-
-        {/* ------------------------------------------------------- Collection */}
-        {/*
-          No section title above the tabs. The SegmentedTabs directly below name
-          both collections *and* carry their counts, so "Magical Stickers" was
-          the selected tab's own label restated one row higher. Only the line
-          explaining how they are unlocked — which the tabs do not say — stays.
-        */}
-        <View style={styles.sectionHeading}>
-          <Text style={[typography.presets.subtle, styles.sectionSubtitle]}>
-            {activeTab === 'stickers'
-              ? 'Collect stars to unlock cute forest animals!'
-              : 'Earned by completing subject paths!'}
-          </Text>
-        </View>
-
-        <SegmentedTabs
-          items={[
-            {
-              key: 'stickers' as Tab,
-              label: 'Stickers',
-              icon: 'sparkle',
-              count: `${unlockedStickersCount}/${stickers.length}`,
-            },
-            {
-              key: 'badges' as Tab,
-              label: 'Badges',
-              icon: 'medal',
-              count: `${earnedBadgesCount}/${badges.length}`,
-            },
-          ]}
-          selected={activeTab}
-          onSelect={setActiveTab}
-          accessibilityLabel="Collection"
-        />
-
-        {loading && stickers.length === 0 ? (
-          <View style={styles.center}>
-            <PetalMark size={96} loading />
-            <Text style={[typography.presets.caption, styles.loadingText]}>
-              Opening your treasure chest…
-            </Text>
-          </View>
-        ) : error ? (
-          <ErrorState
-            title="Couldn’t load your rewards"
-            message={error}
-            onRetry={refreshRewards}
-          />
-        ) : isEmpty ? (
-          /* `EmptyState` is `flex: 1`, which resolves to nothing inside a scroll
-             view's auto-height content — the wrapper's `minHeight` gives it room
-             to centre in. */
-          <View style={styles.emptyWrap}>
-            {/* The closed chest says "nothing collected yet" far better than a
-                glyph, and pairs with the open chest shown once there is. */}
-            <Image
-              source={REWARD_IMAGES.empty}
-              style={styles.emptyArt}
-              resizeMode="contain"
-              accessible={false}
-            />
-            <EmptyState
-              title={activeTab === 'stickers' ? 'No stickers yet' : 'No badges yet'}
-              message="Finish a lesson to start filling your collection."
-            />
-          </View>
-        ) : (
-          <View style={styles.grid}>
-            {activeTab === 'stickers'
-              ? stickers.map((s) => (
-                  <RewardCard
-                    key={s.id}
-                    title={s.name}
-                    description={s.description || `Unlocks at ${s.requiredStars} stars`}
-                    /* The requirement is only useful while it is still a
-                       requirement; an unlocked sticker shows a tick instead. */
-                    starValue={s.unlocked ? undefined : s.requiredStars}
-                    unlocked={s.unlocked}
-                    kind="sticker"
-                    style={gridItemStyle}
-                  />
-                ))
-              : badges.map((b) => (
-                  <RewardCard
-                    key={b.id}
-                    title={b.name}
-                    description={b.description || 'Complete activities to earn this badge'}
-                    unlocked={b.earned}
-                    kind="badge"
-                    style={gridItemStyle}
-                  />
-                ))}
-          </View>
-        )}
+        {overview}
+        {collection}
       </View>
     </AppShell>
   );
@@ -360,6 +433,24 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     gap: spacing.lg,
     paddingTop: spacing.md,
+  },
+  // ------------------------------------------------------- tablet two-pane
+  panes: {
+    flex: 1,
+    flexDirection: 'row',
+    gap: spacing.xl,
+  },
+  overviewPane: {
+    width: 400,
+    flexGrow: 0,
+  },
+  collectionPane: {
+    flex: 1,
+  },
+  paneContent: {
+    gap: spacing.lg,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.xl,
   },
 
   // ------------------------------------------------------------- Star Bank

@@ -125,32 +125,17 @@ async function logout(): Promise<void> {
   logger.info('User logged out');
 }
 
-async function refreshSession(): Promise<boolean> {
-  try {
-    const refreshToken = await storageService.getItem(StorageKeys.REFRESH_TOKEN);
-    if (!refreshToken) return false;
-
-    const response = await apiClient.post<ApiResponse<AuthResponse>>('/auth/refresh', {
-      refreshToken,
-    });
-
-    if (response.success && response.data) {
-      await storeAuthData(response.data);
-
-      // Keep the in-memory stores in sync with rotated tokens before the
-      // app issues authenticated requests such as /children.
-      const { useAppStore } = await import('../../store/appStore');
-      await useAppStore.getState().setSession(response.data);
-
-      logger.info('Session refreshed');
-      return true;
-    }
-
-    return false;
-  } catch (error) {
-    logger.warn('Session refresh failed:', error);
-    return false;
-  }
+/**
+ * Delegates to the shared single-flight refresh — see `sessionRefresh.ts` for
+ * why there must be exactly one. Imported lazily: `sessionRefresh` reads the
+ * auth store, which imports this module.
+ */
+async function refreshSession(): Promise<import('./sessionRefresh').RefreshOutcome> {
+  const { refreshSession: shared } = await import('./sessionRefresh');
+  const outcome = await shared();
+  if (outcome === 'refreshed') logger.info('Session refreshed');
+  else logger.warn('Session refresh:', outcome);
+  return outcome;
 }
 
 async function getValidToken(): Promise<string | null> {
@@ -158,8 +143,8 @@ async function getValidToken(): Promise<string | null> {
   if (!token) return null;
 
   if (isTokenExpired(token)) {
-    const refreshed = await refreshSession();
-    if (!refreshed) return null;
+    const outcome = await refreshSession();
+    if (outcome !== 'refreshed') return null;
     return storageService.getItem(StorageKeys.AUTH_TOKEN);
   }
 

@@ -42,6 +42,7 @@ import type {
   RoadmapReviewGate,
 } from '../../services/api/learningApi';
 import { PetalMark } from '../../components/brand/PetalMark';
+import { useTwoPane } from '../../hooks/useTwoPane';
 import {
   AppShell,
   AppHeader,
@@ -50,6 +51,7 @@ import {
   ContinueLearningCard,
   PetalIcon,
   PrimaryButton,
+  ProgressIndicator,
   Roadmap,
   RoadmapNodeData,
   RoadmapSectionData,
@@ -164,6 +166,7 @@ export const HomeContent: React.FC<HomeContentProps> = ({ variant = 'mobile' }) 
   const [closedThemeIds, setClosedThemeIds] = useState<Set<string>>(() => new Set());
 
   const maxWidth = MAX_WIDTH[variant];
+  const twoPane = useTwoPane();
 
   // ----------------------------------------------------------------- queries
   const {
@@ -284,12 +287,19 @@ export const HomeContent: React.FC<HomeContentProps> = ({ variant = 'mobile' }) 
 
   const handleLessonClick = useCallback(
     async (lesson: Lesson) => {
-      if (lesson.isUnlocked || lesson.isCompleted) {
+      /*
+       * The current lesson opens even when its node is not flagged unlocked.
+       * The path draws it as "current" from the server's `currentNode`, and the
+       * Continue card starts it, but `isUnlocked` on the node can lag behind —
+       * so tapping the glowing stop a child was told to tap did nothing at all.
+       */
+      const isCurrent = !!currentLesson && lesson.id === currentLesson.id;
+      if (lesson.isUnlocked || lesson.isCompleted || isCurrent) {
         await selectLesson(lesson);
         navigation.navigate('LessonOverview', { lessonId: lesson.id });
       }
     },
-    [navigation, selectLesson],
+    [navigation, selectLesson, currentLesson],
   );
 
   // ------------------------------------------------------- roadmap sections
@@ -556,7 +566,8 @@ export const HomeContent: React.FC<HomeContentProps> = ({ variant = 'mobile' }) 
 
   const header = (
     <View style={styles.headerWrap}>
-      <View style={[styles.column, maxWidth ? { maxWidth } : null]}>
+      {/* Full width beside two panes, so the greeting lines up with the journey. */}
+      <View style={[styles.column, maxWidth && !twoPane ? { maxWidth } : null]}>
         <AppHeader
           accent={SCREEN_ACCENTS.home}
           eyebrow={activeChild?.name ? `Hi ${activeChild.name}!` : 'Welcome back!'}
@@ -571,20 +582,23 @@ export const HomeContent: React.FC<HomeContentProps> = ({ variant = 'mobile' }) 
                 than in the page body because it is a thing the child *does*, not
                 a step in the journey below.
               */}
-              <Pressable
-                onPress={() => navigation.navigate('MainTabs', { screen: 'Camera' })}
-                accessibilityRole="button"
-                accessibilityLabel="Move and Play"
-                accessibilityHint="Camera games that get you moving"
-                hitSlop={8}
-                style={({ pressed }) => [
-                  styles.moveIcon,
-                  { backgroundColor: MOVE_TONE.soft },
-                  pressed && styles.movePressed,
-                ]}
-              >
-                <PetalIcon name="camera" size={26} color={MOVE_TONE.main} filled />
-              </Pressable>
+              {/* Phones only: on a tablet Move & Play is in the sidebar. */}
+              {variant === 'mobile' ? (
+                <Pressable
+                  onPress={() => navigation.navigate('MainTabs', { screen: 'Camera' })}
+                  accessibilityRole="button"
+                  accessibilityLabel="Move and Play"
+                  accessibilityHint="Camera games that get you moving"
+                  hitSlop={8}
+                  style={({ pressed }) => [
+                    styles.moveIcon,
+                    { backgroundColor: MOVE_TONE.soft },
+                    pressed && styles.movePressed,
+                  ]}
+                >
+                  <PetalIcon name="camera" size={26} color={MOVE_TONE.main} filled />
+                </Pressable>
+              ) : null}
               <Pressable
               onPress={() => setShowChildDropdown((v) => !v)}
               accessibilityRole="button"
@@ -781,6 +795,314 @@ export const HomeContent: React.FC<HomeContentProps> = ({ variant = 'mobile' }) 
     />
   ) : null;
 
+  /*
+   * The summary cards and the journey, as two blocks so the tablet layout can
+   * put them side by side and the phone can stack them, from one definition.
+   */
+  /*
+   * Tablet side column extras — what the compact journey freed room for.
+   *
+   * "Today" turns the daily goal the app already tracks into something the
+   * child can see filling up, and "Up next" lists the lessons after this one so
+   * the journey's next steps are readable without scrolling the path. Phones
+   * keep their single column, where both would push the journey off-screen.
+   */
+  const upNext = currentLesson
+    ? nodes
+        .slice(nodes.findIndex((n: any) => n.id === currentLesson.id) + 1)
+        .filter((n: any) => !n.isCompleted)
+        .slice(0, 3)
+    : [];
+
+  const todayCard =
+    twoPane && !isTodayComplete ? (
+      <Card variant="raised" padding="normal">
+        <View style={styles.sideHead}>
+          <View style={[styles.sideIcon, { backgroundColor: colors.yellowSoft }]}>
+            <PetalIcon name="star" size={20} color={colors.yellow} filled />
+          </View>
+          <View style={styles.flex}>
+            <Text style={[typography.presets.cardTitle, { color: colors.text }]}>Today's goal</Text>
+            <Text style={[typography.presets.caption, styles.muted]}>
+              {Math.min(completedActivitiesToday, dailyGoal)} of {dailyGoal}{' '}
+              {dailyGoal === 1 ? 'activity' : 'activities'}
+            </Text>
+          </View>
+        </View>
+        <ProgressIndicator
+          value={dailyGoal > 0 ? (Math.min(completedActivitiesToday, dailyGoal) / dailyGoal) * 100 : 0}
+          color={colors.yellow}
+          style={styles.sideProgress}
+          accessibilityLabel="Today's goal progress"
+        />
+      </Card>
+    ) : null;
+
+  const upNextCard =
+    twoPane && upNext.length > 0 ? (
+      <Card variant="raised" padding="normal">
+        <Text style={[typography.presets.eyebrow, styles.sectionEyebrow, styles.sideEyebrow]}>
+          Up next
+        </Text>
+        {upNext.map((n: any, i: number) => {
+          const open = n.isUnlocked || n.isCompleted;
+          return (
+            <Pressable
+              key={n.id}
+              onPress={open ? () => handleLessonClick(n) : undefined}
+              disabled={!open}
+              accessibilityRole="button"
+              accessibilityLabel={`${n.title}${open ? '' : ', locked'}`}
+              style={({ pressed }) => [
+                styles.upNextRow,
+                i > 0 && styles.upNextDivided,
+                pressed && open ? styles.reviewRowPressed : null,
+              ]}
+            >
+              <View style={[styles.upNextDot, { backgroundColor: open ? colors.primaryLight : colors.border }]}>
+                <PetalIcon name={open ? 'play' : 'lock'} size={14} color={open ? colors.primary : colors.textMuted} />
+              </View>
+              <Text
+                numberOfLines={1}
+                style={[typography.presets.body, styles.flex, { color: open ? colors.text : colors.textMuted }]}
+              >
+                {n.title}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </Card>
+    ) : null;
+
+  const summary = (
+    <>
+      {/* CONTINUE LEARNING — the loudest thing on the screen (spec §13) */}
+      {continueCard}
+
+      {todayCard}
+      {upNextCard}
+
+
+      {/* DAY COMPLETE */}
+      {isTodayComplete ? (
+        <Card variant="raised" padding="roomy" accent={colors.green} style={styles.doneCard}>
+          <View style={styles.doneTop}>
+            <View style={styles.doneIcon}>
+              <PetalIcon name="trophy" size={26} color={colors.green} filled />
+            </View>
+            <View style={styles.flex}>
+              <Text style={[typography.presets.cardTitle, { color: colors.text }]}>
+                Today's adventure complete!
+              </Text>
+              <Text style={[typography.presets.caption, styles.muted]}>
+                See you tomorrow — new lessons unlock in {hoursUntilMidnight}h.
+              </Text>
+            </View>
+          </View>
+          <View style={styles.donePills}>
+            <View style={styles.donePill}>
+              <PetalIcon name="star" size={13} color={colors.yellow} filled />
+              <Text style={[typography.presets.caption, styles.donePillText]}>+20 XP</Text>
+            </View>
+            <View style={styles.donePill}>
+              <PetalIcon name="sparkle" size={13} color={colors.purple} filled />
+              <Text style={[typography.presets.caption, styles.donePillText]}>+1 Sticker</Text>
+            </View>
+          </View>
+        </Card>
+      ) : null}
+
+      {/*
+        * PRACTICE FIRST — the adaptive engine, said out loud.
+        *
+        * The long form of the practice stop further down the path. The stop is
+        * where a child goes; this is where the reasons fit, one sentence per
+        * skill, and it is the only place in the app with room to wrap them. The
+        * shared purple and replay glyph are what tie the two together.
+        *
+        * Absent entirely when nothing is due, which is the common case. A child
+        * who is up to date should not be shown an empty "reviews" shelf.
+        */}
+      {reviews.length > 0 ? (
+        <View style={styles.reviewBlock}>
+          <Text style={[typography.presets.eyebrow, styles.sectionEyebrow]}>Practice first</Text>
+          {/* Practice blue, filled — the same colour the practice stops and
+              badges use, so this card is recognisable as one of them rather
+              than another white panel. */}
+          <Card
+            variant="raised"
+            padding="normal"
+            accent={LESSON_STATE.practice.main}
+            style={{
+              backgroundColor: LESSON_STATE.practice.soft,
+              borderColor: LESSON_STATE.practice.main,
+              borderWidth: 1.5,
+            }}
+          >
+            <View style={styles.recRow}>
+              <View style={styles.reviewIcon}>
+                <PetalIcon name="replay" size={22} color={LESSON_STATE.practice.main} />
+              </View>
+              <View style={styles.flex}>
+                {/* Heading only. The line under it restated what the heading
+                    and the eyebrow above already say, and the per-skill
+                    "reason" sentence below repeated it a third time. */}
+                <Text style={[typography.presets.title, { color: colors.text }]}>
+                  {reviewGate?.isBlocking
+                    ? 'Practice this first'
+                    : reviews.length === 1
+                    ? 'One thing to practice'
+                    : `${reviews.length} things to practice`}
+                </Text>
+              </View>
+            </View>
+
+            {reviews.map((review) => {
+              const node = nodes.find((n) => n.id === review.lessonId);
+              return (
+                <Pressable
+                  key={review.lessonId}
+                  onPress={node ? () => handleLessonClick(node) : undefined}
+                  disabled={!node}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Practice ${review.title}. ${review.reason}`}
+                  style={({ pressed }) => [
+                    styles.reviewRow,
+                    pressed ? styles.reviewRowPressed : null,
+                  ]}
+                >
+                  <View style={styles.flex}>
+                    <Text
+                      numberOfLines={1}
+                      style={[
+                        typography.presets.section,
+                        styles.reviewTitle,
+                        { color: colors.text },
+                      ]}
+                    >
+                      {review.title}
+                    </Text>
+                    {typeof review.stars === 'number' ? (
+                      <View style={styles.reviewStars}>
+                        {Array.from({ length: 3 }, (_, si) => (
+                          <PetalIcon
+                            key={si}
+                            name="star"
+                            size={22}
+                            filled={si < review.stars}
+                            color={si < review.stars ? colors.yellow : colors.border}
+                          />
+                        ))}
+                      </View>
+                    ) : null}
+                  </View>
+                  <PetalIcon name="forward" size={20} color={LESSON_STATE.practice.main} />
+                </Pressable>
+              );
+            })}
+
+            {/*
+              * Why the list stops where it does. `maxReviewsPerDay` capping the
+              * list is very different from the engine having found nothing else,
+              * and without this line the two are indistinguishable.
+              */}
+            {reviewGate && reviewGate.deferredCount > 0 ? (
+              <Text style={[typography.presets.caption, styles.reviewNote]}>
+                {reviewGate.deferredCount} more{' '}
+                {reviewGate.deferredCount === 1 ? 'skill is' : 'skills are'} waiting for another
+                day.
+              </Text>
+            ) : null}
+          </Card>
+        </View>
+      ) : null}
+    </>
+  );
+
+  const journey = (
+    <>
+      {/*
+        * THE JOURNEY (spec §10, §11) — deliberately the last block.
+        *
+        * It used to sit directly under the two summary cards, which buried
+        * everything after it: a grade is twenty-seven lessons, so "today's
+        * adventure complete" and the recommended story were several screens below
+        * the fold and effectively never seen. Ending on the journey also lets the
+        * trail in the garden band below read as the path continuing into the
+        * ground rather than as an unrelated illustration.
+        *
+        * Source order only — same components, same data, same handlers. The
+        * auto-scroll still lands correctly because `roadmapTop` is measured in
+        * `onLayout` rather than assumed.
+        */}
+      <Text style={[typography.presets.eyebrow, styles.sectionEyebrow]}>Your journey</Text>
+      <View
+        style={styles.roadmap}
+        onLayout={(e) => {
+          roadmapTop.current = e.nativeEvent.layout.y;
+        }}
+      >
+        <Roadmap
+          sections={sections}
+          density={twoPane ? 'compact' : 'comfortable'}
+          // Roadmap reports the node relative to itself; adding the roadmap's
+          // own offset makes it a scroll position.
+          onCurrentNodeLayout={(frame) => setActiveLessonY(roadmapTop.current + frame.y)}
+        />
+      </View>
+    </>
+  );
+
+  const refresh = (
+    <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
+  );
+
+  /*
+   * Landscape tablet: the journey gets the main pane and scrolls on its own, and
+   * the summary sits beside it in a fixed-width column that stays put.
+   *
+   * On a phone the cards come first and the path follows, which is right for a
+   * narrow screen but on a tablet left a 660px strip down the middle with the
+   * path itself below the fold — the thing a child came to tap was the one thing
+   * they could not see. Side by side, "where you are" and "what's next" are both
+   * on screen the whole time.
+   */
+  if (twoPane) {
+    return (
+      <AppShell
+        withBottomNav
+        petals="none"
+        backgroundImage={SCREEN_BACKGROUNDS.home} accent={SCREEN_ACCENTS.home}
+        header={header}
+        scroll={false}
+      >
+        <View style={styles.panes}>
+          <ScrollView
+            ref={scrollViewRef}
+            style={styles.journeyPane}
+            contentContainerStyle={styles.paneContent}
+            showsVerticalScrollIndicator={false}
+            refreshControl={refresh}
+          >
+            {journey}
+          </ScrollView>
+          <ScrollView
+            style={styles.summaryPane}
+            contentContainerStyle={[styles.paneContent, styles.summaryContent]}
+            showsVerticalScrollIndicator={false}
+          >
+            {summary}
+          </ScrollView>
+        </View>
+      <NavigationGuide
+        screenKey="roadmap"
+        guideKey="roadmap"
+        message="Welcome to PetalPath! Tap the glowing lesson to keep growing."
+      />
+      </AppShell>
+    );
+  }
+
   return (
     <AppShell
       withBottomNav
@@ -791,177 +1113,11 @@ export const HomeContent: React.FC<HomeContentProps> = ({ variant = 'mobile' }) 
       headerScrolls
       scrollRef={scrollViewRef}
       contentContainerStyle={styles.scrollContent}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
-      }
+      refreshControl={refresh}
     >
       <View style={[styles.column, maxWidth ? { maxWidth } : null]}>
-        {/* CONTINUE LEARNING — the loudest thing on the screen (spec §13) */}
-        {continueCard}
-
-
-        {/* DAY COMPLETE */}
-        {isTodayComplete ? (
-          <Card variant="raised" padding="roomy" accent={colors.green} style={styles.doneCard}>
-            <View style={styles.doneTop}>
-              <View style={styles.doneIcon}>
-                <PetalIcon name="trophy" size={26} color={colors.green} filled />
-              </View>
-              <View style={styles.flex}>
-                <Text style={[typography.presets.cardTitle, { color: colors.text }]}>
-                  Today's adventure complete!
-                </Text>
-                <Text style={[typography.presets.caption, styles.muted]}>
-                  See you tomorrow — new lessons unlock in {hoursUntilMidnight}h.
-                </Text>
-              </View>
-            </View>
-            <View style={styles.donePills}>
-              <View style={styles.donePill}>
-                <PetalIcon name="star" size={13} color={colors.yellow} filled />
-                <Text style={[typography.presets.caption, styles.donePillText]}>+20 XP</Text>
-              </View>
-              <View style={styles.donePill}>
-                <PetalIcon name="sparkle" size={13} color={colors.purple} filled />
-                <Text style={[typography.presets.caption, styles.donePillText]}>+1 Sticker</Text>
-              </View>
-            </View>
-          </Card>
-        ) : null}
-
-        {/*
-          * PRACTICE FIRST — the adaptive engine, said out loud.
-          *
-          * The long form of the practice stop further down the path. The stop is
-          * where a child goes; this is where the reasons fit, one sentence per
-          * skill, and it is the only place in the app with room to wrap them. The
-          * shared purple and replay glyph are what tie the two together.
-          *
-          * Absent entirely when nothing is due, which is the common case. A child
-          * who is up to date should not be shown an empty "reviews" shelf.
-          */}
-        {reviews.length > 0 ? (
-          <View style={styles.reviewBlock}>
-            <Text style={[typography.presets.eyebrow, styles.sectionEyebrow]}>Practice first</Text>
-            {/* Practice blue, filled — the same colour the practice stops and
-                badges use, so this card is recognisable as one of them rather
-                than another white panel. */}
-            <Card
-              variant="raised"
-              padding="normal"
-              accent={LESSON_STATE.practice.main}
-              style={{
-                backgroundColor: LESSON_STATE.practice.soft,
-                borderColor: LESSON_STATE.practice.main,
-                borderWidth: 1.5,
-              }}
-            >
-              <View style={styles.recRow}>
-                <View style={styles.reviewIcon}>
-                  <PetalIcon name="replay" size={22} color={LESSON_STATE.practice.main} />
-                </View>
-                <View style={styles.flex}>
-                  {/* Heading only. The line under it restated what the heading
-                      and the eyebrow above already say, and the per-skill
-                      "reason" sentence below repeated it a third time. */}
-                  <Text style={[typography.presets.title, { color: colors.text }]}>
-                    {reviewGate?.isBlocking
-                      ? 'Practice this first'
-                      : reviews.length === 1
-                      ? 'One thing to practice'
-                      : `${reviews.length} things to practice`}
-                  </Text>
-                </View>
-              </View>
-
-              {reviews.map((review) => {
-                const node = nodes.find((n) => n.id === review.lessonId);
-                return (
-                  <Pressable
-                    key={review.lessonId}
-                    onPress={node ? () => handleLessonClick(node) : undefined}
-                    disabled={!node}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Practice ${review.title}. ${review.reason}`}
-                    style={({ pressed }) => [
-                      styles.reviewRow,
-                      pressed ? styles.reviewRowPressed : null,
-                    ]}
-                  >
-                    <View style={styles.flex}>
-                      <Text
-                        numberOfLines={1}
-                        style={[
-                          typography.presets.section,
-                          styles.reviewTitle,
-                          { color: colors.text },
-                        ]}
-                      >
-                        {review.title}
-                      </Text>
-                      {typeof review.stars === 'number' ? (
-                        <View style={styles.reviewStars}>
-                          {Array.from({ length: 3 }, (_, si) => (
-                            <PetalIcon
-                              key={si}
-                              name="star"
-                              size={22}
-                              filled={si < review.stars}
-                              color={si < review.stars ? colors.yellow : colors.border}
-                            />
-                          ))}
-                        </View>
-                      ) : null}
-                    </View>
-                    <PetalIcon name="forward" size={20} color={LESSON_STATE.practice.main} />
-                  </Pressable>
-                );
-              })}
-
-              {/*
-                * Why the list stops where it does. `maxReviewsPerDay` capping the
-                * list is very different from the engine having found nothing else,
-                * and without this line the two are indistinguishable.
-                */}
-              {reviewGate && reviewGate.deferredCount > 0 ? (
-                <Text style={[typography.presets.caption, styles.reviewNote]}>
-                  {reviewGate.deferredCount} more{' '}
-                  {reviewGate.deferredCount === 1 ? 'skill is' : 'skills are'} waiting for another
-                  day.
-                </Text>
-              ) : null}
-            </Card>
-          </View>
-        ) : null}
-
-        {/*
-          * THE JOURNEY (spec §10, §11) — deliberately the last block.
-          *
-          * It used to sit directly under the two summary cards, which buried
-          * everything after it: a grade is twenty-seven lessons, so "today's
-          * adventure complete" and the recommended story were several screens below
-          * the fold and effectively never seen. Ending on the journey also lets the
-          * trail in the garden band below read as the path continuing into the
-          * ground rather than as an unrelated illustration.
-          *
-          * Source order only — same components, same data, same handlers. The
-          * auto-scroll still lands correctly because `roadmapTop` is measured in
-          * `onLayout` rather than assumed.
-          */}
-        <Text style={[typography.presets.eyebrow, styles.sectionEyebrow]}>Your journey</Text>
-        <View
-          style={styles.roadmap}
-          onLayout={(e) => {
-            roadmapTop.current = e.nativeEvent.layout.y;
-          }}
-        >
-          <Roadmap
-            sections={sections}
-            // Roadmap reports the node relative to itself; adding the roadmap's
-            // own offset makes it a scroll position.
-            onCurrentNodeLayout={(frame) => setActiveLessonY(roadmapTop.current + frame.y)}
-          />
-        </View>
+        {summary}
+        {journey}
       </View>
 
       <NavigationGuide
@@ -984,6 +1140,44 @@ const HOME_HALO = {
 } as const;
 
 const styles = StyleSheet.create({
+  // ---------------------------------------------------- tablet side extras
+  sideHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  sideIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sideProgress: {
+    marginTop: spacing.md,
+  },
+  sideEyebrow: {
+    textAlign: 'left',
+    marginBottom: spacing.xs,
+  },
+  upNextRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: 10,
+  },
+  upNextDivided: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+  },
+  upNextDot: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   movePressed: {
     opacity: 0.7,
   },
@@ -1010,6 +1204,29 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     alignItems: 'stretch',
+  },
+  // ------------------------------------------------------- tablet two-pane
+  panes: {
+    flex: 1,
+    flexDirection: 'row',
+    gap: spacing.xl,
+  },
+  /* Compact cards need ~620px for path + card; the side column takes the rest. */
+  /* The side column has a set width and the journey takes the rest. A flex
+     split let the column's long text out-grow the journey, whose
+     absolutely-positioned stops report almost no natural width. */
+  journeyPane: {
+    flex: 1,
+  },
+  summaryPane: {
+    width: 420,
+    flexGrow: 0,
+  },
+  paneContent: {
+    paddingBottom: spacing.xl,
+  },
+  summaryContent: {
+    gap: spacing.lg,
   },
   center: {
     flex: 1,

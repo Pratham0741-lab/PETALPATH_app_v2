@@ -1,4 +1,6 @@
-import React from 'react';
+import React, { useContext, useEffect, useState } from 'react';
+import { NavigationContext } from '@react-navigation/native';
+import { useWallpaperStore } from '../../store/wallpaperStore';
 import {
   Image,
   ImageSourcePropType,
@@ -18,8 +20,12 @@ import { SafeAreaView, Edge } from 'react-native-safe-area-context';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { colors, spacing, bottomNavSizes } from '../../theme';
 import { useTutorialStore } from '../../store/tutorialStore';
+import { useDeviceType } from '../../hooks/useDeviceType';
 import { PetalBackground, PetalDensity } from './PetalBackground';
 import { ScreenAccentProvider } from './screenAccent';
+import { coverFrame } from '../../utils/coverFrame';
+import { backgroundFor } from '../../assets/backgrounds';
+import { useSidebarWidth } from '../navigation/sidebarLayout';
 
 /**
  * AppShell — the single screen wrapper (spec §28).
@@ -138,6 +144,11 @@ export interface AppShellProps {
 }
 
 const GUTTER = spacing.lg; // 16
+/**
+ * Tablets get twice the phone gutter. At 16px a 10" screen's content runs to
+ * the bezel and reads as a stretched phone; 32px gives the page a margin.
+ */
+const GUTTER_WIDE = spacing.xxl; // 32
 
 /**
  * Height of the sky wash. Deep enough to clear a tall header, shallow enough
@@ -176,16 +187,60 @@ export const AppShell: React.FC<AppShellProps> = ({
   /** Exact screen size, so the background image box can never be stretched. */
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
 
+  /*
+   * Tablets and desktops navigate from the sidebar, so the room reserved for the
+   * phone's floating tab bar would just be a blank strip under every screen.
+   */
+  const deviceType = useDeviceType();
+  const wide = deviceType !== 'mobile';
+  const gutter = wide ? GUTTER_WIDE : GUTTER;
+
+  /*
+   * Tablet wallpaper geometry.
+   *
+   * Sized from this screen's measured box, not the window: with edge-to-edge
+   * on, Android's window height leaves out the gesture-bar area, so a
+   * window-sized scene stopped short and left a pale strip across the bottom
+   * of every tablet screen (on a phone the floating tab bar hides that band).
+   *
+   * And laid out as if it started at the window's left edge (shifted left by
+   * the sidebar's width), so the full-window geometry matches the copy the
+   * translucent sidebar draws behind itself — published below — and the two
+   * meet without a seam.
+   */
+  const rail = useSidebarWidth(deviceType);
+  const [box, setBox] = useState<{ w: number; h: number } | null>(null);
+  const bgWidth = wide && box ? box.w + rail : windowWidth;
+  const bgHeight = wide && box ? box.h : windowHeight;
+  const bgLeft = wide ? -rail : 0;
+  const bgSource = backgroundFor(backgroundImage, !wide, windowWidth, windowHeight);
+
+  // Tablets: tell the sidebar which scene the focused screen is showing.
+  const navigation = useContext(NavigationContext);
+  const setWallpaper = useWallpaperStore((st) => st.setWallpaper);
+  useEffect(() => {
+    if (!wide) return;
+    const publish = () =>
+      setWallpaper({
+        source: bgSource,
+        opacity: backgroundOpacity,
+        blur: backgroundBlur,
+        scrim: backgroundVeil,
+        backgroundColor,
+      });
+    if (!navigation || navigation.isFocused()) publish();
+    return navigation?.addListener('focus', publish);
+  }, [wide, navigation, setWallpaper, bgSource, backgroundOpacity, backgroundBlur, backgroundVeil, backgroundColor]);
   /** Room below the content: reserved by the scene wrapper when there is one. */
-  const tailInset = withBottomNav ? bottomNavSizes.contentInset : spacing.xl;
+  const tailInset = withBottomNav && !wide ? bottomNavSizes.contentInset : spacing.xl;
 
   const contentPadding: ViewStyle = {
-    paddingHorizontal: padded ? GUTTER : 0,
+    paddingHorizontal: padded ? gutter : 0,
     paddingBottom: scene ? 0 : tailInset,
   };
 
   const sceneTail = scene ? (
-    <View style={padded ? styles.sceneBleed : undefined}>
+    <View style={padded ? { marginHorizontal: -gutter } : undefined}>
       {scene}
       {/* Continues the grass down behind the tab bar. Without this the band
           would stop and leave a strip of plain background under it. */}
@@ -200,14 +255,14 @@ export const AppShell: React.FC<AppShellProps> = ({
    */
   const inlineHeader =
     headerScrolls && header ? (
-      <View style={padded ? styles.headerBleed : undefined}>{header}</View>
+      <View style={padded ? { marginHorizontal: -gutter } : undefined}>{header}</View>
     ) : null;
 
   const body = scroll ? (
     <ScrollView
       ref={scrollRef}
       style={styles.flex}
-      contentContainerStyle={[contentPadding, contentContainerStyle]}
+      contentContainerStyle={[contentPadding, wide && styles.readableWide, contentContainerStyle]}
       showsVerticalScrollIndicator={false}
       keyboardShouldPersistTaps="handled"
       onScroll={onScroll}
@@ -249,7 +304,7 @@ export const AppShell: React.FC<AppShellProps> = ({
     >
       {headerScrolls ? null : header}
       {body}
-      {footer ? <View style={styles.footer}>{footer}</View> : null}
+      {footer ? <View style={[styles.footer, { paddingHorizontal: gutter }]}>{footer}</View> : null}
     </View>
   );
 
@@ -259,11 +314,22 @@ export const AppShell: React.FC<AppShellProps> = ({
     // so content still respects the insets. Previously the image lived *inside*
     // the padded SafeAreaView, so it stopped at the inset edges and read as cropped.
     <ScreenAccentProvider accent={accent}>
-    <View style={[styles.root, { backgroundColor }, style]}>
+    <View
+      style={[styles.root, wide && styles.rootWide, { backgroundColor }, style]}
+      onLayout={
+        wide
+          ? (e) => {
+              const { width: w, height: h } = e.nativeEvent.layout;
+              setBox((b) => (b && b.w === w && b.h === h ? b : { w, h }));
+            }
+          : undefined
+      }
+    >
       <ScreenBackground
-        source={backgroundImage}
-        width={windowWidth}
-        height={windowHeight}
+        source={bgSource}
+        left={bgLeft}
+        width={bgWidth}
+        height={bgHeight}
         opacity={backgroundOpacity}
         blur={backgroundBlur}
         scrim={backgroundVeil}
@@ -317,33 +383,36 @@ export const AppShell: React.FC<AppShellProps> = ({
  * Memoised on its six scalar props, it renders once per screen and then never
  * again, so the blur is paid for at mount and costs nothing while scrolling.
  */
-const ScreenBackground = React.memo<{
+export const ScreenBackground = React.memo<{
   source?: ImageSourcePropType;
+  /** Negative on tablets, so the scene runs on under the sidebar. */
+  left: number;
   width: number;
   height: number;
   opacity: number;
   blur: number;
   scrim: number;
-}>(({ source, width, height, opacity, blur, scrim }) => {
+}>(({ source, left, width, height, opacity, blur, scrim }) => {
   if (!source) return null;
+
+  /*
+   * Cover, not stretch. The scenes are painted 9:16; `stretch` showed all of
+   * the picture by distorting it to the window, which was a mild elongation on
+   * a phone but squashed a landscape tablet's wallpaper to about a third of its
+   * height — trees and suns flattened into ovals.
+   *
+   * Scaled uniformly and cropped, anchored low — see `coverFrame`.
+   */
   return (
-    <>
+    <View
+      pointerEvents="none"
+      style={{ position: 'absolute', top: 0, left, width, height, overflow: 'hidden' }}
+    >
       <Image
         source={source}
-        /*
-         * `stretch`, not `cover`/`contain`: the whole illustration is shown —
-         * nothing cropped off any edge — stretched vertically to meet the
-         * screen. The scenes are drawn 9:16 while phones are taller, which
-         * trades a little elongation (invisible on soft painted scenery) for a
-         * background with no bare strip.
-         *
-         * Sized in exact pixels, never `absoluteFill`/percentages: those resolve
-         * against whatever the parent measures, which once let the image grow to
-         * the scroll content's height and render hugely zoomed.
-         */
         resizeMode="stretch"
         blurRadius={blur}
-        style={{ position: 'absolute', top: 0, left: 0, width, height, opacity }}
+        style={[coverFrame(source, width, height), { opacity }]}
         accessible={false}
         importantForAccessibility="no-hide-descendants"
       />
@@ -354,14 +423,32 @@ const ScreenBackground = React.memo<{
           style={[StyleSheet.absoluteFill, { backgroundColor: `rgba(42,38,36,${scrim})` }]}
         />
       ) : null}
-    </>
+    </View>
   );
 });
 ScreenBackground.displayName = 'ScreenBackground';
 
 const styles = StyleSheet.create({
+  /*
+   * Scrolling screens on a tablet keep to a readable column. Without it a list
+   * row or settings line ran the full 1,100px of a landscape screen, its label
+   * at one edge and its chevron at the other — the clearest tell of a phone
+   * layout scaled up. Two-pane screens don't scroll as a whole and keep the
+   * full width; a screen that sets its own narrower column is unaffected.
+   */
+  readableWide: {
+    width: '100%',
+    maxWidth: 1080,
+    alignSelf: 'center',
+  },
   root: {
     flex: 1,
+    /* The wallpaper is drawn larger than the window and cropped here. */
+    overflow: 'hidden',
+  },
+  /* Tablets: the wallpaper box clips itself, and must reach under the sidebar. */
+  rootWide: {
+    overflow: 'visible',
   },
   flex: {
     flex: 1,
@@ -372,14 +459,6 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     height: SKY_HEIGHT,
-  },
-  headerBleed: {
-    /* Cancels the content gutter so the inline header keeps its own inset. */
-    marginHorizontal: -GUTTER,
-  },
-  sceneBleed: {
-    /* Cancels the content gutter so the ground runs edge to edge. */
-    marginHorizontal: -GUTTER,
   },
   sceneFiller: {
     backgroundColor: colors.meadow,

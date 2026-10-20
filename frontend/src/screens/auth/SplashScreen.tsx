@@ -12,15 +12,19 @@ import { spacing } from '../../theme/spacing';
 import { useAuthStore } from '../../store/authStore';
 import { useChildStore } from '../../store/childStore';
 import { useAppStore } from '../../store/appStore';
+import { coverFrame } from '../../utils/coverFrame';
 import { authService } from '../../services/auth/authService';
 import { typography } from '../../theme/typography';
-import { SCREEN_BACKGROUNDS } from '../../assets/backgrounds';
+import { SCREEN_BACKGROUNDS, backgroundFor } from '../../assets/backgrounds';
+import { useDeviceType } from '../../hooks/useDeviceType';
 import { PetalMark } from '../../components/brand/PetalMark';
 
 export const SplashScreen: React.FC = () => {
   const { theme, isDark } = useTheme();
   const { colors } = theme;
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const isMobile = useDeviceType() === 'mobile';
+  const scene = backgroundFor(SCREEN_BACKGROUNDS.welcome, isMobile, windowWidth, windowHeight);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.8)).current;
@@ -43,11 +47,10 @@ export const SplashScreen: React.FC = () => {
     if (currentToken) {
       const isExpired = authService.isTokenExpired(currentToken);
       if (isExpired) {
-        const refreshed = await authService.refreshSession();
-        if (!refreshed) {
-          useAuthStore.getState().clearSession();
-          useAppStore.getState().clearSession();
-        }
+        // 'rejected' has already ended the session; 'unavailable' (offline,
+        // server down) keeps it, so the child is not logged out for having no
+        // signal — the next request retries the refresh.
+        await authService.refreshSession();
       }
 
       try {
@@ -80,12 +83,12 @@ export const SplashScreen: React.FC = () => {
       accessibilityLabel="PetalPath loading"
       accessibilityRole="progressbar"
     >
-      {/* The opening scene, behind the logo. Sized in exact pixels and stretched
-          to the screen, matching how AppShell draws every other wallpaper. */}
+      {/* The opening scene, behind the logo — covered and cropped, never
+          distorted, matching how AppShell draws every other wallpaper. */}
       <Image
-        source={SCREEN_BACKGROUNDS.welcome}
+        source={scene}
         resizeMode="stretch"
-        style={{ position: 'absolute', top: 0, left: 0, width: windowWidth, height: windowHeight }}
+        style={coverFrame(scene, windowWidth, windowHeight)}
         accessible={false}
         importantForAccessibility="no-hide-descendants"
       />
@@ -123,6 +126,8 @@ export const SplashScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    /* The wallpaper is drawn larger than the window and cropped here. */
+    overflow: 'hidden',
     justifyContent: 'center',
     alignItems: 'center',
     padding: spacing.xxl,

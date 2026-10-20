@@ -170,7 +170,9 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
 
   return (
     <View style={[styles.pageHeader, style]}>
-      <View style={styles.side}>
+      {/* The empty back slot only matters for symmetry when the title is
+          centred; left-aligned, it just indented the title by 44px. */}
+      <View style={[styles.side, !showBack && !centered && styles.sideCollapsed]}>
         {showBack ? (
           <IconButton
             icon="back"
@@ -487,6 +489,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.xs,
+  },
+  sideCollapsed: {
+    minWidth: 0,
   },
   sideRight: {
     justifyContent: 'flex-end',

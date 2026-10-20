@@ -280,6 +280,12 @@ export interface ActivityCardProps {
   completed?: boolean;
   locked?: boolean;
   onPress?: () => void;
+  /**
+   * `row` (default) for a phone's list; `tile` for a grid on wide screens — a
+   * big activity icon over the name, so a lesson reads as a set of things to
+   * pick from rather than a settings list stretched across a tablet.
+   */
+  layout?: 'row' | 'tile';
   style?: StyleProp<ViewStyle>;
 }
 
@@ -290,6 +296,7 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
   completed = false,
   locked = false,
   onPress,
+  layout = 'row',
   style,
 }) => {
   const m = ACTIVITY_META[kind] ?? ACTIVITY_META.watch;
@@ -313,6 +320,38 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
       style={[styles.stack, { borderColor: sv.main, borderWidth: 1.5 }, style]}
       accessibilityLabel={`${label}. ${locked ? 'Locked.' : completed ? 'Completed.' : 'Ready to start.'}`}
     >
+      {layout === 'tile' ? (
+        <View style={styles.tile}>
+          <View style={styles.tileBadge}>
+            {completed ? (
+              <StatusBadge status="completed" size="sm" iconOnly />
+            ) : locked ? (
+              <StatusBadge status="locked" size="sm" iconOnly />
+            ) : null}
+          </View>
+          {/* The activity's own icon even when locked (in the locked grey) — the
+              corner badge says it is locked, and the child can see what is
+              coming next instead of a row of identical padlocks. */}
+          <IconWell
+            icon={m.icon}
+            color={tone.main}
+            soft={tone.soft}
+            size={cardSizes.iconWellLarge + 16}
+            filled={completed}
+          />
+          <Text
+            style={[typography.presets.cardTitle, styles.title, styles.tileText]}
+            numberOfLines={2}
+          >
+            {label}
+          </Text>
+          {meta ? (
+            <Text style={[typography.presets.caption, styles.meta, styles.tileText]} numberOfLines={1}>
+              {meta}
+            </Text>
+          ) : null}
+        </View>
+      ) : (
       <View style={[styles.row, styles.rowTall]}>
         <IconWell
           icon={locked ? 'lock' : m.icon}
@@ -340,6 +379,7 @@ export const ActivityCard: React.FC<ActivityCardProps> = ({
           <Chevron color={tone.main} />
         )}
       </View>
+      )}
     </Card>
   );
 };
@@ -725,6 +765,21 @@ export const ContinueLearningCard: React.FC<ContinueLearningCardProps> = ({
 // ---------------------------------------------------------------------------
 
 const styles = StyleSheet.create({
+  // -------------------------------------------------------- ActivityCard tile
+  tile: {
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.sm,
+  },
+  tileBadge: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+  },
+  tileText: {
+    textAlign: 'center',
+  },
   rewardMark: {
     width: cardSizes.iconWell,
     height: cardSizes.iconWell,

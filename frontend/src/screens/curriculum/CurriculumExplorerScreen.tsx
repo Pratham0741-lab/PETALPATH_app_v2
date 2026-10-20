@@ -1,6 +1,7 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback } from 'react';
 import { Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import { useTwoPane } from '../../hooks/useTwoPane';
 import { EmptyState } from '../../components/common/EmptyState';
 import { ErrorState } from '../../components/common/ErrorState';
 import { LoadingSpinner } from '../../components/common/LoadingSpinner';
@@ -61,14 +62,13 @@ const CurriculumExplorerScreen: React.FC = () => {
   const overallGrowth = totals?.overallGrowthPercent ?? 0;
   const thirstyTotal = totals?.thirstyCount ?? 0;
 
-  // Rendered as a bottom tab (no back arrow) and also pushable as a stack screen.
-  const showBack = useMemo(() => {
-    try {
-      return navigation.getState?.()?.type !== 'tab';
-    } catch {
-      return false;
-    }
-  }, [navigation]);
+  // Rendered as a destination (phone tab, tablet sidebar — both routed as
+  // `Journey`) with no back arrow, and also pushable as `CurriculumExplorer`.
+  // Checking the navigator type put a back arrow on the tablet, whose sidebar
+  // destinations live in a stack.
+  const route = useRoute();
+  const showBack = route.name !== 'Journey';
+  const twoPane = useTwoPane();
 
   const handlePatchPress = useCallback(
     (subjectId: string) => {
@@ -170,17 +170,30 @@ const CurriculumExplorerScreen: React.FC = () => {
         <PetalIcon name="sparkle" size={18} color={SCREEN_ACCENTS.explore} />
       </Pressable>
 
-      {subjects.map((subject, idx) => (
-        <GardenPatch
-          key={subject.id}
-          name={subject.name}
-          growthPercent={subject.growthPercent}
-          skillCount={subject.skillCount}
-          thirstyCount={subject.thirstyCount}
-          skills={subject.skills}
-          index={idx}
-          onPress={() => handlePatchPress(subject.id)}
-        />
+      {/*
+        Two patches a row on a landscape tablet. One per row stretched each
+        patch to the full width with its flowers in a small cluster at the
+        middle; side by side, every subject's garden fits on one screen and the
+        patches read as a garden rather than a list.
+      */}
+      {(twoPane ? pairs(subjects) : subjects.map((s) => [s])).map((row) => (
+        <View key={row[0].id} style={twoPane ? styles.gridRow : null}>
+          {row.map((subject) => (
+            <GardenPatch
+              key={subject.id}
+              name={subject.name}
+              growthPercent={subject.growthPercent}
+              skillCount={subject.skillCount}
+              thirstyCount={subject.thirstyCount}
+              skills={subject.skills}
+              index={subjects.indexOf(subject)}
+              onPress={() => handlePatchPress(subject.id)}
+              style={twoPane ? styles.gridItem : undefined}
+            />
+          ))}
+          {/* Keeps a lone last patch at half width rather than full. */}
+          {twoPane && row.length === 1 ? <View style={styles.gridItem} /> : null}
+        </View>
       ))}
 
       {/* Parent-locked analysis. The child sees only a lock tile; the charts are
@@ -191,6 +204,13 @@ const CurriculumExplorerScreen: React.FC = () => {
     </AppShell>
   );
 };
+
+/** [a, b, c] → [[a, b], [c]] */
+function pairs<T>(items: T[]): T[][] {
+  const rows: T[][] = [];
+  for (let i = 0; i < items.length; i += 2) rows.push(items.slice(i, i + 2));
+  return rows;
+}
 
 const styles = StyleSheet.create({
   center: {
@@ -233,6 +253,14 @@ const styles = StyleSheet.create({
   },
   analysis: {
     marginTop: spacing.lg,
+  },
+  gridRow: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    gap: spacing.lg,
+  },
+  gridItem: {
+    flex: 1,
   },
 });
 

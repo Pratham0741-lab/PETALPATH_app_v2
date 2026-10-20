@@ -96,7 +96,9 @@ const CARD_MIN_WIDTH: Record<string, number> = {
 
 const COLUMN_MAX_WIDTH: Record<string, number | undefined> = {
   mobile: undefined,
-  tablet: 900,
+  /* Uncapped: a 900px cap left a landscape tablet's challenge grid at two
+     columns with a wide empty margin; full width fits three. */
+  tablet: undefined,
   desktop: 1120,
 };
 

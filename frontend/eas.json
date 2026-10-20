@@ -26,6 +26,9 @@
       "env": {
         "EXPO_PUBLIC_API_URL": "https://api.petalpath.co.in",
         "EXPO_PUBLIC_CDN_BASE_URL": "https://dy3um9dzarz6y.cloudfront.net"
+      },
+      "android": {
+        "buildType": "apk"
       }
     }
   },

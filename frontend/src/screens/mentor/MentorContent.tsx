@@ -34,8 +34,9 @@
  * width — 1 up on a phone, 2 on a tablet, 3 on a desktop.
  */
 
-import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { BackHandler, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 
 import { cardSizes, colors, spacing, typography } from '../../theme';
 import { SCREEN_BACKGROUNDS } from '../../assets/backgrounds';
@@ -56,6 +57,7 @@ import {
   RewardBadge,
 } from '../../components/design';
 import { GardenScene, MAX_BLOSSOMS } from './GardenScene';
+import { useTwoPane } from '../../hooks/useTwoPane';
 import { PetalMark } from '../../components/brand/PetalMark';
 
 export type MentorVariant = 'mobile' | 'tablet' | 'desktop';
@@ -89,6 +91,32 @@ export interface MentorContentProps {
 
 export const MentorContent: React.FC<MentorContentProps> = ({ variant }) => {
   const cfg = VARIANTS[variant];
+  const twoPane = useTwoPane();
+  /* Exact column widths from the measured grid (flex-basis does not reach
+     through `Card`'s animated wrapper, so cards collapsed to one a row). */
+  const [gridWidth, setGridWidth] = useState(0);
+  const gap = cardSizes.gap;
+  const cols = gridWidth > 0 ? Math.max(1, Math.floor((gridWidth + gap) / (cfg.cardMinWidth + gap))) : 1;
+  const cardWidth = gridWidth > 0 ? (gridWidth - gap * (cols - 1)) / cols : undefined;
+  const navigation = useNavigation<any>();
+
+  /*
+   * Back returns to Profile, where the buddy card that opens this screen lives.
+   * Mentor is a hidden tab, and a tab navigator's own back goes to its first
+   * route — Home — which dropped the child two levels from where they came in.
+   */
+  useFocusEffect(
+    useCallback(() => {
+      const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+        // Tablets push Mentor onto a stack, where ordinary back already
+        // returns to Profile; only the phone's tab navigator needs this.
+        if (navigation.getState()?.type !== 'tab') return false;
+        navigation.navigate('MainTabs', { screen: 'Profile' });
+        return true;
+      });
+      return () => sub.remove();
+    }, [navigation]),
+  );
 
   const activeChild = useChildStore((state) => state.activeChild);
   const updateChild = useChildStore((state) => state.updateChild);
@@ -153,101 +181,173 @@ export const MentorContent: React.FC<MentorContentProps> = ({ variant }) => {
 
   const blossoms = Math.min(MAX_BLOSSOMS, Math.round(petalPoints / POINTS_PER_BLOSSOM));
 
+  const gardenBlock = (
+    <>
+      {/* ---------------------------------------------------------- Garden */}
+      <Card variant="raised" padding="normal" accent={colors.leafGreen}>
+        <View style={styles.gardenHeader}>
+          <RewardBadge kind="petals" value={petalPoints} showUnit />
+          <View style={styles.weather}>
+            <PetalIcon name="sparkle" size={15} color={colors.yellow} filled />
+            <Text style={[typography.presets.caption, styles.weatherText]}>Sunny day</Text>
+          </View>
+        </View>
+
+        <GardenScene
+          species={activeMentor?.species}
+          mentorColor={activeMentor?.color || colors.leafGreen}
+          blossoms={blossoms}
+          height={twoPane ? 300 : cfg.sceneHeight}
+          mascotSize={cfg.mascotSize}
+          accessibilityLabel={
+            activeMentor
+              ? `Your garden on a sunny day, with ${activeMentor.name} beside a blossom tree carrying ${blossoms} of ${MAX_BLOSSOMS} flowers.`
+              : `Your garden on a sunny day, with a blossom tree carrying ${blossoms} of ${MAX_BLOSSOMS} flowers.`
+          }
+          style={styles.scene}
+        />
+
+        {/* Blue, not the old `variant="success"` green: green is the Trace
+            activity's identity colour (§15), and water reads blue anyway. */}
+        <PrimaryButton
+          label="Water the Tree"
+          icon="seedling"
+          tone="blue"
+          onPress={handleWaterTree}
+          accessibilityHint={`Adds ${WATER_REWARD} petal points and grows your tree`}
+        />
+
+        {wateringMessage ? (
+          <FeedbackBanner tone="correct" message={wateringMessage} style={styles.banner} />
+        ) : null}
+      </Card>
+    </>
+  );
+  const chooserBlock = (
+    <>
+      {/* --------------------------------------------------- Buddy chooser */}
+      <View style={styles.sectionHeading}>
+        <Text style={[typography.presets.section, styles.sectionTitle]} accessibilityRole="header">
+          Choose Your Buddy
+        </Text>
+      </View>
+
+      {mentorList.length === 0 ? (
+        <EmptyState
+          icon="mentors"
+          title="No buddies yet"
+          message="Your learning buddies will appear here in a moment."
+        />
+      ) : (
+        <View style={styles.grid} onLayout={(e) => setGridWidth(e.nativeEvent.layout.width)}>
+          {mentorList.map((mentor) => (
+            <MentorCard
+              key={mentor.id}
+              name={mentor.name}
+              species={mentor.species}
+              color={mentor.color}
+              selected={activeMentor?.id === mentor.id}
+              onPress={() => handleSelectMentor(mentor.id)}
+              style={[
+                styles.gridItem,
+                cardWidth ? { width: cardWidth, flexGrow: 0 } : { flexBasis: cfg.cardMinWidth },
+              ]}
+            />
+          ))}
+        </View>
+      )}
+    </>
+  );
+  const selectedBlock = (
+    <>
+      {/* ------------------------------------------------- Selected buddy */}
+      {activeMentor ? (
+        <Card variant="raised" padding="normal" accent={activeMentor.color}>
+          <Text style={[typography.presets.eyebrow, { color: activeMentor.color }]}>
+            Your buddy
+          </Text>
+          <Text style={[typography.presets.section, styles.buddyName]}>{activeMentor.name}</Text>
+          <Text style={[typography.presets.caption, styles.buddySpecies]}>
+            {activeMentor.species}
+          </Text>
+        </Card>
+      ) : (
+        <Card variant="muted" padding="normal">
+          <Text style={[typography.presets.body, styles.buddyEmpty]}>
+            No buddy chosen yet — tap one above and they will join you in the garden.
+          </Text>
+        </Card>
+      )}
+    </>
+  );
+
+  /*
+   * Landscape tablet: the garden and the chosen buddy on the left, the buddy
+   * chooser on the right. Stacked, picking a buddy meant scrolling away from the
+   * garden they then walk into — side by side, tapping a card and seeing the
+   * buddy appear by the tree happen on the same screen.
+   */
+  if (twoPane) {
+    return (
+      <AppShell
+        withBottomNav
+        header={header}
+        petals="none"
+        backgroundImage={SCREEN_BACKGROUNDS.mentors}
+        accent={SCREEN_ACCENTS.mentors}
+        scroll={false}
+      >
+        <View style={styles.panes}>
+          <ScrollView
+            style={styles.gardenPane}
+            contentContainerStyle={styles.paneContent}
+            showsVerticalScrollIndicator={false}
+          >
+            {gardenBlock}
+            {selectedBlock}
+          </ScrollView>
+          <ScrollView
+            style={styles.chooserPane}
+            contentContainerStyle={styles.paneContent}
+            showsVerticalScrollIndicator={false}
+          >
+            {chooserBlock}
+          </ScrollView>
+        </View>
+      </AppShell>
+    );
+  }
+
   return (
     <AppShell withBottomNav header={header} petals="none" backgroundImage={SCREEN_BACKGROUNDS.mentors} accent={SCREEN_ACCENTS.mentors}>
       <View style={[styles.column, cfg.maxWidth ? { maxWidth: cfg.maxWidth } : null]}>
-        {/* ---------------------------------------------------------- Garden */}
-        <Card variant="raised" padding="normal" accent={colors.leafGreen}>
-          <View style={styles.gardenHeader}>
-            <RewardBadge kind="petals" value={petalPoints} showUnit />
-            <View style={styles.weather}>
-              <PetalIcon name="sparkle" size={15} color={colors.yellow} filled />
-              <Text style={[typography.presets.caption, styles.weatherText]}>Sunny day</Text>
-            </View>
-          </View>
-
-          <GardenScene
-            species={activeMentor?.species}
-            mentorColor={activeMentor?.color || colors.leafGreen}
-            blossoms={blossoms}
-            height={cfg.sceneHeight}
-            mascotSize={cfg.mascotSize}
-            accessibilityLabel={
-              activeMentor
-                ? `Your garden on a sunny day, with ${activeMentor.name} beside a blossom tree carrying ${blossoms} of ${MAX_BLOSSOMS} flowers.`
-                : `Your garden on a sunny day, with a blossom tree carrying ${blossoms} of ${MAX_BLOSSOMS} flowers.`
-            }
-            style={styles.scene}
-          />
-
-          {/* Blue, not the old `variant="success"` green: green is the Trace
-              activity's identity colour (§15), and water reads blue anyway. */}
-          <PrimaryButton
-            label="Water the Tree"
-            icon="seedling"
-            tone="blue"
-            onPress={handleWaterTree}
-            accessibilityHint={`Adds ${WATER_REWARD} petal points and grows your tree`}
-          />
-
-          {wateringMessage ? (
-            <FeedbackBanner tone="correct" message={wateringMessage} style={styles.banner} />
-          ) : null}
-        </Card>
-
-        {/* --------------------------------------------------- Buddy chooser */}
-        <View style={styles.sectionHeading}>
-          <Text style={[typography.presets.section, styles.sectionTitle]} accessibilityRole="header">
-            Choose Your Buddy
-          </Text>
-        </View>
-
-        {mentorList.length === 0 ? (
-          <EmptyState
-            icon="mentors"
-            title="No buddies yet"
-            message="Your learning buddies will appear here in a moment."
-          />
-        ) : (
-          <View style={styles.grid}>
-            {mentorList.map((mentor) => (
-              <MentorCard
-                key={mentor.id}
-                name={mentor.name}
-                species={mentor.species}
-                color={mentor.color}
-                selected={activeMentor?.id === mentor.id}
-                onPress={() => handleSelectMentor(mentor.id)}
-                style={[styles.gridItem, { flexBasis: cfg.cardMinWidth }]}
-              />
-            ))}
-          </View>
-        )}
-
-        {/* ------------------------------------------------- Selected buddy */}
-        {activeMentor ? (
-          <Card variant="raised" padding="normal" accent={activeMentor.color}>
-            <Text style={[typography.presets.eyebrow, { color: activeMentor.color }]}>
-              Your buddy
-            </Text>
-            <Text style={[typography.presets.section, styles.buddyName]}>{activeMentor.name}</Text>
-            <Text style={[typography.presets.caption, styles.buddySpecies]}>
-              {activeMentor.species}
-            </Text>
-          </Card>
-        ) : (
-          <Card variant="muted" padding="normal">
-            <Text style={[typography.presets.body, styles.buddyEmpty]}>
-              No buddy chosen yet — tap one above and they will join you in the garden.
-            </Text>
-          </Card>
-        )}
+        {gardenBlock}
+        {chooserBlock}
+        {selectedBlock}
       </View>
     </AppShell>
   );
 };
 
 const styles = StyleSheet.create({
+  // ------------------------------------------------------- tablet two-pane
+  panes: {
+    flex: 1,
+    flexDirection: 'row',
+    gap: spacing.xl,
+  },
+  gardenPane: {
+    width: 520,
+    flexGrow: 0,
+  },
+  chooserPane: {
+    flex: 1,
+  },
+  paneContent: {
+    gap: spacing.lg,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.xl,
+  },
   column: {
     width: '100%',
     alignSelf: 'center',

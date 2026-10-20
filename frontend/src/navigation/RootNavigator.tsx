@@ -87,8 +87,26 @@ import { ParentProfileScreen } from '../screens/auth/ParentProfileScreen';
 // Custom Navigation Components
 import { BottomNavigation } from '../components/navigation/BottomNavigation';
 import { SidebarNavigation } from '../components/navigation/SidebarNavigation';
+import { useSidebarWidth } from '../components/navigation/sidebarLayout';
 
 const Stack = createNativeStackNavigator();
+
+/**
+ * Tablet/desktop stand-in for the phone's `MainTabs` route.
+ *
+ * Large screens use one flat stack beside the sidebar, so there is no
+ * `MainTabs` navigator there. Screens shared with the phone still call
+ * `navigate('MainTabs', { screen: 'Mentor' })` or reset to `MainTabs`, and on a
+ * tablet those calls went nowhere — Move & Play, the buddy card, "back to
+ * journey" and the end of onboarding all silently did nothing. This route takes
+ * the call and replaces itself with the screen it names (Home when none).
+ */
+const TabletTabRedirect: React.FC<{ navigation: any; route: any }> = ({ navigation, route }) => {
+  React.useEffect(() => {
+    navigation.replace(route.params?.screen ?? 'Home', route.params?.params);
+  }, [navigation, route.params]);
+  return null;
+};
 const Tab = createBottomTabNavigator();
 
 // Auth Stack Navigator
@@ -159,6 +177,7 @@ const MobileTabs = () => {
 
 export const RootNavigator = () => {
   const deviceType = useDeviceType();
+  const railWidth = useSidebarWidth(deviceType);
   const token = useAppStore((state) => state.token);
   const activeChild = useChildStore((state) => state.activeChild);
   const loadingSession = useAppStore((state) => state.loadingSession);
@@ -174,14 +193,21 @@ export const RootNavigator = () => {
   }
 
   // If user is not authenticated, restrict routing exclusively to AuthNavigator stack
+  /*
+   * Each branch below is keyed so that switching between them mounts a fresh
+   * navigator. Without keys React reuses the same `Stack.Navigator` instance and
+   * carries its route over: an expired session first drops the child (onboarding
+   * stack, on "ParentProfile") and then the token, and the auth stack — which
+   * also has a "ParentProfile" route — kept the user there instead of at Login.
+   */
   if (!token) {
-    return <AuthNavigator />;
+    return <AuthNavigator key="auth" />;
   }
 
   // If user has no active child profile selected, force onboarding flow
   if (!activeChild) {
     return (
-      <Stack.Navigator screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
+      <Stack.Navigator key="onboarding" screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
         <Stack.Screen name="ParentProfile" component={ParentProfileScreen} />
         <Stack.Screen name="ChildSelection" component={ChildSelectionScreen} />
         <Stack.Screen name="AddChild" component={AddEditChildScreen} />
@@ -194,7 +220,7 @@ export const RootNavigator = () => {
 
   if (deviceType === 'mobile') {
     return (
-      <Stack.Navigator screenOptions={{ headerShown: false, freezeOnBlur: true, animation: 'slide_from_right' }}>
+      <Stack.Navigator key="main" screenOptions={{ headerShown: false, freezeOnBlur: true, animation: 'slide_from_right' }}>
         <Stack.Screen name="MainTabs" component={MobileTabs} />
         <Stack.Screen name="LessonOverview" component={LessonOverviewScreen} />
         <Stack.Screen name="Lesson" component={LessonScreen} />
@@ -268,9 +294,15 @@ export const RootNavigator = () => {
 
   // Tablet & Desktop Layout: Row structure
   return (
-    <View style={styles.largeDeviceContainer}>
-      <SidebarNavigation deviceType={deviceType} />
-      <View style={styles.contentArea}>
+    <View key="main-large" style={styles.largeDeviceContainer}>
+      {/*
+        Content first, sidebar second and on top. The content still sits beside
+        the rail (its left margin is the rail's width), but screens extend
+        their wallpaper under it, so the translucent rail frosts the scene —
+        the way the phone's tab bar does — instead of standing as a white
+        column.
+      */}
+      <View style={[styles.contentArea, { marginLeft: railWidth }]}>
         <Stack.Navigator
           screenOptions={{
             headerShown: false,
@@ -279,6 +311,7 @@ export const RootNavigator = () => {
           }}
         >
           <Stack.Screen name="Home" component={HomeScreen} />
+          <Stack.Screen name="MainTabs" component={TabletTabRedirect} options={{ animation: 'none' }} />
           <Stack.Screen name="LessonOverview" component={LessonOverviewScreen} />
           <Stack.Screen name="Lesson" component={LessonScreen} />
           <Stack.Screen name="Module" component={ModuleScreen} />
@@ -352,6 +385,9 @@ export const RootNavigator = () => {
           <Stack.Screen name="Roadmap" component={HomeScreen} />
         </Stack.Navigator>
       </View>
+      <View style={[styles.sidebarSlot, { width: railWidth }]}>
+        <SidebarNavigation deviceType={deviceType} />
+      </View>
     </View>
   );
 };
@@ -360,10 +396,17 @@ const styles = StyleSheet.create({
   largeDeviceContainer: {
     flex: 1,
     flexDirection: 'row',
+    overflow: 'hidden',
     backgroundColor: colors.background,
   },
   contentArea: {
     flex: 1,
     height: '100%',
+  },
+  sidebarSlot: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 0,
   },
 });

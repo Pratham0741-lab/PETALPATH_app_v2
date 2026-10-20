@@ -28,7 +28,7 @@
  * than invented anew.
  */
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useCallback, useEffect, useState, useRef } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useIsFocused } from '@react-navigation/native';
 
@@ -53,7 +53,7 @@ import { CelebrationScaffold } from './CelebrationScaffold';
 import { SCREEN_BACKGROUNDS } from '../../assets/backgrounds';
 import { PetalMark } from '../../components/brand/PetalMark';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
-import { LessonFeedbackCard } from './LessonFeedbackCard';
+import { LessonFeedbackSheet } from './LessonFeedbackSheet';
 
 const categoryBadgeMap: Record<string, string> = {
   'Shapes': 'Shape Master',
@@ -67,11 +67,11 @@ const STARS_PER_LESSON = 8;
 
 /**
  * When the star row's entrance finishes — `StarRating` pops each earned star in
- * for 320ms, 140ms apart — plus a beat, so the feedback card arrives after the
- * celebration rather than competing with it.
+ * for 320ms, 140ms apart — plus time to take the celebration in, so the
+ * feedback sheet follows it rather than covering it.
  */
 const celebrationMs = (starsEarned: number) =>
-  Math.max(0, Math.min(starsEarned, STARS_PER_LESSON) - 1) * 140 + 320 + 400;
+  Math.max(0, Math.min(starsEarned, STARS_PER_LESSON) - 1) * 140 + 320 + 700;
 
 const MENTOR_MESSAGE =
   'You worked so hard today! Watching the tutorial, listening, speaking, and drawing. You are an absolute superstar!';
@@ -91,7 +91,8 @@ export const LessonCompleteScreen: React.FC = () => {
   const [completionResult, setCompletionResult] = useState<any>(null);
   const completionStartedRef = useRef<string | null>(null);
   const reduceMotion = useReducedMotion();
-  const [showFeedback, setShowFeedback] = useState(false);
+  /* 'pending' until the celebration has played, then open once; never reopens. */
+  const [feedbackSheet, setFeedbackSheet] = useState<'pending' | 'open' | 'closed'>('pending');
 
   useEffect(() => {
     const performCompletion = async () => {
@@ -116,14 +117,15 @@ export const LessonCompleteScreen: React.FC = () => {
     performCompletion();
   }, [selectedLesson, completeLessonBackend, completeLesson, loadCategories, isFocused]);
 
-  // Reveal the grown-up feedback card once the celebration has played. Purely
-  // additive: nothing here gates Continue or the completion call.
+  // Pop the grown-up feedback sheet up once the celebration has played. It
+  // closes in one tap, and nothing in it gates Continue or the completion call.
   const feedbackStars = completionResult?.starsEarned ?? 0;
+  const closeFeedback = useCallback(() => setFeedbackSheet('closed'), []);
   useEffect(() => {
-    if (loading || showFeedback) return;
-    const t = setTimeout(() => setShowFeedback(true), reduceMotion ? 0 : celebrationMs(feedbackStars));
+    if (loading || feedbackSheet !== 'pending') return;
+    const t = setTimeout(() => setFeedbackSheet('open'), reduceMotion ? 600 : celebrationMs(feedbackStars));
     return () => clearTimeout(t);
-  }, [loading, showFeedback, reduceMotion, feedbackStars]);
+  }, [loading, feedbackSheet, reduceMotion, feedbackStars]);
 
   const findLessonContext = (lessonId: string) => {
     for (const category of categories) {
@@ -189,7 +191,6 @@ export const LessonCompleteScreen: React.FC = () => {
       iconColor={colors.yellow}
       iconSoft={colors.yellowSoft}
       title="Amazing!"
-      keyboardAvoid
       message={`Outstanding job${activeChild?.name ? `, ${activeChild.name}` : ''}! You finished all the activities in “${selectedLesson?.title || 'this lesson'}”!`}
       footer={
         <View style={styles.footer}>
@@ -208,13 +209,24 @@ export const LessonCompleteScreen: React.FC = () => {
         </View>
       }
       overlay={
-        isTablet ? (
-          <NavigationGuide
-            screenKey="lesson_complete"
-            guideKey="lesson_complete"
-            message="Lesson completed! You did an amazing job!"
-          />
-        ) : null
+        <>
+          {isTablet ? (
+            <NavigationGuide
+              screenKey="lesson_complete"
+              guideKey="lesson_complete"
+              message="Lesson completed! You did an amazing job!"
+            />
+          ) : null}
+          {selectedLesson && activeChild ? (
+            <LessonFeedbackSheet
+              key={selectedLesson.id}
+              visible={feedbackSheet === 'open' && isFocused}
+              lessonId={selectedLesson.id}
+              childId={activeChild.id}
+              onClose={closeFeedback}
+            />
+          ) : null}
+        </>
       }
     >
       {/* Stars earned */}
@@ -248,13 +260,6 @@ export const LessonCompleteScreen: React.FC = () => {
         </View>
       </Card>
 
-      {showFeedback && selectedLesson && activeChild ? (
-        <LessonFeedbackCard
-          key={selectedLesson.id}
-          lessonId={selectedLesson.id}
-          childId={activeChild.id}
-        />
-      ) : null}
     </CelebrationScaffold>
   );
 };

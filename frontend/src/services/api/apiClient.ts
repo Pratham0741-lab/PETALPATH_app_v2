@@ -8,6 +8,7 @@ import type { ApiResponse } from '../../types/api';
 import type { User } from '../../types/auth';
 import type { ExtendedRequestConfig } from './requestConfig';
 import { MAX_RETRIES, RETRY_DELAY_MS } from './requestConfig';
+import { refreshSession } from '../auth/sessionRefresh';
 
 const logger = IS_DEV
   ? {
@@ -42,7 +43,9 @@ export class ApiClient {
     this.instance.interceptors.request.use(
       (config) => {
         config.baseURL = getApiUrl();
-        const token = useAuthStore.getState().token || useAppStore.getState().token;
+        /* appStore first: every refresh writes it, while authStore can be
+           re-hydrated from storage with an older token during start-up. */
+        const token = useAppStore.getState().token || useAuthStore.getState().token;
         if (token && config.headers) {
           (config.headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;
         }
@@ -89,7 +92,7 @@ export class ApiClient {
             try {
               const refreshed = await this.refreshAuthToken();
               if (refreshed) {
-                const newToken = useAuthStore.getState().token;
+                const newToken = useAppStore.getState().token || useAuthStore.getState().token;
                 if (newToken && config.headers) {
                   (config.headers as Record<string, string>)['Authorization'] = `Bearer ${newToken}`;
                 }
@@ -137,34 +140,9 @@ export class ApiClient {
     );
   }
 
+  /** Shared, single-flight refresh — see `services/auth/sessionRefresh`. */
   private async refreshAuthToken(): Promise<boolean> {
-    const refreshToken = useAuthStore.getState().refreshToken || useAppStore.getState().refreshToken;
-    if (!refreshToken) {
-      useAuthStore.getState().clearSession();
-      useAppStore.getState().clearSession();
-      return false;
-    }
-
-    try {
-      const activeChild = useChildStore.getState().activeChild;
-      const response = await axios.post(`${getApiUrl()}/auth/refresh`, {
-        refreshToken,
-        childId: activeChild?.id ?? undefined,
-      });
-
-      const json = response.data as ApiResponse<{ accessToken: string; refreshToken: string; user: User }>;
-      if (response.status === 200 && json.success && json.data) {
-        await useAuthStore.getState().setSession(json.data);
-        await useAppStore.getState().setSession(json.data);
-        return true;
-      }
-    } catch (error) {
-      logger.warn('Token refresh failed:', error);
-    }
-
-    useAuthStore.getState().clearSession();
-    useAppStore.getState().clearSession();
-    return false;
+    return (await refreshSession()) === 'refreshed';
   }
 
   private processRefreshQueue(error: unknown): void {
@@ -172,7 +150,7 @@ export class ApiClient {
     this.refreshQueue = [];
 
     if (error === null) {
-      const token = useAuthStore.getState().token || useAppStore.getState().token;
+      const token = useAppStore.getState().token || useAuthStore.getState().token;
       queue.forEach(({ resolve, reject, config }) => {
         if (token && config.headers) {
           (config.headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;

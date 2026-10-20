@@ -45,6 +45,7 @@ import Animated, { FadeInDown, FadeOut, LinearTransition } from 'react-native-re
 import { customAlert } from '../../utils/alert';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useQueryClient } from '@tanstack/react-query';
+import { useTwoPane } from '../../hooks/useTwoPane';
 
 import { api } from '../../api/client';
 import { useAppStore } from '../../store/appStore';
@@ -98,6 +99,7 @@ export interface ProfileContentProps {
 
 export const ProfileContent: React.FC<ProfileContentProps> = ({ variant }) => {
   const cfg = VARIANTS[variant];
+  const twoPane = useTwoPane();
   const navigation = useNavigation<any>();
   const queryClient = useQueryClient();
 
@@ -251,6 +253,494 @@ export const ProfileContent: React.FC<ProfileContentProps> = ({ variant }) => {
   const buddy = activeChild?.mentor ? enhanceMentor(activeChild.mentor) : null;
   const buddyColor = buddy?.color || colors.leafGreen;
 
+  /* Who the child is, and the grown-up section — stacked on a phone, side by
+     side on a landscape tablet. */
+  const childBlock = (
+    <>
+      {/* ------------------------------------------------------ Active child */}
+      <Card variant="raised" padding="roomy" accent={colors.primary}>
+        <View style={styles.heroRow}>
+          <AvatarGlyph
+            species={activeChild?.avatar}
+            size={cardSizes.iconWellLarge}
+            ringColor={colors.primary}
+            style={styles.heroAvatar}
+          />
+          <View style={styles.heroText}>
+            <Text style={[typography.presets.title, styles.heroName]} numberOfLines={1}>
+              {childName}
+            </Text>
+            {activeChild ? (
+              <Text style={[typography.presets.caption, styles.muted]} numberOfLines={1}>
+                Age {activeChild.age} · {activeChild.mentor?.name || 'No companion yet'}
+              </Text>
+            ) : (
+              <Text style={[typography.presets.caption, styles.muted]}>
+                No profile selected yet
+              </Text>
+            )}
+          </View>
+          {activeChild ? <StatusBadge status="current" label="Active" size="sm" /> : null}
+        </View>
+
+        <StatGrid stats={stats} style={styles.heroStats} />
+      </Card>
+
+      {/* --------------------------------------------------- Recent rewards */}
+      {hasRecent ? (
+        <View style={styles.section}>
+          <Text
+            style={[typography.presets.section, styles.sectionTitle]}
+            accessibilityRole="header"
+          >
+            Recent Achievements
+          </Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.strip}
+          >
+            {recentBadges.map((badge, idx) => (
+              <Achievement
+                key={`b-${badge?.id ?? idx}`}
+                icon="medal"
+                tint={colors.primary}
+                wash={colors.primaryLight}
+                label={badge?.name || 'Badge'}
+                kind="Badge"
+              />
+            ))}
+            {recentStickers.map((sticker, idx) => (
+              <Achievement
+                key={`s-${sticker?.id ?? idx}`}
+                icon="sparkle"
+                tint={colors.yellow}
+                wash={colors.yellowSoft}
+                label={sticker?.name || 'Sticker'}
+                kind="Sticker"
+              />
+            ))}
+          </ScrollView>
+        </View>
+      ) : null}
+
+      {/* ------------------------------------------------------ Learning buddy */}
+      {/*
+        The garden used to be a permanent tab. It is a place a child visits to
+        choose a buddy and water the tree, not somewhere to return to between
+        activities, so it lives here instead — beside the rest of "who I am".
+      */}
+      <Card
+        variant="raised"
+        padding="normal"
+        accent={buddyColor}
+        onPress={() => navigation.navigate('MainTabs', { screen: 'Mentor' })}
+        accessibilityLabel={
+          buddy ? `Learning buddy: ${buddy.name}, ${buddy.species}` : 'Choose a learning buddy'
+        }
+        accessibilityHint="Opens the magical garden"
+      >
+        <View style={styles.buddyRow}>
+          <AvatarGlyph
+            species={buddy?.species}
+            size={cardSizes.iconWellSmall}
+            ringColor={buddyColor}
+          />
+          <View style={styles.heroText}>
+            <Text style={[typography.presets.cardTitle, styles.buddyName]} numberOfLines={1}>
+              {buddy ? buddy.name : 'Choose a buddy'}
+            </Text>
+            <Text style={[typography.presets.caption, styles.muted]} numberOfLines={1}>
+              {buddy ? buddy.species : 'Pick someone to learn alongside'}
+            </Text>
+          </View>
+          <PetalIcon name="forward" size={18} color={colors.textMuted} />
+        </View>
+      </Card>
+
+      {/* ------------------------------------------------------------ Logout */}
+      <SecondaryButton label="Log Out" icon="logout" fill="outline" onPress={handleLogout} />
+    </>
+  );
+
+  const parentBlock = (
+    <>
+      {/* ----------------------------------------------------- Parents gate */}
+      <Card
+        variant={parentSectionOpen ? 'selected' : 'flat'}
+        accent={colors.purple}
+        padding="normal"
+        onPress={handleParentSectionTap}
+        accessibilityLabel={
+          parentSectionOpen ? 'Parents Section, unlocked' : 'Parents Section, locked'
+        }
+        accessibilityHint={
+          parentSectionOpen ? 'Hides the grown-up settings' : 'Asks a question to unlock'
+        }
+      >
+        <View style={styles.gateRow}>
+          <PetalIcon
+            name={parentSectionOpen ? 'parent' : 'lock'}
+            size={20}
+            color={colors.purple}
+          />
+          <View style={styles.heroText}>
+            <Text style={[typography.presets.cardTitle, styles.gateTitle]}>Parents Section</Text>
+            {/* Spelled out, so the state does not depend on the icon alone (§30). */}
+            <Text style={[typography.presets.caption, styles.muted]}>
+              {parentSectionOpen ? 'Unlocked' : 'Locked — grown-ups only'}
+            </Text>
+          </View>
+          <PetalIcon
+            name={parentSectionOpen ? 'arrowUp' : 'arrowDown'}
+            size={18}
+            color={colors.textMuted}
+          />
+        </View>
+      </Card>
+
+      {/* ---------------------------------------------------- Math challenge */}
+      {showChallenge && !parentSectionOpen ? (
+        <Animated.View {...motion}>
+        <Card variant="raised" padding="roomy" accent={colors.purple}>
+          <View style={styles.challenge}>
+            <Text style={[typography.presets.eyebrow, styles.muted]}>Parental verification</Text>
+            <Text style={[typography.presets.display, styles.challengeQuestion]}>
+              {challengeA} × {challengeB} = ?
+            </Text>
+            <View style={styles.challengeRow}>
+              <TextInput
+                style={[styles.challengeInput, challengeError && styles.challengeInputError]}
+                value={challengeAnswer}
+                onChangeText={(t) => {
+                  setChallengeAnswer(t);
+                  setChallengeError(false);
+                }}
+                keyboardType="number-pad"
+                placeholder="?"
+                placeholderTextColor={colors.textMuted}
+                maxLength={3}
+                returnKeyType="done"
+                onSubmitEditing={handleChallengeSubmit}
+                accessibilityLabel={`What is ${challengeA} times ${challengeB}?`}
+              />
+              <IconButton
+                icon="check"
+                variant="solid"
+                tone="purple"
+                onPress={handleChallengeSubmit}
+                accessibilityLabel="Check answer"
+              />
+            </View>
+            {challengeError ? (
+              <Text
+                style={[typography.presets.caption, styles.challengeError]}
+                accessibilityLiveRegion="polite"
+              >
+                That’s not right — try again!
+              </Text>
+            ) : null}
+          </View>
+        </Card>
+        </Animated.View>
+      ) : null}
+
+      {/*
+        Tablet, locked: what the grown-up section holds, so the right pane
+        explains itself instead of standing empty beside the child's card.
+      */}
+      {twoPane && !parentSectionOpen && !showChallenge ? (
+        <Card variant="flat" padding="normal">
+          <Text style={[typography.presets.eyebrow, styles.muted]}>Inside, for grown-ups</Text>
+          <ParentRow
+            label="Parent Dashboard"
+            description="Progress charts, weekly and monthly reports"
+            icon="chart"
+          />
+          <ParentRow
+            label="Children Profiles"
+            description="Add a child, edit details, switch profiles"
+            icon="profile"
+            divided
+          />
+          <ParentRow
+            label="Settings"
+            description="Sound, music, voice guidance, motion"
+            icon="settings"
+            divided
+          />
+          <ParentRow
+            label="Reset progress"
+            description="Start a child's journey over"
+            icon="replay"
+            divided
+          />
+        </Card>
+      ) : null}
+
+      {/* --------------------------------------------------- Parent content */}
+      {parentSectionOpen ? (
+        <Animated.View {...motion} style={styles.parentBlock}>
+          <PrimaryButton
+            label="Parent Dashboard"
+            icon="chart"
+            tone="purple"
+            onPress={() => navigation.navigate('ParentDashboard')}
+          />
+
+          {/* ------------------------------------------------ Parent account */}
+          <ParentSection title="Parent Account" icon="profile">
+            <View style={styles.accountRow}>
+              <View style={styles.accountAvatar}>
+                <Text style={[typography.presets.cardTitle, styles.accountInitials]}>
+                  {getInitials(user?.name)}
+                </Text>
+              </View>
+              <View style={styles.heroText}>
+                <Text style={[typography.presets.cardTitle, styles.gateTitle]} numberOfLines={1}>
+                  {user?.name || 'Explorer Parent'}
+                </Text>
+                <Text style={[typography.presets.caption, styles.muted]} numberOfLines={1}>
+                  {user?.email || 'parent@petalpath.com'}
+                </Text>
+                <Text style={[typography.presets.eyebrow, styles.accountRole]}>
+                  {user?.role
+                    ? `${user.role.charAt(0)}${user.role.slice(1).toLowerCase()} Account`
+                    : 'Parent Account'}
+                </Text>
+              </View>
+            </View>
+          </ParentSection>
+
+          {/* --------------------------------------------- Children profiles */}
+          <ParentSection
+            title="Children Profiles"
+            icon="profile"
+            boxed={false}
+            right={
+              <IconButton
+                icon="plus"
+                variant="soft"
+                tone="brand"
+                onPress={() => navigation.navigate('AddChild')}
+                accessibilityLabel="Add a child"
+              />
+            }
+          >
+            {/* Two children a row in the tablet's wider parent column. */}
+            <View style={styles.childList}>
+              {(twoPane
+                ? childrenList.reduce<any[][]>(
+                    (rows, c, i) => (i % 2 ? rows[rows.length - 1].push(c) : rows.push([c]), rows),
+                    [],
+                  )
+                : childrenList.map((c) => [c])
+              ).map((row) => (
+                <View key={row[0].id} style={twoPane ? styles.childRow : null}>
+                  {row.map((child) => (
+                    <View key={child.id} style={twoPane ? styles.childCell : null}>
+                      <ProfileCard
+                        name={child.name}
+                        species={child.avatar}
+                        detail={`Age ${child.age} · ${child.mentor?.name || 'No companion'}`}
+                        active={activeChild?.id === child.id}
+                        onPress={() => setActiveChild(child)}
+                        action={{
+                          icon: 'pencil',
+                          label: `Edit ${child.name}'s profile`,
+                          onPress: () => navigation.navigate('AddChild', { childId: child.id }),
+                        }}
+                      />
+                    </View>
+                  ))}
+                  {twoPane && row.length === 1 ? <View style={styles.childCell} /> : null}
+                </View>
+              ))}
+            </View>
+
+            {/* The companion detail that used to sit in the tablet sidebar. */}
+            {activeChild ? (
+              <Card variant="flat" padding="normal" style={styles.detailCard}>
+                <Text style={[typography.presets.eyebrow, styles.muted]}>Active profile</Text>
+                <ParentRow
+                  label="Age group"
+                  value={`${activeChild.age} · ${activeChild.ageGroup}`}
+                />
+                {activeChild.mentor ? (
+                  <ParentRow
+                    label={activeChild.mentor.name}
+                    description={activeChild.mentor.description}
+                    icon="mentors"
+                    divided
+                  />
+                ) : (
+                  <ParentRow label="Companion" value="None chosen" icon="mentors" divided />
+                )}
+                <SecondaryButton
+                  label="Edit Profile Details"
+                  icon="settings"
+                  size="sm"
+                  fill="outline"
+                  onPress={() =>
+                    navigation.navigate('AddChild', { childId: activeChild.id })
+                  }
+                  style={styles.detailButton}
+                />
+              </Card>
+            ) : null}
+          </ParentSection>
+
+          {/* ---------------------------------------------------- Settings */}
+          <ParentSection title="General Settings" icon="settings">
+            <ParentRow
+              label="Sound Effects"
+              icon="sound"
+              toggle={{ value: preferences.soundEnabled, onValueChange: toggleSound }}
+            />
+            <ParentRow
+              label="Background Music"
+              icon="play"
+              divided
+              toggle={{ value: preferences.musicEnabled, onValueChange: toggleMusic }}
+            />
+            <ParentRow
+              label="Voice Guidance"
+              description="Spoken instructions on every activity"
+              icon="microphone"
+              divided
+              toggle={{ value: guideEnabled, onValueChange: () => toggleGuide() }}
+            />
+            <ParentRow
+              label="Tutorial Animations"
+              description="The pointing hand that demonstrates each step"
+              icon="sparkle"
+              divided
+              toggle={{ value: animationsEnabled, onValueChange: setAnimationsEnabled }}
+            />
+            <ParentRow
+              label="Reduce Motion"
+              description="Calmer transitions throughout the app"
+              icon="info"
+              divided
+              toggle={{ value: reduceMotion, onValueChange: setReduceMotion }}
+            />
+          </ParentSection>
+
+          {/* -------------------------------------------- Privacy & support */}
+          <ParentSection title="About & Support" icon="info">
+            <Text style={[typography.presets.eyebrow, styles.muted]}>Privacy</Text>
+            <Text style={[typography.presets.caption, styles.prose]}>
+              Your child’s learning activity is stored securely and used only to personalize their
+              experience. We never sell personal information.
+            </Text>
+
+            <View style={styles.divider} />
+
+            <Text style={[typography.presets.eyebrow, styles.muted]}>About PetalPath</Text>
+            <Text style={[typography.presets.caption, styles.prose]}>
+              PetalPath helps children learn through playful, adaptive activities guided by a
+              friendly companion. This parent section lets you manage profiles and preferences.
+            </Text>
+
+            <View style={styles.divider} />
+
+            <Text style={[typography.presets.eyebrow, styles.muted]}>Help &amp; Support</Text>
+            <Text style={[typography.presets.caption, styles.prose]}>
+              For questions or assistance, contact your program administrator or visit the
+              PetalPath Help Center.
+            </Text>
+          </ParentSection>
+
+          {/* ------------------------------------------------------- Danger */}
+          {!showResetConfirm ? (
+            <DestructiveAction
+              title="Reset Learning Progress"
+              description="Permanently erases every completed lesson, activity score and companion milestone for the active child profile. This cannot be undone."
+              buttonLabel="Reset All Progress"
+              onPress={() => setShowResetConfirm(true)}
+              disabled={!activeChild}
+            />
+          ) : (
+            <View style={styles.confirmBox}>
+              <View style={styles.confirmHead}>
+                <PetalIcon name="warning" size={20} color={colors.error} />
+                <Text style={[typography.presets.cardTitle, styles.confirmTitle]}>
+                  Reset {activeChild?.name || 'this profile'}?
+                </Text>
+              </View>
+              <Text style={[typography.presets.caption, styles.prose]}>
+                All progress for {activeChild?.name || 'this child'} will be erased. This cannot
+                be undone.
+              </Text>
+              <View style={styles.confirmRow}>
+                <SecondaryButton
+                  label="Cancel"
+                  fill="outline"
+                  onPress={() => setShowResetConfirm(false)}
+                  style={styles.confirmButton}
+                />
+                <PrimaryButton
+                  label={resetting ? 'Resetting…' : 'Yes, Reset'}
+                  icon="trash"
+                  tone="danger"
+                  onPress={handleResetConfirmed}
+                  disabled={resetting}
+                  loading={resetting}
+                  style={styles.confirmButton}
+                />
+              </View>
+            </View>
+          )}
+        </Animated.View>
+      ) : null}
+    </>
+  );
+
+  /*
+   * Landscape tablet: the child's card, achievements and buddy in a fixed left
+   * column; the Parents section in the wider right one. Stacked, unlocking the
+   * section pushed a whole dashboard below the child's card and the page became
+   * a long scroll; side by side, a parent changing a setting still sees whose
+   * profile it is.
+   */
+  if (twoPane) {
+    return (
+      <AppShell
+        withBottomNav
+        petals="none"
+        backgroundImage={SCREEN_BACKGROUNDS.profile} accent={SCREEN_ACCENTS.profile}
+        header={
+          <AppHeader
+            accent={SCREEN_ACCENTS.profile}
+            /* Just "Profile": the card directly below opens with the child's
+               name in 24px type, so the header repeated it one row later. */
+            title="Profile"
+            stars={totalStars}
+          />
+        }
+        scroll={false}
+      >
+        <View style={styles.panes}>
+          <ScrollView
+            style={styles.childPane}
+            contentContainerStyle={styles.paneContent}
+            showsVerticalScrollIndicator={false}
+          >
+            {childBlock}
+          </ScrollView>
+          <ScrollView
+            style={styles.parentPane}
+            contentContainerStyle={styles.paneContent}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            {parentBlock}
+          </ScrollView>
+        </View>
+      </AppShell>
+    );
+  }
+
   return (
     <AppShell
       withBottomNav
@@ -267,392 +757,8 @@ export const ProfileContent: React.FC<ProfileContentProps> = ({ variant }) => {
       }
     >
       <View style={[styles.column, cfg.maxWidth ? { maxWidth: cfg.maxWidth } : null]}>
-        {/* ------------------------------------------------------ Active child */}
-        <Card variant="raised" padding="roomy" accent={colors.primary}>
-          <View style={styles.heroRow}>
-            <AvatarGlyph
-              species={activeChild?.avatar}
-              size={cardSizes.iconWellLarge}
-              ringColor={colors.primary}
-              style={styles.heroAvatar}
-            />
-            <View style={styles.heroText}>
-              <Text style={[typography.presets.title, styles.heroName]} numberOfLines={1}>
-                {childName}
-              </Text>
-              {activeChild ? (
-                <Text style={[typography.presets.caption, styles.muted]} numberOfLines={1}>
-                  Age {activeChild.age} · {activeChild.mentor?.name || 'No companion yet'}
-                </Text>
-              ) : (
-                <Text style={[typography.presets.caption, styles.muted]}>
-                  No profile selected yet
-                </Text>
-              )}
-            </View>
-            {activeChild ? <StatusBadge status="current" label="Active" size="sm" /> : null}
-          </View>
-
-          <StatGrid stats={stats} style={styles.heroStats} />
-        </Card>
-
-        {/* --------------------------------------------------- Recent rewards */}
-        {hasRecent ? (
-          <View style={styles.section}>
-            <Text
-              style={[typography.presets.section, styles.sectionTitle]}
-              accessibilityRole="header"
-            >
-              Recent Achievements
-            </Text>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.strip}
-            >
-              {recentBadges.map((badge, idx) => (
-                <Achievement
-                  key={`b-${badge?.id ?? idx}`}
-                  icon="medal"
-                  tint={colors.primary}
-                  wash={colors.primaryLight}
-                  label={badge?.name || 'Badge'}
-                  kind="Badge"
-                />
-              ))}
-              {recentStickers.map((sticker, idx) => (
-                <Achievement
-                  key={`s-${sticker?.id ?? idx}`}
-                  icon="sparkle"
-                  tint={colors.yellow}
-                  wash={colors.yellowSoft}
-                  label={sticker?.name || 'Sticker'}
-                  kind="Sticker"
-                />
-              ))}
-            </ScrollView>
-          </View>
-        ) : null}
-
-        {/* ------------------------------------------------------ Learning buddy */}
-        {/*
-          The garden used to be a permanent tab. It is a place a child visits to
-          choose a buddy and water the tree, not somewhere to return to between
-          activities, so it lives here instead — beside the rest of "who I am".
-        */}
-        <Card
-          variant="raised"
-          padding="normal"
-          accent={buddyColor}
-          onPress={() => navigation.navigate('MainTabs', { screen: 'Mentor' })}
-          accessibilityLabel={
-            buddy ? `Learning buddy: ${buddy.name}, ${buddy.species}` : 'Choose a learning buddy'
-          }
-          accessibilityHint="Opens the magical garden"
-        >
-          <View style={styles.buddyRow}>
-            <AvatarGlyph
-              species={buddy?.species}
-              size={cardSizes.iconWellSmall}
-              ringColor={buddyColor}
-            />
-            <View style={styles.heroText}>
-              <Text style={[typography.presets.cardTitle, styles.buddyName]} numberOfLines={1}>
-                {buddy ? buddy.name : 'Choose a buddy'}
-              </Text>
-              <Text style={[typography.presets.caption, styles.muted]} numberOfLines={1}>
-                {buddy ? buddy.species : 'Pick someone to learn alongside'}
-              </Text>
-            </View>
-            <PetalIcon name="forward" size={18} color={colors.textMuted} />
-          </View>
-        </Card>
-
-        {/* ------------------------------------------------------------ Logout */}
-        <SecondaryButton label="Log Out" icon="logout" fill="outline" onPress={handleLogout} />
-
-        {/* ----------------------------------------------------- Parents gate */}
-        <Card
-          variant={parentSectionOpen ? 'selected' : 'flat'}
-          accent={colors.purple}
-          padding="normal"
-          onPress={handleParentSectionTap}
-          accessibilityLabel={
-            parentSectionOpen ? 'Parents Section, unlocked' : 'Parents Section, locked'
-          }
-          accessibilityHint={
-            parentSectionOpen ? 'Hides the grown-up settings' : 'Asks a question to unlock'
-          }
-        >
-          <View style={styles.gateRow}>
-            <PetalIcon
-              name={parentSectionOpen ? 'parent' : 'lock'}
-              size={20}
-              color={colors.purple}
-            />
-            <View style={styles.heroText}>
-              <Text style={[typography.presets.cardTitle, styles.gateTitle]}>Parents Section</Text>
-              {/* Spelled out, so the state does not depend on the icon alone (§30). */}
-              <Text style={[typography.presets.caption, styles.muted]}>
-                {parentSectionOpen ? 'Unlocked' : 'Locked — grown-ups only'}
-              </Text>
-            </View>
-            <PetalIcon
-              name={parentSectionOpen ? 'arrowUp' : 'arrowDown'}
-              size={18}
-              color={colors.textMuted}
-            />
-          </View>
-        </Card>
-
-        {/* ---------------------------------------------------- Math challenge */}
-        {showChallenge && !parentSectionOpen ? (
-          <Animated.View {...motion}>
-          <Card variant="raised" padding="roomy" accent={colors.purple}>
-            <View style={styles.challenge}>
-              <Text style={[typography.presets.eyebrow, styles.muted]}>Parental verification</Text>
-              <Text style={[typography.presets.display, styles.challengeQuestion]}>
-                {challengeA} × {challengeB} = ?
-              </Text>
-              <View style={styles.challengeRow}>
-                <TextInput
-                  style={[styles.challengeInput, challengeError && styles.challengeInputError]}
-                  value={challengeAnswer}
-                  onChangeText={(t) => {
-                    setChallengeAnswer(t);
-                    setChallengeError(false);
-                  }}
-                  keyboardType="number-pad"
-                  placeholder="?"
-                  placeholderTextColor={colors.textMuted}
-                  maxLength={3}
-                  returnKeyType="done"
-                  onSubmitEditing={handleChallengeSubmit}
-                  accessibilityLabel={`What is ${challengeA} times ${challengeB}?`}
-                />
-                <IconButton
-                  icon="check"
-                  variant="solid"
-                  tone="purple"
-                  onPress={handleChallengeSubmit}
-                  accessibilityLabel="Check answer"
-                />
-              </View>
-              {challengeError ? (
-                <Text
-                  style={[typography.presets.caption, styles.challengeError]}
-                  accessibilityLiveRegion="polite"
-                >
-                  That’s not right — try again!
-                </Text>
-              ) : null}
-            </View>
-          </Card>
-          </Animated.View>
-        ) : null}
-
-        {/* --------------------------------------------------- Parent content */}
-        {parentSectionOpen ? (
-          <Animated.View {...motion} style={styles.parentBlock}>
-            <PrimaryButton
-              label="Parent Dashboard"
-              icon="chart"
-              tone="purple"
-              onPress={() => navigation.navigate('ParentDashboard')}
-            />
-
-            {/* ------------------------------------------------ Parent account */}
-            <ParentSection title="Parent Account" icon="profile">
-              <View style={styles.accountRow}>
-                <View style={styles.accountAvatar}>
-                  <Text style={[typography.presets.cardTitle, styles.accountInitials]}>
-                    {getInitials(user?.name)}
-                  </Text>
-                </View>
-                <View style={styles.heroText}>
-                  <Text style={[typography.presets.cardTitle, styles.gateTitle]} numberOfLines={1}>
-                    {user?.name || 'Explorer Parent'}
-                  </Text>
-                  <Text style={[typography.presets.caption, styles.muted]} numberOfLines={1}>
-                    {user?.email || 'parent@petalpath.com'}
-                  </Text>
-                  <Text style={[typography.presets.eyebrow, styles.accountRole]}>
-                    {user?.role
-                      ? `${user.role.charAt(0)}${user.role.slice(1).toLowerCase()} Account`
-                      : 'Parent Account'}
-                  </Text>
-                </View>
-              </View>
-            </ParentSection>
-
-            {/* --------------------------------------------- Children profiles */}
-            <ParentSection
-              title="Children Profiles"
-              icon="profile"
-              boxed={false}
-              right={
-                <IconButton
-                  icon="plus"
-                  variant="soft"
-                  tone="brand"
-                  onPress={() => navigation.navigate('AddChild')}
-                  accessibilityLabel="Add a child"
-                />
-              }
-            >
-              <View style={styles.childList}>
-                {childrenList.map((child) => (
-                  <ProfileCard
-                    key={child.id}
-                    name={child.name}
-                    species={child.avatar}
-                    detail={`Age ${child.age} · ${child.mentor?.name || 'No companion'}`}
-                    active={activeChild?.id === child.id}
-                    onPress={() => setActiveChild(child)}
-                    action={{
-                      icon: 'pencil',
-                      label: `Edit ${child.name}'s profile`,
-                      onPress: () => navigation.navigate('AddChild', { childId: child.id }),
-                    }}
-                  />
-                ))}
-              </View>
-
-              {/* The companion detail that used to sit in the tablet sidebar. */}
-              {activeChild ? (
-                <Card variant="flat" padding="normal" style={styles.detailCard}>
-                  <Text style={[typography.presets.eyebrow, styles.muted]}>Active profile</Text>
-                  <ParentRow
-                    label="Age group"
-                    value={`${activeChild.age} · ${activeChild.ageGroup}`}
-                  />
-                  {activeChild.mentor ? (
-                    <ParentRow
-                      label={activeChild.mentor.name}
-                      description={activeChild.mentor.description}
-                      icon="mentors"
-                      divided
-                    />
-                  ) : (
-                    <ParentRow label="Companion" value="None chosen" icon="mentors" divided />
-                  )}
-                  <SecondaryButton
-                    label="Edit Profile Details"
-                    icon="settings"
-                    size="sm"
-                    fill="outline"
-                    onPress={() =>
-                      navigation.navigate('AddChild', { childId: activeChild.id })
-                    }
-                    style={styles.detailButton}
-                  />
-                </Card>
-              ) : null}
-            </ParentSection>
-
-            {/* ---------------------------------------------------- Settings */}
-            <ParentSection title="General Settings" icon="settings">
-              <ParentRow
-                label="Sound Effects"
-                icon="sound"
-                toggle={{ value: preferences.soundEnabled, onValueChange: toggleSound }}
-              />
-              <ParentRow
-                label="Background Music"
-                icon="play"
-                divided
-                toggle={{ value: preferences.musicEnabled, onValueChange: toggleMusic }}
-              />
-              <ParentRow
-                label="Voice Guidance"
-                description="Spoken instructions on every activity"
-                icon="microphone"
-                divided
-                toggle={{ value: guideEnabled, onValueChange: () => toggleGuide() }}
-              />
-              <ParentRow
-                label="Tutorial Animations"
-                description="The pointing hand that demonstrates each step"
-                icon="sparkle"
-                divided
-                toggle={{ value: animationsEnabled, onValueChange: setAnimationsEnabled }}
-              />
-              <ParentRow
-                label="Reduce Motion"
-                description="Calmer transitions throughout the app"
-                icon="info"
-                divided
-                toggle={{ value: reduceMotion, onValueChange: setReduceMotion }}
-              />
-            </ParentSection>
-
-            {/* -------------------------------------------- Privacy & support */}
-            <ParentSection title="About & Support" icon="info">
-              <Text style={[typography.presets.eyebrow, styles.muted]}>Privacy</Text>
-              <Text style={[typography.presets.caption, styles.prose]}>
-                Your child’s learning activity is stored securely and used only to personalize their
-                experience. We never sell personal information.
-              </Text>
-
-              <View style={styles.divider} />
-
-              <Text style={[typography.presets.eyebrow, styles.muted]}>About PetalPath</Text>
-              <Text style={[typography.presets.caption, styles.prose]}>
-                PetalPath helps children learn through playful, adaptive activities guided by a
-                friendly companion. This parent section lets you manage profiles and preferences.
-              </Text>
-
-              <View style={styles.divider} />
-
-              <Text style={[typography.presets.eyebrow, styles.muted]}>Help &amp; Support</Text>
-              <Text style={[typography.presets.caption, styles.prose]}>
-                For questions or assistance, contact your program administrator or visit the
-                PetalPath Help Center.
-              </Text>
-            </ParentSection>
-
-            {/* ------------------------------------------------------- Danger */}
-            {!showResetConfirm ? (
-              <DestructiveAction
-                title="Reset Learning Progress"
-                description="Permanently erases every completed lesson, activity score and companion milestone for the active child profile. This cannot be undone."
-                buttonLabel="Reset All Progress"
-                onPress={() => setShowResetConfirm(true)}
-                disabled={!activeChild}
-              />
-            ) : (
-              <View style={styles.confirmBox}>
-                <View style={styles.confirmHead}>
-                  <PetalIcon name="warning" size={20} color={colors.error} />
-                  <Text style={[typography.presets.cardTitle, styles.confirmTitle]}>
-                    Reset {activeChild?.name || 'this profile'}?
-                  </Text>
-                </View>
-                <Text style={[typography.presets.caption, styles.prose]}>
-                  All progress for {activeChild?.name || 'this child'} will be erased. This cannot
-                  be undone.
-                </Text>
-                <View style={styles.confirmRow}>
-                  <SecondaryButton
-                    label="Cancel"
-                    fill="outline"
-                    onPress={() => setShowResetConfirm(false)}
-                    style={styles.confirmButton}
-                  />
-                  <PrimaryButton
-                    label={resetting ? 'Resetting…' : 'Yes, Reset'}
-                    icon="trash"
-                    tone="danger"
-                    onPress={handleResetConfirmed}
-                    disabled={resetting}
-                    loading={resetting}
-                    style={styles.confirmButton}
-                  />
-                </View>
-              </View>
-            )}
-          </Animated.View>
-        ) : null}
+        {childBlock}
+        {parentBlock}
       </View>
     </AppShell>
   );
@@ -680,6 +786,24 @@ const Achievement: React.FC<{
 );
 
 const styles = StyleSheet.create({
+  // ------------------------------------------------------- tablet two-pane
+  panes: {
+    flex: 1,
+    flexDirection: 'row',
+    gap: spacing.xl,
+  },
+  childPane: {
+    width: 420,
+    flexGrow: 0,
+  },
+  parentPane: {
+    flex: 1,
+  },
+  paneContent: {
+    gap: spacing.lg,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.xl,
+  },
   column: {
     width: '100%',
     alignSelf: 'center',
@@ -822,6 +946,13 @@ const styles = StyleSheet.create({
   },
   childList: {
     gap: spacing.md,
+  },
+  childRow: {
+    flexDirection: 'row',
+    gap: spacing.md,
+  },
+  childCell: {
+    flex: 1,
   },
   detailCard: {
     marginTop: spacing.md,

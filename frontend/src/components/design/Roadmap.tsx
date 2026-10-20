@@ -123,8 +123,22 @@ export interface RoadmapProps {
    * point the tutorial hand at it.
    */
   onCurrentNodeLayout?: (frame: RoadmapFrame) => void;
+  /**
+   * `compact` is the tablet journey: shorter rows, lesson cards capped at
+   * `COMPACT_CARD_MAX` with title and state on one line each, and the run of
+   * not-yet-open modules laid out as a grid of tiles instead of full-width
+   * rows. Phones keep `comfortable`, the layout everything above describes.
+   */
+  density?: 'comfortable' | 'compact';
   style?: StyleProp<ViewStyle>;
 }
+
+/** Tablet lesson-card cap: wide enough for "12. Capital Letters Review". */
+const COMPACT_CARD_MAX = 280;
+const COMPACT_ROW = 112;
+const COMPACT_ROW_LOCKED = 70;
+/** Narrowest an upcoming-module tile may get before the grid drops a column. */
+const MODULE_TILE_MIN = 240;
 
 // ---------------------------------------------------------------------------
 // Node appearance
@@ -390,6 +404,7 @@ interface RunProps {
   /** Measured against this, so the reported y ignores intermediate wrappers. */
   measureRoot?: React.RefObject<View | null>;
   onCurrentNodeLayout?: RoadmapProps['onCurrentNodeLayout'];
+  compact?: boolean;
 }
 
 const PathRun: React.FC<RunProps> = ({
@@ -399,16 +414,19 @@ const PathRun: React.FC<RunProps> = ({
   color,
   measureRoot,
   onCurrentNodeLayout,
+  compact = false,
 }) => {
   const {
-    rowHeight,
-    rowHeightLocked,
+    rowHeight: rowHeightComfortable,
+    rowHeightLocked: rowHeightLockedComfortable,
     amplitude,
     pathWidth,
     pathUnderlayWidth,
     pathDashWidth,
     labelGap,
   } = roadmapSizes;
+  const rowHeight = compact ? COMPACT_ROW : rowHeightComfortable;
+  const rowHeightLocked = compact ? COMPACT_ROW_LOCKED : rowHeightLockedComfortable;
   // Only one node is ever current, so a single ref covers the run.
   const currentSlotRef = useRef<View>(null);
   /*
@@ -571,9 +589,24 @@ const PathRun: React.FC<RunProps> = ({
          * side the same width — ragged card edges either side of a centre ribbon
          * read as a broken layout rather than a path.
          */
-        const cardBox: ViewStyle = left
+        let cardBox: ViewStyle = left
           ? { left: x + half + labelGap, right: spacing.xs }
           : { left: spacing.xs, right: width - (x - half - labelGap) };
+        if (compact) {
+          /*
+           * Tablet: capped at COMPACT_CARD_MAX and anchored to the node, so a
+           * card is sized to what it says rather than to half the journey. At
+           * full width a three-word lesson was a 520px slab.
+           */
+          if (left) {
+            const l = x + half + labelGap;
+            cardBox = { left: l, width: Math.min(COMPACT_CARD_MAX, width - l - spacing.xs) };
+          } else {
+            const r = x - half - labelGap;
+            const w = Math.min(COMPACT_CARD_MAX, r - spacing.xs);
+            cardBox = { left: r - w, width: w };
+          }
+        }
 
         /*
          * Everything the card shows is spoken by the node instead. Two touch
@@ -656,7 +689,7 @@ const PathRun: React.FC<RunProps> = ({
                 ) : null}
 
                 <Text
-                  numberOfLines={2}
+                  numberOfLines={compact ? 1 : 2}
                   style={[
                     typography.presets.title,
                     isCurrent || isReview ? styles.stopTitleLarge : styles.stopTitle,
@@ -677,6 +710,8 @@ const PathRun: React.FC<RunProps> = ({
                   padlock is just the padlock again. Still spoken: `spoken`
                   below carries `skin.word` for the screen reader either way.
                 */}
+                {/* Compact: the state word and the stars share one line. */}
+                <View style={compact ? styles.metaRow : null}>
                 {node.subtitle || !locked ? (
                   <Text
                     numberOfLines={1}
@@ -690,7 +725,7 @@ const PathRun: React.FC<RunProps> = ({
                 ) : null}
 
                 {showStars ? (
-                  <View style={styles.stars}>
+                  <View style={[styles.stars, compact && styles.starsInline]}>
                     {Array.from({ length: maxStars }, (_, si) => (
                       <PetalIcon
                         key={si}
@@ -702,6 +737,7 @@ const PathRun: React.FC<RunProps> = ({
                     ))}
                   </View>
                 ) : null}
+                </View>
               </Pressable>
             </View>
           </View>
@@ -719,7 +755,8 @@ const SectionHeader: React.FC<{
   section: RoadmapSectionData;
   color: string;
   sectionFill: string;
-}> = ({ section, color, sectionFill }) => {
+  style?: StyleProp<ViewStyle>;
+}> = ({ section, color, sectionFill, style }) => {
   const tint = sectionFill;
   const content = (
     <View style={styles.sectionInner}>
@@ -771,7 +808,7 @@ const SectionHeader: React.FC<{
 
   if (!section.onPress) {
     return (
-      <View style={[styles.section, { borderColor: color, backgroundColor: tint }]}>{content}</View>
+      <View style={[styles.section, { borderColor: color, backgroundColor: tint }, style]}>{content}</View>
     );
   }
 
@@ -784,6 +821,7 @@ const SectionHeader: React.FC<{
       style={({ pressed }) => [
         styles.section,
         { borderColor: color, backgroundColor: tint },
+        style,
         pressed && styles.sectionPressed,
       ]}
     >
@@ -799,8 +837,10 @@ const SectionHeader: React.FC<{
 export const Roadmap: React.FC<RoadmapProps> = ({
   sections,
   onCurrentNodeLayout,
+  density = 'comfortable',
   style,
 }) => {
+  const compact = density === 'compact';
   const window = useWindowDimensions();
   const rootRef = useRef<View>(null);
   // Sensible first paint, then corrected by the real measurement.
@@ -813,36 +853,85 @@ export const Roadmap: React.FC<RoadmapProps> = ({
 
   let parity = 0;
 
+  const sectionColors = (section: RoadmapSectionData) => {
+    /*
+     * The section's colour says how far along it is, matching the nodes
+     * inside it and every card elsewhere. It used to be `section.color` — a
+     * per-theme hue with no legend — so a finished section and an untouched
+     * one were the same colour, and only the bar's length told them apart.
+     */
+    const sectionState = resolveLessonState({
+      locked: section.locked,
+      done: (section.progress ?? 0) >= 100,
+      progress: section.progress,
+    });
+    return { color: LESSON_STATE[sectionState].main, fill: LESSON_STATE[sectionState].soft };
+  };
+
+  /*
+   * Compact (tablet): a run of modules with no lessons showing — the rest of
+   * the grade, not yet opened — becomes one grid of tiles. As full-width rows
+   * they were a wall of identical 120px bars, several screens of them; as tiles
+   * the whole remaining grade fits in a glance.
+   */
+  type Block =
+    | { kind: 'section'; section: RoadmapSectionData }
+    | { kind: 'grid'; sections: RoadmapSectionData[] };
+  const blocks: Block[] = [];
+  for (const section of sections) {
+    const collapsed = (section.nodes?.length ?? 0) === 0 && !section.hideHeader;
+    const last = blocks[blocks.length - 1];
+    if (compact && collapsed) {
+      if (last?.kind === 'grid') last.sections.push(section);
+      else blocks.push({ kind: 'grid', sections: [section] });
+    } else {
+      blocks.push({ kind: 'section', section });
+    }
+  }
+  const cols = Math.max(1, Math.floor((width + spacing.sm) / (MODULE_TILE_MIN + spacing.sm)));
+  const tileWidth = (width - spacing.sm * (cols - 1)) / cols;
+
   return (
     <View ref={rootRef} style={style} onLayout={onLayout} collapsable={false}>
-      {sections.map((section) => {
-        /*
-         * The section's colour says how far along it is, matching the nodes
-         * inside it and every card elsewhere. It used to be `section.color` — a
-         * per-theme hue with no legend — so a finished section and an untouched
-         * one were the same colour, and only the bar's length told them apart.
-         */
-        const sectionState = resolveLessonState({
-          locked: section.locked,
-          done: (section.progress ?? 0) >= 100,
-          progress: section.progress,
-        });
-        const color = LESSON_STATE[sectionState].main;
+      {blocks.map((block) => {
+        if (block.kind === 'grid') {
+          return (
+            <View key={`grid-${block.sections[0]!.id}`} style={styles.moduleGrid}>
+              {block.sections.map((section) => {
+                const c = sectionColors(section);
+                return (
+                  <SectionHeader
+                    key={section.id}
+                    section={section}
+                    color={c.color}
+                    sectionFill={c.fill}
+                    style={[styles.moduleTile, { width: tileWidth }]}
+                  />
+                );
+              })}
+            </View>
+          );
+        }
+        const section = block.section;
+        const c = sectionColors(section);
         const nodes = section.nodes ?? [];
         const runParity = parity;
         parity = (parity + nodes.length) % 2;
 
         return (
           <View key={section.id}>
-            {section.hideHeader ? null : <SectionHeader section={section} color={color} sectionFill={LESSON_STATE[sectionState].soft} />}
+            {section.hideHeader ? null : (
+              <SectionHeader section={section} color={c.color} sectionFill={c.fill} />
+            )}
             {nodes.length > 0 ? (
               <PathRun
                 nodes={nodes}
                 parity={runParity}
                 width={width}
-                color={color}
+                color={c.color}
                 measureRoot={rootRef}
                 onCurrentNodeLayout={onCurrentNodeLayout}
+                compact={compact}
               />
             ) : null}
           </View>
@@ -951,6 +1040,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 2,
     marginTop: 3,
+  },
+  starsInline: {
+    marginTop: 0,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
+  moduleGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.sm,
+    marginBottom: spacing.sm,
+  },
+  /* A module tile: the section row, tighter, with the grid's gap as spacing. */
+  moduleTile: {
+    marginBottom: 0,
+    padding: spacing.sm + 2,
   },
 
   // ---------------------------------------------------------------- section

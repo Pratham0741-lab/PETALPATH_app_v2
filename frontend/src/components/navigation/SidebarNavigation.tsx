@@ -1,7 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { ScreenBackground } from '../design/AppShell';
+import { useWallpaperStore } from '../../store/wallpaperStore';
+import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { BlurView } from 'expo-blur';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { bottomNavSizes, colors, radius, shadows, spacing, typography } from '../../theme';
+import { bottomNavSizes, colors, radius, spacing, typography } from '../../theme';
 import { AvatarGlyph } from '../design';
 import { PetalIcon, PetalIconName } from '../icons';
 import { navigate, navigationRef } from '../../navigation/navigationRef';
@@ -35,11 +39,14 @@ const TABS: TabConfig[] = [
   { route: 'Home', icon: 'home', label: 'Home' },
   // The stack route is called "Journey"; it is the Explore tab to the child.
   { route: 'Journey', icon: 'explore', label: 'Explore' },
-  { route: 'Camera', icon: 'camera', label: 'Camera' },
+  { route: 'Camera', icon: 'camera', label: 'Move & Play' },
   { route: 'Mentor', icon: 'mentors', label: 'Mentors' },
   { route: 'Rewards', icon: 'rewards', label: 'Rewards' },
   { route: 'Profile', icon: 'profile', label: 'Profile' },
 ];
+
+export { SIDEBAR_WIDTH, useSidebarExpanded, useSidebarWidth } from './sidebarLayout';
+import { useSidebarExpanded, useSidebarWidth } from './sidebarLayout';
 
 interface SidebarNavigationProps {
   deviceType: 'tablet' | 'desktop';
@@ -69,13 +76,62 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ deviceType
   const activeChild = useChildStore((state) => state.activeChild);
   const activeMentor = activeChild?.mentor ? enhanceMentor(activeChild.mentor) : null;
 
-  const isDesktop = deviceType === 'desktop';
+  /* "Desktop" styling = the expanded panel, used by landscape tablets too. */
+  const isDesktop = useSidebarExpanded(deviceType);
+  const width = useSidebarWidth(deviceType);
+  const wallpaper = useWallpaperStore((st) => st.wallpaper);
+  const { width: windowWidth } = useWindowDimensions();
+  const [columnHeight, setColumnHeight] = useState(0);
+  const insets = useSafeAreaInsets();
 
   return (
+    /*
+     * The sidebar's column. It paints the focused screen's own wallpaper —
+     * full-window geometry, same blur and dimming, so it continues the screen's
+     * scene exactly (the screen container clips its own copy at its edge) —
+     * and the rail floats on top of it.
+     */
     <View
-      style={[styles.container, isDesktop ? styles.desktopWidth : styles.tabletWidth]}
+      style={[styles.column, { width }]}
+      onLayout={(e) => setColumnHeight(e.nativeEvent.layout.height)}
+    >
+      {wallpaper && columnHeight > 0 ? (
+        <View
+          pointerEvents="none"
+          style={[StyleSheet.absoluteFill, { backgroundColor: wallpaper.backgroundColor }]}
+        >
+          <ScreenBackground
+            source={wallpaper.source}
+            left={0}
+            width={windowWidth}
+            height={columnHeight}
+            opacity={wallpaper.opacity}
+            blur={wallpaper.blur}
+            scrim={wallpaper.scrim}
+          />
+        </View>
+      ) : null}
+
+    {/*
+      The rail itself: the phone tab bar's frosted glass turned on its side.
+      It floats inset from the screen's edges with fully rounded corners, and
+      its blur and lavender tint sit over the scene behind it, which shows
+      around and through it.
+    */}
+    <View
+      style={[
+        styles.container,
+        {
+          width: width - RAIL_INSET * 2,
+          marginTop: insets.top + RAIL_INSET,
+          marginBottom: insets.bottom + RAIL_INSET,
+        },
+        isDesktop ? styles.railExpanded : styles.railCompact,
+      ]}
       accessibilityRole="tablist"
     >
+      <BlurView intensity={72} tint="light" style={StyleSheet.absoluteFill} pointerEvents="none" />
+      <View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.tint]} />
       <View style={styles.top}>
         {/* Brand mark */}
         <View style={[styles.header, !isDesktop && styles.headerTablet]}>
@@ -86,6 +142,33 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ deviceType
             </Text>
           ) : null}
         </View>
+
+
+        {/*
+          Whose app this is, at the top of the panel — tapping it opens their
+          profile. On a phone the avatar lives in Home's header; on a tablet the
+          panel is always on screen, so the child sees themselves on every page.
+        */}
+        {isDesktop && activeChild ? (
+          <Pressable
+            onPress={() => navigate('Profile')}
+            accessibilityRole="button"
+            accessibilityLabel={`${activeChild.name}'s profile`}
+            style={({ pressed }) => [styles.childCard, pressed && styles.tabItemPressed]}
+          >
+            <AvatarGlyph species={activeChild.avatar} size={44} ringColor={colors.primary} />
+            <View style={styles.childText}>
+              <Text style={[typography.presets.cardTitle, styles.childName]} numberOfLines={1}>
+                {activeChild.name}
+              </Text>
+              {activeMentor ? (
+                <Text style={[typography.presets.caption, styles.childSub]} numberOfLines={1}>
+                  with {activeMentor.name.split(' ')[0]}
+                </Text>
+              ) : null}
+            </View>
+          </Pressable>
+        ) : null}
 
         <View style={styles.navItems}>
           {TABS.map((tab) => {
@@ -116,26 +199,31 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ deviceType
                   filled={isFocused}
                   strokeWidth={isFocused ? 2 : 1.9}
                 />
-                {isDesktop ? (
-                  <Text
-                    numberOfLines={1}
-                    style={[
-                      typography.presets.body,
-                      styles.label,
-                      { color: tint, fontWeight: isFocused ? '900' : '600' },
-                    ]}
-                  >
-                    {tab.label}
-                  </Text>
-                ) : null}
+                {/*
+                  Labelled on tablets too. The rail used to be icons only, but
+                  the people using it are two to six: a compass or a gift box is
+                  not self-explanatory, and a parent reading over a shoulder
+                  should not have to guess either. A tablet has the width.
+                */}
+                <Text
+                  numberOfLines={1}
+                  style={[
+                    isDesktop ? typography.presets.body : typography.presets.caption,
+                    isDesktop ? styles.label : styles.labelTablet,
+                    { color: tint },
+                  ]}
+                >
+                  {tab.label}
+                </Text>
               </Pressable>
             );
           })}
         </View>
       </View>
 
-      {/* Who is helping today */}
-      {activeMentor ? (
+      {/* Who is helping today — the compact rail only; the expanded panel names
+          the buddy in the child's card at the top. */}
+      {activeMentor && !(isDesktop && activeChild) ? (
         <View style={[styles.footer, !isDesktop && styles.footerTablet]}>
           <View
             accessible
@@ -159,27 +247,62 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ deviceType
         </View>
       ) : null}
     </View>
+    </View>
   );
 };
 
+/** Gap between the floating rail and the screen edges / content. */
+const RAIL_INSET = 12;
+
 const styles = StyleSheet.create({
-  container: {
+  column: {
     height: '100%',
-    backgroundColor: colors.surface,
-    borderRightWidth: 1,
-    borderRightColor: colors.border,
-    paddingVertical: spacing.xl,
-    justifyContent: 'space-between',
-    ...shadows.lg,
+    /* The wallpaper copy is window-sized; only the column's slice may show,
+       or it spills over the screen and washes the content out. */
+    overflow: 'hidden',
   },
-  desktopWidth: {
-    width: 240,
+  container: {
+    flex: 1,
+    marginLeft: RAIL_INSET,
+    overflow: 'hidden',
+    /* Rounded like the phone tab bar's top corners, all four here. */
+    borderRadius: radius.bottomNav,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255, 255, 255, 0.7)',
+    paddingVertical: spacing.lg,
+    justifyContent: 'space-between',
+  },
+  railCompact: {
+    paddingHorizontal: 4,
+    alignItems: 'center',
+  },
+  railExpanded: {
     paddingHorizontal: spacing.md,
   },
-  tabletWidth: {
-    width: 80,
-    paddingHorizontal: spacing.sm,
+  childCard: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: spacing.sm,
+    padding: spacing.sm,
+    marginBottom: spacing.lg,
+    borderRadius: radius.lg,
+    backgroundColor: colors.background,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  childText: {
+    flex: 1,
+    minWidth: 0,
+  },
+  childName: {
+    color: colors.text,
+  },
+  childSub: {
+    color: colors.textSecondary,
+  },
+  /* The phone tab bar's tint (`BottomNavigation`), laid over the scene. */
+  tint: {
+    backgroundColor: 'rgba(243, 240, 253, 0.62)',
   },
   top: {
     flex: 1,
@@ -222,9 +345,12 @@ const styles = StyleSheet.create({
     gap: spacing.md,
   },
   tabItemTablet: {
-    width: 56,
+    width: 80,
+    flexDirection: 'column',
     justifyContent: 'center',
     alignSelf: 'center',
+    gap: 2,
+    paddingVertical: spacing.sm,
   },
   tabItemFocused: {
     backgroundColor: colors.primaryLight,
@@ -246,6 +372,9 @@ const styles = StyleSheet.create({
   label: {
     flex: 1,
     minWidth: 0,
+  },
+  labelTablet: {
+    textAlign: 'center',
   },
 
   // ------------------------------------------------------------------- mentor

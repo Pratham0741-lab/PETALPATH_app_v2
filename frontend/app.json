@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "petalpath_app_v2",
+    "name": "PetalPath",
     "slug": "petalpath_app_v2",
     "owner": "pratham0741",
     "newArchEnabled": true,
@@ -19,13 +19,13 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#FFFFFF",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.anonymous.petalpath_app_v2",
+      "package": "in.co.petalpath.app",
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.RECORD_AUDIO",
@@ -83,10 +83,14 @@
     "web": {
       "favicon": "./assets/favicon.png"
     },
-    "runtimeVersion": "1.0.0",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "updates": {
       "url": "https://u.expo.dev/22bc5504-842c-4282-b770-b1f26f3d79f8",
-      "enabled": false
+      "enabled": true,
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0
     },
     "extra": {
       "eas": {

@@ -17,6 +17,7 @@ import { getApiUrl, IS_DEV } from '../config/api';
 import { useAppStore } from '../store/appStore';
 import { useChildStore } from '../store/childStore';
 import { ApiError } from './errors';
+import { refreshSession } from '../services/auth/sessionRefresh';
 
 const TIMEOUT_MS = 20_000;
 
@@ -69,7 +70,7 @@ class ApiClient {
 
       // Handle 401 — attempt token refresh
       if (response.status === 401 && !isRetry && state.refreshToken) {
-        const refreshed = await this.refreshToken(state.refreshToken);
+        const refreshed = await this.refreshToken();
         if (refreshed) {
           return this.request<T>(method, path, body, true);
         }
@@ -147,32 +148,9 @@ class ApiClient {
     }
   }
 
-  private async refreshToken(token: string): Promise<boolean> {
-    try {
-      const activeChild = useChildStore.getState().activeChild;
-      const response = await fetch(`${getApiUrl()}/auth/refresh`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          refreshToken: token,
-          childId: activeChild?.id || undefined,
-        }),
-      });
-
-      const json = await response.json();
-      if (response.ok && json.success) {
-        useAppStore.getState().setSession(json.data);
-        return true;
-      }
-    } catch (error) {
-      if (IS_DEV) {
-        console.warn('[API] Token refresh failed:', error);
-      }
-    }
-
-    // Refresh failed — log out
-    useAppStore.getState().clearSession();
-    return false;
+  /** Shared, single-flight refresh — see `services/auth/sessionRefresh`. */
+  private async refreshToken(): Promise<boolean> {
+    return (await refreshSession()) === 'refreshed';
   }
 
   async get<T = any>(path: string): Promise<T> {

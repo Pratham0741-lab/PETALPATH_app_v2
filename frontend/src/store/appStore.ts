@@ -205,18 +205,21 @@ export const useAppStore = create<AppState>((set) => ({
       if (token && refreshToken && user) {
         const { authService } = await import('../services/auth/authService');
         if (authService.isTokenExpired(token)) {
-          const refreshed = await authService.refreshSession();
-          if (!refreshed) {
-            const { useAppStore: appStore } = await import('./appStore');
-            await appStore.getState().clearSession();
-            return;
-          }
+          const outcome = await authService.refreshSession();
+          // Already cleared by the shared refresh.
+          if (outcome === 'rejected') return;
 
-          const { useAuthStore } = await import('./authStore');
-          const refreshedSession = useAuthStore.getState();
-          token = refreshedSession.token;
-          refreshToken = refreshedSession.refreshToken;
-          user = refreshedSession.user;
+          // 'unavailable' (offline / server down) keeps the stored session:
+          // logging a child out for having no signal loses nothing on the
+          // server and costs a parent a password. The first request that 401s
+          // retries the refresh.
+          if (outcome === 'refreshed') {
+            const { useAuthStore } = await import('./authStore');
+            const refreshedSession = useAuthStore.getState();
+            token = refreshedSession.token;
+            refreshToken = refreshedSession.refreshToken;
+            user = refreshedSession.user;
+          }
         }
       }
 

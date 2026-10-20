@@ -2,7 +2,9 @@ import React from 'react';
 import { View, StyleSheet, Image, useWindowDimensions } from 'react-native';
 import { useTheme } from '../../theme/ThemeContext';
 import { radius } from '../../theme/radius';
-import { SCREEN_BACKGROUNDS } from '../../assets/backgrounds';
+import { SCREEN_BACKGROUNDS, backgroundFor } from '../../assets/backgrounds';
+import { useDeviceType } from '../../hooks/useDeviceType';
+import { coverFrame } from '../../utils/coverFrame';
 
 interface AuthBackgroundProps {
   children: React.ReactNode;
@@ -12,22 +14,23 @@ interface AuthBackgroundProps {
  * The backdrop for every signed-out screen (sign in, register, password reset).
  *
  * Carries the garden-gate scene so the entry flow looks like the rest of the app
- * rather than a plain form on a flat colour. Sized and stretched exactly as
- * `AppShell` does its wallpapers — explicit pixel width/height, never
- * `absoluteFill`, so the image can't be stretched by whatever the parent happens
- * to measure — and drawn behind the children, which stay transparent on top.
+ * rather than a plain form on a flat colour. Drawn exactly as `AppShell` draws
+ * its wallpapers — covered and cropped, never distorted (`coverFrame`) — behind
+ * the children, which stay transparent on top.
  */
 export const AuthBackground: React.FC<AuthBackgroundProps> = ({ children }) => {
   const { theme } = useTheme();
   const { colors } = theme;
   const { width, height } = useWindowDimensions();
+  const isMobile = useDeviceType() === 'mobile';
+  const scene = backgroundFor(SCREEN_BACKGROUNDS.login, isMobile, width, height);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
       <Image
-        source={SCREEN_BACKGROUNDS.login}
+        source={scene}
         resizeMode="stretch"
-        style={{ position: 'absolute', top: 0, left: 0, width, height }}
+        style={coverFrame(scene, width, height)}
         accessible={false}
         importantForAccessibility="no-hide-descendants"
       />
@@ -39,6 +42,7 @@ export const AuthBackground: React.FC<AuthBackgroundProps> = ({ children }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    overflow: 'hidden',
   },
   decorativeElement: {
     position: 'absolute',

@@ -4,6 +4,7 @@ import {
   View,
   Text,
   ScrollView,
+  useWindowDimensions,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
@@ -142,6 +143,13 @@ export const LoginScreen: React.FC = () => {
   }, [setSession, setAppSession]);
 
   const isLoading = isSubmitting || googleLoading;
+  /*
+   * Landscape tablet: the welcome on the left, the form on the right. Stacked,
+   * logo + title + form + footer was taller than an 800dp-high screen, so the
+   * Sign Up and Forgot Password links sat below the fold of a mostly empty page.
+   */
+  const { width, height } = useWindowDimensions();
+  const wide = width >= 900 && width > height;
 
   return (
     <Screen keyboardAvoid>
@@ -155,11 +163,14 @@ export const LoginScreen: React.FC = () => {
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             style={styles.flex}
           >
-            <View style={styles.authCardWrapper}>
-              <AuthHeader
-                title="Welcome Back!"
-              />
+            <View style={[styles.authCardWrapper, wide && styles.authWide]}>
+              <View style={wide ? styles.wideHeader : null}>
+                <AuthHeader
+                  title="Welcome Back!"
+                />
+              </View>
 
+              <View style={wide ? styles.wideForm : null}>
               <View
                 style={[
                   styles.form,
@@ -260,6 +271,7 @@ export const LoginScreen: React.FC = () => {
                   },
                 ]}
               />
+              </View>
             </View>
           </KeyboardAvoidingView>
         </ScrollView>
@@ -315,6 +327,18 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 450,
     alignSelf: 'center',
+  },
+  authWide: {
+    maxWidth: 1000,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xxxl,
+  },
+  wideHeader: {
+    flex: 1,
+  },
+  wideForm: {
+    width: 450,
   },
 });
 

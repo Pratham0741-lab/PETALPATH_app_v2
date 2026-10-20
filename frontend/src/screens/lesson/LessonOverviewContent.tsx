@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { customAlert } from '../../utils/alert';
 import { useAppNavigation } from '../../hooks/useAppNavigation';
@@ -44,8 +44,8 @@ export type LessonOverviewVariant = 'mobile' | 'tablet' | 'desktop';
 /** Only the sidebar width differs between the two wide variants. */
 const SIDEBAR_WIDTH: Record<LessonOverviewVariant, number> = {
   mobile: 0,
-  tablet: 280,
-  desktop: 320,
+  tablet: 360, // 280 truncated "Mark Lesson Complete" and the mentor's name
+  desktop: 380,
 };
 
 /**
@@ -72,6 +72,8 @@ export const LessonOverviewContent: React.FC<{ variant?: LessonOverviewVariant }
   variant = 'mobile',
 }) => {
   const wide = variant !== 'mobile';
+  /* Measured so tiles get exact column widths (see `activityList`). */
+  const [gridWidth, setGridWidth] = useState(0);
   const { navigateToTab, navigation } = useAppNavigation();
 
   const activeChild = useChildStore((state) => state.activeChild);
@@ -226,21 +228,33 @@ export const LessonOverviewContent: React.FC<{ variant?: LessonOverviewVariant }
         message="This lesson's activities will appear here when they're ready."
       />
     ) : (
-      activities.map((act: any, index: number) => (
-        <ActivityCard
-          key={act.id}
-          // normalizeActivityType returns a strict subset of ActivityCardKind.
-          kind={normalizeActivityType(act.activityType)}
-          title={stripLessonName(act.title, selectedLesson.title)}
-          meta={
-            act.video?.duration ? `${Math.ceil(act.video.duration / 60)} mins` : '5 mins'
-          }
-          completed={isActivityCompleted(act)}
-          locked={!isActivityUnlocked(act, index)}
-          onPress={() => handleActivityPress(act)}
-          style={styles.activity}
-        />
-      ))
+      /*
+       * Phone: a list. Tablet: a grid of tiles, three or four across, in lesson
+       * order — the activities of a lesson are a handful of things to choose
+       * from, and as full-width rows on a tablet each was a thin strip with its
+       * name at one edge and its chevron at the other.
+       */
+      <View
+        style={wide ? styles.tileGrid : null}
+        onLayout={wide ? (e) => setGridWidth(e.nativeEvent.layout.width) : undefined}
+      >
+        {activities.map((act: any, index: number) => (
+          <ActivityCard
+            key={act.id}
+            // normalizeActivityType returns a strict subset of ActivityCardKind.
+            kind={normalizeActivityType(act.activityType)}
+            title={stripLessonName(act.title, selectedLesson.title)}
+            meta={
+              act.video?.duration ? `${Math.ceil(act.video.duration / 60)} mins` : '5 mins'
+            }
+            completed={isActivityCompleted(act)}
+            locked={!isActivityUnlocked(act, index)}
+            onPress={() => handleActivityPress(act)}
+            layout={wide ? 'tile' : 'row'}
+            style={wide ? tileStyle(gridWidth) : styles.activity}
+          />
+        ))}
+      </View>
     );
 
   const completeButton = (
@@ -303,7 +317,21 @@ export const LessonOverviewContent: React.FC<{ variant?: LessonOverviewVariant }
   );
 };
 
+const TILE_MIN = 220;
+const TILE_GAP = spacing.md;
+
+function tileStyle(gridWidth: number) {
+  if (gridWidth <= 0) return { width: TILE_MIN, marginBottom: 0 };
+  const cols = Math.max(1, Math.floor((gridWidth + TILE_GAP) / (TILE_MIN + TILE_GAP)));
+  return { width: (gridWidth - TILE_GAP * (cols - 1)) / cols, marginBottom: 0 };
+}
+
 const styles = StyleSheet.create({
+  tileGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: TILE_GAP,
+  },
   center: {
     flex: 1,
     alignItems: 'center',

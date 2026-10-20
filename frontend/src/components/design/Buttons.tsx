@@ -23,6 +23,7 @@ import {
   MIN_TOUCH_TARGET,
 } from '../../theme';
 import { PetalIcon, PetalIconName } from '../icons';
+import { useDeviceType } from '../../hooks/useDeviceType';
 
 /**
  * Buttons (spec §28).
@@ -170,9 +171,10 @@ export const PrimaryButton: React.FC<PrimaryButtonProps> = ({
   const s = buttonSizes[size];
   const t = TONES[tone];
   const { scale, onPressIn, onPressOut } = usePressScale(!inert);
+  const wide = useDeviceType() !== 'mobile';
 
   return (
-    <Animated.View style={[fullWidth && styles.fullWidth, { transform: [{ scale }] }, style]}>
+    <Animated.View style={[fullWidth && (wide ? styles.fullWidthWide : styles.fullWidth), { transform: [{ scale }] }, style]}>
       <Pressable
         onPress={inert ? undefined : onPress}
         onPressIn={onPressIn}
@@ -249,6 +251,7 @@ export const SecondaryButton: React.FC<SecondaryButtonProps> = ({
   const s = buttonSizes[size];
   const t = TONES[tone];
   const { scale, onPressIn, onPressOut } = usePressScale(!inert);
+  const wide = useDeviceType() !== 'mobile';
 
   /* An outlined button is white, so its label and border are ink, not fill —
      the same conflation that made the neutral back chevron invisible. */
@@ -259,7 +262,7 @@ export const SecondaryButton: React.FC<SecondaryButtonProps> = ({
   const edge = fill === 'soft' ? 'transparent' : t.ink;
 
   return (
-    <Animated.View style={[fullWidth && styles.fullWidth, { transform: [{ scale }] }, style]}>
+    <Animated.View style={[fullWidth && (wide ? styles.fullWidthWide : styles.fullWidth), { transform: [{ scale }] }, style]}>
       <Pressable
         onPress={inert ? undefined : onPress}
         onPressIn={onPressIn}
@@ -414,6 +417,18 @@ const styles = StyleSheet.create({
   },
   fullWidth: {
     alignSelf: 'stretch',
+  },
+  /*
+   * "Full width" on a tablet means as wide as a button should be, not the
+   * screen. A phone's edge-to-edge CTA is a thumb target; stretched across a
+   * landscape tablet it became a 1,500px bar that read as a banner and put the
+   * label a long reach from either hand. Inside a narrow card it still fills
+   * the card, since the card is narrower than the cap.
+   */
+  fullWidthWide: {
+    alignSelf: 'center',
+    width: '100%',
+    maxWidth: 480,
   },
 });
 
