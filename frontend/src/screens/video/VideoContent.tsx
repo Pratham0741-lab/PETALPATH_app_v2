@@ -399,13 +399,13 @@ const VideoComingSoonPane: React.FC<{
   video: any;
   navigation: any;
 }> = ({ headerTitle, video, navigation }) => {
-  const { completeVideo } = useVideoStore();
   const [isCompleting, setIsCompleting] = useState(false);
 
   const handleProceed = async () => {
     setIsCompleting(true);
     try {
-      await completeVideo();
+      // Nothing was watched, so nothing is recorded: a coming-soon video is
+      // neither done nor required for the lesson (the server skips it too).
       const actId = video?.activityId || 'video';
       const next = getNextActivity(actId);
       if (next) {

@@ -36,7 +36,7 @@
  */
 
 import { prisma } from '../../config/database.js';
-import { NotFoundError } from '../../utils/errors.js';
+import { NotFoundError, ValidationError } from '../../utils/errors.js';
 import { logger } from '../../utils/logger.js';
 import { ActivityType, CurriculumState } from '../../shared/enums.js';
 import { curriculumService } from '../curriculum/index.js';
@@ -56,6 +56,7 @@ import {
   computeLessonEvidence,
   expectedModalitiesOf,
   gatherModalitySignals,
+  requiredModalitiesOf,
   perModalitySamples,
   MODALITY_KEYS,
   type LessonEvidence,
@@ -144,6 +145,20 @@ export class LessonCompletionService {
         existingProgress,
         tx
       );
+
+      // Completion is earned, never requested: every activity the child can
+      // actually do must already be recorded as finished by its own endpoint
+      // (video watched, listen/speak/write passed). Coming-soon media is not
+      // required. Thrown before anything is written, so the transaction is a no-op.
+      const required = await requiredModalitiesOf(lessonId, expectedModalities, tx);
+      const unfinished = required.filter(
+        (m) => !signals.find((s) => s.modality === m)?.completed
+      );
+      if (unfinished.length > 0) {
+        throw new ValidationError('Finish all of the lesson activities first', {
+          unfinished,
+        });
+      }
 
       const previousHealth = await tx.skillHealth.findUnique({
         where: { childId_skillId: { childId, skillId: lessonId } },

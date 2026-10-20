@@ -135,11 +135,14 @@ export const CalibrationScreen: React.FC = () => {
             size="lg"
             onPress={handleNext}
           />
-          <SecondaryButton
-            label="Skip Setup"
-            onPress={handleSkip}
-            accessibilityHint="Saves what we have and returns to the activities"
-          />
+          {/* Dev tool: leaves calibration early. Not in production builds. */}
+          {process.env.EXPO_PUBLIC_ENABLE_DEV_TOOLS === 'true' ? (
+            <SecondaryButton
+              label="Skip Setup"
+              onPress={handleSkip}
+              accessibilityHint="Saves what we have and returns to the activities"
+            />
+          ) : null}
         </View>
       </View>
     </AppShell>

@@ -62,7 +62,15 @@ import SkillDetailScreen from '../screens/curriculum/SkillDetailScreen';
 import SubjectGardenScreen from '../screens/curriculum/SubjectGardenScreen';
 import BloomDetailScreen from '../screens/curriculum/BloomDetailScreen';
 import MyStoryScreen from '../screens/curriculum/MyStoryScreen';
-import CameraActivityScreen from '../features/camera/screens/CameraActivityScreen';
+/*
+ * Developer tool: the "Pose Activity Engine" diagnostics screen. Registered only
+ * when EXPO_PUBLIC_ENABLE_DEV_TOOLS=true; in a production build the condition is
+ * the constant `false`, so the screen and its import are removed at build time.
+ */
+const CameraActivityScreen: React.ComponentType<any> | null =
+  process.env.EXPO_PUBLIC_ENABLE_DEV_TOOLS === 'true'
+    ? require('../features/camera/screens/CameraActivityScreen').default
+    : null;
 import CameraActivityLesson from '../features/camera/curriculum/CameraActivityLesson';
 import CalibrationScreen from '../features/camera/calibration/CalibrationScreen';
 import { CameraExplorerScreen } from '../features/camera/screens/CameraExplorerScreen';
@@ -284,7 +292,7 @@ export const RootNavigator = () => {
         <Stack.Screen name="SubjectGarden" component={SubjectGardenScreen} />
         <Stack.Screen name="BloomDetail" component={BloomDetailScreen} />
         <Stack.Screen name="MyStory" component={MyStoryScreen} />
-        <Stack.Screen name="CameraActivity" component={CameraActivityScreen} />
+        {CameraActivityScreen ? <Stack.Screen name="CameraActivity" component={CameraActivityScreen} /> : null}
         <Stack.Screen name="CameraActivityLesson" component={CameraActivityLesson} />
         <Stack.Screen name="Calibration" component={CalibrationScreen} />
         <Stack.Screen name="Roadmap" component={HomeScreen} />
@@ -379,7 +387,7 @@ export const RootNavigator = () => {
           <Stack.Screen name="SubjectGarden" component={SubjectGardenScreen} />
           <Stack.Screen name="BloomDetail" component={BloomDetailScreen} />
           <Stack.Screen name="MyStory" component={MyStoryScreen} />
-          <Stack.Screen name="CameraActivity" component={CameraActivityScreen} />
+          {CameraActivityScreen ? <Stack.Screen name="CameraActivity" component={CameraActivityScreen} /> : null}
           <Stack.Screen name="CameraActivityLesson" component={CameraActivityLesson} />
           <Stack.Screen name="Calibration" component={CalibrationScreen} />
           <Stack.Screen name="Roadmap" component={HomeScreen} />

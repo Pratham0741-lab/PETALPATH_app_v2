@@ -400,6 +400,9 @@ export const useRoadmapStore = create<RoadmapState>((set, get) => ({
       await get().loadRoadmap();
     } catch (err) {
       if (typeof __DEV__ !== 'undefined' && __DEV__) console.warn('Failed to complete lesson on backend:', err);
+      // The server refuses a lesson whose activities are not finished; drop the
+      // optimistic tick so the roadmap shows what is really saved.
+      await get().loadRoadmap().catch(() => undefined);
     }
   },
 

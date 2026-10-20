@@ -21,6 +21,7 @@
 import { engineConfig } from '../../shared/config/engine.config.js';
 import { ActivityType } from '../../shared/enums.js';
 import { normalizeActivityType } from '../../shared/utils/activity-type-normalizer.js';
+import { COMING_SOON, servedMediaKey } from '../../shared/utils/media-paths.js';
 // Type-only, so it is erased at compile time and the pure half of this module
 // still runs under the DB-free harness.
 import type { Prisma } from '@prisma/client';
@@ -383,6 +384,41 @@ export function expectedModalitiesOf(
     }
   }
   return MODALITY_KEYS.filter((k) => found.has(k));
+}
+
+/**
+ * The modalities a child must actually finish before the lesson can complete.
+ *
+ * Every expected modality, minus the ones the child cannot do yet: a video or
+ * listen activity whose media is coming soon (or wired but not uploaded, see
+ * `PENDING_MEDIA`) is shown as a "coming soon" card, records nothing, and so is
+ * not required. Speak and write have no media and are always required.
+ */
+export async function requiredModalitiesOf(
+  lessonId: string,
+  expectedModalities: readonly ModalityKey[],
+  client: Prisma.TransactionClient
+): Promise<ModalityKey[]> {
+  const activities = await client.activity.findMany({
+    where: { lessonId, deletedAt: null },
+    select: {
+      activityType: true,
+      video: { select: { videoKey: true } },
+      audio: { select: { audioKey: true } },
+    },
+  });
+  const playable = (key: string | null | undefined) => {
+    const served = servedMediaKey(key);
+    return !!served && served.trim().toLowerCase() !== COMING_SOON && !served.includes(COMING_SOON);
+  };
+  const doable = new Set<ModalityKey>();
+  for (const a of activities) {
+    const m = normalizeActivityType(a.activityType);
+    if (m === 'video' && playable(a.video?.videoKey)) doable.add('video');
+    if (m === 'listen' && playable(a.audio?.audioKey)) doable.add('listen');
+    if (m === 'speak' || m === 'write') doable.add(m);
+  }
+  return expectedModalities.filter((m) => doable.has(m));
 }
 
 interface LessonProgressLike {

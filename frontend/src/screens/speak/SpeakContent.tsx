@@ -281,7 +281,7 @@ export const SpeakContent: React.FC<{ variant?: SpeakVariant }> = ({ variant = '
               friendlyMsg = 'Speech recognizer is busy. Please try again in a moment.';
             } else if (err.message.includes('network')) {
               friendlyMsg =
-                "Network connection issue. Please make sure your device/emulator has internet access, or use 'Skip / Demo Mode' if testing offline.";
+                'Network connection issue. Please check your internet connection and try again.';
             } else {
               friendlyMsg = err.message;
             }
@@ -462,10 +462,9 @@ export const SpeakContent: React.FC<{ variant?: SpeakVariant }> = ({ variant = '
         onPress={handleNextActivity}
       />
     </View>
-  ) : (
-    // Demo mode is a real escape hatch for offline testing, so it stays a real
-    // button rather than the underlined pseudo-link it used to be (§33) — but
-    // narrow and small, because skipping is not the path we want to advertise.
+  ) : process.env.EXPO_PUBLIC_ENABLE_DEV_TOOLS === 'true' ? (
+    // Dev tool (EXPO_PUBLIC_ENABLE_DEV_TOOLS): passes the activity without a
+    // recording, for offline testing. Not in production builds.
     <View style={styles.skipRow}>
       <SecondaryButton
         label="Skip / Demo Mode"
@@ -476,7 +475,7 @@ export const SpeakContent: React.FC<{ variant?: SpeakVariant }> = ({ variant = '
         accessibilityHint="Marks this activity complete without recording"
       />
     </View>
-  );
+  ) : null;
 
   const guide = cfg.guide ? (
     <NavigationGuide

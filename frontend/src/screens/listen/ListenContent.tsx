@@ -136,13 +136,12 @@ const ListenComingSoon: React.FC<{
   audio: any;
   navigation: any;
 }> = ({ audio, navigation }) => {
-  const { completeActivity } = useListenStore();
   const [isCompleting, setIsCompleting] = useState(false);
 
   const handleProceed = async () => {
     setIsCompleting(true);
     try {
-      await completeActivity();
+      // Coming-soon audio is not recorded as done (nothing was listened to).
       const next = getNextActivity(audio.activityId);
       if (next) {
         await navigateToActivity(navigation, next);
@@ -477,14 +476,17 @@ export const ListenContent: React.FC<{ variant?: ListenVariant }> = ({ variant =
               accessibilityHint="Checks the option you picked"
             />
           </View>
-          <View style={styles.actionNarrow}>
-            <SecondaryButton
-              label="Skip"
-              iconRight="forward"
-              onPress={handleNextActivity}
-              accessibilityHint="Moves on without answering"
-            />
-          </View>
+          {/* Dev tool: moves on without answering. Not in production builds. */}
+          {process.env.EXPO_PUBLIC_ENABLE_DEV_TOOLS === 'true' ? (
+            <View style={styles.actionNarrow}>
+              <SecondaryButton
+                label="Skip"
+                iconRight="forward"
+                onPress={handleNextActivity}
+                accessibilityHint="Moves on without answering"
+              />
+            </View>
+          ) : null}
         </View>
       ) : gotItRight ? (
         <View ref={actionBtnRef} collapsable={false}>

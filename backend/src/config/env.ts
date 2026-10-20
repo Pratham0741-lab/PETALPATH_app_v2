@@ -72,6 +72,13 @@ const envSchema = z.object({
   // can forge X-Forwarded-For and dodge per-IP rate limits. See app.ts.
   TRUST_PROXY: z.coerce.number().int().min(1).max(5).optional(),
 
+  // Developer/testing endpoints (force-complete a module, category or skill,
+  // unlock a skill). Off unless explicitly "true"; never set it in production.
+  ENABLE_DEV_TOOLS: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((v) => v === 'true'),
+
   // Jobs
   JOBS_CLEANUP_INTERVAL_MINUTES: z.coerce.number().default(60),
   NOTIFICATION_RETENTION_DAYS: z.coerce.number().default(30),

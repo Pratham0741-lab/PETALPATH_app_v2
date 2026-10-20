@@ -1,0 +1,61 @@
+name: prod-safety
+
+# Fails a PR if a production build would still ship developer/testing tools,
+# if the dev-only API routes are reachable with the flag off, if a lesson can
+# be completed without its activities.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  frontend-bundle:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - name: Production bundle has no dev tools
+        run: node scripts/check-prod-bundle.mjs
+      - name: Dev-tools bundle still has them (the check is not vacuous)
+        run: node scripts/check-prod-bundle.mjs --dev-tools
+
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: pratham
+          POSTGRES_DB: petalpath_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      NODE_OPTIONS: --experimental-vm-modules
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - run: npx prisma generate
+      - run: npx tsc --noEmit
+      - name: Dev routes off + completion gate
+        run: npx jest src/tests/integration/dev-tools.test.ts src/tests/integration/lesson-completion-gate.test.ts
+      - name: Full suite
+        run: npm test

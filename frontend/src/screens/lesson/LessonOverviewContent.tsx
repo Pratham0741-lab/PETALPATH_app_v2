@@ -257,14 +257,16 @@ export const LessonOverviewContent: React.FC<{ variant?: LessonOverviewVariant }
       </View>
     );
 
-  const completeButton = (
+  /* Dev tool: completes the lesson without its activities. Not in production
+     builds — and the server refuses it there anyway (lesson-completion.service). */
+  const completeButton = process.env.EXPO_PUBLIC_ENABLE_DEV_TOOLS === 'true' ? (
     <PrimaryButton
       label={isCompleted ? 'Re-complete Lesson' : 'Mark Lesson Complete'}
       icon={isCompleted ? 'replay' : 'check'}
       onPress={handleCompleteLesson}
       accessibilityHint="Marks every activity in this lesson as finished"
     />
-  );
+  ) : null;
 
   // ---- Mobile: one column, sticky CTA -------------------------------------
 
@@ -301,7 +303,7 @@ export const LessonOverviewContent: React.FC<{ variant?: LessonOverviewVariant }
                 ? 'Every activity in this lesson is finished.'
                 : `${doneCount} of ${activities.length} activities done.`}
             </Text>
-            <View style={styles.sidebarButton}>{completeButton}</View>
+            {completeButton ? <View style={styles.sidebarButton}>{completeButton}</View> : null}
           </Card>
 
           <Text style={[typography.presets.cardTitle, styles.sidebarTitle]}>Your mentor</Text>

@@ -56,7 +56,17 @@ import { useCameraPermissions } from '../hooks/useCameraPermissions';
 import { useCameraLifecycle } from '../hooks/useCameraLifecycle';
 import { useCameraEnginePipeline } from '../../../camera/hooks/useCameraEnginePipeline';
 import { NativeCameraView } from '../../../camera/NativeCameraView';
-import { DebugOverlay } from '../../../camera/DebugOverlay';
+/*
+ * Developer tools: present only when EXPO_PUBLIC_ENABLE_DEV_TOOLS=true (development
+ * and preview builds). Expo inlines the variable at build time, so in a production
+ * build this condition is the constant `false` and the minifier removes the gated
+ * code — it is not hidden, it is not there. Keep the check written inline: a value
+ * imported from another module is not folded. See scripts/check-prod-bundle.mjs.
+ */
+const DebugOverlay: React.FC<{ isVisible?: boolean }> | null =
+  process.env.EXPO_PUBLIC_ENABLE_DEV_TOOLS === 'true'
+    ? require('../../../camera/DebugOverlay').DebugOverlay
+    : null;
 import { useActivitySession } from '../session/useActivitySession';
 import { getDefaultCurriculumConfig, getActivityDefinition } from '../session/activityDefinitions';
 import { CameraPermissionState } from '../components/CameraPermissionState';
@@ -280,7 +290,7 @@ export const CameraActivityLesson: React.FC = () => {
             )}
 
             {/* Phase 3 diagnostics — the surface the camera bug was traced on. */}
-            <DebugOverlay isVisible={true} />
+            {DebugOverlay ? <DebugOverlay isVisible={true} /> : null}
           </>
         ) : (
           <CameraPermissionState
