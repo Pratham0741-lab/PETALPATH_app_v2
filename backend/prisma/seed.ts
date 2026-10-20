@@ -5,6 +5,7 @@ import path from 'path';
 import { curriculumLoader } from '../src/modules/curriculum/curriculum-loader.js';
 import { resolveVideoKey } from '../src/shared/utils/video-resolver.js';
 import { resolveAudioKey } from '../src/shared/utils/audio-resolver.js';
+import { audioPathFor, videoPathFor, type GradeId } from '../src/shared/utils/media-paths.js';
 
 const prisma = new PrismaClient();
 
@@ -301,7 +302,7 @@ async function main() {
           });
 
           if (act.type === 'video') {
-            const videoKey = resolveVideoKey(node);
+            const videoKey = videoPathFor(node.id, gradeKey as GradeId, resolveVideoKey(node));
             await prisma.video.create({
               data: {
                 activityId: activity.id,
@@ -316,7 +317,7 @@ async function main() {
               data: {
                 activityId: activity.id,
                 title: `${node.title} Listening Guide`,
-                audioKey: resolveAudioKey(node),
+                audioKey: audioPathFor(node.id, gradeKey as GradeId, resolveAudioKey(node)),
                 duration: act.estimated_minutes * 60,
               },
             });

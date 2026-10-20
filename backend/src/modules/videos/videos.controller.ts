@@ -3,6 +3,7 @@ import { videosService } from './videos.service.js';
 import { createVideoSchema, updateVideoSchema, CreateVideoInput, UpdateVideoInput } from './videos.validator.js';
 import { ValidationError } from '../../utils/errors.js';
 import { storageService } from '../../shared/services/storage.service.js';
+import { servedMediaKey } from '../../shared/utils/media-paths.js';
 import { Video } from '@prisma/client';
 import { logger } from '../../utils/logger.js';
 
@@ -13,7 +14,7 @@ const formatVideo = (video: Video | null) => {
     activityId: video.activityId,
     title: video.title,
     videoKey: video.videoKey,
-    filename: video.videoKey, // For frontend backward compatibility
+    filename: servedMediaKey(video.videoKey), // For frontend backward compatibility
     thumbnailKey: video.thumbnailKey,
     duration: video.duration,
     createdAt: video.createdAt,

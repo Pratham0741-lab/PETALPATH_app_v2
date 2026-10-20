@@ -3,6 +3,8 @@ import { Prisma } from '@prisma/client';
 import { curriculumService } from '../curriculum/curriculum.service.js';
 import { resolveVideoKey } from '../../shared/utils/video-resolver.js';
 import { resolveAudioKey } from '../../shared/utils/audio-resolver.js';
+import { audioPathFor, videoPathFor, type GradeId } from '../../shared/utils/media-paths.js';
+import { curriculumLoader } from '../curriculum/curriculum-loader.js';
 
 import { generateDynamicDragDropSpec } from '../../shared/utils/spec-generator.js';
 
@@ -156,7 +158,9 @@ export class ActivitiesService {
 
       // Dynamic Failsafe: Synthesize from static curriculum configuration if DB is not seeded
       const node = curriculumService.getLessonById(lessonId);
-      if (node && node.activities && node.activities.length > 0) {
+      // The lesson's own grade decides the media folder (see media-paths.ts).
+      const grade = curriculumLoader.getLessonIndex(lessonId)?.gradeId as GradeId | undefined;
+      if (node && grade && node.activities && node.activities.length > 0) {
         let activities = node.activities.map((act, index) => ({
           id: `${lessonId}_act_${index + 1}`,
           lessonId,
@@ -172,7 +176,7 @@ export class ActivitiesService {
             id: `v_${lessonId}`,
             activityId: `${lessonId}_act_${index + 1}`,
             title: `${node.title} Video Lesson`,
-            videoKey: resolveVideoKey(node),
+            videoKey: videoPathFor(node.id, grade, resolveVideoKey(node)),
             thumbnailKey: 'thumbnails/default.png',
             duration: act.estimated_minutes * 60,
           } : null,
@@ -180,7 +184,7 @@ export class ActivitiesService {
             id: `a_${lessonId}`,
             activityId: `${lessonId}_act_${index + 1}`,
             title: `${node.title} Listening Guide`,
-            audioKey: resolveAudioKey(node),
+            audioKey: audioPathFor(node.id, grade, resolveAudioKey(node)),
             duration: act.estimated_minutes * 60,
           } : null,
         }));

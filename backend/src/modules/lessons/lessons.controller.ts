@@ -6,6 +6,7 @@ import { prisma } from '../../config/database.js';
 import { UnauthorizedError, ValidationError, NotFoundError } from '../../utils/errors.js';
 import { logger } from '../../utils/logger.js';
 import { storageService } from '../../shared/services/storage.service.js';
+import { servedMediaKey } from '../../shared/utils/media-paths.js';
 
 const formatActivity = (activity: any) => {
   return {
@@ -15,14 +16,14 @@ const formatActivity = (activity: any) => {
           ...activity.video,
           videoUrl: storageService.getVideoUrl(activity.video.videoKey),
           thumbnailUrl: storageService.getPublicUrl(activity.video.thumbnailKey || null),
-          filename: activity.video.videoKey,
+          filename: servedMediaKey(activity.video.videoKey),
         }
       : null,
     audio: activity.audio
       ? {
           ...activity.audio,
           audioUrl: storageService.getAudioUrl(activity.audio.audioKey),
-          filename: activity.audio.audioKey,
+          filename: servedMediaKey(activity.audio.audioKey),
         }
       : null,
   };

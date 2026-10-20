@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { audioService } from './audio.service.js';
 import { storageService } from '../../shared/services/storage.service.js';
+import { servedMediaKey } from '../../shared/utils/media-paths.js';
 
 const formatAudio = (audio: any) => {
   if (!audio) return null;
@@ -9,7 +10,8 @@ const formatAudio = (audio: any) => {
     activityId: audio.activityId,
     title: audio.title,
     audioKey: audio.audioKey,
-    filename: audio.audioKey, // For frontend backward compatibility
+    // Not-yet-recorded audio reads as coming soon (see media-paths.ts).
+    filename: servedMediaKey(audio.audioKey), // For frontend backward compatibility
     duration: audio.duration,
     createdAt: audio.createdAt,
     updatedAt: audio.updatedAt,

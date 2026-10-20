@@ -1,5 +1,6 @@
 import { env } from '../../config/env.js';
 import { logger } from '../../utils/logger.js';
+import { isPendingMedia } from '../utils/media-paths.js';
 
 export class StorageService {
   private cdnBaseUrl: string;
@@ -36,6 +37,12 @@ export class StorageService {
 
     // Strip leading slashes
     cleaned = cleaned.replace(/^\/+/, '');
+
+    // Wired but not uploaded yet: no URL, so the app shows "coming soon"
+    // rather than a player pointed at a 404.
+    if (isPendingMedia(cleaned)) {
+      return null;
+    }
 
     return cleaned;
   }
