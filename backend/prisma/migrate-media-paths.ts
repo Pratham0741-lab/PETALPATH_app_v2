@@ -11,6 +11,11 @@
  * the manifest videos the resolvers never reached. Idempotent: re-running after
  * --apply changes nothing.
  *
+ * The target is derived from the lesson's curriculum node (what the resolvers
+ * say it plays), not from the stored value, so rows moved by an earlier run to
+ * a layout the bucket does not have are corrected too. Rows whose lesson is
+ * not in the curriculum fall back to mapping their stored value.
+ *
  * Touches only the `videos.filename` and `audios.filename` columns. Does not
  * touch S3.
  */
@@ -18,6 +23,9 @@ import { PrismaClient } from '@prisma/client';
 import { mkdirSync, readFileSync, writeFileSync } from 'fs';
 import path from 'path';
 import { GRADE_BY_CATEGORY_TITLE, audioPathFor, videoPathFor } from '../src/shared/utils/media-paths.js';
+import { curriculumLoader } from '../src/modules/curriculum/curriculum-loader.js';
+import { resolveVideoKey } from '../src/shared/utils/video-resolver.js';
+import { resolveAudioKey } from '../src/shared/utils/audio-resolver.js';
 
 const prisma = new PrismaClient();
 const args = process.argv.slice(2);
@@ -46,9 +54,11 @@ async function plan(): Promise<{ changes: Change[]; unchanged: number; errors: s
       errors.push(`${table} ${id} (lesson ${lessonId}): unknown grade "${lesson?.module?.category?.title}"`);
       return;
     }
+    const node = curriculumLoader.getLessons(grade).find((n) => n.id === lessonId);
+    const legacy = node ? (table === 'videos' ? resolveVideoKey(node) : resolveAudioKey(node)) : current;
     let to: string;
     try {
-      to = table === 'videos' ? videoPathFor(lessonId, grade, current) : audioPathFor(lessonId, grade, current);
+      to = table === 'videos' ? videoPathFor(lessonId, grade, legacy) : audioPathFor(lessonId, grade, legacy);
     } catch (e) {
       errors.push(`${table} ${id} (lesson ${lessonId}): ${(e as Error).message}`);
       return;

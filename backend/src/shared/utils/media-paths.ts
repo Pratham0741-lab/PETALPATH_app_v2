@@ -1,11 +1,17 @@
 /**
  * The one place that decides the S3 key of a lesson's video and audio.
  *
- * Bucket layout (petalpath-assets-prod), case-sensitive:
- *   videos/<GRADE>/<file>      audio/<GRADE>/<file>
- *   GRADE = PRE_NURSERY | NURSERY | LKG | UKG
- * Only NURSERY keeps subfolders (alphabet, numbers, shapes, …); every other
- * grade is flat. File names never change.
+ * Bucket layout (petalpath-assets-prod), case-sensitive, AS IT REALLY IS —
+ * verified against CloudFront on 2026-10-21 (scripts/check-media.ts):
+ *   videos/<GRADE>/<file>             grade-specific videos
+ *   videos/NURSERY/<sub>/<file>       shared clips (alphabet, numbers, shapes,
+ *                                     lines_and_curves). Stored ONCE, under
+ *                                     NURSERY, and played by Pre-Nursery too.
+ *   audio/<sub>/<file>                shared audio has NOT been moved to grade
+ *                                     folders; it is still in the old layout.
+ * The manifest describes a fuller per-grade reorganisation that was never
+ * carried out in the bucket; these rules follow the bucket, not the manifest.
+ * File names never change.
  *
  * `video-resolver.ts` / `audio-resolver.ts` still decide *which* file a lesson
  * plays, unchanged, and return it in the old shared layout
@@ -43,11 +49,11 @@ const OLD_GRADE_PREFIX: Record<string, GradeId> = {
 const NEW_FOLDERS = new Set(Object.values(GRADE_FOLDER));
 
 /**
- * Old key → new key for a lesson in `grade`.
+ * Old key → bucket key for a lesson in `grade`.
  *
- *   prenursery/videos/<f>          → videos/PRE_NURSERY/<f>   (likewise lkg, ukg, nursery; audio too)
- *   videos/<sub>/<f>, Pre-Nursery  → videos/PRE_NURSERY/<f>   (subfolder dropped)
- *   videos/<sub>/<f>, Nursery      → videos/NURSERY/<sub>/<f> (subfolder kept)
+ *   prenursery/videos/<f>  → videos/PRE_NURSERY/<f>   (likewise lkg, ukg, nursery; audio too)
+ *   videos/<sub>/<f>       → videos/NURSERY/<sub>/<f> (every grade: the shared clip lives there)
+ *   audio/<sub>/<f>        → audio/<sub>/<f>          (unchanged: shared audio was never moved)
  *
  * Idempotent: a key already in the new layout is returned unchanged, so the
  * database migration can be re-run safely. Throws on a shape it does not know
@@ -72,7 +78,7 @@ export function toGradedKey(oldKey: string, grade: GradeId, kind: MediaKind): st
 
   // <root>/<sub>/<f> — the old shared folders
   if (parts.length === 3 && parts[0] === root) {
-    return grade === 'nursery' ? `${root}/${folder}/${parts[1]}/${file}` : `${root}/${folder}/${file}`;
+    return kind === 'video' ? `videos/${GRADE_FOLDER.nursery}/${parts[1]}/${file}` : key;
   }
 
   throw new Error(`media-paths: unrecognised ${kind} key "${oldKey}"`);
@@ -155,9 +161,28 @@ export function audioPathFor(lessonId: string, grade: GradeId, legacyKey: string
  * shows as a friendly "Audio coming soon" card instead of a broken player.
  * Remove a key here the day its file is uploaded.
  */
-export const PENDING_MEDIA: ReadonlySet<string> = new Set(
-  'abcdefghijklmnopqrstuvwxyz'.split('').map((l) => nurseryCapitalListenAudio(`n_cap_${l}`)!),
-);
+/**
+ * Wired videos whose files are not in the bucket (checked 2026-10-21): the
+ * Pre-Nursery letter clips, the body-part clips, and two LKG phonics clips.
+ * Listed by the exact key they will have once uploaded.
+ */
+const MISSING_VIDEOS = [
+  ...[
+    'a_apple', 'b_ball', 'c_cat', 'd_dog', 'e_egg', 'f_fish', 'g_grapes', 'h_house', 'i_icecream',
+    'j_jar', 'k_kite', 'l_lion', 'm_mango', 'n_nest', 'o_owl', 'p_parrot', 'q_queen', 'r_rabbit',
+    's_sun', 't_tiger', 'u_umbrella', 'v_van', 'w_watch', 'x_xylophone', 'y_yak', 'z_zebra',
+  ].map((w, i) => `videos/NURSERY/alphabet/alphabet_${String(i + 1).padStart(3, '0')}_${w}.mp4`),
+  ...['english_004_head', 'english_005_eyes', 'english_006_nose', 'english_007_ears',
+    'english_008_mouth', 'english_009_hands', 'english_010_legs', 'english_011_feet',
+  ].map((f) => `videos/PRE_NURSERY/${f}.mp4`),
+  'videos/LKG/english_003_letter_sounds_introduction.mp4',
+  'videos/LKG/english_005_short_a_blend_at.mp4',
+];
+
+export const PENDING_MEDIA: ReadonlySet<string> = new Set([
+  ...'abcdefghijklmnopqrstuvwxyz'.split('').map((l) => nurseryCapitalListenAudio(`n_cap_${l}`)!),
+  ...MISSING_VIDEOS,
+]);
 
 export function isPendingMedia(key: string | null | undefined): boolean {
   return !!key && PENDING_MEDIA.has(key.trim().replace(/^\/+/, ''));

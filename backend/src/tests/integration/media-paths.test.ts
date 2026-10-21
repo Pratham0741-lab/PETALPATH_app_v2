@@ -1,7 +1,9 @@
 /**
- * Every lesson's video/audio key must sit in the per-grade S3 layout:
- *   videos/<GRADE>/<file>, audio/<GRADE>/<file>, GRADE = PRE_NURSERY|NURSERY|LKG|UKG
- * with subfolders only under NURSERY, and Nursery capitals on their own media.
+ * Every lesson's video/audio key must match the bucket as it really is (see
+ * media-paths.ts): videos under videos/<GRADE>/ with shared clips once under
+ * videos/NURSERY/<sub>/, shared audio still in its old audio/<sub>/ folders,
+ * and Nursery capitals on their own media. scripts/check-media.ts verifies the
+ * same keys against CloudFront.
  *
  * Pure: reads the curriculum and the path functions, no database.
  */
@@ -43,16 +45,23 @@ describe('media paths', () => {
   });
 
   it.each(wired.map((w) => [w.kind, w.id, w.key, w.grade, w.root] as const))(
-    '%s %s → %s is under its own grade folder, exact case',
-    (_kind, _id, key, grade, root) => {
-      // Exact case: `pre_nursery`, `Nursery`, `prenursery` all fail.
-      expect(key.startsWith(`${root}/${GRADE_FOLDER[grade]}/`)).toBe(true);
-      expect(key).toMatch(/^(videos|audio)\/(PRE_NURSERY|NURSERY|LKG|UKG)\/[^/]/);
+    '%s %s → %s is in a real bucket folder, exact case',
+    (kind, _id, key, grade, root) => {
+      if (kind === 'video') {
+        // Its own grade folder, or a shared clip under NURSERY/<sub>/.
+        const own = key.startsWith(`${root}/${GRADE_FOLDER[grade]}/`);
+        const shared = /^videos\/NURSERY\/[a-z_]+\/[^/]+$/.test(key);
+        expect(own || shared).toBe(true);
+        expect(key).toMatch(/^videos\/(PRE_NURSERY|NURSERY|LKG|UKG)\/[^/]/);
+      } else {
+        // Per-grade, or the old shared audio folders (never moved).
+        expect(key).toMatch(/^audio\/((PRE_NURSERY|NURSERY|LKG|UKG)\/|[a-z_]+\/[^/]+$)/);
+      }
     },
   );
 
   it('has no subfolders outside NURSERY', () => {
-    const bad = wired.filter((w) => w.grade !== 'nursery' && w.key.split('/').length !== 3);
+    const bad = wired.filter((w) => w.kind === 'video' && !w.key.startsWith('videos/NURSERY/') && w.key.split('/').length !== 3);
     expect(bad.map((b) => b.key)).toEqual([]);
   });
 
@@ -76,8 +85,9 @@ describe('media paths', () => {
     expect(toGradedKey('prenursery/audio/english_004_head_listen.mp3', 'prenursery', 'audio')).toBe(
       'audio/PRE_NURSERY/english_004_head_listen.mp3',
     );
+    // Shared clips live once, under NURSERY, for every grade.
     expect(toGradedKey('videos/alphabet/alphabet_001_a_apple.mp4', 'prenursery', 'video')).toBe(
-      'videos/PRE_NURSERY/alphabet_001_a_apple.mp4',
+      'videos/NURSERY/alphabet/alphabet_001_a_apple.mp4',
     );
     expect(toGradedKey('videos/numbers/numbers_001_one.mp4', 'nursery', 'video')).toBe(
       'videos/NURSERY/numbers/numbers_001_one.mp4',
@@ -85,8 +95,9 @@ describe('media paths', () => {
     expect(toGradedKey('lkg/videos/english_001_capital_a_z_revision.mp4', 'lkg', 'video')).toBe(
       'videos/LKG/english_001_capital_a_z_revision.mp4',
     );
+    // Shared audio was never moved: the old key is the bucket key.
     expect(toGradedKey('audio/alphabet_audio/alphabet_001_a.mp3', 'nursery', 'audio')).toBe(
-      'audio/NURSERY/alphabet_audio/alphabet_001_a.mp3',
+      'audio/alphabet_audio/alphabet_001_a.mp3',
     );
     expect(videoPathFor('n_cap_a', 'nursery', 'videos/alphabet/alphabet_001_a_apple.mp4')).toBe(
       'videos/NURSERY/alphabet/english_001_letter_a.mp4',
@@ -105,8 +116,10 @@ describe('media paths', () => {
     expect(isPendingMedia(pending)).toBe(true);
     expect(servedMediaKey(pending)).toBe(COMING_SOON);
     expect(storageService.getAudioUrl(pending)).toBeNull();
-    const live = 'audio/NURSERY/numbers/numbers_001_one.mp3';
+    const live = 'audio/numbers/numbers_001_one.mp3';
     expect(servedMediaKey(live)).toBe(live);
-    expect(storageService.getAudioUrl(live)).toMatch(/\/audio\/NURSERY\/numbers\/numbers_001_one\.mp3$/);
+    expect(storageService.getAudioUrl(live)).toMatch(/\/audio\/numbers\/numbers_001_one\.mp3$/);
+    // Videos missing from the bucket are coming soon too.
+    expect(servedMediaKey('videos/PRE_NURSERY/english_004_head.mp4')).toBe(COMING_SOON);
   });
 });

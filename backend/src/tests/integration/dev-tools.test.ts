@@ -1,5 +1,4 @@
 import supertest from 'supertest';
-import { createAuthenticatedContext } from '../helpers/auth.js';
 
 /**
  * With ENABLE_DEV_TOOLS off (the production default) the force-complete and
@@ -7,7 +6,10 @@ import { createAuthenticatedContext } from '../helpers/auth.js';
  * so the app is imported dynamically after the flag is set.
  */
 process.env.ENABLE_DEV_TOOLS = 'false';
+// Everything that reaches config/env.ts is imported after the assignment: a
+// static import is hoisted above it and would load the config with the flag on.
 await import('../helpers/setup.js');
+const { createAuthenticatedContext } = await import('../helpers/auth.js');
 const { default: app } = await import('../../app.js');
 const request = supertest(app);
 
