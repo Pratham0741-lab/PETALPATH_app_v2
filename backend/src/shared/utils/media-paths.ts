@@ -123,6 +123,7 @@ export function nurseryCapitalListenAudio(lessonId: string): string | null {
  */
 const ADDED_VIDEOS: Record<string, string> = {
   pn_oral_greetings_hello_bye: 'videos/PRE_NURSERY/english_002_hello_bye.mp4',
+  pn_myself: 'videos/PRE_NURSERY/evs_001_all_about_me.mp4',
   pn_head: 'videos/PRE_NURSERY/english_004_head.mp4',
   pn_eyes: 'videos/PRE_NURSERY/english_005_eyes.mp4',
   pn_nose: 'videos/PRE_NURSERY/english_006_nose.mp4',
