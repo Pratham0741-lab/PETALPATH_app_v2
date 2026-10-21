@@ -291,7 +291,7 @@ const VideoPlayerPane: React.FC<{
       await useRoadmapStore.getState().completeLesson(selectedLesson.id);
       navigation.navigate('LessonComplete');
     } else {
-      navigation.navigate('MainTabs', { screen: 'Journey' });
+      navigation.navigate('MainTabs', { screen: 'Home' });
     }
   };
 
@@ -417,7 +417,7 @@ const VideoComingSoonPane: React.FC<{
         await useRoadmapStore.getState().completeLesson(selectedLesson.id);
         navigation.navigate('LessonComplete');
       } else {
-        navigation.navigate('MainTabs', { screen: 'Journey' });
+        navigation.navigate('MainTabs', { screen: 'Home' });
       }
     } catch (err) {
       if (__DEV__) console.warn('Failed to complete and proceed:', err);

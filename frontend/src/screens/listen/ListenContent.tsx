@@ -315,7 +315,7 @@ export const ListenContent: React.FC<{ variant?: ListenVariant }> = ({ variant =
       await useRoadmapStore.getState().completeLesson(selectedLesson.id);
       navigation.navigate('LessonComplete');
     } else {
-      navigation.navigate('MainTabs', { screen: 'Journey' });
+      navigation.navigate('MainTabs', { screen: 'Home' });
     }
   };
 

@@ -133,6 +133,9 @@ export const LessonOverviewContent: React.FC<{ variant?: LessonOverviewVariant }
     await navigateToActivity(navigation, act);
   };
 
+  // A finished lesson lands on Home, like the real lesson-complete flow.
+  const goHome = useCallback(() => navigateToTab('Home'), [navigateToTab]);
+
   const goToJourney = useCallback(() => {
     // `navigateToTab` already handles the mobile-tabs vs wide-stack difference,
     // which is what the two old variant files were branching on by hand.
@@ -154,7 +157,7 @@ export const LessonOverviewContent: React.FC<{ variant?: LessonOverviewVariant }
       customAlert(
         'Lesson Completed!',
         `Congratulations, you completed "${selectedLesson.title}"!`,
-        [{ text: 'OK', onPress: goToJourney }],
+        [{ text: 'OK', onPress: goHome }],
       );
     } catch (err: any) {
       customAlert(
