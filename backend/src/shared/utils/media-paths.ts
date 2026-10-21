@@ -3,10 +3,11 @@
  *
  * Bucket layout (petalpath-assets-prod), case-sensitive, AS IT REALLY IS —
  * verified against CloudFront on 2026-10-21 (scripts/check-media.ts):
- *   videos/<GRADE>/<file>             grade-specific videos
- *   videos/NURSERY/<sub>/<file>       shared clips (alphabet, numbers, shapes,
- *                                     lines_and_curves). Stored ONCE, under
- *                                     NURSERY, and played by Pre-Nursery too.
+ *   videos/<GRADE>/<file>             grade-specific videos; Pre-Nursery's
+ *                                     copies of the shared clips are here,
+ *                                     flat (moved in 2026-10-21)
+ *   videos/NURSERY/<sub>/<file>       Nursery's shared clips (alphabet,
+ *                                     numbers, shapes, lines_and_curves)
  *   audio/<sub>/<file>                shared audio has NOT been moved to grade
  *                                     folders; it is still in the old layout.
  * The manifest describes a fuller per-grade reorganisation that was never
@@ -52,7 +53,8 @@ const NEW_FOLDERS = new Set(Object.values(GRADE_FOLDER));
  * Old key → bucket key for a lesson in `grade`.
  *
  *   prenursery/videos/<f>  → videos/PRE_NURSERY/<f>   (likewise lkg, ukg, nursery; audio too)
- *   videos/<sub>/<f>       → videos/NURSERY/<sub>/<f> (every grade: the shared clip lives there)
+ *   videos/<sub>/<f>, Nursery  → videos/NURSERY/<sub>/<f> (subfolder kept)
+ *   videos/<sub>/<f>, other    → videos/<GRADE>/<f>       (flat)
  *   audio/<sub>/<f>        → audio/<sub>/<f>          (unchanged: shared audio was never moved)
  *
  * Idempotent: a key already in the new layout is returned unchanged, so the
@@ -78,7 +80,8 @@ export function toGradedKey(oldKey: string, grade: GradeId, kind: MediaKind): st
 
   // <root>/<sub>/<f> — the old shared folders
   if (parts.length === 3 && parts[0] === root) {
-    return kind === 'video' ? `videos/${GRADE_FOLDER.nursery}/${parts[1]}/${file}` : key;
+    if (kind === 'audio') return key;
+    return grade === 'nursery' ? `${root}/${folder}/${parts[1]}/${file}` : `${root}/${folder}/${file}`;
   }
 
   throw new Error(`media-paths: unrecognised ${kind} key "${oldKey}"`);
@@ -171,7 +174,7 @@ const MISSING_VIDEOS = [
     'a_apple', 'b_ball', 'c_cat', 'd_dog', 'e_egg', 'f_fish', 'g_grapes', 'h_house', 'i_icecream',
     'j_jar', 'k_kite', 'l_lion', 'm_mango', 'n_nest', 'o_owl', 'p_parrot', 'q_queen', 'r_rabbit',
     's_sun', 't_tiger', 'u_umbrella', 'v_van', 'w_watch', 'x_xylophone', 'y_yak', 'z_zebra',
-  ].map((w, i) => `videos/NURSERY/alphabet/alphabet_${String(i + 1).padStart(3, '0')}_${w}.mp4`),
+  ].map((w, i) => `videos/PRE_NURSERY/alphabet_${String(i + 1).padStart(3, '0')}_${w}.mp4`),
   ...['english_004_head', 'english_005_eyes', 'english_006_nose', 'english_007_ears',
     'english_008_mouth', 'english_009_hands', 'english_010_legs', 'english_011_feet',
   ].map((f) => `videos/PRE_NURSERY/${f}.mp4`),

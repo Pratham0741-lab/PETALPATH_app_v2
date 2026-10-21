@@ -1,7 +1,7 @@
 /**
  * Every lesson's video/audio key must match the bucket as it really is (see
- * media-paths.ts): videos under videos/<GRADE>/ with shared clips once under
- * videos/NURSERY/<sub>/, shared audio still in its old audio/<sub>/ folders,
+ * media-paths.ts): videos under their own videos/<GRADE>/ (Nursery keeps
+ * subfolders), shared audio still in its old audio/<sub>/ folders,
  * and Nursery capitals on their own media. scripts/check-media.ts verifies the
  * same keys against CloudFront.
  *
@@ -48,10 +48,8 @@ describe('media paths', () => {
     '%s %s → %s is in a real bucket folder, exact case',
     (kind, _id, key, grade, root) => {
       if (kind === 'video') {
-        // Its own grade folder, or a shared clip under NURSERY/<sub>/.
-        const own = key.startsWith(`${root}/${GRADE_FOLDER[grade]}/`);
-        const shared = /^videos\/NURSERY\/[a-z_]+\/[^/]+$/.test(key);
-        expect(own || shared).toBe(true);
+        // Always its own grade folder.
+        expect(key.startsWith(`${root}/${GRADE_FOLDER[grade]}/`)).toBe(true);
         expect(key).toMatch(/^videos\/(PRE_NURSERY|NURSERY|LKG|UKG)\/[^/]/);
       } else {
         // Per-grade, or the old shared audio folders (never moved).
@@ -61,7 +59,7 @@ describe('media paths', () => {
   );
 
   it('has no subfolders outside NURSERY', () => {
-    const bad = wired.filter((w) => w.kind === 'video' && !w.key.startsWith('videos/NURSERY/') && w.key.split('/').length !== 3);
+    const bad = wired.filter((w) => w.kind === 'video' && w.grade !== 'nursery' && w.key.split('/').length !== 3);
     expect(bad.map((b) => b.key)).toEqual([]);
   });
 
@@ -85,9 +83,9 @@ describe('media paths', () => {
     expect(toGradedKey('prenursery/audio/english_004_head_listen.mp3', 'prenursery', 'audio')).toBe(
       'audio/PRE_NURSERY/english_004_head_listen.mp3',
     );
-    // Shared clips live once, under NURSERY, for every grade.
+    // Shared clips: Pre-Nursery has its own flat copies, Nursery keeps subfolders.
     expect(toGradedKey('videos/alphabet/alphabet_001_a_apple.mp4', 'prenursery', 'video')).toBe(
-      'videos/NURSERY/alphabet/alphabet_001_a_apple.mp4',
+      'videos/PRE_NURSERY/alphabet_001_a_apple.mp4',
     );
     expect(toGradedKey('videos/numbers/numbers_001_one.mp4', 'nursery', 'video')).toBe(
       'videos/NURSERY/numbers/numbers_001_one.mp4',

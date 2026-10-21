@@ -9,6 +9,11 @@
  * be removed from PENDING_MEDIA in src/shared/utils/media-paths.ts.
  *
  * Read-only: HEAD requests to the CDN. Does not touch S3 or the database.
+ *
+ * CloudFront caches answers (query strings are not part of the cache key), so
+ * for a while after a file is moved or deleted in S3 an edge can still report
+ * it as present. After moving files, wait for the cache to expire or create a
+ * CloudFront invalidation for the moved paths before trusting a clean result.
  */
 import { curriculumLoader } from '../src/modules/curriculum/curriculum-loader.js';
 import { resolveVideoKey } from '../src/shared/utils/video-resolver.js';
