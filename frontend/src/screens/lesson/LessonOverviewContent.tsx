@@ -79,7 +79,7 @@ export const LessonOverviewContent: React.FC<{ variant?: LessonOverviewVariant }
   const activeChild = useChildStore((state) => state.activeChild);
   const activeMentor = enhanceMentor(activeChild?.mentor) || enhanceMentor(MENTORS[0])!;
 
-  const { selectedLesson, activities, loading, error, completeLesson, completedLessons } =
+  const { selectedLesson, activities, loading, error, completedLessons } =
     useRoadmapStore();
 
   React.useEffect(() => {
@@ -139,13 +139,28 @@ export const LessonOverviewContent: React.FC<{ variant?: LessonOverviewVariant }
     navigateToTab('Journey');
   }, [navigateToTab]);
 
-  const handleCompleteLesson = () => {
-    if (selectedLesson) {
-      completeLesson(selectedLesson.id);
+  /**
+   * Dev tool ("Mark Lesson Complete"). The learner endpoint refuses a lesson
+   * whose activities are unfinished, so this uses the dev-only force-complete
+   * endpoint (server needs ENABLE_DEV_TOOLS=true). The inline flag check makes
+   * the whole body dead code in production builds.
+   */
+  const handleCompleteLesson = async () => {
+    if (process.env.EXPO_PUBLIC_ENABLE_DEV_TOOLS !== 'true') return;
+    if (!selectedLesson) return;
+    try {
+      await api.post('/progress/dev/complete-lesson', { lessonId: selectedLesson.id });
+      await useRoadmapStore.getState().loadRoadmap();
       customAlert(
         'Lesson Completed!',
         `Congratulations, you completed "${selectedLesson.title}"!`,
         [{ text: 'OK', onPress: goToJourney }],
+      );
+    } catch (err: any) {
+      customAlert(
+        'Could not complete',
+        `${err?.message ?? 'Request failed'}. Is ENABLE_DEV_TOOLS=true set on the backend?`,
+        [{ text: 'OK' }],
       );
     }
   };

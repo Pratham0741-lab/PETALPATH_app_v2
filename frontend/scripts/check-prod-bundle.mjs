@@ -33,7 +33,7 @@ const MARKERS = [
 ];
 
 /** Dev-only server routes: no production code may call them. */
-const ROUTES = ['/progress/module/complete', '/progress/category/complete', '/curriculum/complete', '/unlock/'];
+const ROUTES = ['/progress/dev/', '/progress/module/complete', '/progress/category/complete', '/curriculum/complete', '/unlock/'];
 
 const out = mkdtempSync(path.join(tmpdir(), 'pp-bundle-'));
 const env = {

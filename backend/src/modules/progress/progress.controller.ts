@@ -347,6 +347,30 @@ export class ProgressController {
     }
   }
 
+  /**
+   * Dev tool: completes a lesson without its activities (the "Mark Lesson
+   * Complete" button in dev/preview builds). Only routed when
+   * ENABLE_DEV_TOOLS=true; the learner path, `completeLesson`, never does this.
+   */
+  async devCompleteLesson(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      const childId = req.user?.childId;
+      if (!childId) {
+        throw new UnauthorizedError('Active child profile is not selected');
+      }
+
+      const parsed = lessonIdBodySchema.safeParse(req.body);
+      if (!parsed.success) {
+        throw new ValidationError('Validation failed', parsed.error.format());
+      }
+
+      const progress = await progressService.forceCompleteLesson(childId, parsed.data.lessonId);
+      return res.status(200).json({ success: true, data: progress });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   async completeModule(req: AuthenticatedRequest, res: Response, next: NextFunction) {
     try {
       const childId = req.user?.childId;

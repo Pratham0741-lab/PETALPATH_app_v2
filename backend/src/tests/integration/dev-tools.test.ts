@@ -21,6 +21,7 @@ beforeEach(async () => {
 });
 
 const DEV_ROUTES = [
+  () => '/api/progress/dev/complete-lesson',
   () => '/api/progress/module/complete',
   () => '/api/progress/category/complete',
   () => '/api/curriculum/complete',
