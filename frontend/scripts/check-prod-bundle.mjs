@@ -30,6 +30,7 @@ const MARKERS = [
   ['Camera engine DebugOverlay', 'Show camera engine metrics'],
   ['CameraActivity diagnostics screen', 'Live preview with engine diagnostics'],
   ['Pose debug view', 'POSE_DEBUG_VIEW'],
+  ['Usage limit 1-minute debug', 'USAGE_DEBUG_ONE_MINUTE'],
 ];
 
 /** Dev-only server routes: no production code may call them. */

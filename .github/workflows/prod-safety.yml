@@ -26,6 +26,8 @@ jobs:
       - run: npx tsc --noEmit
       - name: Pose detection tests
         run: npm run test:pose
+      - name: Baseline and usage-limit unit tests
+        run: npm run test:unit
       - name: Production bundle has no dev tools
         run: node scripts/check-prod-bundle.mjs
       - name: Dev-tools bundle still has them (the check is not vacuous)

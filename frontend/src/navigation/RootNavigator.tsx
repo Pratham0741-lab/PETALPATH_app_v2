@@ -98,6 +98,7 @@ import { SidebarNavigation } from '../components/navigation/SidebarNavigation';
 import { useSidebarWidth } from '../components/navigation/sidebarLayout';
 import { BaselineFlow } from '../screens/baseline/BaselineFlow';
 import { useNetworkStatus } from '../hooks/useNetworkStatus';
+import { UsageLimitController } from '../features/usageLimit/UsageLimitController';
 import { ParentConsentScreen } from '../screens/baseline/ParentConsentScreen';
 import { useBaselineStore, BASELINE_ACTIVE } from '../features/baseline/baselineStore';
 
@@ -256,7 +257,8 @@ export const RootNavigator = () => {
 
   if (deviceType === 'mobile') {
     return (
-      <Stack.Navigator key="main" screenOptions={{ headerShown: false, freezeOnBlur: true, animation: 'slide_from_right' }}>
+      <View key="main" style={styles.fill}>
+      <Stack.Navigator screenOptions={{ headerShown: false, freezeOnBlur: true, animation: 'slide_from_right' }}>
         <Stack.Screen name="MainTabs" component={MobileTabs} />
         <Stack.Screen name="LessonOverview" component={LessonOverviewScreen} />
         <Stack.Screen name="Lesson" component={LessonScreen} />
@@ -326,6 +328,9 @@ export const RootNavigator = () => {
         <Stack.Screen name="Calibration" component={CalibrationScreen} />
         <Stack.Screen name="Roadmap" component={HomeScreen} />
       </Stack.Navigator>
+      {/* Daily learning-time limit: warning and lock, above every screen. */}
+      <UsageLimitController />
+      </View>
     );
   }
 
@@ -426,11 +431,16 @@ export const RootNavigator = () => {
       <View style={[styles.sidebarSlot, { width: railWidth }]}>
         <SidebarNavigation deviceType={deviceType} />
       </View>
+      {/* Daily learning-time limit: warning and lock, above every screen. */}
+      <UsageLimitController />
     </View>
   );
 };
 
 const styles = StyleSheet.create({
+  fill: {
+    flex: 1,
+  },
   largeDeviceContainer: {
     flex: 1,
     flexDirection: 'row',

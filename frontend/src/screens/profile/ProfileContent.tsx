@@ -75,6 +75,8 @@ import {
   StatusBadge,
 } from '../../components/design';
 import type { Stat } from '../../components/design';
+import { useUsageStore } from '../../features/usageLimit/usageStore';
+import { UsageSettingsSheet } from '../../features/usageLimit/UsageSettingsSheet';
 
 export type ProfileVariant = 'mobile' | 'tablet' | 'desktop';
 
@@ -126,6 +128,10 @@ export const ProfileContent: React.FC<ProfileContentProps> = ({ variant }) => {
   // ----------------------------------------------------------- parental gate
   const [parentSectionOpen, setParentSectionOpen] = useState(false);
   const [showChallenge, setShowChallenge] = useState(false);
+  const [usageSheetOpen, setUsageSheetOpen] = useState(false);
+  // Re-render when the daily-limit settings change.
+  useUsageStore((s) => s.status);
+  const usageSettings = activeChild ? useUsageStore.getState().settings(activeChild.id) : null;
   const [challengeA, setChallengeA] = useState(0);
   const [challengeB, setChallengeB] = useState(0);
   const [challengeAnswer, setChallengeAnswer] = useState('');
@@ -592,9 +598,19 @@ export const ProfileContent: React.FC<ProfileContentProps> = ({ variant }) => {
 
           {/* ---------------------------------------------------- Settings */}
           <ParentSection title="General Settings" icon="settings">
+            {activeChild && usageSettings ? (
+              <ParentRow
+                label="Daily learning time"
+                description="Lessons lock for the day when time is up"
+                value={usageSettings.enabled ? `${usageSettings.limitMinutes} min` : 'Off'}
+                icon="clock"
+                onPress={() => setUsageSheetOpen(true)}
+              />
+            ) : null}
             <ParentRow
               label="Sound Effects"
               icon="sound"
+              divided={!!usageSettings}
               toggle={{ value: preferences.soundEnabled, onValueChange: toggleSound }}
             />
             <ParentRow
@@ -760,6 +776,14 @@ export const ProfileContent: React.FC<ProfileContentProps> = ({ variant }) => {
         {childBlock}
         {parentBlock}
       </View>
+      {activeChild ? (
+        <UsageSettingsSheet
+          visible={usageSheetOpen}
+          childId={activeChild.id}
+          childName={activeChild.name}
+          onClose={() => setUsageSheetOpen(false)}
+        />
+      ) : null}
     </AppShell>
   );
 };
