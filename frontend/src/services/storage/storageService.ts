@@ -115,7 +115,9 @@ export const storageService = {
   },
 
   async clearAll(): Promise<void> {
-    const keys = Object.values(StorageKeys);
+    // Daily usage counters survive sign-out: signing out and in again must not
+    // reset a child's daily allowance.
+    const keys = Object.values(StorageKeys).filter((key) => key !== StorageKeys.USAGE);
     await Promise.all(keys.map((key) => this.removeItem(key)));
   },
 };

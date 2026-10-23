@@ -9,6 +9,12 @@ export const StorageKeys = {
   SETTINGS: 'petalpath_settings',
   RECENT_SEARCHES: 'petalpath_recent_searches',
   DRAFT_LESSON: 'petalpath_draft_lesson',
+  /** Baseline questionnaire state per child (features/baseline). */
+  BASELINE: 'petalpath_baseline_v1',
+  /** Daily usage counters and limits per child (features/usageLimit). */
+  USAGE: 'petalpath_usage_v1',
+  /** Parental consent per parent account. */
+  PARENT_CONSENT: 'petalpath_parent_consent_v1',
 } as const;
 
 export type StorageKey = (typeof StorageKeys)[keyof typeof StorageKeys];

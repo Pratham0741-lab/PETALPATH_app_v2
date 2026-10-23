@@ -1,0 +1,259 @@
+{
+  "_doc": "Baseline questionnaire item bank. Add items for other grades by adding entries with that grade (prenursery | nursery | lkg | ukg) — no code changes. Media paths are PLACEHOLDERS relative to the CDN (EXPO_PUBLIC_CDN_BASE_URL); replace them with real files. Per item: difficulty 1-3; type tap_choice | count_tap | match | parent_observed. count_tap shows `images` (one picture per object to count). match shows `images` as the target to match. Options: {id, image?, label}; `label` is shown to parents only (child items show pictures). parent_observed items with an empty `options` use common.parent_options (Yes / Sometimes / Not yet), whose `credit` (1 / 0.5 / 0) scores the answer; prompt_audio may be null for them since a parent reads them.",
+  "version": 1,
+  "common": {
+    "intro_audio": "assessment/common/audio/intro.mp3",
+    "encouragement_text": "Thank you! Let's look at the next one.",
+    "encouragement_audio": "assessment/common/audio/encouragement.mp3",
+    "answer_sound": "assessment/common/audio/soft_chime.mp3",
+    "idk_image": "assessment/common/images/shrug.png",
+    "parent_options": [
+      { "id": "yes", "label": "Yes", "credit": 1 },
+      { "id": "sometimes", "label": "Sometimes", "credit": 0.5 },
+      { "id": "not_yet", "label": "Not yet", "credit": 0 }
+    ]
+  },
+  "items": [
+    {
+      "id": "en_n_01",
+      "domain": "english",
+      "grade": "nursery",
+      "skill": "picture_vocabulary",
+      "difficulty": 1,
+      "type": "tap_choice",
+      "prompt_text": "Can you find the apple? Tap the apple.",
+      "prompt_audio": "assessment/nursery/audio/en_n_01.mp3",
+      "images": [],
+      "options": [
+        { "id": "apple", "image": "assessment/nursery/images/apple.png", "label": "Apple" },
+        { "id": "ball", "image": "assessment/nursery/images/ball.png", "label": "Ball" },
+        { "id": "cat", "image": "assessment/nursery/images/cat.png", "label": "Cat" }
+      ],
+      "correct_option": "apple"
+    },
+    {
+      "id": "en_n_02",
+      "domain": "english",
+      "grade": "nursery",
+      "skill": "initial_sound",
+      "difficulty": 2,
+      "type": "tap_choice",
+      "prompt_text": "Which one starts with the sound buh, like ball?",
+      "prompt_audio": "assessment/nursery/audio/en_n_02.mp3",
+      "images": [],
+      "options": [
+        { "id": "bat", "image": "assessment/nursery/images/bat.png", "label": "Bat" },
+        { "id": "sun", "image": "assessment/nursery/images/sun.png", "label": "Sun" },
+        { "id": "fish", "image": "assessment/nursery/images/fish.png", "label": "Fish" }
+      ],
+      "correct_option": "bat"
+    },
+    {
+      "id": "en_n_03",
+      "domain": "english",
+      "grade": "nursery",
+      "skill": "capital_letter_recognition",
+      "difficulty": 3,
+      "type": "tap_choice",
+      "prompt_text": "Tap the letter B.",
+      "prompt_audio": "assessment/nursery/audio/en_n_03.mp3",
+      "images": [],
+      "options": [
+        { "id": "D", "image": "assessment/nursery/images/letter_D.png", "label": "D" },
+        { "id": "B", "image": "assessment/nursery/images/letter_B.png", "label": "B" },
+        { "id": "P", "image": "assessment/nursery/images/letter_P.png", "label": "P" }
+      ],
+      "correct_option": "B"
+    },
+    {
+      "id": "ma_n_01",
+      "domain": "maths",
+      "grade": "nursery",
+      "skill": "count_to_3",
+      "difficulty": 1,
+      "type": "count_tap",
+      "prompt_text": "How many apples are there? Tap the right number.",
+      "prompt_audio": "assessment/nursery/audio/ma_n_01.mp3",
+      "images": ["assessment/nursery/images/apple.png", "assessment/nursery/images/apple.png"],
+      "options": [
+        { "id": "1", "image": "assessment/nursery/images/num_1.png", "label": "1" },
+        { "id": "2", "image": "assessment/nursery/images/num_2.png", "label": "2" },
+        { "id": "3", "image": "assessment/nursery/images/num_3.png", "label": "3" }
+      ],
+      "correct_option": "2"
+    },
+    {
+      "id": "ma_n_02",
+      "domain": "maths",
+      "grade": "nursery",
+      "skill": "count_to_5",
+      "difficulty": 2,
+      "type": "count_tap",
+      "prompt_text": "How many stars can you count? Tap the right number.",
+      "prompt_audio": "assessment/nursery/audio/ma_n_02.mp3",
+      "images": [
+        "assessment/nursery/images/star.png",
+        "assessment/nursery/images/star.png",
+        "assessment/nursery/images/star.png",
+        "assessment/nursery/images/star.png"
+      ],
+      "options": [
+        { "id": "3", "image": "assessment/nursery/images/num_3.png", "label": "3" },
+        { "id": "4", "image": "assessment/nursery/images/num_4.png", "label": "4" },
+        { "id": "5", "image": "assessment/nursery/images/num_5.png", "label": "5" }
+      ],
+      "correct_option": "4"
+    },
+    {
+      "id": "ma_n_03",
+      "domain": "maths",
+      "grade": "nursery",
+      "skill": "more_and_less",
+      "difficulty": 3,
+      "type": "tap_choice",
+      "prompt_text": "Which basket has more balls?",
+      "prompt_audio": "assessment/nursery/audio/ma_n_03.mp3",
+      "images": [],
+      "options": [
+        { "id": "basket_3", "image": "assessment/nursery/images/basket_3_balls.png", "label": "3 balls" },
+        { "id": "basket_6", "image": "assessment/nursery/images/basket_6_balls.png", "label": "6 balls" }
+      ],
+      "correct_option": "basket_6"
+    },
+    {
+      "id": "co_n_01",
+      "domain": "cognitive",
+      "grade": "nursery",
+      "skill": "visual_matching",
+      "difficulty": 1,
+      "type": "match",
+      "prompt_text": "Find the picture that is the same as this one.",
+      "prompt_audio": "assessment/nursery/audio/co_n_01.mp3",
+      "images": ["assessment/nursery/images/red_circle.png"],
+      "options": [
+        { "id": "blue_square", "image": "assessment/nursery/images/blue_square.png", "label": "Blue square" },
+        { "id": "red_circle", "image": "assessment/nursery/images/red_circle.png", "label": "Red circle" },
+        { "id": "yellow_triangle", "image": "assessment/nursery/images/yellow_triangle.png", "label": "Yellow triangle" }
+      ],
+      "correct_option": "red_circle"
+    },
+    {
+      "id": "co_n_02",
+      "domain": "cognitive",
+      "grade": "nursery",
+      "skill": "odd_one_out",
+      "difficulty": 2,
+      "type": "tap_choice",
+      "prompt_text": "One of these is not a fruit. Which one?",
+      "prompt_audio": "assessment/nursery/audio/co_n_02.mp3",
+      "images": [],
+      "options": [
+        { "id": "apple", "image": "assessment/nursery/images/apple.png", "label": "Apple" },
+        { "id": "car", "image": "assessment/nursery/images/car.png", "label": "Car" },
+        { "id": "banana", "image": "assessment/nursery/images/banana.png", "label": "Banana" }
+      ],
+      "correct_option": "car"
+    },
+    {
+      "id": "co_n_03",
+      "domain": "cognitive",
+      "grade": "nursery",
+      "skill": "pattern_next",
+      "difficulty": 3,
+      "type": "tap_choice",
+      "prompt_text": "Red, blue, red, blue, red. What comes next?",
+      "prompt_audio": "assessment/nursery/audio/co_n_03.mp3",
+      "images": [
+        "assessment/nursery/images/dot_red.png",
+        "assessment/nursery/images/dot_blue.png",
+        "assessment/nursery/images/dot_red.png",
+        "assessment/nursery/images/dot_blue.png",
+        "assessment/nursery/images/dot_red.png"
+      ],
+      "options": [
+        { "id": "green", "image": "assessment/nursery/images/dot_green.png", "label": "Green" },
+        { "id": "blue", "image": "assessment/nursery/images/dot_blue.png", "label": "Blue" },
+        { "id": "yellow", "image": "assessment/nursery/images/dot_yellow.png", "label": "Yellow" }
+      ],
+      "correct_option": "blue"
+    },
+    {
+      "id": "fm_n_01",
+      "domain": "fine_motor",
+      "grade": "nursery",
+      "skill": "pencil_grip",
+      "difficulty": 2,
+      "type": "parent_observed",
+      "prompt_text": "Does your child hold a crayon with their fingers rather than a fist?",
+      "prompt_audio": null,
+      "images": [],
+      "options": [],
+      "correct_option": "yes"
+    },
+    {
+      "id": "fm_n_02",
+      "domain": "fine_motor",
+      "grade": "nursery",
+      "skill": "copy_circle",
+      "difficulty": 2,
+      "type": "parent_observed",
+      "prompt_text": "Can your child copy a circle after watching you draw one?",
+      "prompt_audio": null,
+      "images": [],
+      "options": [],
+      "correct_option": "yes"
+    },
+    {
+      "id": "sel_n_01",
+      "domain": "sel",
+      "grade": "nursery",
+      "skill": "naming_feelings",
+      "difficulty": 2,
+      "type": "parent_observed",
+      "prompt_text": "Does your child tell you how they feel, for example happy, sad or cross?",
+      "prompt_audio": null,
+      "images": [],
+      "options": [],
+      "correct_option": "yes"
+    },
+    {
+      "id": "sel_n_02",
+      "domain": "sel",
+      "grade": "nursery",
+      "skill": "taking_turns",
+      "difficulty": 2,
+      "type": "parent_observed",
+      "prompt_text": "Does your child take turns with another child when playing, with a little help?",
+      "prompt_audio": null,
+      "images": [],
+      "options": [],
+      "correct_option": "yes"
+    },
+    {
+      "id": "ls_n_01",
+      "domain": "life_skills",
+      "grade": "nursery",
+      "skill": "hand_washing",
+      "difficulty": 2,
+      "type": "parent_observed",
+      "prompt_text": "Does your child wash their hands with only a little help?",
+      "prompt_audio": null,
+      "images": [],
+      "options": [],
+      "correct_option": "yes"
+    },
+    {
+      "id": "ls_n_02",
+      "domain": "life_skills",
+      "grade": "nursery",
+      "skill": "dressing_shoes",
+      "difficulty": 2,
+      "type": "parent_observed",
+      "prompt_text": "Does your child put on their own shoes or slippers?",
+      "prompt_audio": null,
+      "images": [],
+      "options": [],
+      "correct_option": "yes"
+    }
+  ]
+}

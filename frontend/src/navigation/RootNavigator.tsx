@@ -96,6 +96,10 @@ import { ParentProfileScreen } from '../screens/auth/ParentProfileScreen';
 import { BottomNavigation } from '../components/navigation/BottomNavigation';
 import { SidebarNavigation } from '../components/navigation/SidebarNavigation';
 import { useSidebarWidth } from '../components/navigation/sidebarLayout';
+import { BaselineFlow } from '../screens/baseline/BaselineFlow';
+import { useNetworkStatus } from '../hooks/useNetworkStatus';
+import { ParentConsentScreen } from '../screens/baseline/ParentConsentScreen';
+import { useBaselineStore, BASELINE_ACTIVE } from '../features/baseline/baselineStore';
 
 const Stack = createNativeStackNavigator();
 
@@ -190,13 +194,26 @@ export const RootNavigator = () => {
   const activeChild = useChildStore((state) => state.activeChild);
   const loadingSession = useAppStore((state) => state.loadingSession);
   const loadSession = useAppStore((state) => state.loadSession);
+  const baselineHydrated = useBaselineStore((s) => s.hydrated);
+  const baselineStatus = useBaselineStore((s) => (activeChild ? s.byChild[activeChild.id]?.status : undefined));
 
   React.useEffect(() => {
     loadSession();
+    void useBaselineStore.getState().hydrate();
   }, []);
 
+  // Send an unsynced baseline (or learn of one saved elsewhere) whenever a
+  // child becomes active or the device comes back online — the endpoint only
+  // accepts the active child.
+  const { isOffline } = useNetworkStatus();
+  React.useEffect(() => {
+    if (token && activeChild?.id && baselineHydrated && !isOffline) {
+      void useBaselineStore.getState().sync(activeChild.id);
+    }
+  }, [token, activeChild?.id, baselineHydrated, isOffline]);
+
   // Show animated splash screen on launch while session is being hydrated
-  if (loadingSession) {
+  if (loadingSession || !baselineHydrated) {
     return <SplashScreen />;
   }
 
@@ -219,11 +236,22 @@ export const RootNavigator = () => {
         <Stack.Screen name="ParentProfile" component={ParentProfileScreen} />
         <Stack.Screen name="ChildSelection" component={ChildSelectionScreen} />
         <Stack.Screen name="AddChild" component={AddEditChildScreen} />
+        <Stack.Screen name="ParentConsent" component={ParentConsentScreen} />
         <Stack.Screen name="MentorSelection" component={MentorSelectionScreen} />
         <Stack.Screen name="NotificationPermission" component={NotificationPermissionScreen} />
         <Stack.Screen name="Tutorial" component={TutorialScreen} />
       </Stack.Navigator>
     );
+  }
+
+  /*
+   * The baseline questionnaire runs right after a child's profile is created
+   * and before the Learning Journey, and picks up where it left off after the
+   * app is closed: while it is active it replaces the whole app (keyed per
+   * child, like the branches above).
+   */
+  if (baselineStatus && BASELINE_ACTIVE.has(baselineStatus)) {
+    return <BaselineFlow key={`baseline-${activeChild.id}`} />;
   }
 
   if (deviceType === 'mobile') {
@@ -267,6 +295,7 @@ export const RootNavigator = () => {
         <Stack.Screen name="ParentProfile" component={ParentProfileScreen} />
         <Stack.Screen name="ChildSelection" component={ChildSelectionScreen} />
         <Stack.Screen name="AddChild" component={AddEditChildScreen} />
+        <Stack.Screen name="ParentConsent" component={ParentConsentScreen} />
         <Stack.Screen name="MentorSelection" component={MentorSelectionScreen} />
         <Stack.Screen name="NotificationPermission" component={NotificationPermissionScreen} />
         <Stack.Screen name="Tutorial" component={TutorialScreen} />
@@ -362,6 +391,7 @@ export const RootNavigator = () => {
           <Stack.Screen name="ParentProfile" component={ParentProfileScreen} />
           <Stack.Screen name="ChildSelection" component={ChildSelectionScreen} />
           <Stack.Screen name="AddChild" component={AddEditChildScreen} />
+          <Stack.Screen name="ParentConsent" component={ParentConsentScreen} />
           <Stack.Screen name="MentorSelection" component={MentorSelectionScreen} />
           <Stack.Screen name="NotificationPermission" component={NotificationPermissionScreen} />
           <Stack.Screen name="Tutorial" component={TutorialScreen} />

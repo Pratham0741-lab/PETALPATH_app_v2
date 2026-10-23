@@ -14,6 +14,7 @@ export type AuthStackParamList = {
 export type OnboardingStackParamList = {
   ChildSelection: undefined;
   AddChild: { childId?: string; selectedMentorId?: string } | undefined;
+  ParentConsent: undefined;
   MentorSelection: { selectedMentorId?: string; returnScreen?: string } | undefined;
   NotificationPermission: undefined;
   Tutorial: undefined;
@@ -37,6 +38,7 @@ export type RootStackParamList = {
   ParentProfile: undefined;
   ChildSelection: undefined;
   AddChild: { childId?: string; selectedMentorId?: string } | undefined;
+  ParentConsent: undefined;
   MentorSelection: { selectedMentorId?: string; returnScreen?: string } | undefined;
   NotificationPermission: undefined;
   Tutorial: undefined;

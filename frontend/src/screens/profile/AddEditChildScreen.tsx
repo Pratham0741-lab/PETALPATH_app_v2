@@ -50,6 +50,10 @@ import type { ApiResponse } from '../../types/api';
 import type { Child, ChildFormData } from '../../types/child';
 import type { OnboardingStackParamList } from '../../types/navigation';
 import { SCREEN_BACKGROUNDS } from '../../assets/backgrounds';
+import { useAppStore } from '../../store/appStore';
+import { hasConsent } from '../../features/baseline/consent';
+import { useBaselineStore } from '../../features/baseline/baselineStore';
+import { gradeForAgeGroup } from '../../features/baseline/engine';
 
 type ChildFormValues = z.infer<typeof childFormSchema>;
 
@@ -117,18 +121,29 @@ export const AddEditChildScreen: React.FC = () => {
   const formValues = watch();
   const selectedAvatar = formValues.avatar || DEFAULT_AVATAR_ID;
 
+  /*
+   * Parental consent comes before any child data is stored: a new profile
+   * cannot be created until the parent has accepted it on this device.
+   */
+  const userId = useAppStore((s) => s.user?.id);
+  useEffect(() => {
+    if (isEditMode || !userId) return;
+    let cancelled = false;
+    void hasConsent(userId).then((ok) => {
+      if (!ok && !cancelled) navigation.replace('ParentConsent');
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [isEditMode, userId, navigation]);
+
+  /*
+   * After creation the new child becomes active with a pending baseline, and
+   * RootNavigator takes over: it shows the baseline questionnaire, then the
+   * Learning Journey. So no navigation here.
+   */
   const createMutation = useApiMutation<Child, ChildFormData>(
     async (data) => apiClient.post<ApiResponse<Child>>('/children', data),
-    {
-      onSuccess: async () => {
-        await useChildStore.getState().refreshChildren();
-        if (deviceType === 'mobile') {
-          navigation.navigate('MainTabs');
-        } else {
-          navigation.navigate('Home');
-        }
-      },
-    },
   );
 
   const updateMutation = useApiMutation<Child, { id: string; data: Partial<ChildFormData> }>(
@@ -152,10 +167,18 @@ export const AddEditChildScreen: React.FC = () => {
     if (isEditMode) {
       await updateMutation.mutateAsync({ id: childId!, data: payload });
     } else {
-      await createMutation.mutateAsync(payload);
+      if (!userId || !(await hasConsent(userId))) {
+        navigation.replace('ParentConsent');
+        return;
+      }
+      const created = await createMutation.mutateAsync(payload);
+      await useChildStore.getState().refreshChildren();
       const { childrenList: updatedList } = useChildStore.getState();
-      const newChild = updatedList.find((c) => c.name === payload.name && c.age === payload.age);
+      const newChild =
+        updatedList.find((c) => c.id === created.data?.id) ??
+        updatedList.find((c) => c.name === payload.name && c.age === payload.age);
       if (newChild) {
+        await useBaselineStore.getState().markPending(newChild.id, gradeForAgeGroup(newChild.ageGroup));
         await useChildStore.getState().setActiveChild(newChild);
       }
     }
