@@ -1,5 +1,6 @@
 import { prisma } from '../../config/database.js';
 import { curriculumService, curriculumEngineService } from '../curriculum/index.js';
+import { baselineService } from '../baseline/baseline.service.js';
 import { describeUnlockDecision, type UnlockReason } from '../curriculum/unlock-policy.js';
 import { engineConfig } from '../../shared/config/engine.config.js';
 import { startOfLocalDay } from '../../shared/utils/calendar-day.js';
@@ -53,11 +54,13 @@ export class LessonAccessService {
       where: { childId },
     });
 
+    const placement = await baselineService.getPlacement(childId, childGradeId, gradeLessons);
     const decision = curriculumEngineService.evaluateLessonUnlock(
       lessonId,
       gradeLessons,
       progressList,
-      knowledgeStates
+      knowledgeStates,
+      placement
     );
 
     if (!decision.unlocked) {

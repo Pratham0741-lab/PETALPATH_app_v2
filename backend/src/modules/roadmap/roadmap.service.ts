@@ -3,6 +3,7 @@ import { storageService } from '../../shared/services/storage.service.js';
 import { servedMediaKey } from '../../shared/utils/media-paths.js';
 import { NotFoundError } from '../../utils/errors.js';
 import { curriculumService, curriculumEngineService, curriculumLoader } from '../curriculum/index.js';
+import { baselineService } from '../baseline/baseline.service.js';
 import { CurriculumNode } from '../curriculum/curriculum.types.js';
 import { engineConfig } from '../../shared/config/engine.config.js';
 import { startOfLocalDay } from '../../shared/utils/calendar-day.js';
@@ -61,6 +62,8 @@ export class RoadmapService {
 
     const nodes = curriculumService.getLessonsInCurriculumOrder(gradeId);
     const nodeIds = nodes.map((n) => n.id);
+    // Where the baseline questionnaire placed the child in each domain.
+    const placement = await baselineService.getPlacement(childId, gradeId, nodes);
 
     // Query child progress & knowledge states
     const progressList = await prisma.lessonProgress.findMany({
@@ -103,7 +106,8 @@ export class RoadmapService {
         node.id,
         nodes,
         progressList,
-        knowledgeStates
+        knowledgeStates,
+        placement
       );
 
       enrichedNodes.push({
@@ -235,6 +239,9 @@ export class RoadmapService {
     // Compute Current Node
     let nextLesson: any = null;
     for (const node of enrichedNodes) {
+      // Lessons the baseline placed the child past stay open but are not the
+      // starting point; each domain starts at getStartingLesson's choice.
+      if (placement.placedPast.has(node.id)) continue;
       if (node.isUnlocked && !node.isCompleted) {
         nextLesson = node;
         break;

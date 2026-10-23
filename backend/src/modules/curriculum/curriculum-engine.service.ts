@@ -40,6 +40,12 @@ interface UnlockContext {
   readonly curriculumState: Map<string, CurriculumState>;
 }
 
+/** The part of a baseline placement the unlock rules need (see modules/baseline/placement.ts). */
+export interface BaselinePlacementView {
+  readonly unlocked: ReadonlySet<string>;
+  readonly placedPast: ReadonlySet<string>;
+}
+
 export class CurriculumEngineService {
   /**
    * Root skills are skills with no prerequisites or flagged as isRootSkill.
@@ -500,11 +506,18 @@ export class CurriculumEngineService {
     lessonId: string,
     gradeLessons: readonly CurriculumNode[],
     progressList: { lessonId: string; status: string }[],
-    knowledgeStates: { topicId: string; mastery: number }[]
+    knowledgeStates: { topicId: string; mastery: number }[],
+    placement?: BaselinePlacementView
   ): UnlockDecision {
     const index = gradeLessons.findIndex((n) => n.id === lessonId);
     if (index === -1) {
       return { unlocked: false, reason: 'LESSON_NOT_IN_GRADE', weightedScore: 0, blockingSkillIds: [] };
+    }
+
+    // The baseline questionnaire placed the child at or past this lesson in
+    // its domain (modules/baseline/placement.ts).
+    if (placement?.unlocked.has(lessonId)) {
+      return { unlocked: true, reason: 'BASELINE_PLACEMENT', weightedScore: 100, blockingSkillIds: [] };
     }
 
     const node = gradeLessons[index];
@@ -554,9 +567,10 @@ export class CurriculumEngineService {
     lessonId: string,
     gradeLessons: readonly CurriculumNode[],
     progressList: { lessonId: string; status: string }[],
-    knowledgeStates: { topicId: string; mastery: number }[]
+    knowledgeStates: { topicId: string; mastery: number }[],
+    placement?: BaselinePlacementView
   ): boolean {
-    return this.evaluateLessonUnlock(lessonId, gradeLessons, progressList, knowledgeStates).unlocked;
+    return this.evaluateLessonUnlock(lessonId, gradeLessons, progressList, knowledgeStates, placement).unlocked;
   }
 
   /**
@@ -565,15 +579,19 @@ export class CurriculumEngineService {
   public determineNextAvailableLesson(
     gradeLessons: readonly CurriculumNode[],
     progressList: { lessonId: string; status: string }[],
-    knowledgeStates: { topicId: string; mastery: number }[]
+    knowledgeStates: { topicId: string; mastery: number }[],
+    placement?: BaselinePlacementView
   ): string | null {
     const completedSet = new Set(
       progressList.filter((p) => p.status === 'COMPLETED').map((p) => p.lessonId)
     );
 
     for (const node of gradeLessons) {
+      // Lessons the baseline placed the child past stay open but are never
+      // the next lesson.
+      if (placement?.placedPast.has(node.id)) continue;
       if (!completedSet.has(node.id)) {
-        if (this.isLessonUnlocked(node.id, gradeLessons, progressList, knowledgeStates)) {
+        if (this.isLessonUnlocked(node.id, gradeLessons, progressList, knowledgeStates, placement)) {
           return node.id;
         }
       }

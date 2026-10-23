@@ -8,6 +8,7 @@ import { categoryProgressService } from './category-progress.service.js';
 import { UnauthorizedError, ValidationError, NotFoundError } from '../../utils/errors.js';
 import { z } from 'zod';
 import { curriculumService, curriculumEngineService } from '../curriculum/index.js';
+import { baselineService } from '../baseline/baseline.service.js';
 import { curriculumLoader } from '../curriculum/curriculum-loader.js';
 import { lessonAccessService } from '../lessons/lesson-access.service.js';
 import { normalizeActivityType } from '../../shared/utils/activity-type-normalizer.js';
@@ -216,7 +217,8 @@ export class ProgressController {
       const currentLessonId = curriculumEngineService.determineNextAvailableLesson(
         gradeLessons,
         progressList,
-        knowledgeStates
+        knowledgeStates,
+        await baselineService.getPlacement(childId, gradeId, gradeLessons)
       ) || (gradeLessons.length > 0 ? gradeLessons[gradeLessons.length - 1].id : null);
 
       const currentLessonNode = currentLessonId ? curriculumService.getLessonById(currentLessonId) : null;

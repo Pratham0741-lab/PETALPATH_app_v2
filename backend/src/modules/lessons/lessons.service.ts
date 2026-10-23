@@ -1,5 +1,6 @@
 import { prisma } from '../../config/database.js';
 import { curriculumService, curriculumEngineService } from '../curriculum/index.js';
+import { baselineService } from '../baseline/baseline.service.js';
 import { curriculumLoader } from '../curriculum/curriculum-loader.js';
 import { CurriculumNode } from '../curriculum/curriculum.types.js';
 import { NotFoundError } from '../../utils/errors.js';
@@ -75,12 +76,14 @@ export class LessonsService {
       where: { childId },
     });
 
+    const placement = await baselineService.getPlacement(childId, gradeId, gradeLessons);
     const unlockedNodes = gradeLessons.filter((node) =>
       curriculumEngineService.isLessonUnlocked(
         node.id,
         gradeLessons,
         progressList,
-        knowledgeStates
+        knowledgeStates,
+        placement
       )
     );
 

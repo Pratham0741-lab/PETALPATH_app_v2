@@ -18,6 +18,10 @@ model User {
   resetPasswordToken   String?   @map("reset_password_token")
   resetPasswordExpires DateTime? @map("reset_password_expires")
   role                 String    @default("PARENT") // PARENT, ADMIN, MENTOR
+  // Parental consent to store child data, recorded before the first child
+  // profile is created. Version of the consent text the parent accepted.
+  parentalConsentVersion String?   @map("parental_consent_version")
+  parentalConsentAt      DateTime? @map("parental_consent_at")
   createdAt            DateTime  @default(now()) @map("created_at")
   updatedAt            DateTime  @updatedAt @map("updated_at")
   deletedAt            DateTime? @map("deleted_at")
@@ -88,6 +92,7 @@ model Child {
   notifications           Notification[]
   classrooms              ClassroomLearner[]
   feedback                Feedback[]
+  baseline                ChildBaseline?
 
   @@map("children")
 }
@@ -1720,4 +1725,23 @@ model Feedback {
   @@index([parentId, createdAt])
   @@index([createdAt])
   @@map("feedback")
+}
+
+/// Baseline questionnaire result, one per child. Pseudonymous: keyed by the
+/// child id only — no name, photo, voice or birth date is stored here.
+model ChildBaseline {
+  id          String   @id @default(uuid())
+  childId     String   @unique @map("child_id")
+  child       Child    @relation(fields: [childId], references: [id], onDelete: Cascade)
+  assessedAt  DateTime @map("assessed_at")
+  grade       String
+  /// { <domain>: { level: 0-3, confidence: "high" | "low" } }
+  domains     Json
+  strengths   Json
+  focusAreas  Json     @map("focus_areas")
+  skipped     Boolean  @default(false)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("child_baselines")
 }

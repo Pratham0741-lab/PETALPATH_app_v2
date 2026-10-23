@@ -21,6 +21,7 @@ import { engineConfig } from '../../shared/config/engine.config.js';
 
 export type UnlockReason =
   | 'FIRST_LESSON'
+  | 'BASELINE_PLACEMENT'
   | 'NO_PREREQUISITES'
   | 'PREREQUISITES_MET'
   | 'SEQUENTIAL_PREVIOUS_COMPLETE'
@@ -144,6 +145,7 @@ export function describeUnlockDecision(
 
   switch (decision.reason) {
     case 'FIRST_LESSON':
+    case 'BASELINE_PLACEMENT':
     case 'NO_PREREQUISITES':
     case 'PREREQUISITES_MET':
     case 'SEQUENTIAL_PREVIOUS_COMPLETE':

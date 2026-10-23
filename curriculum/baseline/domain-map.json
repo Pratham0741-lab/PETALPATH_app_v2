@@ -1,0 +1,22 @@
+{
+  "_doc": "Maps the 8 baseline domains onto curriculum lessons. Two curriculum subjects are shared by two domains each, so those domains are separated by keywords matched against the lesson's curriculum.original_topic (case-insensitive). A lesson belongs to the first domain that matches. levelOffset: how far above the domain's easiest lesson (in curriculum difficulty steps) each baseline level starts; a low-confidence result starts one step lower.",
+  "domains": [
+    { "id": "english", "subject": "English" },
+    { "id": "maths", "subject": "Maths" },
+    { "id": "hindi", "subject": "Hindi" },
+    {
+      "id": "fine_motor",
+      "subject": "Fine Motor & Cognitive Skills",
+      "topicIncludes": ["trac", "dot", "maze", "path", "cut", "scissor", "drag objects", "finger-tap", "tap objects", "pattern"]
+    },
+    { "id": "cognitive", "subject": "Fine Motor & Cognitive Skills" },
+    {
+      "id": "life_skills",
+      "subject": "Social-Emotional Learning & Life Skills",
+      "topicIncludes": ["hygiene", "hand-wash", "handwash", "brush", "bath", "eating", "healthy habits", "road safety", "stranger", "fire safety", "body safety", "touch", "safety awareness", "organis", "etiquette", "responsibility", "sleep"]
+    },
+    { "id": "sel", "subject": "Social-Emotional Learning & Life Skills" },
+    { "id": "evs", "subject": "Environmental Studies / General Awareness" }
+  ],
+  "levelOffset": { "0": 0, "1": 0, "2": 1, "3": 2 }
+}

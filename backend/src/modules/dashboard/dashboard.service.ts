@@ -1,6 +1,7 @@
 import { prisma } from '../../config/database.js';
 import { NotFoundError } from '../../utils/errors.js';
 import { curriculumService, curriculumEngineService } from '../curriculum/index.js';
+import { baselineService } from '../baseline/baseline.service.js';
 import { storageService } from '../../shared/services/storage.service.js';
 import {
   DashboardOverview,
@@ -59,7 +60,8 @@ export class DashboardService {
     const nextLessonId = curriculumEngineService.determineNextAvailableLesson(
       lessons,
       progressList,
-      knowledgeStates
+      knowledgeStates,
+      await baselineService.getPlacement(childId, gradeId, lessons)
     );
     const nextLessonNode = nextLessonId ? curriculumService.getLessonById(nextLessonId) : null;
 
