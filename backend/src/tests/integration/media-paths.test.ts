@@ -65,16 +65,16 @@ describe('media paths', () => {
     expect(bad.map((b) => b.key)).toEqual([]);
   });
 
-  it('gives Nursery capitals their dedicated media, never the shared alphabet files', () => {
+  it('gives Nursery capitals their dedicated video and the "Capital A" alphabet audio', () => {
     const caps = lessons.filter((l) => /^n_cap_[a-z]$/.test(l.id));
     expect(caps).toHaveLength(26);
     for (const c of caps) {
       const letter = c.id.slice(-1);
       const n = String(letter.charCodeAt(0) - 96).padStart(3, '0');
       expect(c.video).toBe(`videos/NURSERY/alphabet/english_${n}_letter_${letter}.mp4`);
-      expect(c.audio).toBe(`audio/NURSERY/english_${n}_letter_${letter}_listen.mp3`);
-      expect(c.video).not.toMatch(/alphabet_0\d\d_/);
-      expect(c.audio).not.toMatch(/alphabet_0\d\d_/);
+      // The same clip the Pre-Nursery Letter / Sound lessons play.
+      expect(c.audio).toBe(`audio/PRE_NURSERY/alphabet_${n}_${letter}.mp3`);
+      expect(lessons.find((l) => l.id === `pn_letter_${letter}`)?.audio).toBe(c.audio);
     }
   });
 

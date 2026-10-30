@@ -163,10 +163,24 @@ export function nurseryCapitalVideo(lessonId: string): string | null {
   return c ? buildVideoKey('NURSERY', `english_${c.n}_letter_${c.letter}.mp4`, 'alphabet') : null;
 }
 
-/** `audio/NURSERY/english_001_letter_a_listen.mp3` … — not recorded yet. */
+/**
+ * `audio/NURSERY/english_001_letter_a_listen.mp3` … — the dedicated Nursery
+ * capital narration, not recorded yet. Not served today: see
+ * `nurseryCapitalAudio`. When these files exist, return this from there.
+ */
 export function nurseryCapitalListenAudio(lessonId: string): string | null {
   const c = capIndex(lessonId);
   return c ? buildAudioKey('NURSERY', `english_${c.n}_letter_${c.letter}_listen.mp3`) : null;
+}
+
+/**
+ * The audio a Nursery capital-letter lesson plays: the shared alphabet clip
+ * (`audio/PRE_NURSERY/alphabet_001_a.mp3` …), which says "Capital A",
+ * "Capital B"… — the same files the Pre-Nursery Letter / Sound lessons play.
+ */
+export function nurseryCapitalAudio(lessonId: string): string | null {
+  const c = capIndex(lessonId);
+  return c ? buildAudioKey('PRE_NURSERY', `alphabet_${c.n}_${c.letter}.mp3`) : null;
 }
 
 // ---------------------------------------------------------------------------
@@ -207,11 +221,11 @@ export function videoPathFor(lessonId: string, grade: GradeId, legacyKey: string
 
 /**
  * The listen-activity audio key for a lesson. `legacyKey` is what
- * `resolveAudioKey` returned. Nursery capitals get their own (unrecorded)
- * narration and never fall back to the shared alphabet audio.
+ * `resolveAudioKey` returned. Nursery capitals play the shared alphabet clip
+ * that says "Capital A" (see `nurseryCapitalAudio`).
  */
 export function audioPathFor(lessonId: string, grade: GradeId, legacyKey: string): string {
-  return nurseryCapitalListenAudio(lessonId) ?? toGradedKey(legacyKey, grade, 'audio');
+  return nurseryCapitalAudio(lessonId) ?? toGradedKey(legacyKey, grade, 'audio');
 }
 
 /**
@@ -241,6 +255,8 @@ const MISSING_VIDEOS = [
 ];
 
 export const PENDING_MEDIA: ReadonlySet<string> = new Set([
+  // Not served while Nursery capitals play the alphabet clips, but still
+  // pending if anything stores them.
   ...'abcdefghijklmnopqrstuvwxyz'.split('').map((l) => nurseryCapitalListenAudio(`n_cap_${l}`)!),
   ...MISSING_VIDEOS,
 ]);
