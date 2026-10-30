@@ -5,6 +5,7 @@ import { logger } from './utils/logger.js';
 import { setupGracefulShutdown } from './utils/shutdown.js';
 import { startJobs } from './jobs/index.js';
 import { curriculumLoader } from './modules/curriculum/index.js';
+import { checkServedMediaInBackground } from './shared/utils/media-check.js';
 
 const startServer = async () => {
   try {
@@ -45,6 +46,8 @@ const startServer = async () => {
 
     setupGracefulShutdown(server);
     startJobs();
+    // Logs any media key the API serves that is missing from S3.
+    checkServedMediaInBackground();
   } catch (error) {
     logger.error(error as Error, 'Startup failed');
     process.exit(1);

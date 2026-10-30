@@ -1,28 +1,70 @@
 /**
- * The one place that decides the S3 key of a lesson's video and audio.
+ * The one place that builds the S3 key of a lesson's video and audio.
  *
- * Bucket layout (petalpath-assets-prod), case-sensitive, AS IT REALLY IS —
- * verified against CloudFront on 2026-10-21 (scripts/check-media.ts):
- *   videos/<GRADE>/<file>             grade-specific videos; Pre-Nursery's
- *                                     copies of the shared clips are here,
- *                                     flat (moved in 2026-10-21)
- *   videos/NURSERY/<sub>/<file>       Nursery's shared clips (alphabet,
- *                                     numbers, shapes, lines_and_curves)
- *   audio/<sub>/<file>                shared audio has NOT been moved to grade
- *                                     folders; it is still in the old layout.
- * The manifest describes a fuller per-grade reorganisation that was never
- * carried out in the bucket; these rules follow the bucket, not the manifest.
- * File names never change.
+ * Bucket layout (petalpath-assets-prod, ap-south-1), case-sensitive:
+ *   videos/<GRADE>/<file>.mp4          audio/<GRADE>/<file>.mp3
+ *   GRADE = PRE_NURSERY | NURSERY | LKG | UKG (exactly; uppercase, underscore)
+ *   Only NURSERY has subfolders: videos/NURSERY/<alphabet|numbers|shapes|
+ *   lines_and_curves>/<file>, audio/NURSERY/<numbers|shapes>/<file>.
+ *   PRE_NURSERY, LKG and UKG are always flat.
+ *   audio/mentor_audio/<Mentor>/... is not grade-based and never changes.
+ *
+ * Every key is built by `buildVideoKey` / `buildAudioKey`, which enforce those
+ * rules and throw on anything else (a lowercase grade, a subfolder outside
+ * NURSERY), so a malformed key fails loudly here instead of 404ing on a phone.
  *
  * `video-resolver.ts` / `audio-resolver.ts` still decide *which* file a lesson
- * plays, unchanged, and return it in the old shared layout
- * (`videos/alphabet/alphabet_001_a_apple.mp4`). This module moves that key into
- * the lesson's grade folder. The grade always comes from the lesson's own grade
- * in the curriculum, never from the old path: the same shared clip lives in
- * both PRE_NURSERY and NURSERY.
- *
- * Source of truth for every key here: petalpath_assets_manifest_corrected.xlsx.
+ * plays and return it in the old layout; `toGradedKey` moves it into the new
+ * one. File names never change.
  */
+
+export const GRADES = ['PRE_NURSERY', 'NURSERY', 'LKG', 'UKG'] as const;
+export type GradeFolder = (typeof GRADES)[number];
+
+const GRADE_SET: ReadonlySet<string> = new Set(GRADES);
+const SUBFOLDER = /^[a-z0-9_]+$/;
+
+function buildKey(root: 'videos' | 'audio', ext: '.mp4' | '.mp3', grade: string, file: string, subfolder?: string): string {
+  if (!GRADE_SET.has(grade)) {
+    throw new Error(`media-paths: grade must be one of ${GRADES.join(', ')} (exact case), got "${grade}"`);
+  }
+  if (!file || file.includes('/') || !file.endsWith(ext)) {
+    throw new Error(`media-paths: "${file}" is not a bare ${ext} file name`);
+  }
+  if (subfolder !== undefined) {
+    if (grade !== 'NURSERY') {
+      throw new Error(`media-paths: only NURSERY has subfolders; ${grade} is flat (got subfolder "${subfolder}")`);
+    }
+    if (!SUBFOLDER.test(subfolder)) throw new Error(`media-paths: invalid subfolder "${subfolder}"`);
+    return `${root}/${grade}/${subfolder}/${file}`;
+  }
+  return `${root}/${grade}/${file}`;
+}
+
+/** videos/<GRADE>/<file>.mp4, or videos/NURSERY/<subfolder>/<file>.mp4. */
+export function buildVideoKey(grade: GradeFolder, file: string, subfolder?: string): string {
+  return buildKey('videos', '.mp4', grade, file, subfolder);
+}
+
+/** audio/<GRADE>/<file>.mp3, or audio/NURSERY/<subfolder>/<file>.mp3. */
+export function buildAudioKey(grade: GradeFolder, file: string, subfolder?: string): string {
+  return buildKey('audio', '.mp3', grade, file, subfolder);
+}
+
+/** Mentor voice lines: not grade-based, left exactly as they are. */
+export const MENTOR_AUDIO_PREFIX = 'audio/mentor_audio/';
+
+/**
+ * Old shared audio folders → their place in the new layout. The destination
+ * comes from the folder, not the lesson: Pre-Nursery's number and shape
+ * lessons play the same files as Nursery's, which live under NURSERY.
+ */
+export const LEGACY_AUDIO_FOLDERS: Readonly<Record<string, { grade: GradeFolder; subfolder?: string }>> = {
+  alphabet_audio: { grade: 'PRE_NURSERY' },
+  lines_curves: { grade: 'PRE_NURSERY' },
+  numbers: { grade: 'NURSERY', subfolder: 'numbers' },
+  shapes: { grade: 'NURSERY', subfolder: 'shapes' },
+};
 
 export type GradeId = 'prenursery' | 'nursery' | 'lkg' | 'ukg';
 export type MediaKind = 'video' | 'audio';
@@ -47,41 +89,56 @@ const OLD_GRADE_PREFIX: Record<string, GradeId> = {
   ukg: 'ukg',
 };
 
-const NEW_FOLDERS = new Set(Object.values(GRADE_FOLDER));
+const build = (kind: MediaKind, grade: GradeFolder, file: string, subfolder?: string) =>
+  kind === 'video' ? buildVideoKey(grade, file, subfolder) : buildAudioKey(grade, file, subfolder);
 
 /**
  * Old key → bucket key for a lesson in `grade`.
  *
- *   prenursery/videos/<f>  → videos/PRE_NURSERY/<f>   (likewise lkg, ukg, nursery; audio too)
- *   videos/<sub>/<f>, Nursery  → videos/NURSERY/<sub>/<f> (subfolder kept)
- *   videos/<sub>/<f>, other    → videos/<GRADE>/<f>       (flat)
- *   audio/<sub>/<f>        → audio/<sub>/<f>          (unchanged: shared audio was never moved)
+ *   prenursery/videos/<f>         → videos/PRE_NURSERY/<f>   (likewise each grade; audio too)
+ *   videos/<sub>/<f>, Nursery     → videos/NURSERY/<sub>/<f> (subfolder kept)
+ *   videos/<sub>/<f>, other grade → videos/<GRADE>/<f>       (flat)
+ *   audio/alphabet_audio/<f>      → audio/PRE_NURSERY/<f>
+ *   audio/lines_curves/<f>        → audio/PRE_NURSERY/<f>
+ *   audio/numbers/<f>             → audio/NURSERY/numbers/<f>
+ *   audio/shapes/<f>              → audio/NURSERY/shapes/<f>
+ *   audio/mentor_audio/...        → unchanged
  *
- * Idempotent: a key already in the new layout is returned unchanged, so the
- * database migration can be re-run safely. Throws on a shape it does not know
- * rather than guessing a path that would 404.
+ * Idempotent: a key already in the new layout is validated and returned
+ * unchanged, so the database migration can be re-run safely. Throws on a
+ * shape it does not know rather than guessing a path that would 404.
  */
 export function toGradedKey(oldKey: string, grade: GradeId, kind: MediaKind): string {
   const key = oldKey.trim().replace(/^\/+/, '');
   if (key === '' || key.toLowerCase() === COMING_SOON) return COMING_SOON;
+  if (kind === 'audio' && key.startsWith(MENTOR_AUDIO_PREFIX)) return key;
 
   const root = ROOT[kind];
-  const folder = GRADE_FOLDER[grade];
   const parts = key.split('/');
   const file = parts[parts.length - 1]!;
 
-  // Already new: videos/<GRADE>/…
-  if (parts[0] === root && NEW_FOLDERS.has(parts[1] ?? '')) return key;
+  // Already new: <root>/<GRADE>/[<sub>/]<f> — rebuilt, which re-checks the rules.
+  if (parts[0] === root && GRADE_SET.has(parts[1] ?? '') && (parts.length === 3 || parts.length === 4)) {
+    const rebuilt = build(kind, parts[1] as GradeFolder, file, parts.length === 4 ? parts[2] : undefined);
+    if (rebuilt !== key) throw new Error(`media-paths: malformed ${kind} key "${oldKey}"`);
+    return key;
+  }
 
   // <grade>/<root>/<f>
   if (parts.length === 3 && OLD_GRADE_PREFIX[parts[0]!] && parts[1] === root) {
-    return `${root}/${folder}/${file}`;
+    return build(kind, GRADE_FOLDER[grade] as GradeFolder, file);
   }
 
   // <root>/<sub>/<f> — the old shared folders
   if (parts.length === 3 && parts[0] === root) {
-    if (kind === 'audio') return key;
-    return grade === 'nursery' ? `${root}/${folder}/${parts[1]}/${file}` : `${root}/${folder}/${file}`;
+    if (kind === 'audio') {
+      const target = LEGACY_AUDIO_FOLDERS[parts[1]!];
+      if (!target) throw new Error(`media-paths: no mapping for old audio folder "${parts[1]}" ("${oldKey}")`);
+      return buildAudioKey(target.grade, file, target.subfolder);
+    }
+    return grade === 'nursery'
+      ? buildVideoKey('NURSERY', file, parts[1])
+      : buildVideoKey(GRADE_FOLDER[grade] as GradeFolder, file);
   }
 
   throw new Error(`media-paths: unrecognised ${kind} key "${oldKey}"`);
@@ -103,13 +160,13 @@ function capIndex(lessonId: string): { n: string; letter: string } | null {
 /** `videos/NURSERY/alphabet/english_001_letter_a.mp4` … `_026_letter_z.mp4`. */
 export function nurseryCapitalVideo(lessonId: string): string | null {
   const c = capIndex(lessonId);
-  return c ? `videos/NURSERY/alphabet/english_${c.n}_letter_${c.letter}.mp4` : null;
+  return c ? buildVideoKey('NURSERY', `english_${c.n}_letter_${c.letter}.mp4`, 'alphabet') : null;
 }
 
 /** `audio/NURSERY/english_001_letter_a_listen.mp3` … — not recorded yet. */
 export function nurseryCapitalListenAudio(lessonId: string): string | null {
   const c = capIndex(lessonId);
-  return c ? `audio/NURSERY/english_${c.n}_letter_${c.letter}_listen.mp3` : null;
+  return c ? buildAudioKey('NURSERY', `english_${c.n}_letter_${c.letter}_listen.mp3`) : null;
 }
 
 // ---------------------------------------------------------------------------
@@ -122,19 +179,19 @@ export function nurseryCapitalListenAudio(lessonId: string): string | null {
  * with their exact manifest key.
  */
 const ADDED_VIDEOS: Record<string, string> = {
-  pn_oral_greetings_hello_bye: 'videos/PRE_NURSERY/english_002_hello_bye.mp4',
-  pn_myself: 'videos/PRE_NURSERY/evs_001_all_about_me.mp4',
-  pn_head: 'videos/PRE_NURSERY/english_004_head.mp4',
-  pn_eyes: 'videos/PRE_NURSERY/english_005_eyes.mp4',
-  pn_nose: 'videos/PRE_NURSERY/english_006_nose.mp4',
-  pn_ears: 'videos/PRE_NURSERY/english_007_ears.mp4',
-  pn_mouth: 'videos/PRE_NURSERY/english_008_mouth.mp4',
-  pn_hands: 'videos/PRE_NURSERY/english_009_hands.mp4',
-  pn_legs: 'videos/PRE_NURSERY/english_010_legs.mp4',
-  pn_feet: 'videos/PRE_NURSERY/english_011_feet.mp4',
-  lkg_cap_az_rev: 'videos/LKG/english_001_capital_a_z_revision.mp4',
-  lkg_letter_sounds: 'videos/LKG/english_003_letter_sounds_introduction.mp4',
-  lkg_wf_at_blend: 'videos/LKG/english_005_short_a_blend_at.mp4',
+  pn_oral_greetings_hello_bye: buildVideoKey('PRE_NURSERY', 'english_002_hello_bye.mp4'),
+  pn_myself: buildVideoKey('PRE_NURSERY', 'evs_001_all_about_me.mp4'),
+  pn_head: buildVideoKey('PRE_NURSERY', 'english_004_head.mp4'),
+  pn_eyes: buildVideoKey('PRE_NURSERY', 'english_005_eyes.mp4'),
+  pn_nose: buildVideoKey('PRE_NURSERY', 'english_006_nose.mp4'),
+  pn_ears: buildVideoKey('PRE_NURSERY', 'english_007_ears.mp4'),
+  pn_mouth: buildVideoKey('PRE_NURSERY', 'english_008_mouth.mp4'),
+  pn_hands: buildVideoKey('PRE_NURSERY', 'english_009_hands.mp4'),
+  pn_legs: buildVideoKey('PRE_NURSERY', 'english_010_legs.mp4'),
+  pn_feet: buildVideoKey('PRE_NURSERY', 'english_011_feet.mp4'),
+  lkg_cap_az_rev: buildVideoKey('LKG', 'english_001_capital_a_z_revision.mp4'),
+  lkg_letter_sounds: buildVideoKey('LKG', 'english_003_letter_sounds_introduction.mp4'),
+  lkg_wf_at_blend: buildVideoKey('LKG', 'english_005_short_a_blend_at.mp4'),
 };
 
 // ---------------------------------------------------------------------------
@@ -175,12 +232,12 @@ const MISSING_VIDEOS = [
     'a_apple', 'b_ball', 'c_cat', 'd_dog', 'e_egg', 'f_fish', 'g_grapes', 'h_house', 'i_icecream',
     'j_jar', 'k_kite', 'l_lion', 'm_mango', 'n_nest', 'o_owl', 'p_parrot', 'q_queen', 'r_rabbit',
     's_sun', 't_tiger', 'u_umbrella', 'v_van', 'w_watch', 'x_xylophone', 'y_yak', 'z_zebra',
-  ].map((w, i) => `videos/PRE_NURSERY/alphabet_${String(i + 1).padStart(3, '0')}_${w}.mp4`),
+  ].map((w, i) => buildVideoKey('PRE_NURSERY', `alphabet_${String(i + 1).padStart(3, '0')}_${w}.mp4`)),
   ...['english_004_head', 'english_005_eyes', 'english_006_nose', 'english_007_ears',
     'english_008_mouth', 'english_009_hands', 'english_010_legs', 'english_011_feet',
-  ].map((f) => `videos/PRE_NURSERY/${f}.mp4`),
-  'videos/LKG/english_003_letter_sounds_introduction.mp4',
-  'videos/LKG/english_005_short_a_blend_at.mp4',
+  ].map((f) => buildVideoKey('PRE_NURSERY', `${f}.mp4`)),
+  buildVideoKey('LKG', 'english_003_letter_sounds_introduction.mp4'),
+  buildVideoKey('LKG', 'english_005_short_a_blend_at.mp4'),
 ];
 
 export const PENDING_MEDIA: ReadonlySet<string> = new Set([

@@ -25,9 +25,13 @@ export class UniversalAudioPlayer {
     this.onFinished = onFinished;
     if (onTimeUpdate) this.onTimeUpdate = onTimeUpdate;
 
-    // Correct URL paths to match S3/CloudFront bucket structure (insert subfolders)
+    // Old-style URLs only: insert the legacy subfolder. Keys in the grade-based
+    // layout (audio/<GRADE>/..., built by the backend's buildAudioKey) are
+    // already exact and must never be rewritten — "alphabet_001_a.mp3" under
+    // audio/PRE_NURSERY/ would otherwise become audio/alphabet_audio/PRE_NURSERY/...
     let cleanUrl = url;
-    if (url && url.includes('/audio/')) {
+    const gradeBased = /\/audio\/(PRE_NURSERY|NURSERY|LKG|UKG)\//.test(url ?? '');
+    if (url && url.includes('/audio/') && !gradeBased) {
       // Check if it's missing the subfolder prefix
       if (
         !url.includes('mentor_audio/') &&
