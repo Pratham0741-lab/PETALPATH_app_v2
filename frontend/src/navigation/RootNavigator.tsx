@@ -194,6 +194,7 @@ export const RootNavigator = () => {
   const token = useAppStore((state) => state.token);
   const activeChild = useChildStore((state) => state.activeChild);
   const loadingSession = useAppStore((state) => state.loadingSession);
+  const parentName = useAppStore((state) => state.user?.name);
   const loadSession = useAppStore((state) => state.loadSession);
   const baselineHydrated = useBaselineStore((s) => s.hydrated);
   const baselineStatus = useBaselineStore((s) => (activeChild ? s.byChild[activeChild.id]?.status : undefined));
@@ -232,8 +233,20 @@ export const RootNavigator = () => {
 
   // If user has no active child profile selected, force onboarding flow
   if (!activeChild) {
+    /*
+     * "Your Profile" asks for the parent's name. Sign-up already collects it and
+     * Google provides it, so it only opens first when the account really has
+     * no name; otherwise onboarding starts at choosing a child. (It used to be
+     * the first screen after every login.)
+     */
+    const name = parentName?.trim() ?? '';
+    const needsName = name === '' || name === 'Google User';
     return (
-      <Stack.Navigator key="onboarding" screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
+      <Stack.Navigator
+        key="onboarding"
+        initialRouteName={needsName ? 'ParentProfile' : 'ChildSelection'}
+        screenOptions={{ headerShown: false, animation: 'slide_from_right' }}
+      >
         <Stack.Screen name="ParentProfile" component={ParentProfileScreen} />
         <Stack.Screen name="ChildSelection" component={ChildSelectionScreen} />
         <Stack.Screen name="AddChild" component={AddEditChildScreen} />

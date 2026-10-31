@@ -8,6 +8,7 @@ import {
   ResetPasswordSchema,
   RefreshTokenSchema,
   SelectChildSchema,
+  UpdateProfileSchema,
 } from './auth.validator.js';
 import { ValidationError } from '../../utils/errors.js';
 import { AuthenticatedRequest } from '../../middleware/auth.middleware.js';
@@ -148,6 +149,25 @@ export class AuthController {
             updatedAt: user.updatedAt,
           },
         },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  async updateProfile(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+    try {
+      if (!req.user) {
+        throw new ValidationError('User context is missing');
+      }
+      const parsed = UpdateProfileSchema.safeParse(req.body);
+      if (!parsed.success) {
+        throw new ValidationError(parsed.error.issues[0]?.message || 'Validation failed', parsed.error.format());
+      }
+      const user = await authService.updateProfile(req.user.userId, parsed.data.name);
+      return res.status(200).json({
+        success: true,
+        data: { user: { id: user.id, email: user.email, name: user.name, role: user.role } },
       });
     } catch (error) {
       next(error);

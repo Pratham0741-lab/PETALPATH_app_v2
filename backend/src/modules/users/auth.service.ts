@@ -253,6 +253,12 @@ export class AuthService {
   /**
    * Returns current authenticated user metadata
    */
+  /** Updates the signed-in parent's display name. */
+  async updateProfile(userId: string, name: string) {
+    await this.getCurrentUser(userId);
+    return usersRepository.update(userId, { name });
+  }
+
   async getCurrentUser(userId: string) {
     const user = await usersRepository.findById(userId);
     if (!user) {

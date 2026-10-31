@@ -15,6 +15,7 @@ router.post('/reset-password', authController.resetPassword);
 
 // Protected routes
 router.get('/me', authMiddleware as any, authController.me as any);
+router.put('/update-profile', authMiddleware as any, authController.updateProfile as any);
 router.post('/select-child', authMiddleware as any, authController.selectChild as any);
 router.post('/consent', authMiddleware as any, baselineController.consent as any);
 

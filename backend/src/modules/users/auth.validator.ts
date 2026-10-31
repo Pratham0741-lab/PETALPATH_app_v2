@@ -40,3 +40,10 @@ export type ForgotPasswordInput = z.infer<typeof ForgotPasswordSchema>;
 export type ResetPasswordInput = z.infer<typeof ResetPasswordSchema>;
 export type RefreshTokenInput = z.infer<typeof RefreshTokenSchema>;
 export type SelectChildInput = z.infer<typeof SelectChildSchema>;
+
+/** PUT /auth/update-profile — the parent's display name only; nothing else can be changed here. */
+export const UpdateProfileSchema = z
+  .object({
+    name: z.string().trim().min(1, 'Name is required').max(60, 'Name is too long'),
+  })
+  .strict();

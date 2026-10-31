@@ -23,6 +23,7 @@ import { AuthHeader } from '../../components/common/AuthHeader';
 import { AuthBackground } from '../../components/common/AuthBackground';
 import { Screen } from '../../components/layout/Screen';
 import { useAuthStore } from '../../store/authStore';
+import { useAppStore } from '../../store/appStore';
 import { useChildStore } from '../../store/childStore';
 import { apiClient } from '../../services/api/apiClient';
 import { storageService, StorageKeys } from '../../services/storage';
@@ -49,7 +50,6 @@ export const ParentProfileScreen: React.FC = () => {
   const [skipUpdate, setSkipUpdate] = useState(false);
 
   const user = useAuthStore((state) => state.user);
-  const setSession = useAuthStore((state) => state.setSession);
   const refreshChildren = useChildStore((state) => state.refreshChildren);
 
   const {
@@ -87,11 +87,15 @@ export const ParentProfileScreen: React.FC = () => {
         { name: data.name.trim() },
       );
 
-      if (user) {
-        await setSession({
-          accessToken: useAuthStore.getState().token ?? '',
-          refreshToken: useAuthStore.getState().refreshToken ?? '',
-          user: { ...user, name: data.name.trim() },
+      // Through the app store, which also syncs the auth store, so the new name
+      // is what RootNavigator sees: it skips this screen once a name exists.
+      const app = useAppStore.getState();
+      const current = app.user ?? user;
+      if (current) {
+        await app.setSession({
+          accessToken: app.token ?? useAuthStore.getState().token ?? '',
+          refreshToken: app.refreshToken ?? useAuthStore.getState().refreshToken ?? '',
+          user: { ...current, name: data.name.trim() } as any,
         });
       }
 
@@ -107,7 +111,7 @@ export const ParentProfileScreen: React.FC = () => {
     } finally {
       setIsUpdating(false);
     }
-  }, [user, setSession, handleContinue]);
+  }, [user, handleContinue]);
 
   const handleSkip = useCallback(async () => {
     await handleContinue();
