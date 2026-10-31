@@ -195,6 +195,7 @@ export const RootNavigator = () => {
   const activeChild = useChildStore((state) => state.activeChild);
   const loadingSession = useAppStore((state) => state.loadingSession);
   const parentName = useAppStore((state) => state.user?.name);
+  const parentNameSkipped = useAppStore((state) => state.parentNameSkipped);
   const loadSession = useAppStore((state) => state.loadSession);
   const baselineHydrated = useBaselineStore((s) => s.hydrated);
   const baselineStatus = useBaselineStore((s) => (activeChild ? s.byChild[activeChild.id]?.status : undefined));
@@ -240,7 +241,7 @@ export const RootNavigator = () => {
      * the first screen after every login.)
      */
     const name = parentName?.trim() ?? '';
-    const needsName = name === '' || name === 'Google User';
+    const needsName = (name === '' || name === 'Google User') && !parentNameSkipped;
     return (
       <Stack.Navigator
         key="onboarding"

@@ -69,12 +69,7 @@ export const ParentProfileScreen: React.FC = () => {
     } catch {
       // best-effort
     }
-    const childrenList = useChildStore.getState().childrenList;
-    if (childrenList.length > 0) {
-      navigation.reset({ index: 0, routes: [{ name: 'ChildSelection' }] });
-    } else {
-      navigation.reset({ index: 0, routes: [{ name: 'ChildSelection' }] });
-    }
+    navigation.reset({ index: 0, routes: [{ name: 'ChildSelection' }] });
   }, [navigation, refreshChildren]);
 
   const onSubmit = useCallback(async (data: ParentProfileFormData) => {
@@ -114,6 +109,8 @@ export const ParentProfileScreen: React.FC = () => {
   }, [user, handleContinue]);
 
   const handleSkip = useCallback(async () => {
+    // Remembered on this device, so "Skip" means don't ask again.
+    await useAppStore.getState().skipParentName();
     await handleContinue();
   }, [handleContinue]);
 

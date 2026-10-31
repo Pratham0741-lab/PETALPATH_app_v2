@@ -205,8 +205,8 @@ export const ProfileContent: React.FC<ProfileContentProps> = ({ variant }) => {
     } catch (err) {
       if (__DEV__) console.warn('Logout API failed:', err);
     } finally {
-      setActiveChild(null);
-      clearSession();
+      // clearSession signs out first (straight to Login) and clears the child.
+      await clearSession();
       queryClient.clear();
     }
   };

@@ -18,13 +18,15 @@ interface AppState {
   activeMentor: Mentor;
   progress: Progress;
   preferences: Preferences;
-  
+
   // Auth state
   token: string | null;
   refreshToken: string | null;
   user: { id: string; email: string; name: string; role: string } | null;
   loadingSession: boolean;
-  
+  /** The parent chose "Skip for now" on Your Profile on this device: don't ask again. */
+  parentNameSkipped: boolean;
+
   // Actions
   addStars: (count: number) => void;
   setMentor: (mentorId: string) => void;
@@ -33,12 +35,13 @@ interface AppState {
   setLevel: (level: number) => void;
   toggleSound: () => void;
   toggleMusic: () => void;
-  
+
   // Auth actions
   setSession: (sessionData: { accessToken: string; refreshToken: string; user: { id: string; email: string; name: string; role: string } }) => Promise<void>;
   setToken: (token: string) => Promise<void>;
   clearSession: () => Promise<void>;
   loadSession: () => Promise<void>;
+  skipParentName: () => Promise<void>;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -53,19 +56,20 @@ export const useAppStore = create<AppState>((set) => ({
     soundEnabled: true,
     musicEnabled: true,
   },
-  
+
   token: null,
   refreshToken: null,
   user: null,
   loadingSession: true,
-  
+  parentNameSkipped: false,
+
   addStars: (count) => set((state) => ({ stars: state.stars + count })),
-  
+
   setMentor: (mentorId) => set(() => {
     const selected = MENTORS.find((m) => m.id === mentorId) || MENTORS[0];
     return { activeMentor: selected };
   }),
-  
+
   completeActivity: (activityId) => set((state) => ({
     progress: {
       ...state.progress,
@@ -74,7 +78,7 @@ export const useAppStore = create<AppState>((set) => ({
         : [...state.progress.completedActivities, activityId],
     },
   })),
-  
+
   completeLesson: (lessonId) => set((state) => ({
     progress: {
       ...state.progress,
@@ -83,33 +87,33 @@ export const useAppStore = create<AppState>((set) => ({
         : [...state.progress.completedLessons, lessonId],
     },
   })),
-  
+
   setLevel: (level) => set((state) => ({
     progress: {
       ...state.progress,
       currentLevel: level,
     },
   })),
-  
+
   toggleSound: () => set((state) => ({
     preferences: {
       ...state.preferences,
       soundEnabled: !state.preferences.soundEnabled,
     },
   })),
-  
+
   toggleMusic: () => set((state) => ({
     preferences: {
       ...state.preferences,
       musicEnabled: !state.preferences.musicEnabled,
     },
   })),
-  
+
   setSession: async (sessionData) => {
     await storage.setItem('token', sessionData.accessToken);
     await storage.setItem('refreshToken', sessionData.refreshToken);
     await storage.setItem('user', JSON.stringify(sessionData.user));
-    
+
     // Also save via storageService for SecureStore compatibility
     try {
       const { storageService, StorageKeys } = await import('../services/storage');
@@ -138,7 +142,7 @@ export const useAppStore = create<AppState>((set) => ({
 
   setToken: async (token) => {
     await storage.setItem('token', token);
-    
+
     const { useAuthStore } = await import('./authStore');
     useAuthStore.setState({
       token,
@@ -149,32 +153,47 @@ export const useAppStore = create<AppState>((set) => ({
       token,
     }));
   },
-  
+
+  /*
+   * Signed-out state first, storage after. The other order showed the setup
+   * flow ("Your Profile") during logout: the child was cleared while the token
+   * was still set, and a failing storage delete could leave it set for good.
+   */
   clearSession: async () => {
-    await storage.removeItem('token');
-    await storage.removeItem('refreshToken');
-    await storage.removeItem('user');
-    await storage.removeItem('activeChild');
-    
-    try {
-      const { storageService, StorageKeys } = await import('../services/storage');
-      await storageService.removeItem(StorageKeys.AUTH_TOKEN);
-      await storageService.removeItem(StorageKeys.REFRESH_TOKEN);
-      await storageService.removeItem(StorageKeys.USER);
-    } catch {}
-
-    const { useChildStore } = await import('./childStore');
-    useChildStore.setState({ activeChild: null, childrenList: [] });
-
-    const { useAuthStore } = await import('./authStore');
-    useAuthStore.setState({ user: null, token: null, refreshToken: null, isAuthenticated: false, isLoading: false });
-    
     set(() => ({
       token: null,
       refreshToken: null,
       user: null,
       loadingSession: false,
     }));
+
+    const { useAuthStore } = await import('./authStore');
+    useAuthStore.setState({ user: null, token: null, refreshToken: null, isAuthenticated: false, isLoading: false });
+
+    const { useChildStore } = await import('./childStore');
+    useChildStore.setState({ activeChild: null, childrenList: [] });
+
+    try {
+      await storage.removeItem('token');
+      await storage.removeItem('refreshToken');
+      await storage.removeItem('user');
+      await storage.removeItem('activeChild');
+    } catch {}
+
+    try {
+      const { storageService, StorageKeys } = await import('../services/storage');
+      await storageService.removeItem(StorageKeys.AUTH_TOKEN);
+      await storageService.removeItem(StorageKeys.REFRESH_TOKEN);
+      await storageService.removeItem(StorageKeys.USER);
+      await storageService.removeItem(StorageKeys.ACTIVE_CHILD);
+    } catch {}
+  },
+
+  skipParentName: async () => {
+    set({ parentNameSkipped: true });
+    try {
+      await storage.setItem('parentNameSkipped', '1');
+    } catch {}
   },
 
   loadSession: async () => {
@@ -269,11 +288,17 @@ export const useAppStore = create<AppState>((set) => ({
         isLoading: false,
       });
 
+      let parentNameSkipped = false;
+      try {
+        parentNameSkipped = (await storage.getItem('parentNameSkipped')) === '1';
+      } catch {}
+
       set({
         token,
         refreshToken,
         user,
         loadingSession: false,
+        parentNameSkipped,
       });
     } catch (err) {
       if (typeof __DEV__ !== 'undefined' && __DEV__) console.warn('Failed to load session:', err);
