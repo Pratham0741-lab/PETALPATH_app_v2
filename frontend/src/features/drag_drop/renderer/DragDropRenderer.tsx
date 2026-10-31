@@ -93,6 +93,8 @@ export const DragDropRenderer: React.FC<DragDropRendererProps> = ({
     async function init() {
       if (initialSpec) {
         engine.setSpec(initialSpec);
+        // The engine plays a shuffled copy; draw that one, not the original.
+        if (engine.spec) setSpec(engine.spec);
         engine.startActivity();
         setLoading(false);
         return;

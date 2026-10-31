@@ -17,6 +17,7 @@ import { StarRatingEvaluator } from './StarRatingEvaluator';
 import { HintController } from './HintController';
 import { AnalyticsObserver } from '../../../core/analytics/analyticsObserver';
 import { CompletionEmitter } from './CompletionEmitter';
+import { shuffleBoard } from './BoardShuffler';
 import { useActivityRuntimeStore } from '../../../core/activity-runtime/activityRuntimeStore';
 
 export class DragDropEngine {
@@ -46,7 +47,13 @@ export class DragDropEngine {
     this.analyticsObserver.attach(this.eventBus);
   }
 
+  /**
+   * Takes a board and plays a freshly shuffled copy of it (BoardShuffler), so
+   * tiles and zones sit in different places on every attempt. Read the board
+   * back from `this.spec`: rendering and hit-testing must use the same copy.
+   */
   setSpec(spec: DragDropActivitySpec): void {
+    spec = shuffleBoard(spec);
     this.spec = spec;
     if (spec.hints) {
       this.hintController = new HintController(spec.hints, this.eventBus);

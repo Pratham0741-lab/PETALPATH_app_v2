@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { api } from '../api/client';
 import { useRoadmapStore } from './roadmapStore';
+import { shuffleArray } from '../utils/shuffle';
 import { getLessonMatchData } from '../utils/lessonActivityMatcher';
 
 export interface AudioItem {
@@ -35,28 +36,25 @@ function generateOptionsForActivity(lessonTitle: string, activityTitle: string):
   const match = getLessonMatchData(lessonTitle, activityTitle);
   const correct = match.correctAnswer;
 
-  let options: string[] = [correct];
-  
+  // Four choices: the answer plus three others, in a fair random order.
+  const DISTRACTORS = 3;
+  let others: string[];
   if (correct.startsWith('Letter ')) {
     const activeLetter = correct.replace('Letter ', '').toUpperCase();
     const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    const otherLetters = alphabet.split('').filter((l) => l !== activeLetter);
-    const selected = otherLetters.sort(() => Math.random() - 0.5).slice(0, 2);
-    options = [correct, `Letter ${selected[0]}`, `Letter ${selected[1]}`];
+    others = shuffleArray(alphabet.split('').filter((l) => l !== activeLetter))
+      .slice(0, DISTRACTORS)
+      .map((l) => `Letter ${l}`);
   } else if (correct.startsWith('Number ')) {
     const activeNum = parseInt(correct.replace('Number ', ''), 10) || 1;
     const candidates = Array.from({ length: 10 }, (_, i) => i + 1).filter((n) => n !== activeNum);
-    const selected = candidates.sort(() => Math.random() - 0.5).slice(0, 2);
-    options = [correct, `Number ${selected[0]}`, `Number ${selected[1]}`];
+    others = shuffleArray(candidates).slice(0, DISTRACTORS).map((n) => `Number ${n}`);
   } else {
     const shapes = ['Standing Line', 'Sleeping Line', 'Left Curve', 'Right Curve', 'Circle', 'Square', 'Triangle'];
-    const filtered = shapes.filter((s) => s.toLowerCase() !== correct.toLowerCase());
-    const selected = filtered.sort(() => Math.random() - 0.5).slice(0, 2);
-    options = [correct, selected[0], selected[1]];
+    others = shuffleArray(shapes.filter((s) => s.toLowerCase() !== correct.toLowerCase())).slice(0, DISTRACTORS);
   }
 
-  // Shuffle options
-  const shuffled = options.sort(() => Math.random() - 0.5);
+  const shuffled = shuffleArray([correct, ...others]);
   return {
     options: shuffled,
     correct,
