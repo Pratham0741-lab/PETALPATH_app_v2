@@ -449,7 +449,12 @@ function titleCase(s: string): string {
  * that an unmapped lesson degrades to something honest and playable rather than
  * to four squares reading "sr label", which is what the old generator did.
  */
-export function fallbackBlueprint(nodeId: string, title: string, topic?: string): Blueprint {
+export function fallbackBlueprint(
+  nodeId: string,
+  title: string,
+  topic?: string,
+  rng: () => number = Math.random,
+): Blueprint {
   const source = topic ?? title ?? '';
 
   const listed = parseParenthetical(source);
@@ -484,16 +489,22 @@ export function fallbackBlueprint(nodeId: string, title: string, topic?: string)
   }
 
   // Letter board. Prefers an explicit "Letter X" in the title, then a trailing
-  // single-character segment of the node id, then A.
+  // single-character segment of the node id. A lesson that names no letter gets
+  // a random one, and every board gets three random other letters, picked fresh
+  // each time the lesson loads. (Previously a fixed list, so 914 lessons showed
+  // exactly "find A among B, C, D", every time.)
+  const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
   const letterMatch = source.match(/letter\s+([a-z])/i) ?? nodeId.match(/letter_([a-z])\b/i);
   const tail = nodeId.split('_').pop() ?? '';
-  const letter = (
-    letterMatch?.[1] ?? (tail.length === 1 && /[a-z]/i.test(tail) ? tail : 'A')
-  ).toUpperCase();
+  const named = letterMatch?.[1] ?? (tail.length === 1 && /[a-z]/i.test(tail) ? tail : null);
+  const letter = (named ?? ALPHABET[Math.floor(rng() * ALPHABET.length)]!).toUpperCase();
 
-  const distractors = ['A', 'B', 'C', 'D', 'E', 'M', 'S', 'T']
-    .filter((l) => l !== letter)
-    .slice(0, 3);
+  const pool = ALPHABET.filter((l) => l !== letter);
+  for (let i = pool.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(rng() * (i + 1));
+    [pool[i], pool[j]] = [pool[j]!, pool[i]!];
+  }
+  const distractors = pool.slice(0, 3);
 
   return {
     templateId: 'letter-to-outline',
