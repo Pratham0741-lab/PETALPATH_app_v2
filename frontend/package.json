@@ -58,7 +58,7 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "test:pose": "tsx --test src/features/camera/__tests__/pose.test.ts",
-    "test:unit": "tsx --test src/features/baseline/__tests__/engine.test.ts src/features/usageLimit/__tests__/usageTimer.test.ts src/features/drag_drop/__tests__/BoardShuffler.node.test.ts",
+    "test:unit": "tsx --test src/features/baseline/__tests__/engine.test.ts src/features/usageLimit/__tests__/usageTimer.test.ts src/features/drag_drop/__tests__/BoardShuffler.node.test.ts src/utils/__tests__/activityNormalization.test.ts",
     "dev": "concurrently \"npm run dev --prefix server\" \"npm start\""
   },
   "private": true

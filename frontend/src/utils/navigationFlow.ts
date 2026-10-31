@@ -6,6 +6,7 @@ import { useWriteStore } from '../store/writeStore';
 import { customAlert } from './alert';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../types/navigation';
+import { oneActivityPerScreen } from './activityNormalization';
 import { normalizeActivityType } from './activityNormalization';
 
 /**
@@ -33,7 +34,7 @@ const resolveActivityList = (): Activity[] => {
     );
   }
 
-  return actList ?? [];
+  return oneActivityPerScreen(actList ?? []);
 };
 
 /**

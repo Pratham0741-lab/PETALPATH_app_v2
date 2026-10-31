@@ -43,6 +43,7 @@ import type {
 } from '../../services/api/learningApi';
 import { PetalMark } from '../../components/brand/PetalMark';
 import { useTwoPane } from '../../hooks/useTwoPane';
+import { oneActivityPerScreen } from '../../utils/activityNormalization';
 import {
   AppShell,
   AppHeader,
@@ -251,25 +252,27 @@ export const HomeContent: React.FC<HomeContentProps> = ({ variant = 'mobile' }) 
   // ------------------------------------------------------- activity helpers
   const getNextIncompleteActivity = useCallback((lesson: Lesson) => {
     const progress = lesson.progress;
-    if (!progress) return lesson.activities[0] || null;
-    for (const act of lesson.activities) {
+    const acts = oneActivityPerScreen(lesson.activities);
+    if (!progress) return acts[0] || null;
+    for (const act of acts) {
       if (act.activityType === 'video' && !progress.videoCompleted) return act;
       if (act.activityType === 'listen' && !progress.listenCompleted) return act;
       if (act.activityType === 'speak' && !progress.speakCompleted) return act;
       if (act.activityType === 'write' && !progress.writeCompleted) return act;
     }
-    return lesson.activities[0] || null;
+    return acts[0] || null;
   }, []);
 
   const getRemainingActivitiesCount = useCallback((lesson: Lesson) => {
     const progress = lesson.progress;
-    if (!progress) return lesson.activities.length;
+    const total = oneActivityPerScreen(lesson.activities).length;
+    if (!progress) return total;
     let completed = 0;
     if (progress.videoCompleted) completed++;
     if (progress.listenCompleted) completed++;
     if (progress.speakCompleted) completed++;
     if (progress.writeCompleted) completed++;
-    return Math.max(0, lesson.activities.length - completed);
+    return Math.max(0, total - completed);
   }, []);
 
   // Both navigation paths must select the lesson first — the activity stores
@@ -537,7 +540,7 @@ export const HomeContent: React.FC<HomeContentProps> = ({ variant = 'mobile' }) 
     if (dashboardOverview.dailyGoal && dashboardOverview.dailyGoal > 0) {
       return dashboardOverview.dailyGoal;
     }
-    return currentLesson?.activities?.length ?? 4;
+    return currentLesson?.activities ? oneActivityPerScreen(currentLesson.activities).length : 4;
   }, [dashboardOverview, currentLesson]);
 
   const completedActivitiesToday = useMemo(() => {
@@ -740,7 +743,7 @@ export const HomeContent: React.FC<HomeContentProps> = ({ variant = 'mobile' }) 
   const nextActivity = currentLesson ? getNextIncompleteActivity(currentLesson) : null;
   const nextType = (nextActivity?.activityType ?? 'video') as ActivityKindKey;
   const remaining = currentLesson ? getRemainingActivitiesCount(currentLesson) : 0;
-  const totalActs = currentLesson?.activities?.length ?? 0;
+  const totalActs = currentLesson?.activities ? oneActivityPerScreen(currentLesson.activities).length : 0;
 
   /*
    * How far through the whole journey this child is, which is what the garden at

@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { oneActivityPerScreen } from '../utils/activityNormalization';
 import { api } from '../api/client';
 
 export interface Category {
@@ -273,11 +274,11 @@ export const useRoadmapStore = create<RoadmapState>((set, get) => ({
     set({ loading: true, error: null });
     try {
       const res = await api.get(`/activities?lessonId=${lessonId}`);
-      const activitiesList = (res.data || [])
-        .filter((a: Activity) => (a.activityType as string) !== 'identify' && !a.title?.toLowerCase().includes('identify'))
-        .sort(
-          (a: Activity, b: Activity) => a.displayOrder - b.displayOrder
-        );
+      const activitiesList = oneActivityPerScreen<Activity>(
+        (res.data || [])
+          .filter((a: Activity) => (a.activityType as string) !== 'identify' && !a.title?.toLowerCase().includes('identify'))
+          .sort((a: Activity, b: Activity) => a.displayOrder - b.displayOrder),
+      );
       set({ activities: activitiesList });
     } catch (err: unknown) {
       set({ error: err instanceof Error ? err.message : 'Failed to load activities' });
