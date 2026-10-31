@@ -91,6 +91,14 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
          * suit; a short title still occupies one line and looks identical.
          */
         numberOfLines={2}
+        /*
+         * And shrink to fit. Home's right cluster grew (streak, stars, camera,
+         * avatar), leaving too little width for even one word, so "Learning
+         * Journey" broke mid-word as "Learni / ng Jo…". The text now scales down
+         * until whole words fit in two lines.
+         */
+        adjustsFontSizeToFit
+        minimumFontScale={0.6}
         accessibilityRole="header"
       >
         {title}
@@ -192,7 +200,10 @@ export const PageHeader: React.FC<PageHeaderProps> = ({
             styles.pageTitleLarge,
             centered && styles.centeredText,
           ]}
-          numberOfLines={1}
+          // Two lines, shrinking to fit, rather than "Who is learning t…".
+          numberOfLines={2}
+          adjustsFontSizeToFit
+          minimumFontScale={0.75}
           accessibilityRole="header"
         >
           {title}
@@ -387,7 +398,13 @@ export const ActivityHeader: React.FC<ActivityHeaderProps> = ({
               {kindLabel ?? meta.word}
             </Text>
           </View>
-          <Text style={[typography.presets.cardTitle, styles.activityTitle]} numberOfLines={1} accessibilityRole="header">
+          <Text
+            style={[typography.presets.cardTitle, styles.activityTitle]}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.7}
+            accessibilityRole="header"
+          >
             {title}
           </Text>
         </View>
