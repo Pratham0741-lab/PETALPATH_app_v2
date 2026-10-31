@@ -240,7 +240,10 @@ export const RootNavigator = () => {
      * no name; otherwise onboarding starts at choosing a child. (It used to be
      * the first screen after every login.)
      */
-    const name = parentName?.trim() ?? '';
+    // Only when the server says the name is empty. A session without a name
+    // field at all (an older server, or saved before it sent one) is not a
+    // reason to ask: that is what made the screen appear after every login.
+    const name = typeof parentName === 'string' ? parentName.trim() : null;
     const needsName = (name === '' || name === 'Google User') && !parentNameSkipped;
     return (
       <Stack.Navigator

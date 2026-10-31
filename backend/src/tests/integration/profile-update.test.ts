@@ -40,6 +40,21 @@ describe('PUT /api/auth/update-profile', () => {
     expect(row?.role).toBe('PARENT');
   });
 
+  it('login, register and refresh return the name and email, including a just-saved name', async () => {
+    const email = `name-${Date.now()}@example.com`;
+    const reg = await request.post('/api/auth/register').send({ name: 'Asha', email, password: 'longpassword1' });
+    expect(reg.body.data.user).toMatchObject({ name: 'Asha', email });
+
+    await put(reg.body.data.accessToken, { name: 'Asha Rao' });
+
+    const login = await request.post('/api/auth/login').send({ email, password: 'longpassword1' });
+    expect(login.status).toBe(200);
+    expect(login.body.data.user).toMatchObject({ name: 'Asha Rao', email });
+
+    const refresh = await request.post('/api/auth/refresh').send({ refreshToken: login.body.data.refreshToken });
+    expect(refresh.body.data.user).toMatchObject({ name: 'Asha Rao', email });
+  });
+
   it('requires authentication', async () => {
     const res = await request.put('/api/auth/update-profile').send({ name: 'Asha' });
     expect(res.status).toBe(401);

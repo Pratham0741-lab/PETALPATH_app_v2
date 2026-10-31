@@ -302,11 +302,17 @@ export class AuthService {
 
     await refreshTokenRepository.createToken(userId, refreshToken, expiresAt);
 
+    // The app stores this user as-is. Without name/email it believed every
+    // account had no name and showed "Your Profile" after every login.
+    const profile = await usersRepository.findById(userId);
+
     return {
       accessToken,
       refreshToken,
       user: {
         id: userId,
+        email: profile?.email ?? '',
+        name: profile?.name ?? '',
         role,
         childId,
       },
