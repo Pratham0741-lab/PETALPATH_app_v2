@@ -260,3 +260,20 @@ describe('session engine', () => {
     assert.equal(e.getSnapshot().state, 'running', '25 s after a rep is not stuck yet');
   });
 });
+
+describe('raised hands with faint wrists (hands at the top of the frame)', () => {
+  const faint = { leftWrist: 0.1, rightWrist: 0.1 };
+  const up = { leftArm: { upper: -100, lower: -95 }, rightArm: { upper: -80, lower: -85 } };
+  it('passes on the elbows when the wrists are too faint to see', () => {
+    const s = score('areBothHandsAboveShoulders', { ...up, visibility: faint });
+    assert.ok(s.pass, `scored ${s.score.toFixed(2)}, failing ${s.failing?.id}`);
+  });
+  it('still rejects arms down, and arms out wide, with faint wrists', () => {
+    assert.ok(!score('areBothHandsAboveShoulders', { ...ARMS_DOWN, visibility: faint }).pass);
+    const wide = { leftArm: { upper: 180, lower: 180 }, rightArm: { upper: 0, lower: 0 } };
+    assert.ok(!score('areBothHandsAboveShoulders', { ...wide, visibility: faint }).pass);
+  });
+  it('one hand up works on the elbow too', () => {
+    assert.ok(score('isLeftHandRaised', { ...ARMS_DOWN, leftArm: up.leftArm, visibility: faint }).pass);
+  });
+});

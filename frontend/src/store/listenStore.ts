@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { api } from '../api/client';
 import { useRoadmapStore } from './roadmapStore';
 import { shuffleArray } from '../utils/shuffle';
+import { listenOptionsFromAudio } from '../utils/listenOptions';
 import { getLessonMatchData } from '../utils/lessonActivityMatcher';
 
 export interface AudioItem {
@@ -110,7 +111,11 @@ export const useListenStore = create<ListenState>((set, get) => {
         }
 
         const lessonTitle = useRoadmapStore.getState().selectedLesson?.title || '';
-        const { options, correct } = generateOptionsForActivity(lessonTitle, activityTitle);
+        // Options named after what the audio says ("Capital G"), falling back
+        // to the lesson title for audio whose name it does not recognise.
+        const { options, correct } =
+          listenOptionsFromAudio(isComingSoon ? null : audio.filename ?? audio.audioUrl) ??
+          generateOptionsForActivity(lessonTitle, activityTitle);
 
         set({
           currentAudio: audio,

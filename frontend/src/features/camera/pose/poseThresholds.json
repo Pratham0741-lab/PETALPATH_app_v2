@@ -3,7 +3,7 @@
   "passScore": 0.6,
   "angleToleranceDeg": 30,
   "distanceTolerance": 0.35,
-  "minVisibility": 0.3,
+  "minVisibility": 0.2,
   "minCoverage": 0.5,
   "minBlend": 0.5,
   "acceptMirrored": true,

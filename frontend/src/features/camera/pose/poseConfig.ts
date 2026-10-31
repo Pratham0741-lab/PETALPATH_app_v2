@@ -114,7 +114,10 @@ export interface PoseSpec {
 const wristUp = (side: 'left' | 'right', required = true): RangeCheck => ({
   id: `${side}WristUp`,
   kind: 'dy',
-  a: `${side}Wrist`,
+  // The wrist, or the elbow when the wrist is too faint to trust: hands raised
+  // to the top of the frame are MoveNet's least confident points, and a raised
+  // arm puts the elbow well above the shoulder too.
+  a: [`${side}Wrist`, `${side}Elbow`],
   b: `${side}Shoulder`,
   // At least a tenth of a torso above the shoulder. A T-pose (level) scores 0.5
   // and fails on its own, so "arms out wide" is not "hands up".
@@ -128,7 +131,7 @@ const armPointsUp = (side: 'left' | 'right'): DirectionCheck => ({
   id: `${side}ArmUp`,
   kind: 'direction',
   from: `${side}Shoulder`,
-  to: `${side}Wrist`,
+  to: [`${side}Wrist`, `${side}Elbow`],
   target: 'up',
   // Children raise their arms in a V, well off vertical.
   tol: 40,
