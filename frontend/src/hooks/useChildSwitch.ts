@@ -10,6 +10,12 @@ export function useChildSwitch() {
     let child: Child | undefined;
     if (typeof childOrId === 'string') {
       child = useChildStore.getState().childrenList.find(c => c.id === childOrId);
+      if (!child) {
+        // The store's list is empty after logout; load it rather than silently
+        // doing nothing.
+        await useChildStore.getState().refreshChildren();
+        child = useChildStore.getState().childrenList.find(c => c.id === childOrId);
+      }
     } else {
       child = childOrId;
     }

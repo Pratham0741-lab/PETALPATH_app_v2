@@ -100,7 +100,10 @@ export const ChildSelectionScreen: React.FC = () => {
     }
 
     try {
-      await switchChild(child.id);
+      // The child object itself, not its id: switchChild looked the id up in
+      // the child store's list, which is empty after logout (this screen reads
+      // its list from the query instead), so the tap silently did nothing.
+      await switchChild(child);
     } catch {
       // selection failure is non-blocking — child is still set locally
     }
@@ -109,10 +112,11 @@ export const ChildSelectionScreen: React.FC = () => {
       {
         text: 'OK',
         onPress: () => {
-          if (deviceType === 'mobile') {
-            navigation.navigate('MainTabs');
-          } else {
-            navigation.navigate('Home');
+          // In the setup flow (after login) the app moves to the main screens
+          // by itself once a child is set, and these routes do not exist there.
+          const target = deviceType === 'mobile' ? 'MainTabs' : 'Home';
+          if (navigation.getState()?.routeNames?.includes(target)) {
+            navigation.navigate(target);
           }
         },
       },
