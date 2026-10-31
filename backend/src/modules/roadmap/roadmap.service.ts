@@ -11,6 +11,7 @@ import { reinforcementQueueRepository } from '../reinforcement/repositories/rein
 import { reinforcementHistoryRepository } from '../reinforcement/repositories/reinforcement-history.repository.js';
 import { modalityTelemetryService } from '../adaptive/modality-telemetry.service.js';
 import { planReviews, describePracticeSession } from './review-plan.js';
+import { planLessonActivities } from '../activities/activities.service.js';
 
 const formatRoadmapActivity = (activity: any) => {
   return {
@@ -81,12 +82,22 @@ export class RoadmapService {
       where: { lessonId: { in: nodeIds }, deletedAt: null },
       include: { video: true, audio: true },
     });
-    const activitiesMap = new Map<string, any[]>();
+    const rawByLesson = new Map<string, any[]>();
     allActivities.forEach((act) => {
-      const list = activitiesMap.get(act.lessonId) || [];
-      list.push(formatRoadmapActivity(act));
-      activitiesMap.set(act.lessonId, list);
+      const list = rawByLesson.get(act.lessonId) || [];
+      list.push(act);
+      rawByLesson.set(act.lessonId, list);
     });
+    // The same list the lesson screen gets (only activities a child can do,
+    // plus a meaningful drag-and-drop), so "N activities left" here matches
+    // what opens. Board data is left out: the roadmap only needs the list.
+    const activitiesMap = new Map<string, any[]>();
+    for (const [lessonId, list] of rawByLesson) {
+      activitiesMap.set(
+        lessonId,
+        planLessonActivities(lessonId, list, { withSpec: false }).map(formatRoadmapActivity),
+      );
+    }
 
     // Build Node Status List
     const enrichedNodes: any[] = [];

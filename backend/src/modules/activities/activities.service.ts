@@ -7,6 +7,7 @@ import { audioPathFor, videoPathFor, type GradeId } from '../../shared/utils/med
 import { curriculumLoader } from '../curriculum/curriculum-loader.js';
 
 import { generateDynamicDragDropSpec } from '../../shared/utils/spec-generator.js';
+import { hasMeaningfulDragDrop, isPerformableActivity } from '../../shared/utils/lesson-activity-plan.js';
 
 function getActivityTitle(lessonTitle: string, type: string): string {
   const typeMap: Record<string, string> = {
@@ -112,13 +113,15 @@ function positionDragDropAfterSpeaking<T extends { activityType: string; display
   ));
 }
 
-function addMissingDragDropActivity(lessonId: string, activities: any[]): any[] {
+function addMissingDragDropActivity(lessonId: string, activities: any[], withSpec = true): any[] {
   if (activities.some((activity) => activity.activityType === 'drag_drop')) return activities;
 
   const node = curriculumService.getLessonById(lessonId);
   if (!node) return activities;
+  // Only a board that is about this lesson; never the random-letter fallback.
+  if (!hasMeaningfulDragDrop(node)) return activities;
 
-  const spec = getDragDropSpecForLesson(lessonId);
+  const spec = withSpec ? getDragDropSpecForLesson(lessonId) : null;
   const nextDisplayOrder = activities.length > 0
     ? Math.max(...activities.map((a: any) => a.displayOrder)) + 1
     : 4;
@@ -140,12 +143,31 @@ function addMissingDragDropActivity(lessonId: string, activities: any[]): any[] 
   ];
 }
 
+/**
+ * The activities a lesson offers: only those a child can perform
+ * (shared/utils/lesson-activity-plan.ts), plus a drag-and-drop where a
+ * meaningful board exists, drag-and-drop placed after speaking. The lesson
+ * screen and the roadmap both use this, so their counts always agree.
+ * `withSpec: false` skips the board data (the roadmap only needs the list).
+ */
+export function planLessonActivities<T extends { activityType: string; displayOrder: number }>(
+  lessonId: string,
+  activities: T[],
+  opts: { withSpec?: boolean } = {},
+): T[] {
+  const node = curriculumService.getLessonById(lessonId);
+  if (!node) return activities;
+  const performable = activities.filter((a) => isPerformableActivity(a.activityType, node));
+  const withDragDrop = addMissingDragDropActivity(lessonId, performable, opts.withSpec !== false) as T[];
+  return positionDragDropAfterSpeaking(withDragDrop);
+}
+
 export class ActivitiesService {
   async getAllActivities(lessonId?: string) {
     if (lessonId) {
       const dbActivities = await activitiesRepository.findByLessonId(lessonId);
       if (dbActivities && dbActivities.length > 0) {
-        const activitiesWithDragDrop = addMissingDragDropActivity(lessonId, dbActivities);
+        const activitiesWithDragDrop: any[] = planLessonActivities(lessonId, dbActivities);
         const enrichedActivities = activitiesWithDragDrop.map((act) => {
           if (act.activityType === 'drag_drop') {
             const spec = act.dragDropSpec || getDragDropSpecForLesson(act.lessonId);
@@ -189,11 +211,7 @@ export class ActivitiesService {
           } : null,
         }));
 
-        if (!activities.some((a) => a.activityType === 'drag_drop')) {
-          activities = addMissingDragDropActivity(lessonId, activities);
-        }
-
-        return positionDragDropAfterSpeaking(activities);
+        return planLessonActivities(lessonId, activities);
       }
 
       return [];

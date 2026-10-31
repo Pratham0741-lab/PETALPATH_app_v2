@@ -10,15 +10,18 @@ import { createAuthenticatedContext } from '../helpers/auth.js';
 import { createTestCategory, createTestModule, createTestLessonData } from '../helpers/factories.js';
 import { curriculumLoader } from '../../modules/curriculum/curriculum-loader.js';
 import { expectedModalitiesOf } from '../../modules/progress/lesson-evidence.js';
+import { isPerformableActivity } from '../../shared/utils/lesson-activity-plan.js';
 import { lessonCompletionService } from '../../modules/progress/lesson-completion.service.js';
 import { COMING_SOON } from '../../shared/utils/media-paths.js';
 
-// A real curriculum lesson with a video and at least one other modality.
+// A real curriculum lesson with a video and at least one other modality, all
+// of which the child is offered (see shared/utils/lesson-activity-plan.ts —
+// e.g. "Free Play" is video-only, so it would not exercise the gate).
 const node = curriculumLoader
   .getLessons('prenursery')
   .find((n) => {
     const m = expectedModalitiesOf(n.activities);
-    return m.includes('video') && m.length >= 2;
+    return m.includes('video') && m.length >= 2 && m.every((x) => isPerformableActivity(x, n));
   })!;
 const expected = expectedModalitiesOf(node.activities);
 const TYPE = { video: 'video', listen: 'listen', speak: 'speak', write: 'write' } as const;

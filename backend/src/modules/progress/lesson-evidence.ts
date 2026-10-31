@@ -22,6 +22,8 @@ import { engineConfig } from '../../shared/config/engine.config.js';
 import { ActivityType } from '../../shared/enums.js';
 import { normalizeActivityType } from '../../shared/utils/activity-type-normalizer.js';
 import { COMING_SOON, servedMediaKey } from '../../shared/utils/media-paths.js';
+import { isPerformableActivity } from '../../shared/utils/lesson-activity-plan.js';
+import { curriculumLoader } from '../curriculum/curriculum-loader.js';
 // Type-only, so it is erased at compile time and the pure half of this module
 // still runs under the DB-free harness.
 import type { Prisma } from '@prisma/client';
@@ -418,7 +420,10 @@ export async function requiredModalitiesOf(
     if (m === 'listen' && playable(a.audio?.audioKey)) doable.add('listen');
     if (m === 'speak' || m === 'write') doable.add(m);
   }
-  return expectedModalities.filter((m) => doable.has(m));
+  // Not offered to the child for this lesson (shared/utils/lesson-activity-plan.ts),
+  // so never required: e.g. "Free Play" is video-only.
+  const node = curriculumLoader.getLessonIndex(lessonId)?.node;
+  return expectedModalities.filter((m) => doable.has(m) && (!node || isPerformableActivity(m, node)));
 }
 
 interface LessonProgressLike {
