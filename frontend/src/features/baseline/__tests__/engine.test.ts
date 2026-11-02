@@ -53,10 +53,12 @@ const ans = (domain: Answer['domain'], difficulty: 1 | 2 | 3, credit: number, pa
 });
 
 describe('item bank', () => {
-  it('has the Nursery sample items the spec asks for', () => {
+  it('has 3 Nursery items per difficulty in each hands-on domain, and the parent items', () => {
     const n = bank.items.filter((i) => i.grade === GRADE);
     for (const d of ['english', 'maths', 'cognitive'] as const) {
-      assert.equal(n.filter((i) => i.domain === d && i.type !== 'parent_observed').length, 3, d);
+      for (const level of [1, 2, 3]) {
+        assert.equal(n.filter((i) => i.domain === d && i.difficulty === level && i.type !== 'parent_observed').length, 3, `${d} ${level}`);
+      }
     }
     for (const d of ['fine_motor', 'sel', 'life_skills'] as const) {
       assert.equal(n.filter((i) => i.domain === d && i.type === 'parent_observed').length, 2, d);
@@ -83,13 +85,13 @@ describe('adaptive flow', () => {
     assert.equal(down.difficulty, 1);
   });
 
-  it('asks 2-3 items per domain and 10-14 in total', () => {
+  it('asks 2-4 items per domain and at most 18 in total', () => {
     for (const policy of [ALWAYS_RIGHT, ALWAYS_WRONG, ALWAYS_IDK]) {
       const answers = play(policy);
-      assert.ok(answers.length >= 10 && answers.length <= 14, `total ${answers.length}`);
+      assert.ok(answers.length >= 10 && answers.length <= 18, `total ${answers.length}`);
       for (const d of childDomains(bank, GRADE)) {
         const n = answers.filter((a) => a.domain === d).length;
-        assert.ok(n >= 2 && n <= 3, `${d}: ${n}`);
+        assert.ok(n >= 2 && n <= 4, `${d}: ${n}`);
       }
     }
   });
@@ -103,7 +105,12 @@ describe('adaptive flow', () => {
 });
 
 describe('scoring', () => {
-  it('all correct → Secure everywhere, high confidence where 3 items were asked', () => {
+  it('all correct climbs to the hardest level and stays there', () => {
+    const english = play(ALWAYS_RIGHT).filter((a) => a.domain === 'english');
+    assert.deepEqual(english.map((a) => a.difficulty), [2, 3, 3, 3]);
+  });
+
+  it('all correct → Secure everywhere, high confidence where 3+ items were asked', () => {
     const domains = scoreDomains(play(ALWAYS_RIGHT, PARENT_YES));
     for (const d of ['english', 'maths', 'fine_motor', 'sel', 'life_skills'] as const) {
       assert.equal(domains[d]?.level, 3, d);
@@ -150,7 +157,7 @@ describe('scoring', () => {
     const easy: ItemBank = {
       ...bank,
       items: [1, 1, 1, 2, 3].map((difficulty, i) => ({
-        ...bank.items[0],
+        ...bank.items.find((x) => x.grade === GRADE && x.domain === 'english')!,
         id: `e${i}`,
         difficulty: difficulty as 1 | 2 | 3,
       })),

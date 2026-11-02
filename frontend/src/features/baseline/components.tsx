@@ -9,6 +9,7 @@ import { MENTOR_IMAGES } from '../../assets/characters';
 import { PetalIcon, resolveSpecies } from '../../components/design';
 import { colors, radius, spacing, typography } from '../../theme';
 import { mediaUrl } from './audio';
+import { Pictogram, pictogramFor } from './Pictogram';
 import type { BaselineDomain } from './types';
 
 /** Plain-language domain names for the parent-facing screens. */
@@ -43,13 +44,15 @@ export const MascotGuide: React.FC<{ characterType?: string | null; line?: strin
 };
 
 /**
- * A picture from the item bank. Until the real artwork exists the paths are
- * placeholders that will not load; the tile then shows the option's label so
- * the flow can still be tested.
+ * A picture from the item bank. Known file names draw a built-in picture (see
+ * Pictogram); anything else loads from the CDN, and if that fails the tile
+ * shows the option's label so the flow can still be tested.
  */
 export const BankImage: React.FC<{ path?: string | null; label?: string; size: number }> = ({ path, label, size }) => {
   const [failed, setFailed] = useState(false);
+  const pic = pictogramFor(path);
   const uri = mediaUrl(path);
+  if (pic) return <Pictogram pic={pic} size={size} />;
   if (!uri || failed) {
     return (
       <View style={[styles.fallback, { width: size, height: size }]}>

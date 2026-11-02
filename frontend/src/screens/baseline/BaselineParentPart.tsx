@@ -4,7 +4,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { AppShell, Card, PrimaryButton, SecondaryButton } from '../../components/design';
 import { ITEM_BANK, useBaselineStore, type ChildBaselineState } from '../../features/baseline/baselineStore';
 import { makeAnswer, nextParentItem, optionsFor, parentItems } from '../../features/baseline/engine';
-import { DOMAIN_LABELS } from '../../features/baseline/components';
+import { DOMAIN_LABELS, MascotGuide } from '../../features/baseline/components';
 import type { Child } from '../../types/child';
 import { colors, spacing, typography } from '../../theme';
 
@@ -21,8 +21,9 @@ export const BaselineParentPart: React.FC<{ child: Child; state: ChildBaselineSt
   if (!item) {
     return (
       <AppShell petals="none" scroll={false}>
-        <View style={styles.body}>
-          <Text style={[typography.presets.title, styles.title]}>All done — thank you!</Text>
+        <View style={[styles.body, styles.done]}>
+          <MascotGuide characterType={child.mentor?.characterType} size={160} />
+          <Text style={[typography.presets.title, styles.title, styles.doneTitle]}>All done — thank you!</Text>
           <PrimaryButton label="See the results" iconRight="forward" size="lg" fullWidth onPress={() => useBaselineStore.getState().complete(child.id)} />
         </View>
       </AppShell>
@@ -64,7 +65,9 @@ const styles = StyleSheet.create({
   body: { gap: spacing.lg, paddingVertical: spacing.xl },
   eyebrow: { color: colors.purple },
   title: { color: colors.text },
+  done: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  doneTitle: { textAlign: 'center' },
   domain: { color: colors.textSecondary, marginBottom: spacing.xs },
-  question: { color: colors.text },
+  question: { fontSize: 21, lineHeight: 28, color: colors.text },
   answers: { gap: spacing.md, marginTop: spacing.lg },
 });

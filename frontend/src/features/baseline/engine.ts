@@ -4,11 +4,13 @@
  * is unit-testable (features/baseline/__tests__) and the session can resume
  * from the saved answers alone: the next item is a function of them.
  *
- * Adaptive rule, per domain: start at difficulty 2; a correct answer moves up
- * one level, a miss or "I don't know" moves down one. 2-3 items per domain:
- * a domain stops after 3 items, or after 2 consecutive misses at the lowest
- * difficulty (so the child is never frustrated), or when the overall budget
- * (10-14 items, parent questions included) runs out.
+ * Adaptive rule, per domain (subject), like a computer-adaptive exam: start at
+ * difficulty 2; a correct answer moves up one level, a miss or "I don't know"
+ * moves down one. 2-4 items per domain: a domain stops after 4 items, or after
+ * 2 consecutive misses at the lowest difficulty (so the child is never
+ * frustrated), or when the overall budget (up to 18 items, parent questions
+ * included) runs out. The bank holds 3 items per difficulty per domain, so the
+ * walk always finds an unused item at exactly the level it wants.
  */
 import {
   BASELINE_DOMAINS,
@@ -34,8 +36,8 @@ export interface EngineConfig {
 
 export const DEFAULT_ENGINE_CONFIG: EngineConfig = {
   startDifficulty: 2,
-  maxItemsPerDomain: 3,
-  maxTotalItems: 14,
+  maxItemsPerDomain: 4,
+  maxTotalItems: 18,
   maxListed: 3,
 };
 

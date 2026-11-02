@@ -8,9 +8,9 @@
  * any point — app closed, phone restarted — resumes at the last answered item
  * without any navigation state to restore.
  */
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useBaselineStore } from '../../features/baseline/baselineStore';
-import { nextChildItem } from '../../features/baseline/engine';
+import { itemsFor, nextChildItem } from '../../features/baseline/engine';
 import { ITEM_BANK } from '../../features/baseline/baselineStore';
 import { useChildStore } from '../../store/childStore';
 import { GrownUpGate } from '../../components/design';
@@ -23,6 +23,18 @@ export const BaselineFlow: React.FC = () => {
   const child = useChildStore((s) => s.activeChild);
   const state = useBaselineStore((s) => (child ? s.byChild[child.id] : undefined));
   const [gate, setGate] = useState(false);
+
+  /*
+   * A grade with no questions in the bank has nothing to assess: skip straight
+   * to the grade's usual starting point rather than showing the intro and then
+   * an empty "All done".
+   */
+  const empty = !!child && !!state && itemsFor(ITEM_BANK, state.grade).length === 0;
+  useEffect(() => {
+    if (empty && child && state && (state.status === 'pending' || state.status === 'in_progress')) {
+      void useBaselineStore.getState().skip(child.id, state.grade);
+    }
+  }, [empty, child, state]);
 
   if (!child || !state) return null;
 

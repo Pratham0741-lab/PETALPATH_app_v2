@@ -1,6 +1,6 @@
 {
   "_doc": "Baseline questionnaire item bank. Add items for other grades by adding entries with that grade (prenursery | nursery | lkg | ukg) — no code changes. Media paths are PLACEHOLDERS relative to the CDN (EXPO_PUBLIC_CDN_BASE_URL); replace them with real files. Per item: difficulty 1-3; type tap_choice | count_tap | match | parent_observed. count_tap shows `images` (one picture per object to count). match shows `images` as the target to match. Options: {id, image?, label}; `label` is shown to parents only (child items show pictures). parent_observed items with an empty `options` use common.parent_options (Yes / Sometimes / Not yet), whose `credit` (1 / 0.5 / 0) scores the answer; prompt_audio may be null for them since a parent reads them.",
-  "version": 1,
+  "version": 3,
   "common": {
     "intro_audio": "assessment/common/audio/intro.mp3",
     "encouragement_text": "Thank you! Let's look at the next one.",
@@ -8,12 +8,879 @@
     "answer_sound": "assessment/common/audio/soft_chime.mp3",
     "idk_image": "assessment/common/images/shrug.png",
     "parent_options": [
-      { "id": "yes", "label": "Yes", "credit": 1 },
-      { "id": "sometimes", "label": "Sometimes", "credit": 0.5 },
-      { "id": "not_yet", "label": "Not yet", "credit": 0 }
+      {
+        "id": "yes",
+        "label": "Yes",
+        "credit": 1
+      },
+      {
+        "id": "sometimes",
+        "label": "Sometimes",
+        "credit": 0.5
+      },
+      {
+        "id": "not_yet",
+        "label": "Not yet",
+        "credit": 0
+      }
     ]
   },
   "items": [
+    {
+      "id": "en_p_01",
+      "domain": "english",
+      "grade": "prenursery",
+      "skill": "picture_vocabulary",
+      "difficulty": 1,
+      "type": "tap_choice",
+      "prompt_text": "Where is the ball? Tap the ball.",
+      "prompt_audio": "assessment/prenursery/audio/en_p_01.mp3",
+      "images": [],
+      "options": [
+        {
+          "id": "ball",
+          "image": "assessment/prenursery/images/ball.png",
+          "label": "Ball"
+        },
+        {
+          "id": "car",
+          "image": "assessment/prenursery/images/car.png",
+          "label": "Car"
+        },
+        {
+          "id": "cat",
+          "image": "assessment/prenursery/images/cat.png",
+          "label": "Cat"
+        }
+      ],
+      "correct_option": "ball"
+    },
+    {
+      "id": "en_p_04",
+      "domain": "english",
+      "grade": "prenursery",
+      "skill": "picture_vocabulary",
+      "difficulty": 1,
+      "type": "tap_choice",
+      "prompt_text": "Where is the apple? Tap the apple.",
+      "prompt_audio": "assessment/prenursery/audio/en_p_04.mp3",
+      "images": [],
+      "options": [
+        {
+          "id": "house",
+          "image": "assessment/prenursery/images/house.png",
+          "label": "House"
+        },
+        {
+          "id": "apple",
+          "image": "assessment/prenursery/images/apple.png",
+          "label": "Apple"
+        },
+        {
+          "id": "bus",
+          "image": "assessment/prenursery/images/bus.png",
+          "label": "Bus"
+        }
+      ],
+      "correct_option": "apple"
+    },
+    {
+      "id": "en_p_05",
+      "domain": "english",
+      "grade": "prenursery",
+      "skill": "picture_vocabulary",
+      "difficulty": 1,
+      "type": "tap_choice",
+      "prompt_text": "Where is the car? Tap the car.",
+      "prompt_audio": "assessment/prenursery/audio/en_p_05.mp3",
+      "images": [],
+      "options": [
+        {
+          "id": "cat",
+          "image": "assessment/prenursery/images/cat.png",
+          "label": "Cat"
+        },
+        {
+          "id": "tree",
+          "image": "assessment/prenursery/images/tree.png",
+          "label": "Tree"
+        },
+        {
+          "id": "car",
+          "image": "assessment/prenursery/images/car.png",
+          "label": "Car"
+        }
+      ],
+      "correct_option": "car"
+    },
+    {
+      "id": "en_p_02",
+      "domain": "english",
+      "grade": "prenursery",
+      "skill": "picture_vocabulary",
+      "difficulty": 2,
+      "type": "tap_choice",
+      "prompt_text": "Can you find the fish? Tap the fish.",
+      "prompt_audio": "assessment/prenursery/audio/en_p_02.mp3",
+      "images": [],
+      "options": [
+        {
+          "id": "bird",
+          "image": "assessment/prenursery/images/bird.png",
+          "label": "Bird"
+        },
+        {
+          "id": "fish",
+          "image": "assessment/prenursery/images/fish.png",
+          "label": "Fish"
+        },
+        {
+          "id": "dog",
+          "image": "assessment/prenursery/images/dog.png",
+          "label": "Dog"
+        }
+      ],
+      "correct_option": "fish"
+    },
+    {
+      "id": "en_p_06",
+      "domain": "english",
+      "grade": "prenursery",
+      "skill": "picture_vocabulary",
+      "difficulty": 2,
+      "type": "tap_choice",
+      "prompt_text": "Can you find the duck? Tap the duck.",
+      "prompt_audio": "assessment/prenursery/audio/en_p_06.mp3",
+      "images": [],
+      "options": [
+        {
+          "id": "duck",
+          "image": "assessment/prenursery/images/duck.png",
+          "label": "Duck"
+        },
+        {
+          "id": "cow",
+          "image": "assessment/prenursery/images/cow.png",
+          "label": "Cow"
+        },
+        {
+          "id": "cup",
+          "image": "assessment/prenursery/images/cup.png",
+          "label": "Cup"
+        }
+      ],
+      "correct_option": "duck"
+    },
+    {
+      "id": "en_p_07",
+      "domain": "english",
+      "grade": "prenursery",
+      "skill": "picture_vocabulary",
+      "difficulty": 2,
+      "type": "tap_choice",
+      "prompt_text": "Can you find the umbrella? Tap the umbrella.",
+      "prompt_audio": "assessment/prenursery/audio/en_p_07.mp3",
+      "images": [],
+      "options": [
+        {
+          "id": "balloon",
+          "image": "assessment/prenursery/images/balloon.png",
+          "label": "Balloon"
+        },
+        {
+          "id": "kite",
+          "image": "assessment/prenursery/images/kite.png",
+          "label": "Kite"
+        },
+        {
+          "id": "umbrella",
+          "image": "assessment/prenursery/images/umbrella.png",
+          "label": "Umbrella"
+        }
+      ],
+      "correct_option": "umbrella"
+    },
+    {
+      "id": "en_p_03",
+      "domain": "english",
+      "grade": "prenursery",
+      "skill": "animal_sounds",
+      "difficulty": 3,
+      "type": "tap_choice",
+      "prompt_text": "Who says moo? Tap the one that says moo.",
+      "prompt_audio": "assessment/prenursery/audio/en_p_03.mp3",
+      "images": [],
+      "options": [
+        {
+          "id": "duck",
+          "image": "assessment/prenursery/images/duck.png",
+          "label": "Duck"
+        },
+        {
+          "id": "dog",
+          "image": "assessment/prenursery/images/dog.png",
+          "label": "Dog"
+        },
+        {
+          "id": "cow",
+          "image": "assessment/prenursery/images/cow.png",
+          "label": "Cow"
+        }
+      ],
+      "correct_option": "cow"
+    },
+    {
+      "id": "en_p_08",
+      "domain": "english",
+      "grade": "prenursery",
+      "skill": "animal_sounds",
+      "difficulty": 3,
+      "type": "tap_choice",
+      "prompt_text": "Who says quack quack? Tap it.",
+      "prompt_audio": "assessment/prenursery/audio/en_p_08.mp3",
+      "images": [],
+      "options": [
+        {
+          "id": "dog",
+          "image": "assessment/prenursery/images/dog.png",
+          "label": "Dog"
+        },
+        {
+          "id": "duck",
+          "image": "assessment/prenursery/images/duck.png",
+          "label": "Duck"
+        },
+        {
+          "id": "cat",
+          "image": "assessment/prenursery/images/cat.png",
+          "label": "Cat"
+        }
+      ],
+      "correct_option": "duck"
+    },
+    {
+      "id": "en_p_09",
+      "domain": "english",
+      "grade": "prenursery",
+      "skill": "object_function",
+      "difficulty": 3,
+      "type": "tap_choice",
+      "prompt_text": "Which one do we drink from? Tap it.",
+      "prompt_audio": "assessment/prenursery/audio/en_p_09.mp3",
+      "images": [],
+      "options": [
+        {
+          "id": "cup",
+          "image": "assessment/prenursery/images/cup.png",
+          "label": "Cup"
+        },
+        {
+          "id": "tree",
+          "image": "assessment/prenursery/images/tree.png",
+          "label": "Tree"
+        },
+        {
+          "id": "car",
+          "image": "assessment/prenursery/images/car.png",
+          "label": "Car"
+        }
+      ],
+      "correct_option": "cup"
+    },
+    {
+      "id": "ma_p_01",
+      "domain": "maths",
+      "grade": "prenursery",
+      "skill": "big_and_small",
+      "difficulty": 1,
+      "type": "tap_choice",
+      "prompt_text": "Which ball is big? Tap the big ball.",
+      "prompt_audio": "assessment/prenursery/audio/ma_p_01.mp3",
+      "images": [],
+      "options": [
+        {
+          "id": "small",
+          "image": "assessment/prenursery/images/small_ball.png",
+          "label": "Small ball"
+        },
+        {
+          "id": "big",
+          "image": "assessment/prenursery/images/big_ball.png",
+          "label": "Big ball"
+        }
+      ],
+      "correct_option": "big"
+    },
+    {
+      "id": "ma_p_04",
+      "domain": "maths",
+      "grade": "prenursery",
+      "skill": "big_and_small",
+      "difficulty": 1,
+      "type": "tap_choice",
+      "prompt_text": "Which apple is small? Tap the small apple.",
+      "prompt_audio": "assessment/prenursery/audio/ma_p_04.mp3",
+      "images": [],
+      "options": [
+        {
+          "id": "big",
+          "image": "assessment/prenursery/images/big_apple.png",
+          "label": "Big apple"
+        },
+        {
+          "id": "small",
+          "image": "assessment/prenursery/images/small_apple.png",
+          "label": "Small apple"
+        }
+      ],
+      "correct_option": "small"
+    },
+    {
+      "id": "ma_p_05",
+      "domain": "maths",
+      "grade": "prenursery",
+      "skill": "big_and_small",
+      "difficulty": 1,
+      "type": "tap_choice",
+      "prompt_text": "Which star is big? Tap the big star.",
+      "prompt_audio": "assessment/prenursery/audio/ma_p_05.mp3",
+      "images": [],
+      "options": [
+        {
+          "id": "small",
+          "image": "assessment/prenursery/images/small_star.png",
+          "label": "Small star"
+        },
+        {
+          "id": "big",
+          "image": "assessment/prenursery/images/big_star.png",
+          "label": "Big star"
+        }
+      ],
+      "correct_option": "big"
+    },
+    {
+      "id": "ma_p_02",
+      "domain": "maths",
+      "grade": "prenursery",
+      "skill": "more_and_less",
+      "difficulty": 2,
+      "type": "tap_choice",
+      "prompt_text": "Which basket has more balls?",
+      "prompt_audio": "assessment/prenursery/audio/ma_p_02.mp3",
+      "images": [],
+      "options": [
+        {
+          "id": "basket_4",
+          "image": "assessment/prenursery/images/basket_4_balls.png",
+          "label": "4 balls"
+        },
+        {
+          "id": "basket_1",
+          "image": "assessment/prenursery/images/basket_1_balls.png",
+          "label": "1 ball"
+        }
+      ],
+      "correct_option": "basket_4"
+    },
+    {
+      "id": "ma_p_06",
+      "domain": "maths",
+      "grade": "prenursery",
+      "skill": "more_and_less",
+      "difficulty": 2,
+      "type": "tap_choice",
+      "prompt_text": "Which basket has more balls?",
+      "prompt_audio": "assessment/prenursery/audio/ma_p_06.mp3",
+      "images": [],
+      "options": [
+        {
+          "id": "basket_2",
+          "image": "assessment/prenursery/images/basket_2_balls.png",
+          "label": "2 balls"
+        },
+        {
+          "id": "basket_5",
+          "image": "assessment/prenursery/images/basket_5_balls.png",
+          "label": "5 balls"
+        }
+      ],
+      "correct_option": "basket_5"
+    },
+    {
+      "id": "ma_p_07",
+      "domain": "maths",
+      "grade": "prenursery",
+      "skill": "more_and_less",
+      "difficulty": 2,
+      "type": "tap_choice",
+      "prompt_text": "Which basket has more balls?",
+      "prompt_audio": "assessment/prenursery/audio/ma_p_07.mp3",
+      "images": [],
+      "options": [
+        {
+          "id": "basket_3",
+          "image": "assessment/prenursery/images/basket_3_balls.png",
+          "label": "3 balls"
+        },
+        {
+          "id": "basket_1",
+          "image": "assessment/prenursery/images/basket_1_balls.png",
+          "label": "1 balls"
+        }
+      ],
+      "correct_option": "basket_3"
+    },
+    {
+      "id": "ma_p_03",
+      "domain": "maths",
+      "grade": "prenursery",
+      "skill": "count_to_2",
+      "difficulty": 3,
+      "type": "count_tap",
+      "prompt_text": "How many apples are there? Tap the right number.",
+      "prompt_audio": "assessment/prenursery/audio/ma_p_03.mp3",
+      "images": [
+        "assessment/prenursery/images/apple.png",
+        "assessment/prenursery/images/apple.png"
+      ],
+      "options": [
+        {
+          "id": "1",
+          "image": "assessment/prenursery/images/num_1.png",
+          "label": "1"
+        },
+        {
+          "id": "2",
+          "image": "assessment/prenursery/images/num_2.png",
+          "label": "2"
+        },
+        {
+          "id": "3",
+          "image": "assessment/prenursery/images/num_3.png",
+          "label": "3"
+        }
+      ],
+      "correct_option": "2"
+    },
+    {
+      "id": "ma_p_08",
+      "domain": "maths",
+      "grade": "prenursery",
+      "skill": "count_to_3",
+      "difficulty": 3,
+      "type": "count_tap",
+      "prompt_text": "How many stars are there? Tap the right number.",
+      "prompt_audio": "assessment/prenursery/audio/ma_p_08.mp3",
+      "images": [
+        "assessment/prenursery/images/star.png",
+        "assessment/prenursery/images/star.png",
+        "assessment/prenursery/images/star.png"
+      ],
+      "options": [
+        {
+          "id": "1",
+          "image": "assessment/prenursery/images/num_1.png",
+          "label": "1"
+        },
+        {
+          "id": "2",
+          "image": "assessment/prenursery/images/num_2.png",
+          "label": "2"
+        },
+        {
+          "id": "3",
+          "image": "assessment/prenursery/images/num_3.png",
+          "label": "3"
+        }
+      ],
+      "correct_option": "3"
+    },
+    {
+      "id": "ma_p_09",
+      "domain": "maths",
+      "grade": "prenursery",
+      "skill": "count_to_3",
+      "difficulty": 3,
+      "type": "count_tap",
+      "prompt_text": "How many cars are there? Tap the right number.",
+      "prompt_audio": "assessment/prenursery/audio/ma_p_09.mp3",
+      "images": [
+        "assessment/prenursery/images/car.png",
+        "assessment/prenursery/images/car.png"
+      ],
+      "options": [
+        {
+          "id": "3",
+          "image": "assessment/prenursery/images/num_3.png",
+          "label": "3"
+        },
+        {
+          "id": "1",
+          "image": "assessment/prenursery/images/num_1.png",
+          "label": "1"
+        },
+        {
+          "id": "2",
+          "image": "assessment/prenursery/images/num_2.png",
+          "label": "2"
+        }
+      ],
+      "correct_option": "2"
+    },
+    {
+      "id": "co_p_01",
+      "domain": "cognitive",
+      "grade": "prenursery",
+      "skill": "visual_matching",
+      "difficulty": 1,
+      "type": "match",
+      "prompt_text": "Find the picture that is the same as this one.",
+      "prompt_audio": "assessment/prenursery/audio/co_p_01.mp3",
+      "images": [
+        "assessment/prenursery/images/star.png"
+      ],
+      "options": [
+        {
+          "id": "car",
+          "image": "assessment/prenursery/images/car.png",
+          "label": "Car"
+        },
+        {
+          "id": "star",
+          "image": "assessment/prenursery/images/star.png",
+          "label": "Star"
+        },
+        {
+          "id": "fish",
+          "image": "assessment/prenursery/images/fish.png",
+          "label": "Fish"
+        }
+      ],
+      "correct_option": "star"
+    },
+    {
+      "id": "co_p_04",
+      "domain": "cognitive",
+      "grade": "prenursery",
+      "skill": "visual_matching",
+      "difficulty": 1,
+      "type": "match",
+      "prompt_text": "Find the picture that is the same as this one.",
+      "prompt_audio": "assessment/prenursery/audio/co_p_04.mp3",
+      "images": [
+        "assessment/prenursery/images/car.png"
+      ],
+      "options": [
+        {
+          "id": "tree",
+          "image": "assessment/prenursery/images/tree.png",
+          "label": "Tree"
+        },
+        {
+          "id": "cup",
+          "image": "assessment/prenursery/images/cup.png",
+          "label": "Cup"
+        },
+        {
+          "id": "car",
+          "image": "assessment/prenursery/images/car.png",
+          "label": "Car"
+        }
+      ],
+      "correct_option": "car"
+    },
+    {
+      "id": "co_p_05",
+      "domain": "cognitive",
+      "grade": "prenursery",
+      "skill": "visual_matching",
+      "difficulty": 1,
+      "type": "match",
+      "prompt_text": "Find the picture that is the same as this one.",
+      "prompt_audio": "assessment/prenursery/audio/co_p_05.mp3",
+      "images": [
+        "assessment/prenursery/images/apple.png"
+      ],
+      "options": [
+        {
+          "id": "apple",
+          "image": "assessment/prenursery/images/apple.png",
+          "label": "Apple"
+        },
+        {
+          "id": "fish",
+          "image": "assessment/prenursery/images/fish.png",
+          "label": "Fish"
+        },
+        {
+          "id": "sun",
+          "image": "assessment/prenursery/images/sun.png",
+          "label": "Sun"
+        }
+      ],
+      "correct_option": "apple"
+    },
+    {
+      "id": "co_p_02",
+      "domain": "cognitive",
+      "grade": "prenursery",
+      "skill": "colour_matching",
+      "difficulty": 2,
+      "type": "match",
+      "prompt_text": "Find the same colour as this one.",
+      "prompt_audio": "assessment/prenursery/audio/co_p_02.mp3",
+      "images": [
+        "assessment/prenursery/images/dot_red.png"
+      ],
+      "options": [
+        {
+          "id": "blue",
+          "image": "assessment/prenursery/images/dot_blue.png",
+          "label": "Blue"
+        },
+        {
+          "id": "yellow",
+          "image": "assessment/prenursery/images/dot_yellow.png",
+          "label": "Yellow"
+        },
+        {
+          "id": "red",
+          "image": "assessment/prenursery/images/dot_red.png",
+          "label": "Red"
+        }
+      ],
+      "correct_option": "red"
+    },
+    {
+      "id": "co_p_06",
+      "domain": "cognitive",
+      "grade": "prenursery",
+      "skill": "colour_matching",
+      "difficulty": 2,
+      "type": "match",
+      "prompt_text": "Find the same colour as this one.",
+      "prompt_audio": "assessment/prenursery/audio/co_p_06.mp3",
+      "images": [
+        "assessment/prenursery/images/dot_blue.png"
+      ],
+      "options": [
+        {
+          "id": "green",
+          "image": "assessment/prenursery/images/dot_green.png",
+          "label": "Green"
+        },
+        {
+          "id": "blue",
+          "image": "assessment/prenursery/images/dot_blue.png",
+          "label": "Blue"
+        },
+        {
+          "id": "red",
+          "image": "assessment/prenursery/images/dot_red.png",
+          "label": "Red"
+        }
+      ],
+      "correct_option": "blue"
+    },
+    {
+      "id": "co_p_07",
+      "domain": "cognitive",
+      "grade": "prenursery",
+      "skill": "colour_matching",
+      "difficulty": 2,
+      "type": "match",
+      "prompt_text": "Find the same colour as this one.",
+      "prompt_audio": "assessment/prenursery/audio/co_p_07.mp3",
+      "images": [
+        "assessment/prenursery/images/dot_yellow.png"
+      ],
+      "options": [
+        {
+          "id": "yellow",
+          "image": "assessment/prenursery/images/dot_yellow.png",
+          "label": "Yellow"
+        },
+        {
+          "id": "pink",
+          "image": "assessment/prenursery/images/dot_pink.png",
+          "label": "Pink"
+        },
+        {
+          "id": "blue",
+          "image": "assessment/prenursery/images/dot_blue.png",
+          "label": "Blue"
+        }
+      ],
+      "correct_option": "yellow"
+    },
+    {
+      "id": "co_p_03",
+      "domain": "cognitive",
+      "grade": "prenursery",
+      "skill": "odd_one_out",
+      "difficulty": 3,
+      "type": "tap_choice",
+      "prompt_text": "One of these is not an animal. Which one?",
+      "prompt_audio": "assessment/prenursery/audio/co_p_03.mp3",
+      "images": [],
+      "options": [
+        {
+          "id": "cat",
+          "image": "assessment/prenursery/images/cat.png",
+          "label": "Cat"
+        },
+        {
+          "id": "car",
+          "image": "assessment/prenursery/images/car.png",
+          "label": "Car"
+        },
+        {
+          "id": "dog",
+          "image": "assessment/prenursery/images/dog.png",
+          "label": "Dog"
+        }
+      ],
+      "correct_option": "car"
+    },
+    {
+      "id": "co_p_08",
+      "domain": "cognitive",
+      "grade": "prenursery",
+      "skill": "odd_one_out",
+      "difficulty": 3,
+      "type": "tap_choice",
+      "prompt_text": "One of these is not a fruit. Which one?",
+      "prompt_audio": "assessment/prenursery/audio/co_p_08.mp3",
+      "images": [],
+      "options": [
+        {
+          "id": "apple",
+          "image": "assessment/prenursery/images/apple.png",
+          "label": "Apple"
+        },
+        {
+          "id": "bus",
+          "image": "assessment/prenursery/images/bus.png",
+          "label": "Bus"
+        },
+        {
+          "id": "grapes",
+          "image": "assessment/prenursery/images/grapes.png",
+          "label": "Grapes"
+        }
+      ],
+      "correct_option": "bus"
+    },
+    {
+      "id": "co_p_09",
+      "domain": "cognitive",
+      "grade": "prenursery",
+      "skill": "shape_matching",
+      "difficulty": 3,
+      "type": "match",
+      "prompt_text": "Find the shape that is the same as this one.",
+      "prompt_audio": "assessment/prenursery/audio/co_p_09.mp3",
+      "images": [
+        "assessment/prenursery/images/green_triangle.png"
+      ],
+      "options": [
+        {
+          "id": "green_circle",
+          "image": "assessment/prenursery/images/green_circle.png",
+          "label": "Green circle"
+        },
+        {
+          "id": "green_square",
+          "image": "assessment/prenursery/images/green_square.png",
+          "label": "Green square"
+        },
+        {
+          "id": "green_triangle",
+          "image": "assessment/prenursery/images/green_triangle.png",
+          "label": "Green triangle"
+        }
+      ],
+      "correct_option": "green_triangle"
+    },
+    {
+      "id": "fm_p_01",
+      "domain": "fine_motor",
+      "grade": "prenursery",
+      "skill": "scribbling",
+      "difficulty": 2,
+      "type": "parent_observed",
+      "prompt_text": "Does your child scribble with a crayon on paper?",
+      "prompt_audio": null,
+      "images": [],
+      "options": [],
+      "correct_option": "yes"
+    },
+    {
+      "id": "fm_p_02",
+      "domain": "fine_motor",
+      "grade": "prenursery",
+      "skill": "stacking",
+      "difficulty": 2,
+      "type": "parent_observed",
+      "prompt_text": "Can your child stack three blocks on top of each other?",
+      "prompt_audio": null,
+      "images": [],
+      "options": [],
+      "correct_option": "yes"
+    },
+    {
+      "id": "sel_p_01",
+      "domain": "sel",
+      "grade": "prenursery",
+      "skill": "sharing_attention",
+      "difficulty": 2,
+      "type": "parent_observed",
+      "prompt_text": "Does your child point to or bring you things to show you?",
+      "prompt_audio": null,
+      "images": [],
+      "options": [],
+      "correct_option": "yes"
+    },
+    {
+      "id": "sel_p_02",
+      "domain": "sel",
+      "grade": "prenursery",
+      "skill": "greeting",
+      "difficulty": 2,
+      "type": "parent_observed",
+      "prompt_text": "Does your child wave hello or bye-bye?",
+      "prompt_audio": null,
+      "images": [],
+      "options": [],
+      "correct_option": "yes"
+    },
+    {
+      "id": "ls_p_01",
+      "domain": "life_skills",
+      "grade": "prenursery",
+      "skill": "drinking_from_cup",
+      "difficulty": 2,
+      "type": "parent_observed",
+      "prompt_text": "Does your child drink from an open cup with a little help?",
+      "prompt_audio": null,
+      "images": [],
+      "options": [],
+      "correct_option": "yes"
+    },
+    {
+      "id": "ls_p_02",
+      "domain": "life_skills",
+      "grade": "prenursery",
+      "skill": "spoon_feeding",
+      "difficulty": 2,
+      "type": "parent_observed",
+      "prompt_text": "Does your child try to eat with a spoon by themselves?",
+      "prompt_audio": null,
+      "images": [],
+      "options": [],
+      "correct_option": "yes"
+    },
     {
       "id": "en_n_01",
       "domain": "english",
@@ -25,11 +892,81 @@
       "prompt_audio": "assessment/nursery/audio/en_n_01.mp3",
       "images": [],
       "options": [
-        { "id": "apple", "image": "assessment/nursery/images/apple.png", "label": "Apple" },
-        { "id": "ball", "image": "assessment/nursery/images/ball.png", "label": "Ball" },
-        { "id": "cat", "image": "assessment/nursery/images/cat.png", "label": "Cat" }
+        {
+          "id": "apple",
+          "image": "assessment/nursery/images/apple.png",
+          "label": "Apple"
+        },
+        {
+          "id": "ball",
+          "image": "assessment/nursery/images/ball.png",
+          "label": "Ball"
+        },
+        {
+          "id": "cat",
+          "image": "assessment/nursery/images/cat.png",
+          "label": "Cat"
+        }
       ],
       "correct_option": "apple"
+    },
+    {
+      "id": "en_n_04",
+      "domain": "english",
+      "grade": "nursery",
+      "skill": "picture_vocabulary",
+      "difficulty": 1,
+      "type": "tap_choice",
+      "prompt_text": "Can you find the elephant? Tap the elephant.",
+      "prompt_audio": "assessment/nursery/audio/en_n_04.mp3",
+      "images": [],
+      "options": [
+        {
+          "id": "rabbit",
+          "image": "assessment/nursery/images/rabbit.png",
+          "label": "Rabbit"
+        },
+        {
+          "id": "elephant",
+          "image": "assessment/nursery/images/elephant.png",
+          "label": "Elephant"
+        },
+        {
+          "id": "fish",
+          "image": "assessment/nursery/images/fish.png",
+          "label": "Fish"
+        }
+      ],
+      "correct_option": "elephant"
+    },
+    {
+      "id": "en_n_05",
+      "domain": "english",
+      "grade": "nursery",
+      "skill": "picture_vocabulary",
+      "difficulty": 1,
+      "type": "tap_choice",
+      "prompt_text": "Can you find the train? Tap the train.",
+      "prompt_audio": "assessment/nursery/audio/en_n_05.mp3",
+      "images": [],
+      "options": [
+        {
+          "id": "boat",
+          "image": "assessment/nursery/images/boat.png",
+          "label": "Boat"
+        },
+        {
+          "id": "bicycle",
+          "image": "assessment/nursery/images/bicycle.png",
+          "label": "Bicycle"
+        },
+        {
+          "id": "train",
+          "image": "assessment/nursery/images/train.png",
+          "label": "Train"
+        }
+      ],
+      "correct_option": "train"
     },
     {
       "id": "en_n_02",
@@ -42,11 +979,81 @@
       "prompt_audio": "assessment/nursery/audio/en_n_02.mp3",
       "images": [],
       "options": [
-        { "id": "bat", "image": "assessment/nursery/images/bat.png", "label": "Bat" },
-        { "id": "sun", "image": "assessment/nursery/images/sun.png", "label": "Sun" },
-        { "id": "fish", "image": "assessment/nursery/images/fish.png", "label": "Fish" }
+        {
+          "id": "bat",
+          "image": "assessment/nursery/images/bat.png",
+          "label": "Bat"
+        },
+        {
+          "id": "sun",
+          "image": "assessment/nursery/images/sun.png",
+          "label": "Sun"
+        },
+        {
+          "id": "fish",
+          "image": "assessment/nursery/images/fish.png",
+          "label": "Fish"
+        }
       ],
       "correct_option": "bat"
+    },
+    {
+      "id": "en_n_06",
+      "domain": "english",
+      "grade": "nursery",
+      "skill": "initial_sound",
+      "difficulty": 2,
+      "type": "tap_choice",
+      "prompt_text": "Which one starts with the sound sss, like sock?",
+      "prompt_audio": "assessment/nursery/audio/en_n_06.mp3",
+      "images": [],
+      "options": [
+        {
+          "id": "cat",
+          "image": "assessment/nursery/images/cat.png",
+          "label": "Cat"
+        },
+        {
+          "id": "sun",
+          "image": "assessment/nursery/images/sun.png",
+          "label": "Sun"
+        },
+        {
+          "id": "ball",
+          "image": "assessment/nursery/images/ball.png",
+          "label": "Ball"
+        }
+      ],
+      "correct_option": "sun"
+    },
+    {
+      "id": "en_n_07",
+      "domain": "english",
+      "grade": "nursery",
+      "skill": "initial_sound",
+      "difficulty": 2,
+      "type": "tap_choice",
+      "prompt_text": "Which one starts with the sound mmm, like mummy?",
+      "prompt_audio": "assessment/nursery/audio/en_n_07.mp3",
+      "images": [],
+      "options": [
+        {
+          "id": "moon",
+          "image": "assessment/nursery/images/moon.png",
+          "label": "Moon"
+        },
+        {
+          "id": "fish",
+          "image": "assessment/nursery/images/fish.png",
+          "label": "Fish"
+        },
+        {
+          "id": "dog",
+          "image": "assessment/nursery/images/dog.png",
+          "label": "Dog"
+        }
+      ],
+      "correct_option": "moon"
     },
     {
       "id": "en_n_03",
@@ -59,11 +1066,81 @@
       "prompt_audio": "assessment/nursery/audio/en_n_03.mp3",
       "images": [],
       "options": [
-        { "id": "D", "image": "assessment/nursery/images/letter_D.png", "label": "D" },
-        { "id": "B", "image": "assessment/nursery/images/letter_B.png", "label": "B" },
-        { "id": "P", "image": "assessment/nursery/images/letter_P.png", "label": "P" }
+        {
+          "id": "D",
+          "image": "assessment/nursery/images/letter_D.png",
+          "label": "D"
+        },
+        {
+          "id": "B",
+          "image": "assessment/nursery/images/letter_B.png",
+          "label": "B"
+        },
+        {
+          "id": "P",
+          "image": "assessment/nursery/images/letter_P.png",
+          "label": "P"
+        }
       ],
       "correct_option": "B"
+    },
+    {
+      "id": "en_n_08",
+      "domain": "english",
+      "grade": "nursery",
+      "skill": "capital_letter_recognition",
+      "difficulty": 3,
+      "type": "tap_choice",
+      "prompt_text": "Tap the letter A.",
+      "prompt_audio": "assessment/nursery/audio/en_n_08.mp3",
+      "images": [],
+      "options": [
+        {
+          "id": "H",
+          "image": "assessment/nursery/images/letter_H.png",
+          "label": "H"
+        },
+        {
+          "id": "V",
+          "image": "assessment/nursery/images/letter_V.png",
+          "label": "V"
+        },
+        {
+          "id": "A",
+          "image": "assessment/nursery/images/letter_A.png",
+          "label": "A"
+        }
+      ],
+      "correct_option": "A"
+    },
+    {
+      "id": "en_n_09",
+      "domain": "english",
+      "grade": "nursery",
+      "skill": "capital_letter_recognition",
+      "difficulty": 3,
+      "type": "tap_choice",
+      "prompt_text": "Tap the letter M.",
+      "prompt_audio": "assessment/nursery/audio/en_n_09.mp3",
+      "images": [],
+      "options": [
+        {
+          "id": "N",
+          "image": "assessment/nursery/images/letter_N.png",
+          "label": "N"
+        },
+        {
+          "id": "M",
+          "image": "assessment/nursery/images/letter_M.png",
+          "label": "M"
+        },
+        {
+          "id": "W",
+          "image": "assessment/nursery/images/letter_W.png",
+          "label": "W"
+        }
+      ],
+      "correct_option": "M"
     },
     {
       "id": "ma_n_01",
@@ -74,13 +1151,92 @@
       "type": "count_tap",
       "prompt_text": "How many apples are there? Tap the right number.",
       "prompt_audio": "assessment/nursery/audio/ma_n_01.mp3",
-      "images": ["assessment/nursery/images/apple.png", "assessment/nursery/images/apple.png"],
+      "images": [
+        "assessment/nursery/images/apple.png",
+        "assessment/nursery/images/apple.png"
+      ],
       "options": [
-        { "id": "1", "image": "assessment/nursery/images/num_1.png", "label": "1" },
-        { "id": "2", "image": "assessment/nursery/images/num_2.png", "label": "2" },
-        { "id": "3", "image": "assessment/nursery/images/num_3.png", "label": "3" }
+        {
+          "id": "1",
+          "image": "assessment/nursery/images/num_1.png",
+          "label": "1"
+        },
+        {
+          "id": "2",
+          "image": "assessment/nursery/images/num_2.png",
+          "label": "2"
+        },
+        {
+          "id": "3",
+          "image": "assessment/nursery/images/num_3.png",
+          "label": "3"
+        }
       ],
       "correct_option": "2"
+    },
+    {
+      "id": "ma_n_04",
+      "domain": "maths",
+      "grade": "nursery",
+      "skill": "count_to_3",
+      "difficulty": 1,
+      "type": "count_tap",
+      "prompt_text": "How many balloons are there? Tap the right number.",
+      "prompt_audio": "assessment/nursery/audio/ma_n_04.mp3",
+      "images": [
+        "assessment/nursery/images/balloon.png"
+      ],
+      "options": [
+        {
+          "id": "1",
+          "image": "assessment/nursery/images/num_1.png",
+          "label": "1"
+        },
+        {
+          "id": "2",
+          "image": "assessment/nursery/images/num_2.png",
+          "label": "2"
+        },
+        {
+          "id": "3",
+          "image": "assessment/nursery/images/num_3.png",
+          "label": "3"
+        }
+      ],
+      "correct_option": "1"
+    },
+    {
+      "id": "ma_n_05",
+      "domain": "maths",
+      "grade": "nursery",
+      "skill": "count_to_3",
+      "difficulty": 1,
+      "type": "count_tap",
+      "prompt_text": "How many fish are there? Tap the right number.",
+      "prompt_audio": "assessment/nursery/audio/ma_n_05.mp3",
+      "images": [
+        "assessment/nursery/images/fish.png",
+        "assessment/nursery/images/fish.png",
+        "assessment/nursery/images/fish.png"
+      ],
+      "options": [
+        {
+          "id": "2",
+          "image": "assessment/nursery/images/num_2.png",
+          "label": "2"
+        },
+        {
+          "id": "3",
+          "image": "assessment/nursery/images/num_3.png",
+          "label": "3"
+        },
+        {
+          "id": "1",
+          "image": "assessment/nursery/images/num_1.png",
+          "label": "1"
+        }
+      ],
+      "correct_option": "3"
     },
     {
       "id": "ma_n_02",
@@ -98,9 +1254,90 @@
         "assessment/nursery/images/star.png"
       ],
       "options": [
-        { "id": "3", "image": "assessment/nursery/images/num_3.png", "label": "3" },
-        { "id": "4", "image": "assessment/nursery/images/num_4.png", "label": "4" },
-        { "id": "5", "image": "assessment/nursery/images/num_5.png", "label": "5" }
+        {
+          "id": "3",
+          "image": "assessment/nursery/images/num_3.png",
+          "label": "3"
+        },
+        {
+          "id": "4",
+          "image": "assessment/nursery/images/num_4.png",
+          "label": "4"
+        },
+        {
+          "id": "5",
+          "image": "assessment/nursery/images/num_5.png",
+          "label": "5"
+        }
+      ],
+      "correct_option": "4"
+    },
+    {
+      "id": "ma_n_06",
+      "domain": "maths",
+      "grade": "nursery",
+      "skill": "count_to_5",
+      "difficulty": 2,
+      "type": "count_tap",
+      "prompt_text": "How many balloons can you count? Tap the right number.",
+      "prompt_audio": "assessment/nursery/audio/ma_n_06.mp3",
+      "images": [
+        "assessment/nursery/images/balloon.png",
+        "assessment/nursery/images/balloon.png",
+        "assessment/nursery/images/balloon.png",
+        "assessment/nursery/images/balloon.png",
+        "assessment/nursery/images/balloon.png"
+      ],
+      "options": [
+        {
+          "id": "3",
+          "image": "assessment/nursery/images/num_3.png",
+          "label": "3"
+        },
+        {
+          "id": "4",
+          "image": "assessment/nursery/images/num_4.png",
+          "label": "4"
+        },
+        {
+          "id": "5",
+          "image": "assessment/nursery/images/num_5.png",
+          "label": "5"
+        }
+      ],
+      "correct_option": "5"
+    },
+    {
+      "id": "ma_n_07",
+      "domain": "maths",
+      "grade": "nursery",
+      "skill": "count_to_5",
+      "difficulty": 2,
+      "type": "count_tap",
+      "prompt_text": "How many cats can you count? Tap the right number.",
+      "prompt_audio": "assessment/nursery/audio/ma_n_07.mp3",
+      "images": [
+        "assessment/nursery/images/cat.png",
+        "assessment/nursery/images/cat.png",
+        "assessment/nursery/images/cat.png",
+        "assessment/nursery/images/cat.png"
+      ],
+      "options": [
+        {
+          "id": "2",
+          "image": "assessment/nursery/images/num_2.png",
+          "label": "2"
+        },
+        {
+          "id": "5",
+          "image": "assessment/nursery/images/num_5.png",
+          "label": "5"
+        },
+        {
+          "id": "4",
+          "image": "assessment/nursery/images/num_4.png",
+          "label": "4"
+        }
       ],
       "correct_option": "4"
     },
@@ -115,10 +1352,71 @@
       "prompt_audio": "assessment/nursery/audio/ma_n_03.mp3",
       "images": [],
       "options": [
-        { "id": "basket_3", "image": "assessment/nursery/images/basket_3_balls.png", "label": "3 balls" },
-        { "id": "basket_6", "image": "assessment/nursery/images/basket_6_balls.png", "label": "6 balls" }
+        {
+          "id": "basket_3",
+          "image": "assessment/nursery/images/basket_3_balls.png",
+          "label": "3 balls"
+        },
+        {
+          "id": "basket_6",
+          "image": "assessment/nursery/images/basket_6_balls.png",
+          "label": "6 balls"
+        }
       ],
       "correct_option": "basket_6"
+    },
+    {
+      "id": "ma_n_08",
+      "domain": "maths",
+      "grade": "nursery",
+      "skill": "more_and_less",
+      "difficulty": 3,
+      "type": "tap_choice",
+      "prompt_text": "Which basket has fewer balls?",
+      "prompt_audio": "assessment/nursery/audio/ma_n_08.mp3",
+      "images": [],
+      "options": [
+        {
+          "id": "basket_5",
+          "image": "assessment/nursery/images/basket_5_balls.png",
+          "label": "5 balls"
+        },
+        {
+          "id": "basket_2",
+          "image": "assessment/nursery/images/basket_2_balls.png",
+          "label": "2 balls"
+        }
+      ],
+      "correct_option": "basket_2"
+    },
+    {
+      "id": "ma_n_09",
+      "domain": "maths",
+      "grade": "nursery",
+      "skill": "number_recognition",
+      "difficulty": 3,
+      "type": "tap_choice",
+      "prompt_text": "Tap the number 5.",
+      "prompt_audio": "assessment/nursery/audio/ma_n_09.mp3",
+      "images": [],
+      "options": [
+        {
+          "id": "3",
+          "image": "assessment/nursery/images/num_3.png",
+          "label": "3"
+        },
+        {
+          "id": "8",
+          "image": "assessment/nursery/images/num_8.png",
+          "label": "8"
+        },
+        {
+          "id": "5",
+          "image": "assessment/nursery/images/num_5.png",
+          "label": "5"
+        }
+      ],
+      "correct_option": "5"
     },
     {
       "id": "co_n_01",
@@ -129,13 +1427,89 @@
       "type": "match",
       "prompt_text": "Find the picture that is the same as this one.",
       "prompt_audio": "assessment/nursery/audio/co_n_01.mp3",
-      "images": ["assessment/nursery/images/red_circle.png"],
+      "images": [
+        "assessment/nursery/images/red_circle.png"
+      ],
       "options": [
-        { "id": "blue_square", "image": "assessment/nursery/images/blue_square.png", "label": "Blue square" },
-        { "id": "red_circle", "image": "assessment/nursery/images/red_circle.png", "label": "Red circle" },
-        { "id": "yellow_triangle", "image": "assessment/nursery/images/yellow_triangle.png", "label": "Yellow triangle" }
+        {
+          "id": "blue_square",
+          "image": "assessment/nursery/images/blue_square.png",
+          "label": "Blue square"
+        },
+        {
+          "id": "red_circle",
+          "image": "assessment/nursery/images/red_circle.png",
+          "label": "Red circle"
+        },
+        {
+          "id": "yellow_triangle",
+          "image": "assessment/nursery/images/yellow_triangle.png",
+          "label": "Yellow triangle"
+        }
       ],
       "correct_option": "red_circle"
+    },
+    {
+      "id": "co_n_04",
+      "domain": "cognitive",
+      "grade": "nursery",
+      "skill": "visual_matching",
+      "difficulty": 1,
+      "type": "match",
+      "prompt_text": "Find the picture that is the same as this one.",
+      "prompt_audio": "assessment/nursery/audio/co_n_04.mp3",
+      "images": [
+        "assessment/nursery/images/sun.png"
+      ],
+      "options": [
+        {
+          "id": "moon",
+          "image": "assessment/nursery/images/moon.png",
+          "label": "Moon"
+        },
+        {
+          "id": "sun",
+          "image": "assessment/nursery/images/sun.png",
+          "label": "Sun"
+        },
+        {
+          "id": "star",
+          "image": "assessment/nursery/images/star.png",
+          "label": "Star"
+        }
+      ],
+      "correct_option": "sun"
+    },
+    {
+      "id": "co_n_05",
+      "domain": "cognitive",
+      "grade": "nursery",
+      "skill": "visual_matching",
+      "difficulty": 1,
+      "type": "match",
+      "prompt_text": "Find the picture that is the same as this one.",
+      "prompt_audio": "assessment/nursery/audio/co_n_05.mp3",
+      "images": [
+        "assessment/nursery/images/cup.png"
+      ],
+      "options": [
+        {
+          "id": "cup",
+          "image": "assessment/nursery/images/cup.png",
+          "label": "Cup"
+        },
+        {
+          "id": "umbrella",
+          "image": "assessment/nursery/images/umbrella.png",
+          "label": "Umbrella"
+        },
+        {
+          "id": "kite",
+          "image": "assessment/nursery/images/kite.png",
+          "label": "Kite"
+        }
+      ],
+      "correct_option": "cup"
     },
     {
       "id": "co_n_02",
@@ -148,11 +1522,81 @@
       "prompt_audio": "assessment/nursery/audio/co_n_02.mp3",
       "images": [],
       "options": [
-        { "id": "apple", "image": "assessment/nursery/images/apple.png", "label": "Apple" },
-        { "id": "car", "image": "assessment/nursery/images/car.png", "label": "Car" },
-        { "id": "banana", "image": "assessment/nursery/images/banana.png", "label": "Banana" }
+        {
+          "id": "apple",
+          "image": "assessment/nursery/images/apple.png",
+          "label": "Apple"
+        },
+        {
+          "id": "car",
+          "image": "assessment/nursery/images/car.png",
+          "label": "Car"
+        },
+        {
+          "id": "grapes",
+          "image": "assessment/nursery/images/grapes.png",
+          "label": "Grapes"
+        }
       ],
       "correct_option": "car"
+    },
+    {
+      "id": "co_n_06",
+      "domain": "cognitive",
+      "grade": "nursery",
+      "skill": "odd_one_out",
+      "difficulty": 2,
+      "type": "tap_choice",
+      "prompt_text": "One of these is not an animal. Which one?",
+      "prompt_audio": "assessment/nursery/audio/co_n_06.mp3",
+      "images": [],
+      "options": [
+        {
+          "id": "dog",
+          "image": "assessment/nursery/images/dog.png",
+          "label": "Dog"
+        },
+        {
+          "id": "bus",
+          "image": "assessment/nursery/images/bus.png",
+          "label": "Bus"
+        },
+        {
+          "id": "cow",
+          "image": "assessment/nursery/images/cow.png",
+          "label": "Cow"
+        }
+      ],
+      "correct_option": "bus"
+    },
+    {
+      "id": "co_n_07",
+      "domain": "cognitive",
+      "grade": "nursery",
+      "skill": "sorting",
+      "difficulty": 2,
+      "type": "tap_choice",
+      "prompt_text": "Which one lives in the water?",
+      "prompt_audio": "assessment/nursery/audio/co_n_07.mp3",
+      "images": [],
+      "options": [
+        {
+          "id": "cat",
+          "image": "assessment/nursery/images/cat.png",
+          "label": "Cat"
+        },
+        {
+          "id": "cow",
+          "image": "assessment/nursery/images/cow.png",
+          "label": "Cow"
+        },
+        {
+          "id": "fish",
+          "image": "assessment/nursery/images/fish.png",
+          "label": "Fish"
+        }
+      ],
+      "correct_option": "fish"
     },
     {
       "id": "co_n_03",
@@ -171,11 +1615,93 @@
         "assessment/nursery/images/dot_red.png"
       ],
       "options": [
-        { "id": "green", "image": "assessment/nursery/images/dot_green.png", "label": "Green" },
-        { "id": "blue", "image": "assessment/nursery/images/dot_blue.png", "label": "Blue" },
-        { "id": "yellow", "image": "assessment/nursery/images/dot_yellow.png", "label": "Yellow" }
+        {
+          "id": "green",
+          "image": "assessment/nursery/images/dot_green.png",
+          "label": "Green"
+        },
+        {
+          "id": "blue",
+          "image": "assessment/nursery/images/dot_blue.png",
+          "label": "Blue"
+        },
+        {
+          "id": "yellow",
+          "image": "assessment/nursery/images/dot_yellow.png",
+          "label": "Yellow"
+        }
       ],
       "correct_option": "blue"
+    },
+    {
+      "id": "co_n_08",
+      "domain": "cognitive",
+      "grade": "nursery",
+      "skill": "pattern_next",
+      "difficulty": 3,
+      "type": "tap_choice",
+      "prompt_text": "Sun, moon, sun, moon, sun. What comes next?",
+      "prompt_audio": "assessment/nursery/audio/co_n_08.mp3",
+      "images": [
+        "assessment/nursery/images/sun.png",
+        "assessment/nursery/images/moon.png",
+        "assessment/nursery/images/sun.png",
+        "assessment/nursery/images/moon.png",
+        "assessment/nursery/images/sun.png"
+      ],
+      "options": [
+        {
+          "id": "star",
+          "image": "assessment/nursery/images/star.png",
+          "label": "Star"
+        },
+        {
+          "id": "moon",
+          "image": "assessment/nursery/images/moon.png",
+          "label": "Moon"
+        },
+        {
+          "id": "sun",
+          "image": "assessment/nursery/images/sun.png",
+          "label": "Sun"
+        }
+      ],
+      "correct_option": "moon"
+    },
+    {
+      "id": "co_n_09",
+      "domain": "cognitive",
+      "grade": "nursery",
+      "skill": "pattern_next",
+      "difficulty": 3,
+      "type": "tap_choice",
+      "prompt_text": "Big, small, big, small, big. What comes next?",
+      "prompt_audio": "assessment/nursery/audio/co_n_09.mp3",
+      "images": [
+        "assessment/nursery/images/big_apple.png",
+        "assessment/nursery/images/small_apple.png",
+        "assessment/nursery/images/big_apple.png",
+        "assessment/nursery/images/small_apple.png",
+        "assessment/nursery/images/big_apple.png"
+      ],
+      "options": [
+        {
+          "id": "big_apple",
+          "image": "assessment/nursery/images/big_apple.png",
+          "label": "Big apple"
+        },
+        {
+          "id": "small_ball",
+          "image": "assessment/nursery/images/small_ball.png",
+          "label": "Small ball"
+        },
+        {
+          "id": "small_apple",
+          "image": "assessment/nursery/images/small_apple.png",
+          "label": "Small apple"
+        }
+      ],
+      "correct_option": "small_apple"
     },
     {
       "id": "fm_n_01",
@@ -250,6 +1776,1841 @@
       "difficulty": 2,
       "type": "parent_observed",
       "prompt_text": "Does your child put on their own shoes or slippers?",
+      "prompt_audio": null,
+      "images": [],
+      "options": [],
+      "correct_option": "yes"
+    },
+    {
+      "id": "en_l_01",
+      "domain": "english",
+      "grade": "lkg",
+      "skill": "capital_letter_recognition",
+      "difficulty": 1,
+      "type": "tap_choice",
+      "prompt_text": "Tap the letter S.",
+      "prompt_audio": "assessment/lkg/audio/en_l_01.mp3",
+      "images": [],
+      "options": [
+        {
+          "id": "O",
+          "image": "assessment/lkg/images/letter_O.png",
+          "label": "O"
+        },
+        {
+          "id": "S",
+          "image": "assessment/lkg/images/letter_S.png",
+          "label": "S"
+        },
+        {
+          "id": "T",
+          "image": "assessment/lkg/images/letter_T.png",
+          "label": "T"
+        }
+      ],
+      "correct_option": "S"
+    },
+    {
+      "id": "en_l_04",
+      "domain": "english",
+      "grade": "lkg",
+      "skill": "capital_letter_recognition",
+      "difficulty": 1,
+      "type": "tap_choice",
+      "prompt_text": "Tap the letter A.",
+      "prompt_audio": "assessment/lkg/audio/en_l_04.mp3",
+      "images": [],
+      "options": [
+        {
+          "id": "K",
+          "image": "assessment/lkg/images/letter_K.png",
+          "label": "K"
+        },
+        {
+          "id": "A",
+          "image": "assessment/lkg/images/letter_A.png",
+          "label": "A"
+        },
+        {
+          "id": "E",
+          "image": "assessment/lkg/images/letter_E.png",
+          "label": "E"
+        }
+      ],
+      "correct_option": "A"
+    },
+    {
+      "id": "en_l_05",
+      "domain": "english",
+      "grade": "lkg",
+      "skill": "capital_letter_recognition",
+      "difficulty": 1,
+      "type": "tap_choice",
+      "prompt_text": "Tap the letter M.",
+      "prompt_audio": "assessment/lkg/audio/en_l_05.mp3",
+      "images": [],
+      "options": [
+        {
+          "id": "M",
+          "image": "assessment/lkg/images/letter_M.png",
+          "label": "M"
+        },
+        {
+          "id": "N",
+          "image": "assessment/lkg/images/letter_N.png",
+          "label": "N"
+        },
+        {
+          "id": "H",
+          "image": "assessment/lkg/images/letter_H.png",
+          "label": "H"
+        }
+      ],
+      "correct_option": "M"
+    },
+    {
+      "id": "en_l_02",
+      "domain": "english",
+      "grade": "lkg",
+      "skill": "initial_sound",
+      "difficulty": 2,
+      "type": "tap_choice",
+      "prompt_text": "Which one starts with the sound kuh, like cat?",
+      "prompt_audio": "assessment/lkg/audio/en_l_02.mp3",
+      "images": [],
+      "options": [
+        {
+          "id": "sun",
+          "image": "assessment/lkg/images/sun.png",
+          "label": "Sun"
+        },
+        {
+          "id": "fish",
+          "image": "assessment/lkg/images/fish.png",
+          "label": "Fish"
+        },
+        {
+          "id": "car",
+          "image": "assessment/lkg/images/car.png",
+          "label": "Car"
+        }
+      ],
+      "correct_option": "car"
+    },
+    {
+      "id": "en_l_06",
+      "domain": "english",
+      "grade": "lkg",
+      "skill": "initial_sound",
+      "difficulty": 2,
+      "type": "tap_choice",
+      "prompt_text": "Which one starts with the sound fff, like fan?",
+      "prompt_audio": "assessment/lkg/audio/en_l_06.mp3",
+      "images": [],
+      "options": [
+        {
+          "id": "ball",
+          "image": "assessment/lkg/images/ball.png",
+          "label": "Ball"
+        },
+        {
+          "id": "tree",
+          "image": "assessment/lkg/images/tree.png",
+          "label": "Tree"
+        },
+        {
+          "id": "fish",
+          "image": "assessment/lkg/images/fish.png",
+          "label": "Fish"
+        }
+      ],
+      "correct_option": "fish"
+    },
+    {
+      "id": "en_l_07",
+      "domain": "english",
+      "grade": "lkg",
+      "skill": "initial_sound",
+      "difficulty": 2,
+      "type": "tap_choice",
+      "prompt_text": "Which one starts with the sound duh, like doll?",
+      "prompt_audio": "assessment/lkg/audio/en_l_07.mp3",
+      "images": [],
+      "options": [
+        {
+          "id": "cat",
+          "image": "assessment/lkg/images/cat.png",
+          "label": "Cat"
+        },
+        {
+          "id": "dog",
+          "image": "assessment/lkg/images/dog.png",
+          "label": "Dog"
+        },
+        {
+          "id": "sun",
+          "image": "assessment/lkg/images/sun.png",
+          "label": "Sun"
+        }
+      ],
+      "correct_option": "dog"
+    },
+    {
+      "id": "en_l_03",
+      "domain": "english",
+      "grade": "lkg",
+      "skill": "small_letter_recognition",
+      "difficulty": 3,
+      "type": "tap_choice",
+      "prompt_text": "Tap the small letter b.",
+      "prompt_audio": "assessment/lkg/audio/en_l_03.mp3",
+      "images": [],
+      "options": [
+        {
+          "id": "d",
+          "image": "assessment/lkg/images/letter_d.png",
+          "label": "d"
+        },
+        {
+          "id": "b",
+          "image": "assessment/lkg/images/letter_b.png",
+          "label": "b"
+        },
+        {
+          "id": "p",
+          "image": "assessment/lkg/images/letter_p.png",
+          "label": "p"
+        }
+      ],
+      "correct_option": "b"
+    },
+    {
+      "id": "en_l_08",
+      "domain": "english",
+      "grade": "lkg",
+      "skill": "small_letter_recognition",
+      "difficulty": 3,
+      "type": "tap_choice",
+      "prompt_text": "Tap the small letter d.",
+      "prompt_audio": "assessment/lkg/audio/en_l_08.mp3",
+      "images": [],
+      "options": [
+        {
+          "id": "b",
+          "image": "assessment/lkg/images/letter_b.png",
+          "label": "b"
+        },
+        {
+          "id": "q",
+          "image": "assessment/lkg/images/letter_q.png",
+          "label": "q"
+        },
+        {
+          "id": "d",
+          "image": "assessment/lkg/images/letter_d.png",
+          "label": "d"
+        }
+      ],
+      "correct_option": "d"
+    },
+    {
+      "id": "en_l_09",
+      "domain": "english",
+      "grade": "lkg",
+      "skill": "initial_sound_letter",
+      "difficulty": 3,
+      "type": "tap_choice",
+      "prompt_text": "Ball starts with which letter? Tap it.",
+      "prompt_audio": "assessment/lkg/audio/en_l_09.mp3",
+      "images": [],
+      "options": [
+        {
+          "id": "P",
+          "image": "assessment/lkg/images/letter_P.png",
+          "label": "P"
+        },
+        {
+          "id": "B",
+          "image": "assessment/lkg/images/letter_B.png",
+          "label": "B"
+        },
+        {
+          "id": "D",
+          "image": "assessment/lkg/images/letter_D.png",
+          "label": "D"
+        }
+      ],
+      "correct_option": "B"
+    },
+    {
+      "id": "ma_l_01",
+      "domain": "maths",
+      "grade": "lkg",
+      "skill": "count_to_3",
+      "difficulty": 1,
+      "type": "count_tap",
+      "prompt_text": "How many stars can you count? Tap the right number.",
+      "prompt_audio": "assessment/lkg/audio/ma_l_01.mp3",
+      "images": [
+        "assessment/lkg/images/star.png",
+        "assessment/lkg/images/star.png",
+        "assessment/lkg/images/star.png"
+      ],
+      "options": [
+        {
+          "id": "2",
+          "image": "assessment/lkg/images/num_2.png",
+          "label": "2"
+        },
+        {
+          "id": "3",
+          "image": "assessment/lkg/images/num_3.png",
+          "label": "3"
+        },
+        {
+          "id": "4",
+          "image": "assessment/lkg/images/num_4.png",
+          "label": "4"
+        }
+      ],
+      "correct_option": "3"
+    },
+    {
+      "id": "ma_l_04",
+      "domain": "maths",
+      "grade": "lkg",
+      "skill": "count_to_3",
+      "difficulty": 1,
+      "type": "count_tap",
+      "prompt_text": "How many ducks are there? Tap the right number.",
+      "prompt_audio": "assessment/lkg/audio/ma_l_04.mp3",
+      "images": [
+        "assessment/lkg/images/duck.png",
+        "assessment/lkg/images/duck.png"
+      ],
+      "options": [
+        {
+          "id": "1",
+          "image": "assessment/lkg/images/num_1.png",
+          "label": "1"
+        },
+        {
+          "id": "2",
+          "image": "assessment/lkg/images/num_2.png",
+          "label": "2"
+        },
+        {
+          "id": "3",
+          "image": "assessment/lkg/images/num_3.png",
+          "label": "3"
+        }
+      ],
+      "correct_option": "2"
+    },
+    {
+      "id": "ma_l_05",
+      "domain": "maths",
+      "grade": "lkg",
+      "skill": "count_to_3",
+      "difficulty": 1,
+      "type": "count_tap",
+      "prompt_text": "How many balloons are there? Tap the right number.",
+      "prompt_audio": "assessment/lkg/audio/ma_l_05.mp3",
+      "images": [
+        "assessment/lkg/images/balloon.png",
+        "assessment/lkg/images/balloon.png",
+        "assessment/lkg/images/balloon.png"
+      ],
+      "options": [
+        {
+          "id": "3",
+          "image": "assessment/lkg/images/num_3.png",
+          "label": "3"
+        },
+        {
+          "id": "4",
+          "image": "assessment/lkg/images/num_4.png",
+          "label": "4"
+        },
+        {
+          "id": "5",
+          "image": "assessment/lkg/images/num_5.png",
+          "label": "5"
+        }
+      ],
+      "correct_option": "3"
+    },
+    {
+      "id": "ma_l_02",
+      "domain": "maths",
+      "grade": "lkg",
+      "skill": "count_to_5",
+      "difficulty": 2,
+      "type": "count_tap",
+      "prompt_text": "How many apples are there? Tap the right number.",
+      "prompt_audio": "assessment/lkg/audio/ma_l_02.mp3",
+      "images": [
+        "assessment/lkg/images/apple.png",
+        "assessment/lkg/images/apple.png",
+        "assessment/lkg/images/apple.png",
+        "assessment/lkg/images/apple.png",
+        "assessment/lkg/images/apple.png"
+      ],
+      "options": [
+        {
+          "id": "4",
+          "image": "assessment/lkg/images/num_4.png",
+          "label": "4"
+        },
+        {
+          "id": "5",
+          "image": "assessment/lkg/images/num_5.png",
+          "label": "5"
+        },
+        {
+          "id": "6",
+          "image": "assessment/lkg/images/num_6.png",
+          "label": "6"
+        }
+      ],
+      "correct_option": "5"
+    },
+    {
+      "id": "ma_l_06",
+      "domain": "maths",
+      "grade": "lkg",
+      "skill": "count_to_5",
+      "difficulty": 2,
+      "type": "count_tap",
+      "prompt_text": "How many cats can you count? Tap the right number.",
+      "prompt_audio": "assessment/lkg/audio/ma_l_06.mp3",
+      "images": [
+        "assessment/lkg/images/cat.png",
+        "assessment/lkg/images/cat.png",
+        "assessment/lkg/images/cat.png",
+        "assessment/lkg/images/cat.png"
+      ],
+      "options": [
+        {
+          "id": "3",
+          "image": "assessment/lkg/images/num_3.png",
+          "label": "3"
+        },
+        {
+          "id": "4",
+          "image": "assessment/lkg/images/num_4.png",
+          "label": "4"
+        },
+        {
+          "id": "6",
+          "image": "assessment/lkg/images/num_6.png",
+          "label": "6"
+        }
+      ],
+      "correct_option": "4"
+    },
+    {
+      "id": "ma_l_07",
+      "domain": "maths",
+      "grade": "lkg",
+      "skill": "count_to_5",
+      "difficulty": 2,
+      "type": "count_tap",
+      "prompt_text": "How many fish can you count? Tap the right number.",
+      "prompt_audio": "assessment/lkg/audio/ma_l_07.mp3",
+      "images": [
+        "assessment/lkg/images/fish.png",
+        "assessment/lkg/images/fish.png",
+        "assessment/lkg/images/fish.png",
+        "assessment/lkg/images/fish.png",
+        "assessment/lkg/images/fish.png"
+      ],
+      "options": [
+        {
+          "id": "5",
+          "image": "assessment/lkg/images/num_5.png",
+          "label": "5"
+        },
+        {
+          "id": "3",
+          "image": "assessment/lkg/images/num_3.png",
+          "label": "3"
+        },
+        {
+          "id": "4",
+          "image": "assessment/lkg/images/num_4.png",
+          "label": "4"
+        }
+      ],
+      "correct_option": "5"
+    },
+    {
+      "id": "ma_l_03",
+      "domain": "maths",
+      "grade": "lkg",
+      "skill": "compare_numbers",
+      "difficulty": 3,
+      "type": "tap_choice",
+      "prompt_text": "Which is the biggest number? Tap it.",
+      "prompt_audio": "assessment/lkg/audio/ma_l_03.mp3",
+      "images": [],
+      "options": [
+        {
+          "id": "2",
+          "image": "assessment/lkg/images/num_2.png",
+          "label": "2"
+        },
+        {
+          "id": "7",
+          "image": "assessment/lkg/images/num_7.png",
+          "label": "7"
+        },
+        {
+          "id": "4",
+          "image": "assessment/lkg/images/num_4.png",
+          "label": "4"
+        }
+      ],
+      "correct_option": "7"
+    },
+    {
+      "id": "ma_l_08",
+      "domain": "maths",
+      "grade": "lkg",
+      "skill": "number_after",
+      "difficulty": 3,
+      "type": "tap_choice",
+      "prompt_text": "Which number comes after 4?",
+      "prompt_audio": "assessment/lkg/audio/ma_l_08.mp3",
+      "images": [],
+      "options": [
+        {
+          "id": "3",
+          "image": "assessment/lkg/images/num_3.png",
+          "label": "3"
+        },
+        {
+          "id": "6",
+          "image": "assessment/lkg/images/num_6.png",
+          "label": "6"
+        },
+        {
+          "id": "5",
+          "image": "assessment/lkg/images/num_5.png",
+          "label": "5"
+        }
+      ],
+      "correct_option": "5"
+    },
+    {
+      "id": "ma_l_09",
+      "domain": "maths",
+      "grade": "lkg",
+      "skill": "compare_numbers",
+      "difficulty": 3,
+      "type": "tap_choice",
+      "prompt_text": "Which is the smallest number? Tap it.",
+      "prompt_audio": "assessment/lkg/audio/ma_l_09.mp3",
+      "images": [],
+      "options": [
+        {
+          "id": "9",
+          "image": "assessment/lkg/images/num_9.png",
+          "label": "9"
+        },
+        {
+          "id": "3",
+          "image": "assessment/lkg/images/num_3.png",
+          "label": "3"
+        },
+        {
+          "id": "6",
+          "image": "assessment/lkg/images/num_6.png",
+          "label": "6"
+        }
+      ],
+      "correct_option": "3"
+    },
+    {
+      "id": "co_l_01",
+      "domain": "cognitive",
+      "grade": "lkg",
+      "skill": "shape_matching",
+      "difficulty": 1,
+      "type": "match",
+      "prompt_text": "Find the shape that is the same as this one.",
+      "prompt_audio": "assessment/lkg/audio/co_l_01.mp3",
+      "images": [
+        "assessment/lkg/images/blue_triangle.png"
+      ],
+      "options": [
+        {
+          "id": "green_square",
+          "image": "assessment/lkg/images/green_square.png",
+          "label": "Green square"
+        },
+        {
+          "id": "blue_triangle",
+          "image": "assessment/lkg/images/blue_triangle.png",
+          "label": "Blue triangle"
+        },
+        {
+          "id": "red_circle",
+          "image": "assessment/lkg/images/red_circle.png",
+          "label": "Red circle"
+        }
+      ],
+      "correct_option": "blue_triangle"
+    },
+    {
+      "id": "co_l_04",
+      "domain": "cognitive",
+      "grade": "lkg",
+      "skill": "shape_matching",
+      "difficulty": 1,
+      "type": "match",
+      "prompt_text": "Find the shape that is the same as this one.",
+      "prompt_audio": "assessment/lkg/audio/co_l_04.mp3",
+      "images": [
+        "assessment/lkg/images/red_square.png"
+      ],
+      "options": [
+        {
+          "id": "yellow_circle",
+          "image": "assessment/lkg/images/yellow_circle.png",
+          "label": "Yellow circle"
+        },
+        {
+          "id": "red_triangle",
+          "image": "assessment/lkg/images/red_triangle.png",
+          "label": "Red triangle"
+        },
+        {
+          "id": "red_square",
+          "image": "assessment/lkg/images/red_square.png",
+          "label": "Red square"
+        }
+      ],
+      "correct_option": "red_square"
+    },
+    {
+      "id": "co_l_05",
+      "domain": "cognitive",
+      "grade": "lkg",
+      "skill": "colour_matching",
+      "difficulty": 1,
+      "type": "match",
+      "prompt_text": "Find the same colour as this one.",
+      "prompt_audio": "assessment/lkg/audio/co_l_05.mp3",
+      "images": [
+        "assessment/lkg/images/dot_green.png"
+      ],
+      "options": [
+        {
+          "id": "orange",
+          "image": "assessment/lkg/images/dot_orange.png",
+          "label": "Orange"
+        },
+        {
+          "id": "purple",
+          "image": "assessment/lkg/images/dot_purple.png",
+          "label": "Purple"
+        },
+        {
+          "id": "green",
+          "image": "assessment/lkg/images/dot_green.png",
+          "label": "Green"
+        }
+      ],
+      "correct_option": "green"
+    },
+    {
+      "id": "co_l_02",
+      "domain": "cognitive",
+      "grade": "lkg",
+      "skill": "pattern_next",
+      "difficulty": 2,
+      "type": "tap_choice",
+      "prompt_text": "Red, red, blue. Red, red, blue. Red, red. What comes next?",
+      "prompt_audio": "assessment/lkg/audio/co_l_02.mp3",
+      "images": [
+        "assessment/lkg/images/dot_red.png",
+        "assessment/lkg/images/dot_red.png",
+        "assessment/lkg/images/dot_blue.png",
+        "assessment/lkg/images/dot_red.png",
+        "assessment/lkg/images/dot_red.png"
+      ],
+      "options": [
+        {
+          "id": "red",
+          "image": "assessment/lkg/images/dot_red.png",
+          "label": "Red"
+        },
+        {
+          "id": "blue",
+          "image": "assessment/lkg/images/dot_blue.png",
+          "label": "Blue"
+        },
+        {
+          "id": "green",
+          "image": "assessment/lkg/images/dot_green.png",
+          "label": "Green"
+        }
+      ],
+      "correct_option": "blue"
+    },
+    {
+      "id": "co_l_06",
+      "domain": "cognitive",
+      "grade": "lkg",
+      "skill": "pattern_next",
+      "difficulty": 2,
+      "type": "tap_choice",
+      "prompt_text": "Circle, triangle, circle, triangle, circle. What comes next?",
+      "prompt_audio": "assessment/lkg/audio/co_l_06.mp3",
+      "images": [
+        "assessment/lkg/images/blue_circle.png",
+        "assessment/lkg/images/blue_triangle.png",
+        "assessment/lkg/images/blue_circle.png",
+        "assessment/lkg/images/blue_triangle.png",
+        "assessment/lkg/images/blue_circle.png"
+      ],
+      "options": [
+        {
+          "id": "blue_square",
+          "image": "assessment/lkg/images/blue_square.png",
+          "label": "Blue square"
+        },
+        {
+          "id": "blue_circle",
+          "image": "assessment/lkg/images/blue_circle.png",
+          "label": "Blue circle"
+        },
+        {
+          "id": "blue_triangle",
+          "image": "assessment/lkg/images/blue_triangle.png",
+          "label": "Blue triangle"
+        }
+      ],
+      "correct_option": "blue_triangle"
+    },
+    {
+      "id": "co_l_07",
+      "domain": "cognitive",
+      "grade": "lkg",
+      "skill": "pattern_next",
+      "difficulty": 2,
+      "type": "tap_choice",
+      "prompt_text": "Big, small, big, small, big. What comes next?",
+      "prompt_audio": "assessment/lkg/audio/co_l_07.mp3",
+      "images": [
+        "assessment/lkg/images/big_star.png",
+        "assessment/lkg/images/small_star.png",
+        "assessment/lkg/images/big_star.png",
+        "assessment/lkg/images/small_star.png",
+        "assessment/lkg/images/big_star.png"
+      ],
+      "options": [
+        {
+          "id": "big_star",
+          "image": "assessment/lkg/images/big_star.png",
+          "label": "Big star"
+        },
+        {
+          "id": "small_star",
+          "image": "assessment/lkg/images/small_star.png",
+          "label": "Small star"
+        },
+        {
+          "id": "small_ball",
+          "image": "assessment/lkg/images/small_ball.png",
+          "label": "Small ball"
+        }
+      ],
+      "correct_option": "small_star"
+    },
+    {
+      "id": "co_l_03",
+      "domain": "cognitive",
+      "grade": "lkg",
+      "skill": "odd_one_out",
+      "difficulty": 3,
+      "type": "tap_choice",
+      "prompt_text": "One of these cannot fly. Which one?",
+      "prompt_audio": "assessment/lkg/audio/co_l_03.mp3",
+      "images": [],
+      "options": [
+        {
+          "id": "bird",
+          "image": "assessment/lkg/images/bird.png",
+          "label": "Bird"
+        },
+        {
+          "id": "aeroplane",
+          "image": "assessment/lkg/images/aeroplane.png",
+          "label": "Aeroplane"
+        },
+        {
+          "id": "car",
+          "image": "assessment/lkg/images/car.png",
+          "label": "Car"
+        }
+      ],
+      "correct_option": "car"
+    },
+    {
+      "id": "co_l_08",
+      "domain": "cognitive",
+      "grade": "lkg",
+      "skill": "odd_one_out",
+      "difficulty": 3,
+      "type": "tap_choice",
+      "prompt_text": "One of these is not a fruit. Which one?",
+      "prompt_audio": "assessment/lkg/audio/co_l_08.mp3",
+      "images": [],
+      "options": [
+        {
+          "id": "watermelon",
+          "image": "assessment/lkg/images/watermelon.png",
+          "label": "Watermelon"
+        },
+        {
+          "id": "balloon",
+          "image": "assessment/lkg/images/balloon.png",
+          "label": "Balloon"
+        },
+        {
+          "id": "pineapple",
+          "image": "assessment/lkg/images/pineapple.png",
+          "label": "Pineapple"
+        }
+      ],
+      "correct_option": "balloon"
+    },
+    {
+      "id": "co_l_09",
+      "domain": "cognitive",
+      "grade": "lkg",
+      "skill": "pattern_next",
+      "difficulty": 3,
+      "type": "tap_choice",
+      "prompt_text": "Cat, cat, dog. Cat, cat, dog. Cat, cat. What comes next?",
+      "prompt_audio": "assessment/lkg/audio/co_l_09.mp3",
+      "images": [
+        "assessment/lkg/images/cat.png",
+        "assessment/lkg/images/cat.png",
+        "assessment/lkg/images/dog.png",
+        "assessment/lkg/images/cat.png",
+        "assessment/lkg/images/cat.png"
+      ],
+      "options": [
+        {
+          "id": "cat",
+          "image": "assessment/lkg/images/cat.png",
+          "label": "Cat"
+        },
+        {
+          "id": "cow",
+          "image": "assessment/lkg/images/cow.png",
+          "label": "Cow"
+        },
+        {
+          "id": "dog",
+          "image": "assessment/lkg/images/dog.png",
+          "label": "Dog"
+        }
+      ],
+      "correct_option": "dog"
+    },
+    {
+      "id": "fm_l_01",
+      "domain": "fine_motor",
+      "grade": "lkg",
+      "skill": "drawing_shapes",
+      "difficulty": 2,
+      "type": "parent_observed",
+      "prompt_text": "Can your child draw a line and a circle on their own?",
+      "prompt_audio": null,
+      "images": [],
+      "options": [],
+      "correct_option": "yes"
+    },
+    {
+      "id": "fm_l_02",
+      "domain": "fine_motor",
+      "grade": "lkg",
+      "skill": "scissors",
+      "difficulty": 2,
+      "type": "parent_observed",
+      "prompt_text": "Can your child snip paper with child-safe scissors?",
+      "prompt_audio": null,
+      "images": [],
+      "options": [],
+      "correct_option": "yes"
+    },
+    {
+      "id": "sel_l_01",
+      "domain": "sel",
+      "grade": "lkg",
+      "skill": "sharing",
+      "difficulty": 2,
+      "type": "parent_observed",
+      "prompt_text": "Does your child share toys with only a little reminder?",
+      "prompt_audio": null,
+      "images": [],
+      "options": [],
+      "correct_option": "yes"
+    },
+    {
+      "id": "sel_l_02",
+      "domain": "sel",
+      "grade": "lkg",
+      "skill": "waiting_turn",
+      "difficulty": 2,
+      "type": "parent_observed",
+      "prompt_text": "Can your child wait for a short turn without getting very upset?",
+      "prompt_audio": null,
+      "images": [],
+      "options": [],
+      "correct_option": "yes"
+    },
+    {
+      "id": "ls_l_01",
+      "domain": "life_skills",
+      "grade": "lkg",
+      "skill": "toileting",
+      "difficulty": 2,
+      "type": "parent_observed",
+      "prompt_text": "Does your child use the toilet with only a little help?",
+      "prompt_audio": null,
+      "images": [],
+      "options": [],
+      "correct_option": "yes"
+    },
+    {
+      "id": "ls_l_02",
+      "domain": "life_skills",
+      "grade": "lkg",
+      "skill": "dressing_shoes",
+      "difficulty": 2,
+      "type": "parent_observed",
+      "prompt_text": "Does your child put on their own shoes or slippers?",
+      "prompt_audio": null,
+      "images": [],
+      "options": [],
+      "correct_option": "yes"
+    },
+    {
+      "id": "en_u_01",
+      "domain": "english",
+      "grade": "ukg",
+      "skill": "initial_sound_letter",
+      "difficulty": 1,
+      "type": "tap_choice",
+      "prompt_text": "Sun starts with which letter? Tap it.",
+      "prompt_audio": "assessment/ukg/audio/en_u_01.mp3",
+      "images": [],
+      "options": [
+        {
+          "id": "M",
+          "image": "assessment/ukg/images/letter_M.png",
+          "label": "M"
+        },
+        {
+          "id": "S",
+          "image": "assessment/ukg/images/letter_S.png",
+          "label": "S"
+        },
+        {
+          "id": "T",
+          "image": "assessment/ukg/images/letter_T.png",
+          "label": "T"
+        }
+      ],
+      "correct_option": "S"
+    },
+    {
+      "id": "en_u_04",
+      "domain": "english",
+      "grade": "ukg",
+      "skill": "initial_sound_letter",
+      "difficulty": 1,
+      "type": "tap_choice",
+      "prompt_text": "Fish starts with which letter? Tap it.",
+      "prompt_audio": "assessment/ukg/audio/en_u_04.mp3",
+      "images": [],
+      "options": [
+        {
+          "id": "H",
+          "image": "assessment/ukg/images/letter_H.png",
+          "label": "H"
+        },
+        {
+          "id": "F",
+          "image": "assessment/ukg/images/letter_F.png",
+          "label": "F"
+        },
+        {
+          "id": "E",
+          "image": "assessment/ukg/images/letter_E.png",
+          "label": "E"
+        }
+      ],
+      "correct_option": "F"
+    },
+    {
+      "id": "en_u_05",
+      "domain": "english",
+      "grade": "ukg",
+      "skill": "initial_sound_letter",
+      "difficulty": 1,
+      "type": "tap_choice",
+      "prompt_text": "Dog starts with which letter? Tap it.",
+      "prompt_audio": "assessment/ukg/audio/en_u_05.mp3",
+      "images": [],
+      "options": [
+        {
+          "id": "B",
+          "image": "assessment/ukg/images/letter_B.png",
+          "label": "B"
+        },
+        {
+          "id": "G",
+          "image": "assessment/ukg/images/letter_G.png",
+          "label": "G"
+        },
+        {
+          "id": "D",
+          "image": "assessment/ukg/images/letter_D.png",
+          "label": "D"
+        }
+      ],
+      "correct_option": "D"
+    },
+    {
+      "id": "en_u_02",
+      "domain": "english",
+      "grade": "ukg",
+      "skill": "rhyming",
+      "difficulty": 2,
+      "type": "tap_choice",
+      "prompt_text": "Which one rhymes with cat?",
+      "prompt_audio": "assessment/ukg/audio/en_u_02.mp3",
+      "images": [],
+      "options": [
+        {
+          "id": "sun",
+          "image": "assessment/ukg/images/sun.png",
+          "label": "Sun"
+        },
+        {
+          "id": "bat",
+          "image": "assessment/ukg/images/bat.png",
+          "label": "Bat"
+        },
+        {
+          "id": "fish",
+          "image": "assessment/ukg/images/fish.png",
+          "label": "Fish"
+        }
+      ],
+      "correct_option": "bat"
+    },
+    {
+      "id": "en_u_06",
+      "domain": "english",
+      "grade": "ukg",
+      "skill": "rhyming",
+      "difficulty": 2,
+      "type": "tap_choice",
+      "prompt_text": "Which one rhymes with car?",
+      "prompt_audio": "assessment/ukg/audio/en_u_06.mp3",
+      "images": [],
+      "options": [
+        {
+          "id": "cup",
+          "image": "assessment/ukg/images/cup.png",
+          "label": "Cup"
+        },
+        {
+          "id": "star",
+          "image": "assessment/ukg/images/star.png",
+          "label": "Star"
+        },
+        {
+          "id": "fish",
+          "image": "assessment/ukg/images/fish.png",
+          "label": "Fish"
+        }
+      ],
+      "correct_option": "star"
+    },
+    {
+      "id": "en_u_07",
+      "domain": "english",
+      "grade": "ukg",
+      "skill": "rhyming",
+      "difficulty": 2,
+      "type": "tap_choice",
+      "prompt_text": "Which one rhymes with mouse?",
+      "prompt_audio": "assessment/ukg/audio/en_u_07.mp3",
+      "images": [],
+      "options": [
+        {
+          "id": "tree",
+          "image": "assessment/ukg/images/tree.png",
+          "label": "Tree"
+        },
+        {
+          "id": "bus",
+          "image": "assessment/ukg/images/bus.png",
+          "label": "Bus"
+        },
+        {
+          "id": "house",
+          "image": "assessment/ukg/images/house.png",
+          "label": "House"
+        }
+      ],
+      "correct_option": "house"
+    },
+    {
+      "id": "en_u_03",
+      "domain": "english",
+      "grade": "ukg",
+      "skill": "reading_cvc_words",
+      "difficulty": 3,
+      "type": "tap_choice",
+      "prompt_text": "Tap the word sun.",
+      "prompt_audio": "assessment/ukg/audio/en_u_03.mp3",
+      "images": [],
+      "options": [
+        {
+          "id": "bus",
+          "image": "assessment/ukg/images/word_bus.png",
+          "label": "bus"
+        },
+        {
+          "id": "sun",
+          "image": "assessment/ukg/images/word_sun.png",
+          "label": "sun"
+        },
+        {
+          "id": "cup",
+          "image": "assessment/ukg/images/word_cup.png",
+          "label": "cup"
+        }
+      ],
+      "correct_option": "sun"
+    },
+    {
+      "id": "en_u_08",
+      "domain": "english",
+      "grade": "ukg",
+      "skill": "reading_cvc_words",
+      "difficulty": 3,
+      "type": "tap_choice",
+      "prompt_text": "Tap the word cat.",
+      "prompt_audio": "assessment/ukg/audio/en_u_08.mp3",
+      "images": [],
+      "options": [
+        {
+          "id": "cot",
+          "image": "assessment/ukg/images/word_cot.png",
+          "label": "cot"
+        },
+        {
+          "id": "cap",
+          "image": "assessment/ukg/images/word_cap.png",
+          "label": "cap"
+        },
+        {
+          "id": "cat",
+          "image": "assessment/ukg/images/word_cat.png",
+          "label": "cat"
+        }
+      ],
+      "correct_option": "cat"
+    },
+    {
+      "id": "en_u_09",
+      "domain": "english",
+      "grade": "ukg",
+      "skill": "reading_cvc_words",
+      "difficulty": 3,
+      "type": "tap_choice",
+      "prompt_text": "Tap the word dog.",
+      "prompt_audio": "assessment/ukg/audio/en_u_09.mp3",
+      "images": [],
+      "options": [
+        {
+          "id": "dog",
+          "image": "assessment/ukg/images/word_dog.png",
+          "label": "dog"
+        },
+        {
+          "id": "dig",
+          "image": "assessment/ukg/images/word_dig.png",
+          "label": "dig"
+        },
+        {
+          "id": "bog",
+          "image": "assessment/ukg/images/word_bog.png",
+          "label": "bog"
+        }
+      ],
+      "correct_option": "dog"
+    },
+    {
+      "id": "ma_u_01",
+      "domain": "maths",
+      "grade": "ukg",
+      "skill": "count_to_7",
+      "difficulty": 1,
+      "type": "count_tap",
+      "prompt_text": "How many stars can you count? Tap the right number.",
+      "prompt_audio": "assessment/ukg/audio/ma_u_01.mp3",
+      "images": [
+        "assessment/ukg/images/star.png",
+        "assessment/ukg/images/star.png",
+        "assessment/ukg/images/star.png",
+        "assessment/ukg/images/star.png",
+        "assessment/ukg/images/star.png",
+        "assessment/ukg/images/star.png"
+      ],
+      "options": [
+        {
+          "id": "5",
+          "image": "assessment/ukg/images/num_5.png",
+          "label": "5"
+        },
+        {
+          "id": "6",
+          "image": "assessment/ukg/images/num_6.png",
+          "label": "6"
+        },
+        {
+          "id": "7",
+          "image": "assessment/ukg/images/num_7.png",
+          "label": "7"
+        }
+      ],
+      "correct_option": "6"
+    },
+    {
+      "id": "ma_u_04",
+      "domain": "maths",
+      "grade": "ukg",
+      "skill": "count_to_5",
+      "difficulty": 1,
+      "type": "count_tap",
+      "prompt_text": "How many balloons can you count? Tap the right number.",
+      "prompt_audio": "assessment/ukg/audio/ma_u_04.mp3",
+      "images": [
+        "assessment/ukg/images/balloon.png",
+        "assessment/ukg/images/balloon.png",
+        "assessment/ukg/images/balloon.png",
+        "assessment/ukg/images/balloon.png",
+        "assessment/ukg/images/balloon.png"
+      ],
+      "options": [
+        {
+          "id": "4",
+          "image": "assessment/ukg/images/num_4.png",
+          "label": "4"
+        },
+        {
+          "id": "5",
+          "image": "assessment/ukg/images/num_5.png",
+          "label": "5"
+        },
+        {
+          "id": "7",
+          "image": "assessment/ukg/images/num_7.png",
+          "label": "7"
+        }
+      ],
+      "correct_option": "5"
+    },
+    {
+      "id": "ma_u_05",
+      "domain": "maths",
+      "grade": "ukg",
+      "skill": "count_to_7",
+      "difficulty": 1,
+      "type": "count_tap",
+      "prompt_text": "How many apples can you count? Tap the right number.",
+      "prompt_audio": "assessment/ukg/audio/ma_u_05.mp3",
+      "images": [
+        "assessment/ukg/images/apple.png",
+        "assessment/ukg/images/apple.png",
+        "assessment/ukg/images/apple.png",
+        "assessment/ukg/images/apple.png",
+        "assessment/ukg/images/apple.png",
+        "assessment/ukg/images/apple.png",
+        "assessment/ukg/images/apple.png"
+      ],
+      "options": [
+        {
+          "id": "8",
+          "image": "assessment/ukg/images/num_8.png",
+          "label": "8"
+        },
+        {
+          "id": "6",
+          "image": "assessment/ukg/images/num_6.png",
+          "label": "6"
+        },
+        {
+          "id": "7",
+          "image": "assessment/ukg/images/num_7.png",
+          "label": "7"
+        }
+      ],
+      "correct_option": "7"
+    },
+    {
+      "id": "ma_u_02",
+      "domain": "maths",
+      "grade": "ukg",
+      "skill": "number_after",
+      "difficulty": 2,
+      "type": "tap_choice",
+      "prompt_text": "Which number comes after 7?",
+      "prompt_audio": "assessment/ukg/audio/ma_u_02.mp3",
+      "images": [],
+      "options": [
+        {
+          "id": "6",
+          "image": "assessment/ukg/images/num_6.png",
+          "label": "6"
+        },
+        {
+          "id": "8",
+          "image": "assessment/ukg/images/num_8.png",
+          "label": "8"
+        },
+        {
+          "id": "9",
+          "image": "assessment/ukg/images/num_9.png",
+          "label": "9"
+        }
+      ],
+      "correct_option": "8"
+    },
+    {
+      "id": "ma_u_06",
+      "domain": "maths",
+      "grade": "ukg",
+      "skill": "number_before",
+      "difficulty": 2,
+      "type": "tap_choice",
+      "prompt_text": "Which number comes before 5?",
+      "prompt_audio": "assessment/ukg/audio/ma_u_06.mp3",
+      "images": [],
+      "options": [
+        {
+          "id": "6",
+          "image": "assessment/ukg/images/num_6.png",
+          "label": "6"
+        },
+        {
+          "id": "4",
+          "image": "assessment/ukg/images/num_4.png",
+          "label": "4"
+        },
+        {
+          "id": "3",
+          "image": "assessment/ukg/images/num_3.png",
+          "label": "3"
+        }
+      ],
+      "correct_option": "4"
+    },
+    {
+      "id": "ma_u_07",
+      "domain": "maths",
+      "grade": "ukg",
+      "skill": "missing_number",
+      "difficulty": 2,
+      "type": "tap_choice",
+      "prompt_text": "3, 4, something, 6. Which number is missing?",
+      "prompt_audio": "assessment/ukg/audio/ma_u_07.mp3",
+      "images": [
+        "assessment/ukg/images/num_3.png",
+        "assessment/ukg/images/num_4.png",
+        "assessment/ukg/images/shrug.png",
+        "assessment/ukg/images/num_6.png"
+      ],
+      "options": [
+        {
+          "id": "7",
+          "image": "assessment/ukg/images/num_7.png",
+          "label": "7"
+        },
+        {
+          "id": "2",
+          "image": "assessment/ukg/images/num_2.png",
+          "label": "2"
+        },
+        {
+          "id": "5",
+          "image": "assessment/ukg/images/num_5.png",
+          "label": "5"
+        }
+      ],
+      "correct_option": "5"
+    },
+    {
+      "id": "ma_u_03",
+      "domain": "maths",
+      "grade": "ukg",
+      "skill": "fewer",
+      "difficulty": 3,
+      "type": "tap_choice",
+      "prompt_text": "Which basket has the fewest balls?",
+      "prompt_audio": "assessment/ukg/audio/ma_u_03.mp3",
+      "images": [],
+      "options": [
+        {
+          "id": "basket_7",
+          "image": "assessment/ukg/images/basket_7_balls.png",
+          "label": "7 balls"
+        },
+        {
+          "id": "basket_5",
+          "image": "assessment/ukg/images/basket_5_balls.png",
+          "label": "5 balls"
+        },
+        {
+          "id": "basket_9",
+          "image": "assessment/ukg/images/basket_9_balls.png",
+          "label": "9 balls"
+        }
+      ],
+      "correct_option": "basket_5"
+    },
+    {
+      "id": "ma_u_08",
+      "domain": "maths",
+      "grade": "ukg",
+      "skill": "addition",
+      "difficulty": 3,
+      "type": "tap_choice",
+      "prompt_text": "Two apples and one more apple. How many apples now?",
+      "prompt_audio": "assessment/ukg/audio/ma_u_08.mp3",
+      "images": [
+        "assessment/ukg/images/apple.png",
+        "assessment/ukg/images/apple.png",
+        "assessment/ukg/images/plus.png",
+        "assessment/ukg/images/apple.png"
+      ],
+      "options": [
+        {
+          "id": "2",
+          "image": "assessment/ukg/images/num_2.png",
+          "label": "2"
+        },
+        {
+          "id": "3",
+          "image": "assessment/ukg/images/num_3.png",
+          "label": "3"
+        },
+        {
+          "id": "4",
+          "image": "assessment/ukg/images/num_4.png",
+          "label": "4"
+        }
+      ],
+      "correct_option": "3"
+    },
+    {
+      "id": "ma_u_09",
+      "domain": "maths",
+      "grade": "ukg",
+      "skill": "compare_numbers",
+      "difficulty": 3,
+      "type": "tap_choice",
+      "prompt_text": "Which is the biggest number? Tap it.",
+      "prompt_audio": "assessment/ukg/audio/ma_u_09.mp3",
+      "images": [],
+      "options": [
+        {
+          "id": "8",
+          "image": "assessment/ukg/images/num_8.png",
+          "label": "8"
+        },
+        {
+          "id": "10",
+          "image": "assessment/ukg/images/num_10.png",
+          "label": "10"
+        },
+        {
+          "id": "6",
+          "image": "assessment/ukg/images/num_6.png",
+          "label": "6"
+        }
+      ],
+      "correct_option": "10"
+    },
+    {
+      "id": "co_u_01",
+      "domain": "cognitive",
+      "grade": "ukg",
+      "skill": "odd_one_out",
+      "difficulty": 1,
+      "type": "tap_choice",
+      "prompt_text": "One of these is not a vehicle. Which one?",
+      "prompt_audio": "assessment/ukg/audio/co_u_01.mp3",
+      "images": [],
+      "options": [
+        {
+          "id": "bus",
+          "image": "assessment/ukg/images/bus.png",
+          "label": "Bus"
+        },
+        {
+          "id": "tree",
+          "image": "assessment/ukg/images/tree.png",
+          "label": "Tree"
+        },
+        {
+          "id": "train",
+          "image": "assessment/ukg/images/train.png",
+          "label": "Train"
+        }
+      ],
+      "correct_option": "tree"
+    },
+    {
+      "id": "co_u_04",
+      "domain": "cognitive",
+      "grade": "ukg",
+      "skill": "shape_matching",
+      "difficulty": 1,
+      "type": "match",
+      "prompt_text": "Find the shape that is the same as this one.",
+      "prompt_audio": "assessment/ukg/audio/co_u_04.mp3",
+      "images": [
+        "assessment/ukg/images/purple_triangle.png"
+      ],
+      "options": [
+        {
+          "id": "purple_square",
+          "image": "assessment/ukg/images/purple_square.png",
+          "label": "Purple square"
+        },
+        {
+          "id": "purple_triangle",
+          "image": "assessment/ukg/images/purple_triangle.png",
+          "label": "Purple triangle"
+        },
+        {
+          "id": "purple_circle",
+          "image": "assessment/ukg/images/purple_circle.png",
+          "label": "Purple circle"
+        }
+      ],
+      "correct_option": "purple_triangle"
+    },
+    {
+      "id": "co_u_05",
+      "domain": "cognitive",
+      "grade": "ukg",
+      "skill": "odd_one_out",
+      "difficulty": 1,
+      "type": "tap_choice",
+      "prompt_text": "One of these is not a fruit. Which one?",
+      "prompt_audio": "assessment/ukg/audio/co_u_05.mp3",
+      "images": [],
+      "options": [
+        {
+          "id": "cherries",
+          "image": "assessment/ukg/images/cherries.png",
+          "label": "Cherries"
+        },
+        {
+          "id": "kite",
+          "image": "assessment/ukg/images/kite.png",
+          "label": "Kite"
+        },
+        {
+          "id": "pear",
+          "image": "assessment/ukg/images/pear.png",
+          "label": "Pear"
+        }
+      ],
+      "correct_option": "kite"
+    },
+    {
+      "id": "co_u_02",
+      "domain": "cognitive",
+      "grade": "ukg",
+      "skill": "pattern_next",
+      "difficulty": 2,
+      "type": "tap_choice",
+      "prompt_text": "Circle, square, circle, square, circle. What comes next?",
+      "prompt_audio": "assessment/ukg/audio/co_u_02.mp3",
+      "images": [
+        "assessment/ukg/images/red_circle.png",
+        "assessment/ukg/images/blue_square.png",
+        "assessment/ukg/images/red_circle.png",
+        "assessment/ukg/images/blue_square.png",
+        "assessment/ukg/images/red_circle.png"
+      ],
+      "options": [
+        {
+          "id": "red_circle",
+          "image": "assessment/ukg/images/red_circle.png",
+          "label": "Red circle"
+        },
+        {
+          "id": "green_triangle",
+          "image": "assessment/ukg/images/green_triangle.png",
+          "label": "Green triangle"
+        },
+        {
+          "id": "blue_square",
+          "image": "assessment/ukg/images/blue_square.png",
+          "label": "Blue square"
+        }
+      ],
+      "correct_option": "blue_square"
+    },
+    {
+      "id": "co_u_06",
+      "domain": "cognitive",
+      "grade": "ukg",
+      "skill": "sorting",
+      "difficulty": 2,
+      "type": "tap_choice",
+      "prompt_text": "Which one lives in the water?",
+      "prompt_audio": "assessment/ukg/audio/co_u_06.mp3",
+      "images": [],
+      "options": [
+        {
+          "id": "rabbit",
+          "image": "assessment/ukg/images/rabbit.png",
+          "label": "Rabbit"
+        },
+        {
+          "id": "fish",
+          "image": "assessment/ukg/images/fish.png",
+          "label": "Fish"
+        },
+        {
+          "id": "horse",
+          "image": "assessment/ukg/images/horse.png",
+          "label": "Horse"
+        }
+      ],
+      "correct_option": "fish"
+    },
+    {
+      "id": "co_u_07",
+      "domain": "cognitive",
+      "grade": "ukg",
+      "skill": "sorting",
+      "difficulty": 2,
+      "type": "tap_choice",
+      "prompt_text": "Which one do we see in the sky at night?",
+      "prompt_audio": "assessment/ukg/audio/co_u_07.mp3",
+      "images": [],
+      "options": [
+        {
+          "id": "sun",
+          "image": "assessment/ukg/images/sun.png",
+          "label": "Sun"
+        },
+        {
+          "id": "umbrella",
+          "image": "assessment/ukg/images/umbrella.png",
+          "label": "Umbrella"
+        },
+        {
+          "id": "moon",
+          "image": "assessment/ukg/images/moon.png",
+          "label": "Moon"
+        }
+      ],
+      "correct_option": "moon"
+    },
+    {
+      "id": "co_u_03",
+      "domain": "cognitive",
+      "grade": "ukg",
+      "skill": "pattern_next",
+      "difficulty": 3,
+      "type": "tap_choice",
+      "prompt_text": "Star, star, moon. Star, star, moon. Star, star. What comes next?",
+      "prompt_audio": "assessment/ukg/audio/co_u_03.mp3",
+      "images": [
+        "assessment/ukg/images/star.png",
+        "assessment/ukg/images/star.png",
+        "assessment/ukg/images/moon.png",
+        "assessment/ukg/images/star.png",
+        "assessment/ukg/images/star.png"
+      ],
+      "options": [
+        {
+          "id": "sun",
+          "image": "assessment/ukg/images/sun.png",
+          "label": "Sun"
+        },
+        {
+          "id": "star",
+          "image": "assessment/ukg/images/star.png",
+          "label": "Star"
+        },
+        {
+          "id": "moon",
+          "image": "assessment/ukg/images/moon.png",
+          "label": "Moon"
+        }
+      ],
+      "correct_option": "moon"
+    },
+    {
+      "id": "co_u_08",
+      "domain": "cognitive",
+      "grade": "ukg",
+      "skill": "growing_pattern",
+      "difficulty": 3,
+      "type": "tap_choice",
+      "prompt_text": "1 ball, 2 balls, 3 balls. What comes next?",
+      "prompt_audio": "assessment/ukg/audio/co_u_08.mp3",
+      "images": [
+        "assessment/ukg/images/basket_1_balls.png",
+        "assessment/ukg/images/basket_2_balls.png",
+        "assessment/ukg/images/basket_3_balls.png"
+      ],
+      "options": [
+        {
+          "id": "basket_2",
+          "image": "assessment/ukg/images/basket_2_balls.png",
+          "label": "2 balls"
+        },
+        {
+          "id": "basket_4",
+          "image": "assessment/ukg/images/basket_4_balls.png",
+          "label": "4 balls"
+        },
+        {
+          "id": "basket_1",
+          "image": "assessment/ukg/images/basket_1_balls.png",
+          "label": "1 balls"
+        }
+      ],
+      "correct_option": "basket_4"
+    },
+    {
+      "id": "co_u_09",
+      "domain": "cognitive",
+      "grade": "ukg",
+      "skill": "pattern_next",
+      "difficulty": 3,
+      "type": "tap_choice",
+      "prompt_text": "Red, blue, green, red, blue. What comes next?",
+      "prompt_audio": "assessment/ukg/audio/co_u_09.mp3",
+      "images": [
+        "assessment/ukg/images/dot_red.png",
+        "assessment/ukg/images/dot_blue.png",
+        "assessment/ukg/images/dot_green.png",
+        "assessment/ukg/images/dot_red.png",
+        "assessment/ukg/images/dot_blue.png"
+      ],
+      "options": [
+        {
+          "id": "red",
+          "image": "assessment/ukg/images/dot_red.png",
+          "label": "Red"
+        },
+        {
+          "id": "yellow",
+          "image": "assessment/ukg/images/dot_yellow.png",
+          "label": "Yellow"
+        },
+        {
+          "id": "green",
+          "image": "assessment/ukg/images/dot_green.png",
+          "label": "Green"
+        }
+      ],
+      "correct_option": "green"
+    },
+    {
+      "id": "fm_u_01",
+      "domain": "fine_motor",
+      "grade": "ukg",
+      "skill": "writing_name",
+      "difficulty": 2,
+      "type": "parent_observed",
+      "prompt_text": "Can your child write some of the letters in their name?",
+      "prompt_audio": null,
+      "images": [],
+      "options": [],
+      "correct_option": "yes"
+    },
+    {
+      "id": "fm_u_02",
+      "domain": "fine_motor",
+      "grade": "ukg",
+      "skill": "colouring",
+      "difficulty": 2,
+      "type": "parent_observed",
+      "prompt_text": "Does your child colour mostly inside the lines?",
+      "prompt_audio": null,
+      "images": [],
+      "options": [],
+      "correct_option": "yes"
+    },
+    {
+      "id": "sel_u_01",
+      "domain": "sel",
+      "grade": "ukg",
+      "skill": "calming_down",
+      "difficulty": 2,
+      "type": "parent_observed",
+      "prompt_text": "Can your child calm down after being upset, with a little help?",
+      "prompt_audio": null,
+      "images": [],
+      "options": [],
+      "correct_option": "yes"
+    },
+    {
+      "id": "sel_u_02",
+      "domain": "sel",
+      "grade": "ukg",
+      "skill": "game_rules",
+      "difficulty": 2,
+      "type": "parent_observed",
+      "prompt_text": "Does your child play simple games with other children and follow the rules?",
+      "prompt_audio": null,
+      "images": [],
+      "options": [],
+      "correct_option": "yes"
+    },
+    {
+      "id": "ls_u_01",
+      "domain": "life_skills",
+      "grade": "ukg",
+      "skill": "buttons_zips",
+      "difficulty": 2,
+      "type": "parent_observed",
+      "prompt_text": "Does your child do up buttons or zips with only a little help?",
+      "prompt_audio": null,
+      "images": [],
+      "options": [],
+      "correct_option": "yes"
+    },
+    {
+      "id": "ls_u_02",
+      "domain": "life_skills",
+      "grade": "ukg",
+      "skill": "brushing_teeth",
+      "difficulty": 2,
+      "type": "parent_observed",
+      "prompt_text": "Does your child brush their teeth with only a little help?",
       "prompt_audio": null,
       "images": [],
       "options": [],

@@ -61,7 +61,7 @@ export const BaselineChildPart: React.FC<{
   const tile = Math.min(200, Math.floor((Math.min(width, 720) - spacing.xl * 2 - spacing.md * (perRow - 1)) / perRow) - spacing.md * 2);
 
   return (
-    <AppShell petals="none" scroll={false}>
+    <AppShell petals="none" scroll>
       <View style={styles.body}>
         <View style={styles.top}>
           <MascotGuide characterType={child.mentor?.characterType} size={84} line={chosen ? ITEM_BANK.common.encouragement_text : null} />
@@ -74,6 +74,12 @@ export const BaselineChildPart: React.FC<{
         </View>
 
         <ProgressPath stops={domains.length} current={current} />
+
+        {/* For a grown-up reading along; the child hears it. Large so a parent
+            holding the phone at arm's length can read it. */}
+        <Text style={[typography.presets.section, styles.question]} accessibilityRole="header">
+          {item.prompt_text}
+        </Text>
 
         {item.images.length > 0 ? (
           <View style={styles.prompt} accessible accessibilityLabel={item.prompt_text}>
@@ -108,8 +114,6 @@ export const BaselineChildPart: React.FC<{
           />
         </View>
 
-        {/* For a grown-up reading along; the child hears it. */}
-        <Text style={[typography.presets.caption, styles.caption]}>{item.prompt_text}</Text>
       </View>
     </AppShell>
   );
@@ -130,5 +134,5 @@ const styles = StyleSheet.create({
     borderRadius: 24,
   },
   grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: spacing.md },
-  caption: { textAlign: 'center', color: colors.textSecondary },
+  question: { fontSize: 22, lineHeight: 29, textAlign: 'center', color: colors.text },
 });

@@ -17,7 +17,7 @@ export const BaselineIntro: React.FC<{ child: Child; onStart: () => void; onSkip
       <Text style={[typography.presets.title, styles.title]} accessibilityRole="header">
         Let's see what {child.name} already knows
       </Text>
-      <Card variant="raised" padding="roomy">
+      <Card variant="raised" padding="roomy" style={styles.card}>
         <View style={styles.points}>
           <Text style={[typography.presets.body, styles.point]}>
             About 5 minutes of tapping pictures for {child.name}, then about 1 minute of questions for you.
@@ -44,6 +44,9 @@ export const BaselineIntro: React.FC<{ child: Child; onStart: () => void; onSkip
 const styles = StyleSheet.create({
   body: { gap: spacing.lg, alignItems: 'center', paddingVertical: spacing.xl },
   title: { textAlign: 'center', color: colors.text },
+  /* The body centres its children; without this the card shrinks to zero
+     width and its text wraps into an empty sliver. */
+  card: { alignSelf: 'stretch' },
   points: { gap: spacing.md },
   point: { color: colors.textSecondary },
 });
