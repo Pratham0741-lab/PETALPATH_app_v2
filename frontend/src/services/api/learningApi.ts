@@ -23,6 +23,8 @@ export interface RoadmapNode {
   isCompleted: boolean;
   isUnlocked: boolean;
   stars: number;
+  /** 3 per activity the lesson offers. Optional: older servers omit it. */
+  maxStars?: number;
   xp: number;
   coins: number;
   attempts: number;

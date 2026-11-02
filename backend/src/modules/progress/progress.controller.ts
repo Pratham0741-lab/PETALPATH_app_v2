@@ -12,6 +12,7 @@ import { baselineService } from '../baseline/baseline.service.js';
 import { curriculumLoader } from '../curriculum/curriculum-loader.js';
 import { lessonAccessService } from '../lessons/lesson-access.service.js';
 import { normalizeActivityType } from '../../shared/utils/activity-type-normalizer.js';
+import { hasMeaningfulDragDrop } from '../../shared/utils/lesson-activity-plan.js';
 
 const lessonIdParamSchema = z.object({ lessonId: z.string().min(1, 'lessonId is required') });
 const lessonIdBodySchema = z.object({ lessonId: z.string().min(1, 'lessonId is required') });
@@ -21,7 +22,7 @@ const categoryIdBodySchema = z.object({ categoryId: z.string().uuid('categoryId 
 const completeActivityBodySchema = z.object({
   lessonId: z.string().min(1, 'lessonId is required'),
   activityType: z.string().min(1, 'activityType is required'),
-  stars: z.number().int().nonnegative().default(0),
+  stars: z.number().int().min(0).max(3).default(0),
 });
 
 export class ProgressController {
@@ -281,7 +282,11 @@ export class ProgressController {
           if (lessonNode) {
             // Normalize both the incoming type and the curriculum types for comparison
             const normalizedIncoming = normalizeActivityType(activityType);
-            const hasActivity = lessonNode.activities.some((a) => normalizeActivityType(a.type) === normalizedIncoming);
+            // The match game is added to lessons that have a real board even
+            // when the curriculum does not list one (lesson-activity-plan.ts).
+            const hasActivity =
+              lessonNode.activities.some((a) => normalizeActivityType(a.type) === normalizedIncoming) ||
+              (normalizedIncoming === 'drag_drop' && hasMeaningfulDragDrop(lessonNode));
             if (!hasActivity) {
               throw new ValidationError(`Activity type "${activityType}" is not defined for lesson "${lessonId}"`);
             }

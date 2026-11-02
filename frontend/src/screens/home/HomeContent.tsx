@@ -485,6 +485,7 @@ export const HomeContent: React.FC<HomeContentProps> = ({ variant = 'mobile' }) 
           focus: !stopTakesFocus && !!currentLesson && node.id === currentLesson.id,
           kind: isQuiz ? 'quiz' : 'lesson',
           stars: node.stars,
+          maxStars: node.maxStars,
           onPress: () => handleLessonClick(node),
         });
       }

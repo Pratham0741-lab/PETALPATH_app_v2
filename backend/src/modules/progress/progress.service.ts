@@ -77,6 +77,8 @@ export class ProgressService {
         speakStars?: number;
         writeCompleted?: boolean;
         writeStars?: number;
+        dragDropCompleted?: boolean;
+        dragDropStars?: number;
         totalStars?: number;
       }
 
@@ -95,6 +97,9 @@ export class ProgressService {
       } else if (normalizedType === 'write') {
         updateData.writeCompleted = true;
         updateData.writeStars = stars;
+      } else if (normalizedType === 'drag_drop') {
+        updateData.dragDropCompleted = true;
+        updateData.dragDropStars = stars;
       }
 
       const lessonNode = curriculumService.getLessonById(lessonId);
@@ -107,7 +112,10 @@ export class ProgressService {
       const currentSpeakStars = updateData.speakStars ?? progress.speakStars;
       const currentWriteStars = updateData.writeStars ?? progress.writeStars;
 
-      updateData.totalStars = currentVideoStars + currentListenStars + currentSpeakStars + currentWriteStars;
+      const currentDragDropStars = updateData.dragDropStars ?? progress.dragDropStars ?? 0;
+
+      updateData.totalStars =
+        currentVideoStars + currentListenStars + currentSpeakStars + currentWriteStars + currentDragDropStars;
 
       const mergedProgress = {
         videoCompleted: updateData.videoCompleted ?? progress.videoCompleted,
@@ -328,7 +336,7 @@ export class ProgressService {
       const writeStars = progress?.writeStars && progress.writeStars > 0
         ? progress.writeStars
         : curriculumEngineService.getActivityDefaultStars('write');
-      const totalStars = videoStars + listenStars + speakStars + writeStars;
+      const totalStars = videoStars + listenStars + speakStars + writeStars + (progress?.dragDropStars ?? 0);
 
       let becameCompleted = false;
       if (!progress || progress.status !== 'COMPLETED') {

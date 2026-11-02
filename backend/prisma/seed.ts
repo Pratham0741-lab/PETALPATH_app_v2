@@ -396,7 +396,7 @@ async function main() {
   console.log('Seeding badges...');
   const badgesData = [
     { name: 'First Lesson', description: 'First lesson completed', iconKey: 'badges/first_lesson.png' },
-    { name: 'Perfect Lesson', description: '8/8 stars', iconKey: 'badges/perfect_lesson.png' },
+    { name: 'Perfect Lesson', description: 'Every star in a lesson', iconKey: 'badges/perfect_lesson.png' },
     { name: 'Golden Speaker', description: 'Average speech score >=80', iconKey: 'badges/golden_speaker.png' },
     { name: 'Writing Wizard', description: 'Average writing score >=80', iconKey: 'badges/writing_wizard.png' },
     { name: 'Shape Master', description: 'Shapes category completed', iconKey: 'badges/shape_master.png' },

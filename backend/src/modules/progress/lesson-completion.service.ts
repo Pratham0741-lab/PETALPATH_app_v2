@@ -35,6 +35,7 @@
  * what comes *next*, not to withhold the ending.
  */
 
+import type { Prisma } from '@prisma/client';
 import { prisma } from '../../config/database.js';
 import { NotFoundError, ValidationError } from '../../utils/errors.js';
 import { logger } from '../../utils/logger.js';
@@ -51,6 +52,8 @@ import { reinforcementEngineService } from '../reinforcement/reinforcement-engin
 import { modalityTelemetryService } from '../adaptive/modality-telemetry.service.js';
 import { isReviewDue } from '../mastery/review-cadence.js';
 import { projectMasteryToKnowledgeState } from './knowledge-state.writer.js';
+import { earnedStarsOf, maxStarsOf } from '../../shared/utils/lesson-stars.js';
+import { planLessonActivities } from '../activities/activities.service.js';
 import {
   ACTIVITY_TYPE_OF,
   computeLessonEvidence,
@@ -58,7 +61,6 @@ import {
   gatherModalitySignals,
   requiredModalitiesOf,
   perModalitySamples,
-  MODALITY_KEYS,
   type LessonEvidence,
   type ModalityKey,
   type ModalitySignal,
@@ -96,6 +98,8 @@ export interface CompleteLessonResult {
   categoryCompleted: boolean;
   starsEarned: number;
   totalStars: number;
+  /** Most stars this lesson can award: 3 per activity offered. */
+  maxStars: number;
   // ---- additive: what the engine decided ----
   mastery: {
     score: number;
@@ -117,6 +121,16 @@ export interface CompleteLessonResult {
     sessionsWithEvidence: number;
     requiredSessions: number;
   };
+}
+
+/** 3 per activity the child is offered in the lesson (the same list the lesson screen gets). */
+async function lessonMaxStars(lessonId: string, client: Prisma.TransactionClient): Promise<number> {
+  const activities = await client.activity.findMany({
+    where: { lessonId, deletedAt: null },
+    include: { video: true, audio: true },
+    orderBy: { displayOrder: 'asc' },
+  });
+  return maxStarsOf(planLessonActivities(lessonId, activities, { withSpec: false }));
 }
 
 export class LessonCompletionService {
@@ -262,7 +276,14 @@ export class LessonCompletionService {
           starsOf[signal.modality] = signal.stars;
         }
       }
-      const totalStars = MODALITY_KEYS.reduce((sum, key) => sum + starsOf[key], 0);
+      const totalStars = earnedStarsOf({
+        videoStars: starsOf.video,
+        listenStars: starsOf.listen,
+        speakStars: starsOf.speak,
+        writeStars: starsOf.write,
+        dragDropStars: existingProgress?.dragDropStars ?? 0,
+      });
+      const maxStars = await lessonMaxStars(lessonId, tx);
 
       const becameCompleted = existingProgress?.status !== 'COMPLETED';
       const completionFlags = {
@@ -280,6 +301,7 @@ export class LessonCompletionService {
         speakStars: starsOf.speak,
         writeStars: starsOf.write,
         totalStars,
+        maxStars,
         completedAt: existingProgress?.completedAt ?? now,
       };
 
@@ -362,6 +384,7 @@ export class LessonCompletionService {
         categoryCompleted,
         starsEarned: totalStars,
         totalStars: newTotalStars,
+        maxStars,
         evidence,
         masteryResult,
         /**
@@ -522,6 +545,7 @@ export class LessonCompletionService {
       categoryCompleted: outcome.categoryCompleted,
       starsEarned: outcome.starsEarned,
       totalStars: outcome.totalStars,
+      maxStars: outcome.maxStars,
       mastery: outcome.masteryResult
         ? {
             score: Math.round(outcome.masteryResult.masteryScore * 10) / 10,

@@ -1,3 +1,4 @@
+import { maxStarsOf } from '../../shared/utils/lesson-stars.js';
 import { prisma } from '../../config/database.js';
 import { storageService } from '../../shared/services/storage.service.js';
 import { servedMediaKey } from '../../shared/utils/media-paths.js';
@@ -138,6 +139,8 @@ export class RoadmapService {
         isCompleted,
         isUnlocked,
         stars: progress?.totalStars ?? 0,
+        // 3 per activity the child can do here (shared/utils/lesson-stars.ts).
+        maxStars: maxStarsOf(activitiesMap.get(node.id) || []),
         xp: progress?.status === 'COMPLETED' ? (node.reward?.xp ?? 0) : 0,
         coins: progress?.status === 'COMPLETED' ? (node.reward?.coins ?? 0) : 0,
         attempts: knowledgeMap.get(node.id)?.totalAttempts ?? 0,
@@ -365,6 +368,7 @@ export class RoadmapService {
         lessonsCount: themeLessonsCount,
         lessonsCompleted: themeLessonsCompleted,
         stars: themeNodes.reduce((acc, curr) => acc + curr.stars, 0),
+        maxStars: themeNodes.reduce((acc, curr) => acc + (curr.maxStars ?? 0), 0),
         isCompleted: themeNodes.every((n) => n.isCompleted),
         isUnlocked: themeNodes.some((n) => n.isUnlocked),
       };

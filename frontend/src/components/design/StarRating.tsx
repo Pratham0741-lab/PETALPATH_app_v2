@@ -167,6 +167,9 @@ export const StarRating: React.FC<StarRatingProps> = ({
 const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
+    /* A lesson can be out of up to 15 stars (3 per activity): wrap rather than
+       run off a phone screen. */
+    flexWrap: 'wrap',
     alignItems: 'center',
     justifyContent: 'center',
     marginVertical: spacing.xs,

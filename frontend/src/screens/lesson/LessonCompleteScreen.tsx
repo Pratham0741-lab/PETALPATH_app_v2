@@ -23,9 +23,8 @@
  *    absolutely, and inside a ScrollView that anchors it to the scrolled
  *    content rather than to the screen.
  *
- * The "8 stars" denominator is the shipped contract (three stars per activity
- * is not what the backend reports here), so it is carried across as-is rather
- * than invented anew.
+ * The lesson is scored out of 3 stars per activity it offers; the backend
+ * reports that maximum as `maxStars` (shared/utils/lesson-stars.ts).
  */
 
 import React, { useCallback, useEffect, useState, useRef } from 'react';
@@ -62,16 +61,16 @@ const categoryBadgeMap: Record<string, string> = {
   'Reading Readiness': 'Reading Champion',
 };
 
-/** Stars a single lesson can award — the value the backend scores against. */
-const STARS_PER_LESSON = 8;
+/** Used only with a server that predates `maxStars`, which scored out of 8. */
+const LEGACY_STARS_PER_LESSON = 8;
 
 /**
  * When the star row's entrance finishes — `StarRating` pops each earned star in
  * for 320ms, 140ms apart — plus time to take the celebration in, so the
  * feedback sheet follows it rather than covering it.
  */
-const celebrationMs = (starsEarned: number) =>
-  Math.max(0, Math.min(starsEarned, STARS_PER_LESSON) - 1) * 140 + 320 + 700;
+const celebrationMs = (starsEarned: number, maxStars: number) =>
+  Math.max(0, Math.min(starsEarned, maxStars) - 1) * 140 + 320 + 700;
 
 const MENTOR_MESSAGE =
   'You worked so hard today! Watching the tutorial, listening, speaking, and drawing. You are an absolute superstar!';
@@ -120,12 +119,13 @@ export const LessonCompleteScreen: React.FC = () => {
   // Pop the grown-up feedback sheet up once the celebration has played. It
   // closes in one tap, and nothing in it gates Continue or the completion call.
   const feedbackStars = completionResult?.starsEarned ?? 0;
+  const maxStars: number = completionResult?.maxStars || LEGACY_STARS_PER_LESSON;
   const closeFeedback = useCallback(() => setFeedbackSheet('closed'), []);
   useEffect(() => {
     if (loading || feedbackSheet !== 'pending') return;
-    const t = setTimeout(() => setFeedbackSheet('open'), reduceMotion ? 600 : celebrationMs(feedbackStars));
+    const t = setTimeout(() => setFeedbackSheet('open'), reduceMotion ? 600 : celebrationMs(feedbackStars, maxStars));
     return () => clearTimeout(t);
-  }, [loading, feedbackSheet, reduceMotion, feedbackStars]);
+  }, [loading, feedbackSheet, reduceMotion, feedbackStars, maxStars]);
 
   const findLessonContext = (lessonId: string) => {
     for (const category of categories) {
@@ -231,11 +231,11 @@ export const LessonCompleteScreen: React.FC = () => {
     >
       {/* Stars earned */}
       <Card variant="raised" padding="normal" accent={colors.yellow} style={styles.starsCard}>
-        <StarRating value={starsEarned} max={STARS_PER_LESSON} size="md" animate />
+        <StarRating value={starsEarned} max={maxStars} size="md" animate />
         <Text style={[typography.presets.body, styles.starsText]}>
           You earned{' '}
           <Text style={styles.starsCount}>
-            {starsEarned} / {STARS_PER_LESSON}
+            {starsEarned} / {maxStars}
           </Text>{' '}
           stars in this lesson!
         </Text>

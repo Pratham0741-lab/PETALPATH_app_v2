@@ -5,6 +5,7 @@
 
 import { CompletionSignalsConfig } from '../types';
 import { api } from '../../../api/client';
+import { useRoadmapStore } from '../../../store/roadmapStore';
 
 export interface SignalEvaluationInput {
   activityId: string;
@@ -31,14 +32,16 @@ export class CompletionEmitter {
       }
     }
 
-    // Persist activity completion to backend
-    api.post(`/activities/${input.activityId}/game/complete`, {
-      score: input.stars,
-      metrics: {
-        numericScore: input.score,
-        attempts: input.attempts,
-        signals: emittedSignals,
-      },
+    // Persist the game's stars like any other activity's, so they count toward
+    // the lesson's total (3 per activity). This used to post to
+    // `/activities/:id/game/complete`, an endpoint the server never had, so
+    // the result was silently lost.
+    const lessonId = useRoadmapStore.getState().selectedLesson?.id;
+    if (!lessonId) return emittedSignals;
+    api.post('/progress/activity/complete', {
+      lessonId,
+      activityType: 'drag_drop',
+      stars: Math.max(0, Math.min(3, Math.round(input.stars))),
     }).catch((err) => {
       if (typeof __DEV__ !== 'undefined' && __DEV__) {
         console.warn('Failed to submit activity completion to backend:', err);

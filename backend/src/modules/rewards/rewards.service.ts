@@ -70,8 +70,11 @@ export class RewardService {
     });
     const completedLessonsCount = lessonProgresses.length;
 
-    // Check for perfect lesson (8/8 stars)
-    const hasPerfectLesson = lessonProgresses.some((lp: any) => lp.totalStars === 8);
+    // Perfect lesson: every star the lesson offers (3 per activity). Rows
+    // completed before the maximum was recorded keep the old 8-star rule.
+    const hasPerfectLesson = lessonProgresses.some((lp: any) =>
+      lp.maxStars > 0 ? lp.totalStars >= lp.maxStars : lp.totalStars >= 8,
+    );
 
     // Speak progress averages
     const speakProgress = await client.speakProgress.findMany({

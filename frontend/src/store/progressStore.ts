@@ -29,6 +29,8 @@ interface ProgressState {
     categoryCompleted: boolean;
     starsEarned: number;
     totalStars: number;
+    /** Most stars this lesson can award: 3 per activity offered. Absent from older servers. */
+    maxStars?: number;
   }>;
 }
 
@@ -77,6 +79,7 @@ export const useProgressStore = create<ProgressState>((set) => ({
           categoryCompleted: response.data.categoryCompleted,
           starsEarned: response.data.starsEarned,
           totalStars: response.data.totalStars,
+          maxStars: response.data.maxStars,
         };
       }
       throw new Error(response.message || 'Failed to complete lesson');
