@@ -1,0 +1,41 @@
+<!doctype html>
+<meta charset="utf-8">
+<style>
+  @font-face { font-family: 'Lat'; src: url('Nunito_700Bold.ttf'); }
+  @font-face { font-family: 'Dev'; src: url('NotoSansDevanagari-Regular.ttf'); }
+</style>
+<body>
+<pre id="log">loading…</pre>
+<script>
+const SIZE = 240;
+const isDev = (s) => /[ऀ-ॿ]/.test(s);
+// Every capital letter and digit too, so single-letter lessons and the
+// revision lists share one set of guides.
+const ALWAYS = [...'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'];
+
+async function run() {
+  await document.fonts.load(`${SIZE}px Lat`, 'abc123');
+  await document.fonts.load(`${SIZE}px Dev`, 'कखग');
+  const sets = await (await fetch('trace-sets.json')).json();
+  const items = [...new Set([...ALWAYS, ...Object.entries(sets).filter(([k]) => !k.startsWith('_')).flatMap(([, v]) => v)])].sort();
+  const out = {};
+  items.forEach((text, i) => {
+    const c = document.createElement('canvas');
+    const ctx = c.getContext('2d');
+    ctx.font = `${SIZE}px ${isDev(text) ? 'Dev' : 'Lat'}`;
+    const w = Math.ceil(ctx.measureText(text).width) + SIZE;
+    c.width = w; c.height = SIZE * 2;
+    ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, c.height);
+    ctx.font = `${SIZE}px ${isDev(text) ? 'Dev' : 'Lat'}`;
+    ctx.fillStyle = '#000';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, SIZE / 2, SIZE);
+    out[i] = c.toDataURL('image/png');
+  });
+  await fetch('/save', { method: 'POST', body: JSON.stringify(out) });
+  await fetch('/save', { method: 'POST', body: JSON.stringify({}) });
+  document.getElementById('log').textContent = JSON.stringify(items);
+  window.__items = items;
+}
+run().catch((e) => { document.getElementById('log').textContent = 'ERR ' + e; });
+</script>

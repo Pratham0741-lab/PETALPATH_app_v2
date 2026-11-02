@@ -5,6 +5,8 @@
 import '../helpers/setup.js';
 import app from '../../app.js';
 import supertest from 'supertest';
+import fs from 'fs';
+import path from 'path';
 import { prisma } from '../../config/database.js';
 import { cleanDatabase, createTestCategoryData } from '../helpers/factories.js';
 import { createAuthenticatedContext } from '../helpers/auth.js';
@@ -94,3 +96,39 @@ function request(token: string) {
     get: (url: string) => r.get(url).set('Authorization', `Bearer ${token}`),
   };
 }
+
+describe('revision lessons trace their whole topic', () => {
+  const plan = (lessonId: string, ...t: string[]) =>
+    planLessonActivities(
+      lessonId,
+      t.map((activityType, i) => ({ activityType, displayOrder: i + 1 })),
+      { withSpec: false },
+    ) as Array<{ activityType: string; traceItems?: string[] }>;
+
+  it('Capital A-Z Revision traces A to Z', () => {
+    const write = plan('lkg_cap_az_rev', 'video', 'write').find((a) => a.activityType === 'write');
+    expect(write?.traceItems).toHaveLength(26);
+    expect(write?.traceItems?.[0]).toBe('A');
+    expect(write?.traceItems?.[25]).toBe('Z');
+  });
+
+  it('offers tracing on revisions whose title names no single target', () => {
+    for (const id of ['lkg_num_1_50_rev', 'lkg_hi_swar_rev', 'lkg_hi_aa_rev', 'ukg_num_names_1_20']) {
+      const write = plan(id, 'write').find((a) => a.activityType === 'write');
+      expect(write?.traceItems?.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('every listed lesson exists in the curriculum', () => {
+    const sets = JSON.parse(
+      fs.readFileSync(path.resolve(process.cwd(), '..', 'curriculum', 'revision', 'trace-sets.json'), 'utf8'),
+    );
+    for (const id of Object.keys(sets).filter((k) => !k.startsWith('_'))) {
+      expect(curriculumService.getLessonById(id)).toBeTruthy();
+    }
+  });
+
+  it('other lessons carry no list', () => {
+    expect(plan('pn_free_play_and_settlingin', 'write').some((a) => a.traceItems)).toBe(false);
+  });
+});

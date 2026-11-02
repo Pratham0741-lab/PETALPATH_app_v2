@@ -22,6 +22,7 @@ import fs from 'fs';
 import path from 'path';
 import { normalizeActivityType } from './activity-type-normalizer.js';
 import { BLUEPRINTS } from './drag-drop/blueprints.js';
+import { revisionTraceItems } from './revision-trace-sets.js';
 
 export interface PlannableNode {
   id: string;
@@ -127,6 +128,9 @@ export function isPerformableActivity(activityType: string, node: PlannableNode)
       return hasMeaningfulDragDrop(node);
     case 'speak':
       return hasConcreteTarget(node.title) || isSpeakableWord(node.title);
+    case 'write':
+      // A revision lesson traces its whole topic (revision-trace-sets.ts).
+      return revisionTraceItems(node.id) !== null || hasConcreteTarget(node.title);
     default:
       // listen, write, and every type that falls back to the Listen screen
       return hasConcreteTarget(node.title);

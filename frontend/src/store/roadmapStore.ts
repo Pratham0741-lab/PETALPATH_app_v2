@@ -75,6 +75,8 @@ export interface Activity {
   lessonId: string;
   title: string;
   activityType: 'video' | 'listen' | 'speak' | 'write' | 'drag_drop' | string;
+  /** Revision lessons: every item the tracing activity steps through (A-Z, अ-अः…). */
+  traceItems?: string[];
   contentUrl: string | null;
   displayOrder: number;
   createdAt: string;

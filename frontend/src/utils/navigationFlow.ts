@@ -154,7 +154,7 @@ export const navigateToActivity = async (
     }
   } else if (normalizedType === 'write') {
     try {
-      await useWriteStore.getState().loadWrite(activity.id, activity.title);
+      await useWriteStore.getState().loadWrite(activity.id, activity.title, activity.traceItems);
       navigation.navigate('Write');
     } catch (err: unknown) {
       customAlert('Error', err instanceof Error ? err.message : 'Failed to load write activity');

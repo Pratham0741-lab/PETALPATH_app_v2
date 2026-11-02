@@ -1,3 +1,5 @@
+import tracingThresholds from './tracingThresholds.json';
+
 /**
  * One place that turns a raw attempt into the accuracy and stars a child sees,
  * so the two can never disagree — the star count is always derived from the same
@@ -24,6 +26,16 @@
 
 /** How truthful the shown accuracy is. 0.5 = half real score, half encouragement. */
 export const HONESTY_LEVEL = 0.5;
+
+/**
+ * Tracing is shown closer to the measured score than other activities: it is
+ * the one activity where the child can see the line they missed, so the
+ * number should agree with it. Value in tracingThresholds.json.
+ */
+export const TRACING_HONESTY: number = tracingThresholds.honesty;
+
+/** Below this raw tracing score the child is asked to try again (tracingThresholds.json). */
+export const TRACING_PASS_RAW: number = tracingThresholds.passRaw;
 
 /** Clamp to 0-100. */
 function clampPercent(v: number): number {

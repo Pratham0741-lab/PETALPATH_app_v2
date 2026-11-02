@@ -1,0 +1,29 @@
+{
+  "_doc": "Tracing scoring, for every letter, number and Hindi character alike. The score is placement (is the ink on the dotted guide?) times shape (does what the child drew look like the character, wherever and however big they drew it?). Edit values here, not in code; ships with an OTA update. Placement distances are fractions of the character's own size (its height, or half its width for a flat shape). After a change run `npm run test:unit`: it scores simulated careful, loose, half-done, scribbled and wrong-character traces for every traceable character, plus real children's traces, and fails if the balance breaks.",
+  "reachFraction": 0.12,
+  "coverageFade": 3,
+  "precisionFade": 3,
+  "presenceReaches": 2.5,
+  "presenceWeight": 6,
+  "maxInkRatio": 1.4,
+  "strokeBreakFactor": 3,
+  "passRaw": 40,
+  "honesty": 0.7,
+  "shapePoints": 32,
+  "shapeGoodDistance": 0.4,
+  "shapeBadDistance": 3.75,
+  "_fields": {
+    "reachFraction": "Ink this close to the line (x the character's size) gets full credit.",
+    "coverageFade": "A guide point loses all credit when the nearest ink is this many reaches away.",
+    "precisionFade": "Ink loses all credit this many reaches from the line. Lower = wandering ink costs more.",
+    "presenceReaches": "A part of the character counts as attempted when any ink is within this many reaches of it.",
+    "presenceWeight": "The attempted share is raised to this power, so leaving part of a character out costs much more than drawing it loosely.",
+    "maxInkRatio": "Ink longer than this multiple of the guide's own length (scribbling) scales the score down.",
+    "strokeBreakFactor": "Splits the guide into strokes where consecutive points jump by more than this many times the usual spacing.",
+    "passRaw": "Raw score (placement x shape, 0-100) below which the child is asked to try again.",
+    "honesty": "How much of the raw score is shown: 1 = exactly as measured, 0.7 = 30% blended toward 100.",
+    "shapePoints": "Points each drawing and guide is resampled to before their shapes are compared.",
+    "shapeGoodDistance": "Shape distance (point-cloud match, see utils/shapeRecognizer.ts) at or below which the shape gets full credit.",
+    "shapeBadDistance": "Shape distance at or above which the shape gets no credit. Between the two, credit falls in a straight line."
+  }
+}

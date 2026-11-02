@@ -13,8 +13,8 @@ import {
   getNextActivity,
   navigateToActivity,
 } from '../../utils/navigationFlow';
-import { getGuidePoints, calculateTracingAccuracy } from '../../utils/tracingAccuracy';
-import { scoreActivity } from '../../utils/activityScoring';
+import { getGuidePoints, scoreTrace } from '../../utils/tracingAccuracy';
+import { scoreActivity, TRACING_HONESTY, TRACING_PASS_RAW } from '../../utils/activityScoring';
 import { TracingCanvas } from '../../components/canvas/TracingCanvas';
 import { NavigationGuide } from '../../components/tutorial/NavigationGuide';
 import { ErrorState } from '../../components/common/ErrorState';
@@ -38,9 +38,9 @@ import {
  * One implementation for all three device variants (§28). §20 is the binding
  * constraint here: this stays a real functional SVG tracing interaction, so
  * `TracingCanvas` is rendered exactly as before and every piece of the scoring
- * path is carried across untouched — `getGuidePoints` → `calculateTracingAccuracy`
- * → the `score < 40` retry gate → `getStarsFromScore` → `completeActivity`.
- * That 40-point gate in particular decides whether a child is asked to try
+ * path is carried across untouched — `getGuidePoints` → `scoreTrace`
+ * → the `TRACING_PASS_RAW` retry gate → `getStarsFromScore` → `completeActivity`.
+ * That pass gate (TRACING_PASS_RAW) in particular decides whether a child is asked to try
  * again, so it keeps its wording and its `clear()` callback.
  *
  * Variant differences are preserved rather than harmonised where they are
@@ -166,12 +166,17 @@ export const WriteContent: React.FC<{ variant: WriteVariant }> = ({ variant }) =
     clear,
     completeActivity,
     lives,
+    sequence,
+    recordItem,
+    nextItem,
   } = useWriteStore();
 
   const activeChild = useChildStore((state) => state.activeChild);
   const mentor = enhanceMentor(activeChild?.mentor) || enhanceMentor(MENTORS[0])!;
 
   const [answered, setAnswered] = useState(false);
+  /** Revision step-through: the result of the item just traced, before Next. */
+  const [itemResult, setItemResult] = useState<{ accuracy: number; stars: number } | null>(null);
 
   const nextBtnRef = useRef<View>(null);
   const [handCoords, setHandCoords] = useState<{ x: number; y: number } | undefined>(undefined);
@@ -187,7 +192,7 @@ export const WriteContent: React.FC<{ variant: WriteVariant }> = ({ variant }) =
   );
 
   const measureTarget = () => {
-    if (answered || isCompleted) {
+    if (answered || (isCompleted && !sequence)) {
       if (nextBtnRef.current) {
         nextBtnRef.current.measureInWindow((x, y, width, height) => {
           if (width > 0 && height > 0) {
@@ -204,9 +209,10 @@ export const WriteContent: React.FC<{ variant: WriteVariant }> = ({ variant }) =
   useEffect(() => {
     const timer = setTimeout(measureTarget, 200);
     return () => clearTimeout(timer);
-  }, [answered, isCompleted, traceCoords]);
+  }, [answered, isCompleted, sequence, traceCoords]);
 
   const handleCompleteTracing = async (w: number, h: number) => {
+    if (itemResult) return; // already checked; waiting for Next
     if (strokes.length === 0) {
       customAlert('Draw Something First', 'Please trace the guide lines before checking your answer.');
       return;
@@ -215,9 +221,10 @@ export const WriteContent: React.FC<{ variant: WriteVariant }> = ({ variant }) =
     const guidePoints = getGuidePoints(guideName, w, h);
     // Raw geometric accuracy drives the retry gate, so leniency never lets a
     // scribble through — only the shown number and stars are softened.
-    const rawScore = calculateTracingAccuracy(strokes, guidePoints);
+    // Placement (on the guide) x shape (looks like the character).
+    const rawScore = scoreTrace(strokes, guidePoints);
 
-    if (rawScore < 40) {
+    if (rawScore < TRACING_PASS_RAW) {
       customAlert(
         "That's not quite right",
         "Let's try again! Try to stay as close as possible to the dashed guidelines.",
@@ -226,9 +233,25 @@ export const WriteContent: React.FC<{ variant: WriteVariant }> = ({ variant }) =
       return;
     }
 
+    // A revision sequence: score this item, then either move on or finish on
+    // the average of every item.
+    if (sequence) {
+      const last = recordItem(rawScore);
+      if (!last) {
+        setItemResult(scoreActivity(rawScore, TRACING_HONESTY));
+        return;
+      }
+      const scores = useWriteStore.getState().sequence?.scores ?? [rawScore];
+      const average = Math.round(scores.reduce((sum, v) => sum + v, 0) / scores.length);
+      const overall = scoreActivity(average, TRACING_HONESTY);
+      await completeActivity(overall.accuracy, overall.stars);
+      setAnswered(true);
+      return;
+    }
+
     // One shared path turns the raw score into the shown accuracy + stars
     // (softened by the honesty level), so the meter and the stars always agree.
-    const { accuracy, stars: starsCount } = scoreActivity(rawScore);
+    const { accuracy, stars: starsCount } = scoreActivity(rawScore, TRACING_HONESTY);
     await completeActivity(accuracy, starsCount);
     setAnswered(true);
   };
@@ -281,7 +304,21 @@ export const WriteContent: React.FC<{ variant: WriteVariant }> = ({ variant }) =
     );
   }
 
-  const done = answered || isCompleted;
+  /*
+   * A revision sequence is done only when its last item has been traced in this
+   * visit. An earlier completion on the server (for example from when this
+   * activity traced a single letter) must not jump straight to the finished
+   * state: that hid the Next button and Continue left the lesson after "A".
+   */
+  const done = answered || (isCompleted && !sequence);
+  /** The current item, and how far through the revision set the child is. */
+  const seqItem = sequence ? sequence.items[sequence.index] : null;
+  const seqCount = sequence ? `${sequence.index + 1} of ${sequence.items.length}` : null;
+  const showNext = !!itemResult && !done;
+  const onNextItem = () => {
+    setItemResult(null);
+    nextItem();
+  };
 
   // ---- Pieces shared by both layouts --------------------------------------
 
@@ -289,7 +326,7 @@ export const WriteContent: React.FC<{ variant: WriteVariant }> = ({ variant }) =
     <ActivityHeader
       kind="trace"
       kindLabel="Trace & Draw"
-      title={guideName || 'Trace & Draw'}
+      title={seqItem ?? (guideName || 'Trace & Draw')}
       backLabel="Back to lesson"
       lives={lives}
       steps={position?.total}
@@ -312,9 +349,11 @@ export const WriteContent: React.FC<{ variant: WriteVariant }> = ({ variant }) =
           accessibilityLabel={`${mentor.name} is drawing with you`}
         />
       </View>
-      <Text style={[typography.presets.eyebrow, styles.promptLabel]}>{cfg.label}</Text>
+      <Text style={[typography.presets.eyebrow, styles.promptLabel]}>
+        {seqCount ? `Trace ${seqCount}` : cfg.label}
+      </Text>
       <Text style={[typography.presets.title, styles.promptName]} numberOfLines={2}>
-        {guideName}
+        {seqItem ?? guideName}
       </Text>
     </Card>
   );
@@ -326,9 +365,22 @@ export const WriteContent: React.FC<{ variant: WriteVariant }> = ({ variant }) =
    */
   const status = (
     <View style={styles.status}>
-      {done ? (
+      {showNext && itemResult ? (
         <>
-          <FeedbackBanner tone="correct" message="Tracing complete! Beautiful job!" />
+          <FeedbackBanner tone="correct" message={`Great tracing! ${seqCount} done.`} />
+          <Card variant="flat" padding="normal" contentStyle={styles.scoreCard}>
+            <StarRating value={itemResult.stars} max={3} size="md" animate />
+            <Text style={[typography.presets.subtle, styles.scoreText]}>
+              Accuracy: {itemResult.accuracy}%
+            </Text>
+          </Card>
+        </>
+      ) : done ? (
+        <>
+          <FeedbackBanner
+            tone="correct"
+            message={sequence ? `All ${sequence.items.length} traced! Beautiful job!` : 'Tracing complete! Beautiful job!'}
+          />
           {accuracyScore !== null ? (
             /* Row, not a stack: the stars and the percentage are one readout, and
                that keeps the card inside the reserved slot. Layout goes on
@@ -371,7 +423,14 @@ export const WriteContent: React.FC<{ variant: WriteVariant }> = ({ variant }) =
   // The board's own "Check Tracing" button is the action while tracing, so the
   // footer only appears once there is somewhere to go next — no dead button
   // sitting there disabled for the whole activity (§33).
-  const footer = done ? (
+  const footer = showNext && sequence ? (
+    <PrimaryButton
+      label={`Next: ${sequence.items[sequence.index + 1] ?? ''}`}
+      iconRight="forward"
+      tone="green"
+      onPress={onNextItem}
+    />
+  ) : done ? (
     <View ref={nextBtnRef} collapsable={false}>
       <PrimaryButton
         label="Continue"

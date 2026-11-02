@@ -1,6 +1,14 @@
 import { Point } from '../store/writeStore';
+import { generatedGuidePoints } from './traceGuides';
+import thresholds from './tracingThresholds.json';
+import { shapeDistance, toCloud } from './shapeRecognizer';
 
 export function getGuidePoints(guideName: string, w: number, h: number): Point[] {
+  // Every letter, number and Hindi character: generated from a font
+  // (traceGuides.generated.ts). The cases below are lines and shapes only.
+  const generated = generatedGuidePoints(guideName, w, h);
+  if (generated) return generated;
+
   const points: Point[] = [];
   
   const sampleLinear = (x1: number, y1: number, x2: number, y2: number, count: number) => {
@@ -320,214 +328,6 @@ export function getGuidePoints(guideName: string, w: number, h: number): Point[]
       break;
     }
     // === LETTER GUIDES A-Z ===
-    case 'Letter A':
-      sampleLinear(w / 2, h * 0.2, w * 0.25, h * 0.8, 12);
-      sampleLinear(w / 2, h * 0.2, w * 0.75, h * 0.8, 12);
-      sampleLinear(w * 0.35, h * 0.55, w * 0.65, h * 0.55, 8);
-      break;
-    case 'Letter B':
-      sampleLinear(w * 0.3, h * 0.2, w * 0.3, h * 0.8, 18);
-      { // top bump
-        const cx = w * 0.3, cy = h * 0.35, rx = w * 0.22, ry = h * 0.15;
-        for (let i = 0; i <= 12; i++) { const a = -Math.PI / 2 + (i * Math.PI) / 12; points.push({ x: cx + rx * Math.cos(a), y: cy + ry * Math.sin(a) }); }
-      }
-      { // bottom bump
-        const cx = w * 0.3, cy = h * 0.65, rx = w * 0.25, ry = h * 0.15;
-        for (let i = 0; i <= 12; i++) { const a = -Math.PI / 2 + (i * Math.PI) / 12; points.push({ x: cx + rx * Math.cos(a), y: cy + ry * Math.sin(a) }); }
-      }
-      break;
-    case 'Letter C': {
-      const cx = w * 0.55, cy = h * 0.5, rx = w * 0.25, ry = h * 0.3;
-      for (let i = 0; i <= 20; i++) { const a = -Math.PI * 0.75 + (i * Math.PI * 1.5) / 20; points.push({ x: cx - rx * Math.cos(a), y: cy + ry * Math.sin(a) }); }
-      break;
-    }
-    case 'Letter D':
-      sampleLinear(w * 0.3, h * 0.2, w * 0.3, h * 0.8, 18);
-      { const cx = w * 0.3, cy = h * 0.5, rx = w * 0.28, ry = h * 0.3;
-        for (let i = 0; i <= 16; i++) { const a = -Math.PI / 2 + (i * Math.PI) / 16; points.push({ x: cx + rx * Math.cos(a), y: cy + ry * Math.sin(a) }); }
-      }
-      break;
-    case 'Letter E':
-      sampleLinear(w * 0.3, h * 0.2, w * 0.3, h * 0.8, 18);
-      sampleLinear(w * 0.3, h * 0.2, w * 0.7, h * 0.2, 10);
-      sampleLinear(w * 0.3, h * 0.5, w * 0.65, h * 0.5, 8);
-      sampleLinear(w * 0.3, h * 0.8, w * 0.7, h * 0.8, 10);
-      break;
-    case 'Letter F':
-      sampleLinear(w * 0.3, h * 0.2, w * 0.3, h * 0.8, 18);
-      sampleLinear(w * 0.3, h * 0.2, w * 0.7, h * 0.2, 10);
-      sampleLinear(w * 0.3, h * 0.5, w * 0.65, h * 0.5, 8);
-      break;
-    case 'Letter G': {
-      const cx = w * 0.5, cy = h * 0.5, rx = w * 0.25, ry = h * 0.3;
-      for (let i = 0; i <= 18; i++) { const a = -Math.PI * 0.4 + (i * Math.PI * 1.8) / 18; points.push({ x: cx + rx * Math.cos(a), y: cy - ry * Math.sin(a) }); }
-      sampleLinear(w * 0.5, h * 0.5, w * 0.75, h * 0.5, 6);
-      break;
-    }
-    case 'Letter H':
-      sampleLinear(w * 0.3, h * 0.2, w * 0.3, h * 0.8, 18);
-      sampleLinear(w * 0.7, h * 0.2, w * 0.7, h * 0.8, 18);
-      sampleLinear(w * 0.3, h * 0.5, w * 0.7, h * 0.5, 10);
-      break;
-    case 'Letter I':
-      sampleLinear(w * 0.35, h * 0.2, w * 0.65, h * 0.2, 8);
-      sampleLinear(w / 2, h * 0.2, w / 2, h * 0.8, 18);
-      sampleLinear(w * 0.35, h * 0.8, w * 0.65, h * 0.8, 8);
-      break;
-    case 'Letter J':
-      sampleLinear(w * 0.35, h * 0.2, w * 0.65, h * 0.2, 8);
-      sampleLinear(w * 0.55, h * 0.2, w * 0.55, h * 0.65, 14);
-      { const cx = w * 0.42, cy = h * 0.65, rx = w * 0.13, ry = h * 0.15;
-        for (let i = 0; i <= 10; i++) { const a = (i * Math.PI) / 10; points.push({ x: cx + rx * Math.cos(a), y: cy + ry * Math.sin(a) }); }
-      }
-      break;
-    case 'Letter K':
-      sampleLinear(w * 0.3, h * 0.2, w * 0.3, h * 0.8, 18);
-      sampleLinear(w * 0.7, h * 0.2, w * 0.3, h * 0.5, 12);
-      sampleLinear(w * 0.3, h * 0.5, w * 0.7, h * 0.8, 12);
-      break;
-    case 'Letter L':
-      sampleLinear(w * 0.3, h * 0.2, w * 0.3, h * 0.8, 18);
-      sampleLinear(w * 0.3, h * 0.8, w * 0.7, h * 0.8, 10);
-      break;
-    case 'Letter M':
-      sampleLinear(w * 0.2, h * 0.8, w * 0.2, h * 0.2, 18);
-      sampleLinear(w * 0.2, h * 0.2, w / 2, h * 0.55, 12);
-      sampleLinear(w / 2, h * 0.55, w * 0.8, h * 0.2, 12);
-      sampleLinear(w * 0.8, h * 0.2, w * 0.8, h * 0.8, 18);
-      break;
-    case 'Letter N':
-      sampleLinear(w * 0.25, h * 0.8, w * 0.25, h * 0.2, 18);
-      sampleLinear(w * 0.25, h * 0.2, w * 0.75, h * 0.8, 18);
-      sampleLinear(w * 0.75, h * 0.8, w * 0.75, h * 0.2, 18);
-      break;
-    case 'Letter O': {
-      const cx = w / 2, cy = h / 2, rx = w * 0.25, ry = h * 0.3;
-      for (let i = 0; i < 36; i++) { const a = (i * 10 * Math.PI) / 180; points.push({ x: cx + rx * Math.cos(a), y: cy + ry * Math.sin(a) }); }
-      break;
-    }
-    case 'Letter P':
-      sampleLinear(w * 0.3, h * 0.2, w * 0.3, h * 0.8, 18);
-      { const cx = w * 0.3, cy = h * 0.35, rx = w * 0.25, ry = h * 0.15;
-        for (let i = 0; i <= 14; i++) { const a = -Math.PI / 2 + (i * Math.PI) / 14; points.push({ x: cx + rx * Math.cos(a), y: cy + ry * Math.sin(a) }); }
-      }
-      break;
-    case 'Letter Q': {
-      const cx = w / 2, cy = h * 0.45, rx = w * 0.25, ry = h * 0.25;
-      for (let i = 0; i < 36; i++) { const a = (i * 10 * Math.PI) / 180; points.push({ x: cx + rx * Math.cos(a), y: cy + ry * Math.sin(a) }); }
-      sampleLinear(w * 0.55, h * 0.6, w * 0.72, h * 0.82, 8);
-      break;
-    }
-    case 'Letter R':
-      sampleLinear(w * 0.3, h * 0.2, w * 0.3, h * 0.8, 18);
-      { const cx = w * 0.3, cy = h * 0.35, rx = w * 0.25, ry = h * 0.15;
-        for (let i = 0; i <= 14; i++) { const a = -Math.PI / 2 + (i * Math.PI) / 14; points.push({ x: cx + rx * Math.cos(a), y: cy + ry * Math.sin(a) }); }
-      }
-      sampleLinear(w * 0.45, h * 0.5, w * 0.7, h * 0.8, 10);
-      break;
-    case 'Letter S': {
-      // top curve
-      const cx1 = w * 0.5, cy1 = h * 0.33, r1 = h * 0.13;
-      for (let i = 0; i <= 12; i++) { const a = -Math.PI * 0.3 + (i * Math.PI * 1.3) / 12; points.push({ x: cx1 - r1 * Math.cos(a), y: cy1 - r1 * Math.sin(a) }); }
-      // bottom curve
-      const cx2 = w * 0.5, cy2 = h * 0.67, r2 = h * 0.13;
-      for (let i = 0; i <= 12; i++) { const a = -Math.PI * 0.3 + (i * Math.PI * 1.3) / 12; points.push({ x: cx2 + r2 * Math.cos(a), y: cy2 + r2 * Math.sin(a) }); }
-      break;
-    }
-    case 'Letter T':
-      sampleLinear(w * 0.2, h * 0.2, w * 0.8, h * 0.2, 14);
-      sampleLinear(w / 2, h * 0.2, w / 2, h * 0.8, 18);
-      break;
-    case 'Letter U': {
-      sampleLinear(w * 0.25, h * 0.2, w * 0.25, h * 0.6, 12);
-      const cx = w * 0.5, cy = h * 0.6, rx = w * 0.25, ry = h * 0.2;
-      for (let i = 0; i <= 14; i++) { const a = Math.PI + (i * Math.PI) / 14; points.push({ x: cx + rx * Math.cos(a), y: cy - ry * Math.sin(a) }); }
-      sampleLinear(w * 0.75, h * 0.6, w * 0.75, h * 0.2, 12);
-      break;
-    }
-    case 'Letter V':
-      sampleLinear(w * 0.2, h * 0.2, w / 2, h * 0.8, 18);
-      sampleLinear(w / 2, h * 0.8, w * 0.8, h * 0.2, 18);
-      break;
-    case 'Letter W':
-      sampleLinear(w * 0.1, h * 0.2, w * 0.3, h * 0.8, 14);
-      sampleLinear(w * 0.3, h * 0.8, w * 0.5, h * 0.45, 10);
-      sampleLinear(w * 0.5, h * 0.45, w * 0.7, h * 0.8, 10);
-      sampleLinear(w * 0.7, h * 0.8, w * 0.9, h * 0.2, 14);
-      break;
-    case 'Letter X':
-      sampleLinear(w * 0.25, h * 0.2, w * 0.75, h * 0.8, 18);
-      sampleLinear(w * 0.75, h * 0.2, w * 0.25, h * 0.8, 18);
-      break;
-    case 'Letter Y':
-      sampleLinear(w * 0.25, h * 0.2, w / 2, h * 0.5, 12);
-      sampleLinear(w * 0.75, h * 0.2, w / 2, h * 0.5, 12);
-      sampleLinear(w / 2, h * 0.5, w / 2, h * 0.8, 10);
-      break;
-    case 'Letter Z':
-      sampleLinear(w * 0.25, h * 0.2, w * 0.75, h * 0.2, 12);
-      sampleLinear(w * 0.75, h * 0.2, w * 0.25, h * 0.8, 18);
-      sampleLinear(w * 0.25, h * 0.8, w * 0.75, h * 0.8, 12);
-      break;
-
-    // === NUMBER GUIDES 0-9 ===
-    case 'Number 0': {
-      const cx = w / 2, cy = h / 2, rx = w * 0.2, ry = h * 0.3;
-      for (let i = 0; i < 36; i++) { const a = (i * 10 * Math.PI) / 180; points.push({ x: cx + rx * Math.cos(a), y: cy + ry * Math.sin(a) }); }
-      break;
-    }
-    case 'Number 1':
-      sampleLinear(w * 0.4, h * 0.25, w / 2, h * 0.2, 6);
-      sampleLinear(w / 2, h * 0.2, w / 2, h * 0.8, 18);
-      sampleLinear(w * 0.35, h * 0.8, w * 0.65, h * 0.8, 8);
-      break;
-    case 'Number 2':
-      { const cx = w * 0.5, cy = h * 0.35, r = h * 0.15;
-        for (let i = 0; i <= 14; i++) { const a = -Math.PI + (i * Math.PI * 1.2) / 14; points.push({ x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) }); }
-      }
-      sampleLinear(w * 0.65, h * 0.48, w * 0.3, h * 0.8, 12);
-      sampleLinear(w * 0.3, h * 0.8, w * 0.7, h * 0.8, 10);
-      break;
-    case 'Number 3':
-      { const cx = w * 0.48, cy1 = h * 0.35, cy2 = h * 0.65, r = h * 0.15;
-        for (let i = 0; i <= 12; i++) { const a = -Math.PI * 0.7 + (i * Math.PI * 1.4) / 12; points.push({ x: cx + r * Math.cos(a), y: cy1 + r * Math.sin(a) }); }
-        for (let i = 0; i <= 12; i++) { const a = -Math.PI * 0.7 + (i * Math.PI * 1.4) / 12; points.push({ x: cx + r * Math.cos(a), y: cy2 + r * Math.sin(a) }); }
-      }
-      break;
-    case 'Number 4':
-      sampleLinear(w * 0.6, h * 0.2, w * 0.25, h * 0.55, 14);
-      sampleLinear(w * 0.25, h * 0.55, w * 0.75, h * 0.55, 12);
-      sampleLinear(w * 0.6, h * 0.2, w * 0.6, h * 0.8, 18);
-      break;
-    case 'Number 5':
-      sampleLinear(w * 0.65, h * 0.2, w * 0.3, h * 0.2, 10);
-      sampleLinear(w * 0.3, h * 0.2, w * 0.3, h * 0.48, 10);
-      { const cx = w * 0.48, cy = h * 0.62, r = h * 0.18;
-        for (let i = 0; i <= 14; i++) { const a = -Math.PI * 0.6 + (i * Math.PI * 1.4) / 14; points.push({ x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) }); }
-      }
-      break;
-    case 'Number 6': {
-      const cx = w * 0.5, cy = h * 0.62, r = h * 0.18;
-      sampleLinear(w * 0.6, h * 0.22, w * 0.35, h * 0.5, 12);
-      for (let i = 0; i < 36; i++) { const a = Math.PI + (i * 10 * Math.PI) / 180; points.push({ x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) }); }
-      break;
-    }
-    case 'Number 7':
-      sampleLinear(w * 0.3, h * 0.2, w * 0.7, h * 0.2, 12);
-      sampleLinear(w * 0.7, h * 0.2, w * 0.4, h * 0.8, 18);
-      break;
-    case 'Number 8': {
-      const cx = w * 0.5, cy1 = h * 0.35, cy2 = h * 0.65, r1 = h * 0.13, r2 = h * 0.15;
-      for (let i = 0; i < 24; i++) { const a = (i * 15 * Math.PI) / 180; points.push({ x: cx + r1 * Math.cos(a), y: cy1 + r1 * Math.sin(a) }); }
-      for (let i = 0; i < 24; i++) { const a = (i * 15 * Math.PI) / 180; points.push({ x: cx + r2 * Math.cos(a), y: cy2 + r2 * Math.sin(a) }); }
-      break;
-    }
-    case 'Number 9': {
-      const cx = w * 0.5, cy = h * 0.38, r = h * 0.18;
-      for (let i = 0; i < 36; i++) { const a = (i * 10 * Math.PI) / 180; points.push({ x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) }); }
-      sampleLinear(w * 0.7, h * 0.45, w * 0.5, h * 0.8, 12);
-      break;
-    }
     // Slanting Line alias (used when lesson title is just "Slanting Line")
     case 'Slanting Line':
       sampleLinear(w * 0.25, h * 0.2, w * 0.75, h * 0.8, 20);
@@ -543,61 +343,138 @@ export function getGuidePoints(guideName: string, w: number, h: number): Point[]
   return points;
 }
 
-export function calculateTracingAccuracy(
-  strokes: Point[][],
-  guidePoints: Point[]
-): number {
+/** Tuning, shared by every character: see tracingThresholds.json. */
+export const TRACING = thresholds as {
+  reachFraction: number;
+  coverageFade: number;
+  precisionFade: number;
+  presenceReaches: number;
+  presenceWeight: number;
+  maxInkRatio: number;
+  strokeBreakFactor: number;
+  passRaw: number;
+  honesty: number;
+  shapePoints: number;
+  shapeGoodDistance: number;
+  shapeBadDistance: number;
+};
+
+const dist = (a: Point, b: Point) => Math.hypot(a.x - b.x, a.y - b.y);
+
+/**
+ * Splits a guide's flattened points back into strokes: a jump much larger
+ * than the usual spacing between points is a pen lift.
+ */
+export function guideStrokes(points: Point[]): Point[][] {
+  if (points.length === 0) return [];
+  const gaps = points.slice(1).map((p, i) => dist(p, points[i]));
+  const usual = [...gaps].sort((a, b) => a - b)[Math.floor(gaps.length / 2)] || 1;
+  const out: Point[][] = [[points[0]]];
+  points.slice(1).forEach((p, i) => {
+    if (gaps[i] > usual * TRACING.strokeBreakFactor) out.push([p]);
+    else out[out.length - 1].push(p);
+  });
+  return out;
+}
+
+/**
+ * Length of a set of strokes, measured between points at least `step` apart,
+ * so a finger's small jitter is not mistaken for extra ink.
+ */
+const pathLength = (strokes: Point[][], step: number) =>
+  strokes.reduce((sum, s) => {
+    let last = s[0];
+    let len = 0;
+    for (const p of s) {
+      const d = dist(p, last);
+      if (d >= step) {
+        len += d;
+        last = p;
+      }
+    }
+    return sum + len;
+  }, 0);
+
+/**
+ * Placement: how well the ink sits on the dotted guide, 0-100. One rule for every letter,
+ * number and Hindi character; its numbers live in tracingThresholds.json.
+ *
+ *  - **presence**: how much of the character has any ink within a few
+ *    reaches, i.e. was attempted at all. Raised to a power, so leaving a part
+ *    out costs far more than drawing it loosely.
+ *  - **coverage**: how closely the guide is covered.
+ *  - **precision**: how much of the ink is near the guide.
+ *  - **extra ink**: ink much longer than the guide itself (scribbling over
+ *    the board) scales the score down.
+ *
+ * Distances are measured against the character's own size (its height, or
+ * half its width for a flat shape), not the board's: a letter inside a word
+ * is small, and a board-sized tolerance would let ink on its neighbour count.
+ * Credit fades with distance rather than stopping at a cut-off, which leaves a
+ * young child room to wobble: strokes in roughly the right place but offset
+ * still score, while half a character or a scribble does not. Tested across
+ * every traceable character in __tests__/tracingAccuracy.test.ts.
+ */
+export function calculateTracingAccuracy(strokes: Point[][], guidePoints: Point[]): number {
   if (strokes.length === 0 || guidePoints.length === 0) return 0;
 
   const userPoints = strokes.flat();
   if (userPoints.length === 0) return 0;
 
-  // Maximum distance to consider a guide point as "traced" (matching width of stroke)
-  const thresholdDistance = 35; // pixels
-  let matchedCount = 0;
+  const xs = guidePoints.map((p) => p.x);
+  const ys = guidePoints.map((p) => p.y);
+  const size = Math.max(Math.max(...ys) - Math.min(...ys), (Math.max(...xs) - Math.min(...xs)) / 2, 1);
+  const reach = size * TRACING.reachFraction;
+  const credit = (d: number, fade: number) => Math.max(0, Math.min(1, (reach * fade - d) / (reach * (fade - 1))));
 
-  guidePoints.forEach((gp) => {
-    let hasClosePoint = false;
-    for (let i = 0; i < userPoints.length; i++) {
-      const up = userPoints[i];
-      const dx = gp.x - up.x;
-      const dy = gp.y - up.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist <= thresholdDistance) {
-        hasClosePoint = true;
-        break;
-      }
+  const nearest = (p: Point, pts: Point[]) => {
+    let best = Infinity;
+    for (let i = 0; i < pts.length; i++) {
+      const dx = pts[i].x - p.x;
+      const dy = pts[i].y - p.y;
+      const d = dx * dx + dy * dy;
+      if (d < best) best = d;
     }
-    if (hasClosePoint) {
-      matchedCount++;
-    }
-  });
+    return Math.sqrt(best);
+  };
 
-  const matchingRatio = matchedCount / guidePoints.length;
+  const guideGaps = guidePoints.map((g) => nearest(g, userPoints));
+  const presence = guideGaps.filter((d) => d <= reach * TRACING.presenceReaches).length / guideGaps.length;
+  const coverage = guideGaps.reduce((s, d) => s + credit(d, TRACING.coverageFade), 0) / guideGaps.length;
+  const precision =
+    userPoints.reduce((s, u) => s + credit(nearest(u, guidePoints), TRACING.precisionFade), 0) / userPoints.length;
 
-  // Penalize stray drawing to prevent cheating by coloring the whole canvas
-  let strayCount = 0;
-  userPoints.forEach((up) => {
-    let minDistance = Infinity;
-    for (let i = 0; i < guidePoints.length; i++) {
-      const gp = guidePoints[i];
-      const dx = gp.x - up.x;
-      const dy = gp.y - up.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      if (dist < minDistance) {
-        minDistance = dist;
-      }
-    }
-    if (minDistance > 55) {
-      strayCount++;
-    }
-  });
+  const step = reach / 2;
+  const inkRatio = pathLength(strokes, step) / Math.max(1, pathLength(guideStrokes(guidePoints), step));
+  const extraInk = inkRatio > TRACING.maxInkRatio ? TRACING.maxInkRatio / inkRatio : 1;
 
-  const strayRatio = strayCount / userPoints.length;
-  // Net score: matching ratio minus a fraction of the stray ratio
-  const netScore = Math.max(0, matchingRatio - strayRatio * 0.4);
+  return Math.round(Math.pow(presence, TRACING.presenceWeight) * coverage * precision * extraInk * 100);
+}
 
-  return Math.round(netScore * 100);
+/**
+ * Shape: does what the child drew look like the character? 0-1.
+ *
+ * Placement alone only asks whether ink lies near the dotted outline, so a C
+ * drawn inside a G's outline scored 89%. Here the drawing and the guide are
+ * compared as shapes, with position and size factored out
+ * (utils/shapeRecognizer.ts), so a missing crossbar or an unclosed loop costs
+ * whatever part of the board it was drawn on.
+ */
+export function shapeScore(strokes: Point[][], guidePoints: Point[]): number {
+  if (strokes.flat().length === 0 || guidePoints.length === 0) return 0;
+  const n = TRACING.shapePoints;
+  const d = shapeDistance(toCloud(strokes, n), toCloud(guideStrokes(guidePoints), n));
+  const { shapeGoodDistance: good, shapeBadDistance: bad } = TRACING;
+  return Math.max(0, Math.min(1, (bad - d) / (bad - good)));
+}
+
+/**
+ * The tracing score, 0-100: placement (on the guide) x shape (looks like the
+ * character). Both must be good — a neat C on a G guide fails on shape, a
+ * perfect G drawn in a corner fails on placement.
+ */
+export function scoreTrace(strokes: Point[][], guidePoints: Point[]): number {
+  return Math.round(calculateTracingAccuracy(strokes, guidePoints) * shapeScore(strokes, guidePoints));
 }
 
 export function getStarsFromScore(score: number): number {

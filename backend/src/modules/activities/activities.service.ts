@@ -8,6 +8,8 @@ import { curriculumLoader } from '../curriculum/curriculum-loader.js';
 
 import { generateDynamicDragDropSpec } from '../../shared/utils/spec-generator.js';
 import { hasMeaningfulDragDrop, isPerformableActivity } from '../../shared/utils/lesson-activity-plan.js';
+import { revisionTraceItems } from '../../shared/utils/revision-trace-sets.js';
+import { normalizeActivityType } from '../../shared/utils/activity-type-normalizer.js';
 
 function getActivityTitle(lessonTitle: string, type: string): string {
   const typeMap: Record<string, string> = {
@@ -159,7 +161,12 @@ export function planLessonActivities<T extends { activityType: string; displayOr
   if (!node) return activities;
   const performable = activities.filter((a) => isPerformableActivity(a.activityType, node));
   const withDragDrop = addMissingDragDropActivity(lessonId, performable, opts.withSpec !== false) as T[];
-  return positionDragDropAfterSpeaking(withDragDrop);
+  // A revision lesson's tracing steps through every item of its topic.
+  const traceItems = revisionTraceItems(lessonId);
+  const withTrace = traceItems
+    ? withDragDrop.map((a) => (normalizeActivityType(a.activityType) === 'write' ? { ...a, traceItems } : a))
+    : withDragDrop;
+  return positionDragDropAfterSpeaking(withTrace);
 }
 
 export class ActivitiesService {

@@ -13,6 +13,8 @@ export const StorageKeys = {
   BASELINE: 'petalpath_baseline_v1',
   /** Daily usage counters and limits per child (features/usageLimit). */
   USAGE: 'petalpath_usage_v1',
+  /** Where each child is in a revision lesson's tracing sequence (store/writeStore). */
+  TRACE_PROGRESS: 'petalpath_trace_progress_v1',
   /** Parental consent per parent account. */
   PARENT_CONSENT: 'petalpath_parent_consent_v1',
 } as const;
