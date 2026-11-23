@@ -32,9 +32,9 @@ const envSchema = z.object({
   )
     .transform((v) => v.split(',').map((id) => id.trim()).filter(Boolean))
     .refine((ids) => !isProduction || ids.length > 0, 'GOOGLE_CLIENT_ID is required in production'),
-  GOOGLE_CLIENT_SECRET: isProduction
-    ? z.string().min(1, 'GOOGLE_CLIENT_SECRET is required in production')
-    : z.string().default('placeholder-google-client-secret'),
+  // Not used: native Google Sign-In only verifies ID tokens, which needs no
+  // secret. Accepted (and ignored) so an existing .env that still has it loads.
+  GOOGLE_CLIENT_SECRET: z.string().optional(),
 
   // CORS — comma-separated allowed origins
   CORS_ORIGINS: z.string().default('http://localhost:8081,http://localhost:19006'),
