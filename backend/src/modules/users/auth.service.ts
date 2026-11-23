@@ -19,42 +19,22 @@ import {
 } from '../../utils/errors.js';
 import { logger } from '../../utils/logger.js';
 import { prisma } from '../../config/database.js';
+import { verifyGoogleIdToken } from './google-token.js';
 
 const client = new OAuth2Client(env.GOOGLE_CLIENT_ID[0]);
 
 export class AuthService {
   /**
-   * Verify Google ID token and return ticket payload
+   * Verify a Google ID token (signature, issuer, expiry, audience in
+   * GOOGLE_CLIENT_ID, verified email) and return its payload. See google-token.ts.
+   *
+   * There used to be a shortcut here that accepted any token starting with
+   * "mock-google-token-" in every environment, production included, and signed
+   * the caller in as <name>@gmail.com without asking Google. Nothing used it,
+   * and it allowed anyone to log in as (or take over) a Gmail account holder.
    */
   async verifyGoogleToken(idToken: string) {
-    if (idToken.startsWith('mock-google-token-')) {
-      const username = idToken.replace('mock-google-token-', '');
-      const capitalized = username.charAt(0).toUpperCase() + username.slice(1);
-      return {
-        sub: `mock-google-id-${username}`,
-        email: `${username}@gmail.com`,
-        email_verified: true,
-        name: `${capitalized} (Google)`,
-        given_name: capitalized,
-        picture: `https://lh3.googleusercontent.com/a/default-user=s96-c`,
-      };
-    }
-
-    try {
-      const ticket = await client.verifyIdToken({
-        idToken,
-        // Any configured client ID (comma-separated GOOGLE_CLIENT_ID).
-        audience: env.GOOGLE_CLIENT_ID,
-      });
-      const payload = ticket.getPayload();
-      if (!payload) {
-        throw new ValidationError('Google ID Token payload is empty');
-      }
-      return payload;
-    } catch (error) {
-      logger.warn(error as Error, 'Google token verification failed');
-      throw new UnauthorizedError('Google ID token verification failed');
-    }
+    return verifyGoogleIdToken(client, idToken, env.GOOGLE_CLIENT_ID);
   }
 
   /**
