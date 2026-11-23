@@ -13,6 +13,7 @@
 import fs from 'fs';
 import path from 'path';
 import type { CurriculumNode } from '../curriculum/curriculum.types.js';
+import { curriculumLoader } from '../curriculum/curriculum-loader.js';
 import { BASELINE_DOMAINS, type BaselineDomain, type BaselineRecord, type DomainResult } from './baseline.types.js';
 
 export interface DomainRule {
@@ -59,14 +60,25 @@ export function domainOfNode(node: CurriculumNode, map: DomainMap = loadDomainMa
   return null;
 }
 
+/** The theme a lesson sits in (from the curriculum JSON), or undefined. */
+export type ThemeOf = (lessonId: string) => string | undefined;
+
+export const curriculumThemeOf: ThemeOf = (lessonId) => curriculumLoader.getLessonIndex(lessonId)?.themeId;
+
 /**
  * The lesson a domain starts at for a given baseline level.
  *
  * Levels 0 (Not yet) and 1 (Emerging) start at the domain's first lesson.
  * Higher levels skip ahead by `levelOffset` curriculum-difficulty steps above
- * the domain's easiest lesson, landing on the first lesson (in curriculum
+ * the domain's easiest lesson: the target is the first lesson (in curriculum
  * order) at or above that difficulty. A low-confidence result starts one step
  * lower, so a lucky guess never jumps a child past what they know.
+ *
+ * Placement skips whole themes only, never part of one: the start moves back
+ * to the first lesson (in this domain) of the target's theme. Difficulty is
+ * not uniform inside a theme (e.g. Capital Letters A–T vs U–Z), and starting
+ * mid-sequence would leave the child on "Letter U" with A–T never taught.
+ * Every theme skipped this way lies wholly below the target difficulty.
  *
  * Returns null when the grade has no lessons in the domain.
  */
@@ -74,6 +86,7 @@ export function startingLessonFor(
   domainLessons: readonly CurriculumNode[],
   result: DomainResult,
   map: DomainMap = loadDomainMap(),
+  themeOf: ThemeOf = curriculumThemeOf,
 ): CurriculumNode | null {
   if (domainLessons.length === 0) return null;
   let offset = map.levelOffset[String(result.level)] ?? 0;
@@ -81,7 +94,11 @@ export function startingLessonFor(
   if (offset === 0) return domainLessons[0];
   const easiest = Math.min(...domainLessons.map((n) => n.difficulty));
   const target = easiest + offset;
-  return domainLessons.find((n) => n.difficulty >= target) ?? domainLessons[0];
+  const reached = domainLessons.find((n) => n.difficulty >= target);
+  if (!reached) return domainLessons[0];
+  const theme = themeOf(reached.id);
+  if (theme === undefined) return domainLessons[0];
+  return domainLessons.find((n) => themeOf(n.id) === theme) ?? reached;
 }
 
 export interface Placement {
@@ -108,6 +125,7 @@ export function buildPlacement(
   gradeLessons: readonly CurriculumNode[],
   baseline: Pick<BaselineRecord, 'domains' | 'skipped'> | null,
   map: DomainMap = loadDomainMap(),
+  themeOf: ThemeOf = curriculumThemeOf,
 ): Placement {
   if (!baseline || baseline.skipped) return EMPTY_PLACEMENT;
 
@@ -125,7 +143,7 @@ export function buildPlacement(
   const placedPast = new Set<string>();
   for (const [domain, result] of Object.entries(baseline.domains) as [BaselineDomain, DomainResult][]) {
     const lessons = byDomain.get(domain) ?? [];
-    const start = startingLessonFor(lessons, result, map);
+    const start = startingLessonFor(lessons, result, map, themeOf);
     if (!start) continue;
     startingLessons.set(domain, start.id);
     for (const node of lessons) {

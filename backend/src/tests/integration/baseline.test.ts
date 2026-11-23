@@ -9,9 +9,9 @@ import supertest from 'supertest';
 import { cleanDatabase } from '../helpers/factories.js';
 import { createAuthenticatedContext } from '../helpers/auth.js';
 import { curriculumService } from '../../modules/curriculum/index.js';
-import { buildPlacement, domainOfNode, loadDomainMap, startingLessonFor } from '../../modules/baseline/placement.js';
+import { buildPlacement, curriculumThemeOf, domainOfNode, loadDomainMap, startingLessonFor } from '../../modules/baseline/placement.js';
 import { getStartingLesson } from '../../modules/baseline/baseline.service.js';
-import { BASELINE_DOMAINS } from '../../modules/baseline/baseline.types.js';
+import { BASELINE_DOMAINS, type DomainLevel } from '../../modules/baseline/baseline.types.js';
 
 const request = supertest(app);
 
@@ -123,20 +123,65 @@ describe('Baseline', () => {
       for (const d of BASELINE_DOMAINS) expect(inDomain(d).length).toBeGreaterThan(0);
     });
 
-    it('starts Not yet / Emerging at the first lesson and Secure further in', () => {
+    it('starts Not yet / Emerging at the first lesson', () => {
       const english = inDomain('english');
       expect(startingLessonFor(english, { level: 0, confidence: 'high' }, map)?.id).toBe(english[0].id);
       expect(startingLessonFor(english, { level: 1, confidence: 'high' }, map)?.id).toBe(english[0].id);
-      const secure = startingLessonFor(english, { level: 3, confidence: 'high' }, map)!;
-      expect(english.indexOf(secure)).toBeGreaterThan(0);
-      expect(secure.difficulty).toBeGreaterThan(english[0].difficulty);
+    });
+
+    it('never starts partway through a theme, in any grade, domain or level', () => {
+      const levels = Object.keys(map.levelOffset).map(Number) as DomainLevel[];
+      for (const grade of ['prenursery', 'nursery', 'lkg', 'ukg']) {
+        const gradeLessons = curriculumService.getLessonsInCurriculumOrder(grade);
+        for (const domain of BASELINE_DOMAINS) {
+          const dl = gradeLessons.filter((n) => domainOfNode(n, map) === domain);
+          if (dl.length === 0) continue;
+          const easiest = Math.min(...dl.map((n) => n.difficulty));
+          for (const level of levels) {
+            for (const confidence of ['high', 'low'] as const) {
+              const start = startingLessonFor(dl, { level, confidence }, map)!;
+              const at = dl.indexOf(start);
+              const where = `${grade}/${domain}/L${level}/${confidence}`;
+              expect([where, at >= 0]).toEqual([where, true]);
+              // The start is its theme's first lesson in this domain...
+              const theme = curriculumThemeOf(start.id);
+              const firstOfTheme = dl.findIndex((n) => curriculumThemeOf(n.id) === theme);
+              expect([where, firstOfTheme]).toEqual([where, at]);
+              // ...and everything skipped is easier than the start's target.
+              let offset = map.levelOffset[String(level)] ?? 0;
+              if (confidence === 'low') offset = Math.max(0, offset - 1);
+              for (const skipped of dl.slice(0, at)) {
+                expect([where, skipped.id, skipped.difficulty < easiest + offset]).toEqual([where, skipped.id, true]);
+              }
+            }
+          }
+        }
+      }
+    });
+
+    it('a Secure nursery English child starts at Letter A, not mid-alphabet (Letter U)', () => {
+      const english = inDomain('english');
+      for (const level of [2, 3] as const) {
+        expect(startingLessonFor(english, { level, confidence: 'high' }, map)?.id).toBe(english[0].id);
+      }
+    });
+
+    it('still skips whole themes that are easier than the child', () => {
+      const skips = BASELINE_DOMAINS.filter((d) => {
+        const dl = inDomain(d);
+        const start = startingLessonFor(dl, { level: 3, confidence: 'high' }, map);
+        return start !== null && dl.indexOf(start) > 0;
+      });
+      expect(skips.length).toBeGreaterThan(0);
     });
 
     it('starts a low-confidence result one step lower', () => {
-      const english = inDomain('english');
-      const high = startingLessonFor(english, { level: 3, confidence: 'high' }, map)!;
-      const low = startingLessonFor(english, { level: 3, confidence: 'low' }, map)!;
-      expect(english.indexOf(low)).toBeLessThanOrEqual(english.indexOf(high));
+      for (const d of BASELINE_DOMAINS) {
+        const dl = inDomain(d);
+        const high = startingLessonFor(dl, { level: 3, confidence: 'high' }, map)!;
+        const low = startingLessonFor(dl, { level: 3, confidence: 'low' }, map)!;
+        expect(dl.indexOf(low)).toBeLessThanOrEqual(dl.indexOf(high));
+      }
     });
 
     it('a skipped baseline places nothing', () => {
@@ -145,13 +190,18 @@ describe('Baseline', () => {
     });
 
     it('getStartingLesson and the roadmap follow the baseline', async () => {
+      // A domain where a Secure result skips at least one whole theme.
+      const domain = BASELINE_DOMAINS.find((d) => {
+        const dl = inDomain(d);
+        return dl.indexOf(startingLessonFor(dl, { level: 3, confidence: 'high' }, map)!) > 0;
+      })!;
       const { accessToken, child } = await createAuthenticatedContext();
-      expect(await getStartingLesson(child.id, 'english')).toBeNull(); // no baseline yet → default
+      expect(await getStartingLesson(child.id, domain)).toBeNull(); // no baseline yet → default
 
-      await post(accessToken, child.id, body({ domains: { english: { level: 3, confidence: 'high' } }, strengths: ['english'], focus_areas: [] }));
-      const start = await getStartingLesson(child.id, 'english');
+      await post(accessToken, child.id, body({ domains: { [domain]: { level: 3, confidence: 'high' } }, strengths: [domain], focus_areas: [] }));
+      const start = await getStartingLesson(child.id, domain);
       expect(start).not.toBeNull();
-      expect(start!.id).not.toBe(inDomain('english')[0].id);
+      expect(start!.id).not.toBe(inDomain(domain)[0].id);
 
       const roadmap = await request.get('/api/roadmap').set('Authorization', `Bearer ${accessToken}`);
       expect(roadmap.status).toBe(200);
@@ -159,9 +209,7 @@ describe('Baseline', () => {
       const startNode = nodes.find((n: any) => n.id === start!.id);
       expect(startNode?.isUnlocked).toBe(true);
       // Placed-past lessons stay open, but are never the current lesson.
-      expect(nodes.find((n: any) => n.id === inDomain('english')[0].id)?.isUnlocked).toBe(true);
-      expect(inDomain('english').indexOf(inDomain('english').find((n) => n.id === roadmap.body.data.currentLesson?.id)!))
-        .not.toBe(0);
+      expect(nodes.find((n: any) => n.id === inDomain(domain)[0].id)?.isUnlocked).toBe(true);
     });
   });
 });
