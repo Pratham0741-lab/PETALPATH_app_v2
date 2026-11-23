@@ -77,7 +77,8 @@
         "react-native-vision-camera",
         {
           "cameraPermissionText": "Allow PetalPath to use the camera for live pose and activity detection.",
-          "enableMicrophonePermission": false
+          "enableMicrophonePermission": false,
+          "enableCodeScanner": false
         }
       ],
       "./plugins/withCameraEngine"
