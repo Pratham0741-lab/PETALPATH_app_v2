@@ -56,6 +56,7 @@ import { cardSizes, colors, radius, spacing, typography } from '../../theme';
 import type { ApiResponse } from '../../types/api';
 import { customAlert } from '../../utils/alert';
 import { SCREEN_BACKGROUNDS } from '../../assets/backgrounds';
+import { gradeLabel } from '../../config/grades';
 
 /** Reading-column cap per size — replaces the old two-pane split (§27). */
 const COLUMN_MAX_WIDTH: Record<string, number> = {
@@ -242,7 +243,7 @@ export const ChildSelectionScreen: React.FC = () => {
                 {shownChild.name}
               </Text>
               <Text style={[typography.presets.caption, styles.muted]}>
-                {shownChild.ageGroup} · {shownChild.age} years old
+                {gradeLabel(shownChild.age)}
               </Text>
 
               <View style={styles.companionBlock}>

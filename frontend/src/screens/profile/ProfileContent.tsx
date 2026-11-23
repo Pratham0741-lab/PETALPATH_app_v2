@@ -77,6 +77,7 @@ import {
 import type { Stat } from '../../components/design';
 import { useUsageStore } from '../../features/usageLimit/usageStore';
 import { UsageSettingsSheet } from '../../features/usageLimit/UsageSettingsSheet';
+import { gradeForAge, gradeLabel } from '../../config/grades';
 
 export type ProfileVariant = 'mobile' | 'tablet' | 'desktop';
 
@@ -278,7 +279,7 @@ export const ProfileContent: React.FC<ProfileContentProps> = ({ variant }) => {
             </Text>
             {activeChild ? (
               <Text style={[typography.presets.caption, styles.muted]} numberOfLines={1}>
-                Age {activeChild.age} · {activeChild.mentor?.name || 'No companion yet'}
+                {gradeForAge(activeChild.age).name} · {activeChild.mentor?.name || 'No companion yet'}
               </Text>
             ) : (
               <Text style={[typography.presets.caption, styles.muted]}>
@@ -548,7 +549,7 @@ export const ProfileContent: React.FC<ProfileContentProps> = ({ variant }) => {
                       <ProfileCard
                         name={child.name}
                         species={child.avatar}
-                        detail={`Age ${child.age} · ${child.mentor?.name || 'No companion'}`}
+                        detail={`${gradeForAge(child.age).name} · ${child.mentor?.name || 'No companion'}`}
                         active={activeChild?.id === child.id}
                         onPress={() => setActiveChild(child)}
                         action={{
@@ -569,8 +570,8 @@ export const ProfileContent: React.FC<ProfileContentProps> = ({ variant }) => {
               <Card variant="flat" padding="normal" style={styles.detailCard}>
                 <Text style={[typography.presets.eyebrow, styles.muted]}>Active profile</Text>
                 <ParentRow
-                  label="Age group"
-                  value={`${activeChild.age} · ${activeChild.ageGroup}`}
+                  label="Class"
+                  value={gradeLabel(activeChild.age)}
                 />
                 {activeChild.mentor ? (
                   <ParentRow

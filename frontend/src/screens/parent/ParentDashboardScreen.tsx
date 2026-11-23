@@ -44,6 +44,7 @@ import type {
   CurriculumInsight,
   RewardsSummary,
 } from '../../services/api/analyticsApi';
+import { gradeLabel } from '../../config/grades';
 
 /**
  * Parent Dashboard (spec §26).
@@ -193,8 +194,7 @@ export const ParentDashboardScreen: React.FC = () => {
               <View style={styles.childInfo}>
                 <Text style={typography.presets.cardTitle}>{activeChild.name}</Text>
                 <Text style={[typography.presets.caption, styles.muted]}>
-                  Age {activeChild.age}
-                  {activeChild.ageGroup ? ` · ${activeChild.ageGroup}` : ''}
+                  {gradeLabel(activeChild.age)}
                 </Text>
               </View>
             </View>

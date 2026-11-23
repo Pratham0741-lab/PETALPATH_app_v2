@@ -54,10 +54,9 @@ import { useAppStore } from '../../store/appStore';
 import { hasConsent } from '../../features/baseline/consent';
 import { useBaselineStore } from '../../features/baseline/baselineStore';
 import { gradeForAgeGroup } from '../../features/baseline/engine';
+import { GRADE_OPTIONS, gradeForAge, gradeLabel } from '../../config/grades';
 
 type ChildFormValues = z.infer<typeof childFormSchema>;
-
-const AGE_OPTIONS = [2, 3, 4, 5, 6];
 
 /** Reading-column cap per size — replaces the old two-pane split. */
 const COLUMN_MAX_WIDTH: Record<string, number> = {
@@ -68,10 +67,6 @@ const COLUMN_MAX_WIDTH: Record<string, number> = {
 
 /** Avatar tiles flex from this width, so the column count follows the window. */
 const AVATAR_MIN_WIDTH = 84;
-
-/** Unchanged from the old inline ternary chain. */
-const ageGroupLabel = (age: number): string =>
-  age === 2 ? '2–3' : age === 3 ? '3–4' : age === 4 ? '4–5' : '5–6';
 
 export const AddEditChildScreen: React.FC = () => {
   const navigation = useNavigation<any>();
@@ -234,7 +229,7 @@ export const AddEditChildScreen: React.FC = () => {
             {previewName}
           </Text>
           <Text style={[typography.presets.caption, styles.muted]}>
-            Age {formValues.age} · Group {ageGroupLabel(formValues.age)} years
+            {gradeLabel(formValues.age)}
           </Text>
           <View style={styles.heroCompanion}>
             <Text style={[typography.presets.eyebrow, styles.muted]}>Companion</Text>
@@ -262,19 +257,19 @@ export const AddEditChildScreen: React.FC = () => {
             />
 
             <Text style={[typography.presets.subtle, styles.fieldLabel]}>
-              Child&apos;s Age (2–6 years)
+              Child&apos;s Class
             </Text>
             <Controller
               control={control}
               name="age"
               render={({ field: { onChange, value } }) => (
                 <View style={styles.ageRow} accessibilityRole="radiogroup">
-                  {AGE_OPTIONS.map((num) => {
-                    const selected = value === num;
+                  {GRADE_OPTIONS.map((grade) => {
+                    const selected = gradeForAge(value).id === grade.id;
                     return (
                       <Pressable
-                        key={num}
-                        onPress={() => onChange(num)}
+                        key={grade.id}
+                        onPress={() => onChange(grade.age)}
                         style={({ pressed }) => [
                           styles.ageChip,
                           selected && styles.ageChipSelected,
@@ -282,15 +277,24 @@ export const AddEditChildScreen: React.FC = () => {
                         ]}
                         accessibilityRole="radio"
                         accessibilityState={{ selected }}
-                        accessibilityLabel={`Age ${num}`}
+                        accessibilityLabel={`${grade.name}, ages ${grade.ages}`}
                       >
                         <Text
                           style={[
                             typography.presets.cardTitle,
                             selected ? styles.ageChipTextSelected : styles.ageChipText,
                           ]}
+                          numberOfLines={1}
                         >
-                          {num}
+                          {grade.name}
+                        </Text>
+                        <Text
+                          style={[
+                            typography.presets.caption,
+                            selected ? styles.ageChipTextSelected : styles.muted,
+                          ]}
+                        >
+                          {grade.ages} yrs
                         </Text>
                       </Pressable>
                     );
@@ -426,15 +430,18 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginBottom: spacing.sm,
   },
+  /* Two classes per row: "Pre-Nursery" does not fit four across a phone. */
   ageRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: spacing.sm,
   },
   ageChip: {
     flexGrow: 1,
     flexShrink: 1,
-    flexBasis: 0,
-    minHeight: 52,
+    flexBasis: '45%',
+    minHeight: 64,
+    paddingVertical: spacing.sm,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: radius.cardInner,
