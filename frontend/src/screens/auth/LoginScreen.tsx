@@ -12,6 +12,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
+import { GOOGLE_WEB_CLIENT_ID, isGoogleSignInConfigured } from '../../config/google';
 import { Ionicons } from '@expo/vector-icons';
 import { z } from 'zod';
 import { useTheme } from '../../theme/ThemeContext';
@@ -74,10 +75,12 @@ export const LoginScreen: React.FC = () => {
   });
 
   useEffect(() => {
-    GoogleSignin.configure({
-      webClientId: '244358134848-cblimclem7n3knhsu6ahu29kd7l0pqve.apps.googleusercontent.com',
-      offlineAccess: true,
-    });
+    if (isGoogleSignInConfigured()) {
+      GoogleSignin.configure({
+        webClientId: GOOGLE_WEB_CLIENT_ID,
+        offlineAccess: true,
+      });
+    }
 
     storageService.getItem<string>(REMEMBER_EMAIL_KEY as never).then((savedEmail) => {
       if (savedEmail) {
@@ -107,6 +110,12 @@ export const LoginScreen: React.FC = () => {
   }, [setSession, setAppSession]);
 
   const handleGoogleLogin = useCallback(async () => {
+    if (!isGoogleSignInConfigured()) {
+      // A build without EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID: say so rather than
+      // failing inside the Google SDK with a cryptic developer error.
+      setFormError("Google sign-in isn't available in this version of the app. Please sign in with email.");
+      return;
+    }
     setGoogleLoading(true);
     setFormError('');
     try {

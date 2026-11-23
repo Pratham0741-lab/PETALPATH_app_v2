@@ -42,12 +42,7 @@
     "plugins": [
       "./plugins/withAndroidNetworkSecurity",
       "./plugins/withAndroidLargeScreen",
-      [
-        "@react-native-google-signin/google-signin",
-        {
-          "iosUrlScheme": "com.googleusercontent.apps.244358134848-cblimclem7n3knhsu6ahu29kd7l0pqve"
-        }
-      ],
+      "@react-native-google-signin/google-signin",
       "expo-video",
       "expo-audio",
       [

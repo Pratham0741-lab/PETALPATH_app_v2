@@ -20,7 +20,7 @@ import {
 import { logger } from '../../utils/logger.js';
 import { prisma } from '../../config/database.js';
 
-const client = new OAuth2Client(env.GOOGLE_CLIENT_ID);
+const client = new OAuth2Client(env.GOOGLE_CLIENT_ID[0]);
 
 export class AuthService {
   /**
@@ -43,6 +43,7 @@ export class AuthService {
     try {
       const ticket = await client.verifyIdToken({
         idToken,
+        // Any configured client ID (comma-separated GOOGLE_CLIENT_ID).
         audience: env.GOOGLE_CLIENT_ID,
       });
       const payload = ticket.getPayload();

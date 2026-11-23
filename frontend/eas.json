@@ -9,7 +9,8 @@
       "distribution": "internal",
       "channel": "development",
       "env": {
-        "EXPO_PUBLIC_ENABLE_DEV_TOOLS": "true"
+        "EXPO_PUBLIC_ENABLE_DEV_TOOLS": "true",
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "244358134848-cblimclem7n3knhsu6ahu29kd7l0pqve.apps.googleusercontent.com"
       }
     },
     "preview": {
@@ -21,7 +22,8 @@
       "env": {
         "EXPO_PUBLIC_API_URL": "https://api.petalpath.co.in",
         "EXPO_PUBLIC_CDN_BASE_URL": "https://dy3um9dzarz6y.cloudfront.net",
-        "EXPO_PUBLIC_ENABLE_DEV_TOOLS": "true"
+        "EXPO_PUBLIC_ENABLE_DEV_TOOLS": "true",
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "244358134848-cblimclem7n3knhsu6ahu29kd7l0pqve.apps.googleusercontent.com"
       }
     },
     "production": {
@@ -30,7 +32,8 @@
       "env": {
         "EXPO_PUBLIC_API_URL": "https://api.petalpath.co.in",
         "EXPO_PUBLIC_CDN_BASE_URL": "https://dy3um9dzarz6y.cloudfront.net",
-        "EXPO_PUBLIC_ENABLE_DEV_TOOLS": "false"
+        "EXPO_PUBLIC_ENABLE_DEV_TOOLS": "false",
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "244358134848-cblimclem7n3knhsu6ahu29kd7l0pqve.apps.googleusercontent.com"
       },
       "android": {
         "buildType": "apk"

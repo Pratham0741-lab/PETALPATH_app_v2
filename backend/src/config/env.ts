@@ -22,10 +22,16 @@ const envSchema = z.object({
   ACCESS_TOKEN_EXPIRY: z.string().default('15m'),
   REFRESH_TOKEN_EXPIRY: z.string().default('7d'),
 
-  // Google OAuth — required in production
-  GOOGLE_CLIENT_ID: isProduction
+  // Google OAuth — required in production. GOOGLE_CLIENT_ID is a
+  // comma-separated list of OAuth client IDs whose ID tokens are accepted (the
+  // web client the app passes as webClientId, plus any other client a token
+  // may be issued to). Parsed into an array; whitespace and empties ignored.
+  GOOGLE_CLIENT_ID: (isProduction
     ? z.string().min(1, 'GOOGLE_CLIENT_ID is required in production')
-    : z.string().default('placeholder-google-client-id'),
+    : z.string().default('placeholder-google-client-id')
+  )
+    .transform((v) => v.split(',').map((id) => id.trim()).filter(Boolean))
+    .refine((ids) => !isProduction || ids.length > 0, 'GOOGLE_CLIENT_ID is required in production'),
   GOOGLE_CLIENT_SECRET: isProduction
     ? z.string().min(1, 'GOOGLE_CLIENT_SECRET is required in production')
     : z.string().default('placeholder-google-client-secret'),
