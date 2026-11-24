@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { AppError } from '../utils/errors.js';
 import { logger } from '../utils/logger.js';
+import { logSafeUrl } from '../utils/log-safe-url.js';
 import { env } from '../config/env.js';
 
 export const errorHandler = (
@@ -15,7 +16,7 @@ export const errorHandler = (
   const logPayload: Record<string, unknown> = {
     requestId,
     message: err.message,
-    url: req.originalUrl,
+    url: logSafeUrl(req.method, req.originalUrl),
     method: req.method,
   };
 

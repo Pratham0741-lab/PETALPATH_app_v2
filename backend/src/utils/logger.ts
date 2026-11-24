@@ -32,6 +32,8 @@ export const logger = pino(
         'accessToken',
         'access_token',
         'idToken',
+        'googleIdToken',
+        'req.body.googleIdToken',
         'id_token',
         'googleToken',
         'authorization',

@@ -59,11 +59,7 @@ export class ChildrenService {
     return childrenRepository.update(id, updateData);
   }
 
-  async deleteChild(id: string, userId: string) {
-    // Enforce ownership check
-    await this.getChildById(id, userId);
-    return childrenRepository.delete(id);
-  }
+  // Deleting a child: account-deletion.service.ts (hard delete, not a deleted_at flag).
 }
 
 export const childrenService = new ChildrenService();

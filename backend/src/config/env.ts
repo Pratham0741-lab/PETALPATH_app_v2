@@ -80,6 +80,11 @@ const envSchema = z.object({
   PASSWORD_RESET_PER_EMAIL_MAX: z.coerce.number().int().min(1).default(3),
   PASSWORD_RESET_ATTEMPTS_PER_IP_MAX: z.coerce.number().int().min(1).default(20),
 
+  // Deletion (DELETE /api/account, DELETE /api/children/:id), per signed-in
+  // parent per 15 minutes, in every environment.
+  ACCOUNT_DELETE_MAX: z.coerce.number().int().min(1).default(5),
+  CHILD_DELETE_MAX: z.coerce.number().int().min(1).default(20),
+
   // Email via Amazon SES. Sending is enabled only when SES_FROM and a region
   // (SES_REGION, else AWS_REGION) are both set; otherwise nothing is sent.
   // Empty values count as unset.

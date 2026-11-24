@@ -85,3 +85,29 @@ export const passwordResetAttemptLimiter = rateLimit({
   legacyHeaders: false,
   message: RESET_LIMITED,
 });
+
+const DELETION_LIMITED = { success: false, message: 'Too many attempts. Please wait a while and try again.' };
+
+/**
+ * Account deletion attempts per signed-in parent (ACCOUNT_DELETE_MAX per 15
+ * minutes), so the password check cannot be used to guess passwords. Mounted
+ * after authMiddleware, in every environment.
+ */
+export const accountDeletionLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: env.ACCOUNT_DELETE_MAX,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  keyGenerator: (req) => (req as AuthenticatedRequest).user?.userId ?? ipKeyGenerator(req.ip ?? ''),
+  message: DELETION_LIMITED,
+});
+
+/** Child profile deletions per signed-in parent (CHILD_DELETE_MAX per 15 minutes). */
+export const childDeletionLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: env.CHILD_DELETE_MAX,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  keyGenerator: (req) => (req as AuthenticatedRequest).user?.userId ?? ipKeyGenerator(req.ip ?? ''),
+  message: DELETION_LIMITED,
+});

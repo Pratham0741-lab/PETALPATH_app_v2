@@ -181,14 +181,7 @@ describe('Repository Layer - Integration Tests', () => {
       expect(updated.name).toBe('Updated');
     });
 
-    it('should soft-delete a child', async () => {
-      const user = await createTestUser();
-      const created = await childrenRepository.create({ userId: user.id, name: 'Deletable', age: 5, ageGroup: '3-5', avatar: 'd.png' });
-      const deleted = await childrenRepository.delete(created.id);
-      expect(deleted.deletedAt).not.toBeNull();
-      const found = await childrenRepository.findById(created.id);
-      expect(found).toBeNull();
-    });
+    // Child deletion is a hard delete now: account-deletion.test.ts.
 
     it('should return null for non-existent child', async () => {
       const found = await childrenRepository.findById('non-existent-id');

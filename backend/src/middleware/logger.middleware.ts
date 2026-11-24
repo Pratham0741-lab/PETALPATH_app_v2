@@ -1,5 +1,6 @@
 import pinoHttp from 'pino-http';
 import { logger } from '../utils/logger.js';
+import { logSafeUrl } from '../utils/log-safe-url.js';
 
 const pinoHttpFn = (pinoHttp as any).default || pinoHttp;
 
@@ -35,7 +36,7 @@ export const loggerMiddleware = pinoHttpFn({
       return {
         id: req.id,
         method: req.method,
-        url: req.url,
+        url: logSafeUrl(req.method, req.originalUrl ?? req.url),
         query: req.query ? redactObject(req.query) : undefined,
         // Headers deliberately excluded — no Authorization leak
       };

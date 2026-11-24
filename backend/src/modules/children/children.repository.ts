@@ -30,13 +30,6 @@ export class ChildrenRepository {
       include: { mentor: true },
     });
   }
-
-  async delete(id: string) {
-    return prisma.child.update({
-      where: { id },
-      data: { deletedAt: new Date() },
-    });
-  }
 }
 
 export const childrenRepository = new ChildrenRepository();

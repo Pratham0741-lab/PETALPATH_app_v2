@@ -95,22 +95,7 @@ export class ChildrenController {
     }
   }
 
-  async delete(req: AuthenticatedRequest, res: Response, next: NextFunction) {
-    try {
-      const userId = req.user!.userId;
-      const { id } = req.params;
-      
-      await childrenService.deleteChild(id, userId);
-      logger.info({ childId: id, userId }, 'Child deleted');
-      
-      return res.status(200).json({
-        success: true,
-        data: { id },
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
+  // Deleting a child: account-deletion.controller.ts (hard delete of all their data).
 }
 
 export const childrenController = new ChildrenController();
