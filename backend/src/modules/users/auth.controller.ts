@@ -13,6 +13,9 @@ import {
 import { ValidationError } from '../../utils/errors.js';
 import { AuthenticatedRequest } from '../../middleware/auth.middleware.js';
 
+/** The only response forgot-password ever gives (besides validation and rate-limit errors). */
+export const FORGOT_PASSWORD_MESSAGE = "If an account exists, we've sent instructions";
+
 export class AuthController {
   async googleSignIn(req: Request, res: Response, next: NextFunction) {
     try {
@@ -94,19 +97,20 @@ export class AuthController {
     }
   }
 
+  /**
+   * Always the same 200 body, whatever the email: unknown, Google-only, or a
+   * real email account. Never includes a token or anything about the account.
+   */
   async forgotPassword(req: Request, res: Response, next: NextFunction) {
     try {
       const parsed = ForgotPasswordSchema.safeParse(req.body);
       if (!parsed.success) {
         throw new ValidationError('Validation failed', parsed.error.format());
       }
-      const resetToken = await authService.forgotPassword(parsed.data.email);
+      await authService.requestPasswordReset(parsed.data.email);
       return res.status(200).json({
         success: true,
-        data: { 
-          message: 'Password reset link generated successfully',
-          resetToken
-        },
+        data: { message: FORGOT_PASSWORD_MESSAGE },
       });
     } catch (error) {
       next(error);

@@ -17,6 +17,8 @@ model User {
   passwordHash           String?   @map("password_hash")
   resetPasswordToken     String?   @map("reset_password_token")
   resetPasswordExpires   DateTime? @map("reset_password_expires")
+  // Set when the password is reset; access tokens issued before it are refused.
+  passwordChangedAt      DateTime? @map("password_changed_at")
   role                   String    @default("PARENT") // PARENT, ADMIN, MENTOR
   // Parental consent to store child data, recorded before the first child
   // profile is created. Version of the consent text the parent accepted.

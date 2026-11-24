@@ -137,8 +137,18 @@ export const ForgotPasswordScreen: React.FC = () => {
                       Check Your Email
                     </Text>
                     <Text style={[styles.successMessage, { color: colors.textSecondary }]}>
-                      Password reset instructions have been sent to your email address.
+                      If an account exists for that email, we&apos;ve sent instructions. The code
+                      in the email works once and expires in 30 minutes.
                     </Text>
+                    <Button
+                      title="I have a reset code"
+                      onPress={() => navigation.navigate('ResetPassword', {})}
+                      variant="secondary"
+                      size="lg"
+                      fullWidth
+                      accessibilityLabel="Enter the reset code from the email"
+                      style={styles.requestBtn}
+                    />
                   </View>
                 ) : (
                   <>

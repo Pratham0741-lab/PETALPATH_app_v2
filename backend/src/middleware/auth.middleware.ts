@@ -35,6 +35,18 @@ export const authMiddleware = async (
       return next(new UnauthorizedError('User account not found'));
     }
 
+    // A password reset revokes every session: access tokens issued before the
+    // change are refused. iat has whole-second resolution, so a token from the
+    // same second as the reset is refused too (it may predate the reset).
+    const issuedAt = decoded.iat;
+    if (
+      user.passwordChangedAt &&
+      typeof issuedAt === 'number' &&
+      issuedAt <= Math.floor(user.passwordChangedAt.getTime() / 1000)
+    ) {
+      return next(new UnauthorizedError('Session ended because the password was changed'));
+    }
+
     if (decoded.childId) {
       // Verify child exists, is not deleted, and belongs to the user
       const child = await prisma.child.findFirst({

@@ -24,6 +24,7 @@ export const logger = pino(
     redact: {
       paths: [
         'password',
+        'newPassword',
         'confirmPassword',
         'token',
         'refreshToken',
@@ -36,6 +37,7 @@ export const logger = pino(
         'authorization',
         'req.headers.authorization',
         'req.body.password',
+        'req.body.newPassword',
         'req.body.token',
         'req.body.refreshToken',
       ],

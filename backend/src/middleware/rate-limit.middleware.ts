@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import type { AuthenticatedRequest } from './auth.middleware.js';
 import { env } from '../config/env.js';
@@ -41,4 +42,46 @@ export const feedbackLimiter = rateLimit({
   keyGenerator: (req) =>
     (req as AuthenticatedRequest).user?.userId ?? ipKeyGenerator(req.ip ?? ''),
   message: { success: false, message: 'Too much feedback at once, please try again later.' },
+});
+
+const RESET_LIMITED = { success: false, message: 'Too many requests. Please wait a while and try again.' };
+
+/**
+ * Password reset requests per client IP (PASSWORD_RESET_PER_IP_MAX per 15
+ * minutes). Mounted on the route in every environment.
+ */
+export const passwordResetIpLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: env.PASSWORD_RESET_PER_IP_MAX,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  message: RESET_LIMITED,
+});
+
+/**
+ * Password reset requests per email address (PASSWORD_RESET_PER_EMAIL_MAX per
+ * hour), whatever IP they come from, so one inbox cannot be flooded. Applies to
+ * every address alike, known or not, so a 429 says nothing about whether an
+ * account exists. The key is a hash of the normalised address, so addresses
+ * are not held in memory. Requests without a usable email fall through to
+ * validation (400) without counting.
+ */
+export const passwordResetEmailLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: env.PASSWORD_RESET_PER_EMAIL_MAX,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  skip: (req) => typeof req.body?.email !== 'string' || req.body.email.trim() === '',
+  keyGenerator: (req) =>
+    'reset-email:' + crypto.createHash('sha256').update(String(req.body.email).trim().toLowerCase()).digest('hex'),
+  message: RESET_LIMITED,
+});
+
+/** Reset-code attempts per client IP (PASSWORD_RESET_ATTEMPTS_PER_IP_MAX per 15 minutes). */
+export const passwordResetAttemptLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: env.PASSWORD_RESET_ATTEMPTS_PER_IP_MAX,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  message: RESET_LIMITED,
 });

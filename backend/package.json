@@ -21,6 +21,7 @@
     "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
+    "@aws-sdk/client-sesv2": "^3.1176.0",
     "@prisma/client": "^5.22.0",
     "bcrypt": "^6.0.0",
     "compression": "^1.8.1",

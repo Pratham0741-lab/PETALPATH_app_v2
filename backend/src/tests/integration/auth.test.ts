@@ -272,58 +272,7 @@ describe('Auth Integration', () => {
     });
   });
 
-  describe('POST /api/auth/forgot-password', () => {
-    it('should return 200 and resetToken for valid email', async () => {
-      const user = await createTestUser();
-
-      const res = await request
-        .post('/api/auth/forgot-password')
-        .send({ email: user.email });
-
-      expect(res.status).toBe(200);
-      expect(res.body.success).toBe(true);
-      expect(res.body.data.resetToken).toBeDefined();
-      expect(typeof res.body.data.resetToken).toBe('string');
-    });
-
-    it('should return 404 for non-existent email', async () => {
-      const res = await request
-        .post('/api/auth/forgot-password')
-        .send({ email: `nonexistent-${Date.now()}@example.com` });
-
-      expect(res.status).toBe(404);
-      expect(res.body.success).toBe(false);
-    });
-  });
-
-  describe('POST /api/auth/reset-password', () => {
-    it('should reset password with valid token and return 200', async () => {
-      const user = await createTestUser();
-
-      const forgotRes = await request
-        .post('/api/auth/forgot-password')
-        .send({ email: user.email });
-
-      const resetToken = forgotRes.body.data.resetToken;
-
-      const res = await request
-        .post('/api/auth/reset-password')
-        .send({ token: resetToken, newPassword: 'NewPassword123' });
-
-      expect(res.status).toBe(200);
-      expect(res.body.success).toBe(true);
-      expect(res.body.data.message).toBe('Password reset completed successfully');
-    });
-
-    it('should return 400 with invalid reset token', async () => {
-      const res = await request
-        .post('/api/auth/reset-password')
-        .send({ token: 'invalid-reset-token', newPassword: 'NewPassword123' });
-
-      expect(res.status).toBe(400);
-      expect(res.body.success).toBe(false);
-    });
-  });
+  // Password reset (forgot-password / reset-password): password-reset.test.ts.
 
   describe('POST /api/auth/select-child', () => {
     it('should return 200 with new accessToken that includes childId', async () => {

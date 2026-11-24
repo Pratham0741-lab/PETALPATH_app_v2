@@ -5,6 +5,8 @@ dotenv.config();
 
 const isProduction = process.env.NODE_ENV === 'production';
 
+const blankToUndefined = (v: unknown) => (typeof v === 'string' && v.trim() === '' ? undefined : v);
+
 const envSchema = z.object({
   PORT: z.coerce.number().default(5000),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
@@ -70,6 +72,25 @@ const envSchema = z.object({
   // Per client IP per minute, and for the whole route per hour.
   WAITLIST_RATE_LIMIT_PER_MINUTE: z.coerce.number().int().min(1).default(5),
   WAITLIST_RATE_LIMIT_PER_HOUR: z.coerce.number().int().min(1).default(300),
+
+  // Password reset (POST /api/auth/forgot-password, /reset-password). Mounted
+  // in every environment. Per client IP per 15 minutes, per email address per
+  // hour, and reset attempts per IP per 15 minutes.
+  PASSWORD_RESET_PER_IP_MAX: z.coerce.number().int().min(1).default(10),
+  PASSWORD_RESET_PER_EMAIL_MAX: z.coerce.number().int().min(1).default(3),
+  PASSWORD_RESET_ATTEMPTS_PER_IP_MAX: z.coerce.number().int().min(1).default(20),
+
+  // Email via Amazon SES. Sending is enabled only when SES_FROM and a region
+  // (SES_REGION, else AWS_REGION) are both set; otherwise nothing is sent.
+  // Empty values count as unset.
+  SES_FROM: z.preprocess(blankToUndefined, z.string().email().optional()),
+  SES_REGION: z.preprocess(blankToUndefined, z.string().optional()),
+  AWS_REGION: z.preprocess(blankToUndefined, z.string().optional()),
+
+  // Address the HTTP server binds to. Defaults to 127.0.0.1 in production
+  // (only nginx on the same host can reach it) and 0.0.0.0 elsewhere (a phone
+  // on the LAN can reach a dev server).
+  HOST: z.string().min(1).default(isProduction ? '127.0.0.1' : '0.0.0.0'),
 
   // Number of reverse proxies in front of this process that append to
   // X-Forwarded-For: 1 for nginx only, 2 for CloudFront -> nginx. Unset means

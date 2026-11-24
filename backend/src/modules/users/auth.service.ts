@@ -20,8 +20,35 @@ import {
 import { logger } from '../../utils/logger.js';
 import { prisma } from '../../config/database.js';
 import { verifyGoogleIdToken } from './google-token.js';
+import { getEmailService } from '../../shared/services/email.service.js';
 
 const client = new OAuth2Client(env.GOOGLE_CLIENT_ID[0]);
+
+/** Reset tokens are valid for 30 minutes. */
+export const RESET_TOKEN_TTL_MS = 30 * 60 * 1000;
+
+/** Only this hash is stored; the token itself exists only in the email. */
+export function hashResetToken(token: string): string {
+  return crypto.createHash('sha256').update(token).digest('hex');
+}
+
+function passwordResetEmail(to: string, token: string) {
+  return {
+    to,
+    subject: 'Reset your PetalPath password',
+    text: [
+      'Someone asked to reset the password for your PetalPath account.',
+      '',
+      'Your reset code is:',
+      token,
+      '',
+      'Open the PetalPath app, tap "Forgot password", then "I have a reset code", and paste the code.',
+      'The code works once and expires in 30 minutes.',
+      '',
+      "If you didn't ask for this, you can ignore this email. Your password will not change.",
+    ].join('\n'),
+  };
+}
 
 export class AuthService {
   /**
@@ -177,43 +204,50 @@ export class AuthService {
   }
 
   /**
-   * Request password reset token
+   * Start a password reset.
+   *
+   * Always resolves the same way, whether or not the email belongs to an
+   * account (or to a Google-only account), so the response cannot reveal who
+   * has an account. Nothing about the token is ever returned or logged.
+   *
+   * For an email account: a random token is generated, only its SHA-256 hash is
+   * stored, with a 30-minute expiry. Storing a new hash overwrites the previous
+   * one, so a newer request invalidates any older token. The plain token exists
+   * only in the email.
    */
-  async forgotPassword(email: string) {
-    const user = await usersRepository.findByEmail(email);
-    if (!user) {
-      // To prevent email enumeration, we swallow the error and return success, but locally throw NotFoundError for test assertions if needed
-      // However, spec says: "Use AppError hierarchy. Handle Invalid credentials, User already exists...". Let's throw NotFoundError for users.
-      throw new NotFoundError('User with this email does not exist');
-    }
+  async requestPasswordReset(email: string): Promise<void> {
+    logger.info('reset requested');
 
-    if (user.provider === 'google') {
-      throw new ValidationError('Google account passwords are managed by Google and cannot be reset');
-    }
+    const user = await usersRepository.findByEmail(email.trim());
+    // Unknown email, or an account that signs in with Google: nothing to do.
+    if (!user || user.provider !== 'email' || !user.passwordHash) return;
 
-    const resetToken = crypto.randomBytes(32).toString('hex');
-    const resetExpires = new Date(Date.now() + 3600000); // 1 hour from now
-
+    const token = crypto.randomBytes(32).toString('base64url');
     await usersRepository.update(user.id, {
-      resetPasswordToken: resetToken,
-      resetPasswordExpires: resetExpires,
+      resetPasswordToken: hashResetToken(token),
+      resetPasswordExpires: new Date(Date.now() + RESET_TOKEN_TTL_MS),
     });
 
-    logger.info({ userId: user.id }, 'Generated password reset token');
-    return resetToken;
+    const mail = getEmailService();
+    if (!mail.enabled) return;
+
+    // Not awaited: the response should not take longer for a real account than
+    // for an unknown one. A failure is logged without any detail of the token.
+    void mail.send(passwordResetEmail(user.email, token)).catch((error: unknown) => {
+      logger.error({ error: (error as Error)?.name ?? 'Error' }, 'reset email failed');
+    });
   }
 
   /**
-   * Reset password with valid token
+   * Complete a password reset with a token from the email. Single use: the
+   * stored hash is cleared on success. Every session is revoked: refresh tokens
+   * are deleted, and passwordChangedAt makes authMiddleware reject access tokens
+   * issued before now.
    */
   async resetPassword(data: ResetPasswordInput) {
-    const user = await usersRepository.findByResetToken(data.token);
-    if (!user) {
+    const user = await usersRepository.findByResetToken(hashResetToken(data.token.trim()));
+    if (!user || user.provider !== 'email') {
       throw new ValidationError('Invalid or expired reset token');
-    }
-
-    if (user.provider === 'google') {
-      throw new ValidationError('Cannot reset password for Google-managed accounts');
     }
 
     const salt = await bcrypt.genSalt(10);
@@ -223,9 +257,9 @@ export class AuthService {
       passwordHash,
       resetPasswordToken: null,
       resetPasswordExpires: null,
+      passwordChangedAt: new Date(),
     });
 
-    // Revoke all existing sessions for safety after password change
     await refreshTokenRepository.deleteUserTokens(user.id);
 
     logger.info({ userId: user.id }, 'Password reset completed and sessions revoked');

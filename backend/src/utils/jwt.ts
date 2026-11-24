@@ -28,9 +28,18 @@ export const generateRefreshToken = (payload: RefreshTokenPayload): string => {
   });
 };
 
-export const verifyAccessToken = (token: string): AccessTokenPayload => {
+/** What a verified access token carries: the payload plus its issue time. */
+const VerifiedAccessTokenSchema = AccessTokenPayloadSchema.extend({
+  // Seconds since the epoch, set by jsonwebtoken. Kept (the schema would
+  // otherwise strip it) so authMiddleware can refuse tokens issued before a
+  // password reset.
+  iat: z.number().optional(),
+});
+export type VerifiedAccessToken = z.infer<typeof VerifiedAccessTokenSchema>;
+
+export const verifyAccessToken = (token: string): VerifiedAccessToken => {
   const decoded = jwt.verify(token, env.JWT_SECRET);
-  return AccessTokenPayloadSchema.parse(decoded);
+  return VerifiedAccessTokenSchema.parse(decoded);
 };
 
 export const verifyRefreshToken = (token: string): RefreshTokenPayload => {
