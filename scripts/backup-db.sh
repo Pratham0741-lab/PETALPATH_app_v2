@@ -89,8 +89,14 @@ log "SUCCESS: Backup completed ($FILE_SIZE)"
 
 # ── Prune old backups ──────────────────────────────────────
 
-DELETED="$(find "$BACKUP_DIR" -name "petalpath_*.sql.gz" -mtime +$RETENTION_DAYS -delete -print | wc -l)"
-log "Retention: Removed $DELETED backup(s) older than ${RETENTION_DAYS} days"
+# RETENTION_DAYS is the promise made to parents ("backups keep deleted data
+# for up to 30 days"), so no backup may be older than that. Pruning runs only
+# once a night, so it removes anything older than RETENTION_DAYS - 1 days: a
+# backup is gone before it turns RETENTION_DAYS old. (The previous
+# `-mtime +30` kept files until they were 31+ days old, ~32 by the next run.)
+PRUNE_AFTER_MINUTES=$(( (RETENTION_DAYS - 1) * 24 * 60 ))
+DELETED="$(find "$BACKUP_DIR" -name "petalpath_*.sql.gz" -mmin +$PRUNE_AFTER_MINUTES -delete -print | wc -l)"
+log "Retention: Removed $DELETED backup(s); none is kept ${RETENTION_DAYS} days or longer"
 
 # ── Summary ────────────────────────────────────────────────
 
