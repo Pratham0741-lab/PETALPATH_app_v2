@@ -8,6 +8,7 @@ import { useNavigation } from '@react-navigation/native';
 import { AppShell, Card, PageHeader, PetalIcon, PrimaryButton } from '../../components/design';
 import { useAppStore } from '../../store/appStore';
 import { recordConsent } from '../../features/baseline/consent';
+import { SUPPORT_EMAIL } from '../../config/support';
 import { colors, radius, spacing, typography } from '../../theme';
 
 export const ParentConsentScreen: React.FC = () => {
@@ -37,14 +38,14 @@ export const ParentConsentScreen: React.FC = () => {
               • Their first name, age, avatar and learning companion, so the app can greet them and choose lessons for their age.
             </Text>
             <Text style={[typography.presets.body, styles.point]}>
-              • Their learning progress, including a short starting check of what they already know. This is stored only
-              against a random ID, never with their name.
+              • Their learning progress, including a short starting check of what they already know. Your child&apos;s
+              progress is saved with their first name under your account.
             </Text>
             <Text style={[typography.presets.body, styles.point]}>
               • We never keep their photo or birth date, and we never record their voice or camera for the starting check.
             </Text>
             <Text style={[typography.presets.body, styles.point]}>
-              • You can delete a child's profile and its data at any time from the profile settings.
+              • To delete your child&apos;s profile or data, email us at {SUPPORT_EMAIL}.
             </Text>
           </View>
         </Card>

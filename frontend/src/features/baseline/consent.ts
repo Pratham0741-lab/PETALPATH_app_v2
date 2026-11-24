@@ -8,7 +8,10 @@ import { apiClient } from '../../services/api/apiClient';
 import { storageService, StorageKeys } from '../../services/storage';
 
 /** Bump when the consent text changes; parents are asked again. */
-export const CONSENT_VERSION = '2026-10-v1';
+// 2026-11-v2: progress is described as saved with the child's first name under
+// the parent's account, and deletion is by emailing support (there is no
+// in-app delete), replacing two statements that were not true.
+export const CONSENT_VERSION = '2026-11-v2';
 
 interface ConsentRecord {
   version: string;
