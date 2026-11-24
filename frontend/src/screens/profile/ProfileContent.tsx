@@ -78,6 +78,8 @@ import type { Stat } from '../../components/design';
 import { useUsageStore } from '../../features/usageLimit/usageStore';
 import { UsageSettingsSheet } from '../../features/usageLimit/UsageSettingsSheet';
 import { gradeForAge, gradeLabel } from '../../config/grades';
+import { childDeletionMessage, deleteChildProfile, outcomeMessage } from '../../features/deletion/deletionFlow';
+import { forgetChildLocally, refreshProfilesAfterDeletion } from '../../features/deletion/deviceData';
 
 export type ProfileVariant = 'mobile' | 'tablet' | 'desktop';
 
@@ -210,6 +212,35 @@ export const ProfileContent: React.FC<ProfileContentProps> = ({ variant }) => {
       await clearSession();
       queryClient.clear();
     }
+  };
+
+  // ---------------------------------------------------------------- deletion
+  const [deletingChild, setDeletingChild] = useState(false);
+
+  const runChildDeletion = async (child: { id: string; name: string }) => {
+    setDeletingChild(true);
+    const outcome = await deleteChildProfile(child.id, {
+      deleteOnServer: (id) => api.delete(`/children/${id}`),
+      forgetLocally: (id) => forgetChildLocally(id, queryClient),
+      refreshProfiles: () => refreshProfilesAfterDeletion(),
+    });
+    setDeletingChild(false);
+    const { title, message } = outcomeMessage(outcome, 'child');
+    customAlert(title, message);
+  };
+
+  const confirmChildDeletion = (child: { id: string; name: string }) =>
+    customAlert(`Delete ${child.name}'s profile?`, childDeletionMessage(child.name), [
+      { text: 'Keep profile', style: 'cancel' },
+      { text: 'Delete forever', style: 'destructive', onPress: () => void runChildDeletion(child) },
+    ]);
+
+  const pickChildToDelete = () => {
+    if (childrenList.length === 1) return confirmChildDeletion(childrenList[0]);
+    customAlert('Which profile?', 'Choose the child profile to delete.', [
+      ...childrenList.map((c) => ({ text: c.name, onPress: () => confirmChildDeletion(c) })),
+      { text: 'Cancel', style: 'cancel' as const },
+    ]);
   };
 
   // ------------------------------------------------------------------- reset
@@ -667,6 +698,23 @@ export const ProfileContent: React.FC<ProfileContentProps> = ({ variant }) => {
               PetalPath Help Center.
             </Text>
           </ParentSection>
+
+          {/* --------------------------------------------- Delete data for good */}
+          <DestructiveAction
+            title="Delete a child's profile"
+            description="Permanently deletes one child's profile with all of their progress and learning history."
+            buttonLabel="Delete a child's profile"
+            onPress={pickChildToDelete}
+            loading={deletingChild}
+            disabled={deletingChild || childrenList.length === 0}
+          />
+          <DestructiveAction
+            title="Delete my account"
+            description="Permanently deletes your account, every child profile and all of their data. You will be asked to confirm it's you."
+            buttonLabel="Delete my account"
+            onPress={() => navigation.navigate('DeleteAccount')}
+            disabled={deletingChild}
+          />
 
           {/* ------------------------------------------------------- Danger */}
           {!showResetConfirm ? (

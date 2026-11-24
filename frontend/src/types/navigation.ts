@@ -100,6 +100,8 @@ export type RootStackParamList = {
   ReinforcementQueue: undefined;
   Reading: { activityId: string };
   ParentDashboard: undefined;
+  /** Delete my account (parent area only). */
+  DeleteAccount: undefined;
   Analytics: undefined;
   SkillMastery: undefined;
   CurriculumInsights: undefined;

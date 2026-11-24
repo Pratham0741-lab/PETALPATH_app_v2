@@ -9,10 +9,10 @@
  * child everywhere (the phone rule, and the reason this screen exists), and the
  * pane's other two actions moved onto each row as explicit labelled buttons.
  *
- * That also closes a gap rather than trading one: **deleting a profile was
- * impossible on a phone**, because the only delete button lived in the tablet
- * pane. It is now available on every size, in red, behind the same confirm
- * dialog (§26).
+ * Deleting a profile is not offered here. This picker is where a child taps
+ * their own name, and deletion is now permanent (it used to only hide the
+ * profile), so it lives behind the parent gate: Profile → Parents Section →
+ * "Delete a child's profile".
  *
  * The pane's companion detail — the mentor's name *and* description, which the
  * compact rows have no room for — is kept as a card under the list, showing the
@@ -69,7 +69,7 @@ export const ChildSelectionScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const deviceType = useDeviceType();
   const reduceMotion = useReducedMotion();
-  const { activeChild, removeChild, refreshChildren } = useChildStore();
+  const { activeChild, refreshChildren } = useChildStore();
   const { switchChild } = useChildSwitch();
   const [switchAnim] = useState(() => new Animated.Value(1));
 
@@ -123,33 +123,6 @@ export const ChildSelectionScreen: React.FC = () => {
       },
     ]);
   }, [deviceType, navigation, switchChild, switchAnim, reduceMotion]);
-
-  const handleDeleteChild = useCallback((id: string, name: string) => {
-    customAlert(
-      'Delete Profile',
-      `Are you sure you want to delete ${name}'s profile?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await removeChild(id);
-              /* The list on screen comes from the `/children` query, not the
-                 store, so without this the deleted row stayed until the next
-                 pull-to-refresh. */
-              await refetch();
-              customAlert('Success', 'Profile deleted successfully');
-            } catch (err: unknown) {
-              const message = err instanceof Error ? err.message : 'Failed to delete child';
-              customAlert('Error', message);
-            }
-          },
-        },
-      ],
-    );
-  }, [removeChild, refetch]);
 
   const onRefresh = useCallback(() => {
     refreshChildren();
@@ -225,7 +198,6 @@ export const ChildSelectionScreen: React.FC = () => {
             active={activeChild?.id === child.id}
             onActivate={() => handleSelectChild(child)}
             onEdit={() => navigation.navigate('AddChild', { childId: child.id })}
-            onDelete={() => handleDeleteChild(child.id, child.name)}
           />
         ))}
 
@@ -287,8 +259,7 @@ const ChildRow: React.FC<{
   active: boolean;
   onActivate: () => void;
   onEdit: () => void;
-  onDelete: () => void;
-}> = ({ child, active, onActivate, onEdit, onDelete }) => (
+}> = ({ child, active, onActivate, onEdit }) => (
   <Card
     variant={active ? 'selected' : 'raised'}
     accent={colors.primary}
@@ -318,7 +289,7 @@ const ChildRow: React.FC<{
       <PetalIcon name="forward" size={20} color={colors.textMuted} />
     </View>
 
-    {/* The tablet pane's other two actions, on the row they belong to. */}
+    {/* Editing only: deletion is in the parent area (see the note at the top). */}
     <View style={styles.rowActions}>
       <SecondaryButton
         label="Edit"
@@ -327,16 +298,6 @@ const ChildRow: React.FC<{
         tone="purple"
         onPress={onEdit}
         accessibilityLabel={`Edit ${child.name}'s profile`}
-        style={styles.rowAction}
-      />
-      <SecondaryButton
-        label="Delete"
-        icon="trash"
-        size="sm"
-        tone="danger"
-        onPress={onDelete}
-        accessibilityLabel={`Delete ${child.name}'s profile`}
-        accessibilityHint="Asks you to confirm first"
         style={styles.rowAction}
       />
     </View>

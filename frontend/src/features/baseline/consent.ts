@@ -11,7 +11,9 @@ import { storageService, StorageKeys } from '../../services/storage';
 // 2026-11-v2: progress is described as saved with the child's first name under
 // the parent's account, and deletion is by emailing support (there is no
 // in-app delete), replacing two statements that were not true.
-export const CONSENT_VERSION = '2026-11-v2';
+// 2026-11-v3: deletion is in the app (Parents Section) as well as by email,
+// and the text says backups may keep a copy for up to 30 days.
+export const CONSENT_VERSION = '2026-11-v3';
 
 interface ConsentRecord {
   version: string;

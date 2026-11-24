@@ -9,6 +9,7 @@ import { AppShell, Card, PageHeader, PetalIcon, PrimaryButton } from '../../comp
 import { useAppStore } from '../../store/appStore';
 import { recordConsent } from '../../features/baseline/consent';
 import { SUPPORT_EMAIL } from '../../config/support';
+import { BACKUP_RETENTION_DAYS } from '../../config/privacy';
 import { colors, radius, spacing, typography } from '../../theme';
 
 export const ParentConsentScreen: React.FC = () => {
@@ -45,7 +46,9 @@ export const ParentConsentScreen: React.FC = () => {
               • We never keep their photo or birth date, and we never record their voice or camera for the starting check.
             </Text>
             <Text style={[typography.presets.body, styles.point]}>
-              • To delete your child&apos;s profile or data, email us at {SUPPORT_EMAIL}.
+              • You can delete a child&apos;s profile, or your whole account with all of its data, at any time in
+              Profile → Parents Section, or by emailing us at {SUPPORT_EMAIL}. Deletion is permanent; our
+              nightly backups may keep a copy for up to {BACKUP_RETENTION_DAYS} days before it is gone.
             </Text>
           </View>
         </Card>

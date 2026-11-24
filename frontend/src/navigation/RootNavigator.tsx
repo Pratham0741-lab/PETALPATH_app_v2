@@ -99,6 +99,7 @@ import { useSidebarWidth } from '../components/navigation/sidebarLayout';
 import { BaselineFlow } from '../screens/baseline/BaselineFlow';
 import { useNetworkStatus } from '../hooks/useNetworkStatus';
 import { UsageLimitController } from '../features/usageLimit/UsageLimitController';
+import { DeleteAccountScreen } from '../screens/parent/DeleteAccountScreen';
 import { ParentConsentScreen } from '../screens/baseline/ParentConsentScreen';
 import { useBaselineStore, BASELINE_ACTIVE } from '../features/baseline/baselineStore';
 
@@ -305,6 +306,7 @@ export const RootNavigator = () => {
         <Stack.Screen name="ReinforcementQueue" component={ReinforcementQueueScreen} />
         <Stack.Screen name="Reading" component={ReadingScreen} />
         <Stack.Screen name="ParentDashboard" component={ParentDashScreen} />
+        <Stack.Screen name="DeleteAccount" component={DeleteAccountScreen} />
         <Stack.Screen name="Analytics" component={AnalyticsScreen} />
         <Stack.Screen name="SkillMastery" component={SkillMasteryScreen} />
         <Stack.Screen name="CurriculumInsights" component={CurriculumInsightsScreen} />
@@ -404,6 +406,7 @@ export const RootNavigator = () => {
           <Stack.Screen name="ReinforcementQueue" component={ReinforcementQueueScreen} />
           <Stack.Screen name="Reading" component={ReadingScreen} />
           <Stack.Screen name="ParentDashboard" component={ParentDashScreen} />
+          <Stack.Screen name="DeleteAccount" component={DeleteAccountScreen} />
           <Stack.Screen name="Analytics" component={AnalyticsScreen} />
           <Stack.Screen name="SkillMastery" component={SkillMasteryScreen} />
           <Stack.Screen name="CurriculumInsights" component={CurriculumInsightsScreen} />
