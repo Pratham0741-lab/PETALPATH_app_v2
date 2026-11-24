@@ -19,8 +19,10 @@ const startServer = async () => {
 
     const listenWithRetry = (port: number | string, retries = 5, delay = 500): Promise<any> => {
       return new Promise((resolve, reject) => {
-        const server = app.listen(port, () => {
-          logger.info(`Server listening on port ${port} in ${env.NODE_ENV} mode.`);
+        // HOST: 127.0.0.1 in production (reachable only through nginx on this
+        // machine), 0.0.0.0 in development. See config/env.ts.
+        const server = app.listen(Number(port), env.HOST, () => {
+          logger.info(`Server listening on ${env.HOST}:${port} in ${env.NODE_ENV} mode.`);
           resolve(server);
         });
 
