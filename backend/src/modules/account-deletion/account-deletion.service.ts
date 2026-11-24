@@ -12,7 +12,7 @@
 import bcrypt from 'bcrypt';
 import type { Prisma, PrismaClient } from '@prisma/client';
 import { prisma } from '../../config/database.js';
-import { NotFoundError, UnauthorizedError } from '../../utils/errors.js';
+import { ForbiddenError, NotFoundError, UnauthorizedError } from '../../utils/errors.js';
 import { authService } from '../users/auth.service.js';
 import { CHILD_STEPS, USER_STEPS, countQueries, deleteSql, type Step } from './deletion-plan.js';
 
@@ -109,7 +109,9 @@ export class AccountDeletionService {
     user: { passwordHash: string | null; googleId: string | null },
     reauth: Reauth,
   ): Promise<void> {
-    const refused = () => new UnauthorizedError('Please confirm it is you: sign in again to delete the account');
+    // 403, not 401: the caller is signed in, but has not proved it is them.
+    // (The app treats 401 as an expired session and would refresh and retry.)
+    const refused = () => new ForbiddenError('Please confirm it is you: sign in again to delete the account');
 
     if ('password' in reauth) {
       if (!user.passwordHash) throw refused();

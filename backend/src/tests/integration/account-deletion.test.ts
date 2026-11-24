@@ -297,7 +297,7 @@ describe('DELETE /api/account', () => {
   it('refuses a wrong password, a missing proof, or both proofs; nothing is deleted', async () => {
     const a = await family('A', 1);
     const before = await countAllTables();
-    expect((await deleteAccount(a.accessToken, { password: 'wrong-password' })).status).toBe(401);
+    expect((await deleteAccount(a.accessToken, { password: 'wrong-password' })).status).toBe(403);
     expect((await deleteAccount(a.accessToken, {})).status).toBe(400);
     expect((await deleteAccount(a.accessToken, { password: a.password, googleIdToken: 'x' })).status).toBe(400);
     expect(await countAllTables()).toEqual(before);
@@ -327,13 +327,13 @@ describe('DELETE /api/account', () => {
         { googleIdToken: googleToken({ sub, iat: stale }) }, // valid but not recent
         { googleIdToken: googleToken({ sub: 'someone-else' }) }, // another Google account
       ];
-      for (const body of attempts) expect((await deleteAccount(a.accessToken, body)).status).toBe(401);
+      for (const body of attempts) expect((await deleteAccount(a.accessToken, body)).status).toBe(403);
       expect(await countAllTables()).toEqual(before);
     });
 
     it('a Google-only account cannot use a password', async () => {
       const a = await family('A', 0, 'google');
-      expect((await deleteAccount(a.accessToken, { password: a.password })).status).toBe(401);
+      expect((await deleteAccount(a.accessToken, { password: a.password })).status).toBe(403);
     });
   });
 
@@ -355,7 +355,7 @@ describe('DELETE /api/account', () => {
 
   it(`limits each parent to ${ACCOUNT_MAX} attempts per window`, async () => {
     const a = await family('A', 0);
-    for (let i = 0; i < ACCOUNT_MAX; i++) expect((await deleteAccount(a.accessToken, { password: 'wrong' })).status).toBe(401);
+    for (let i = 0; i < ACCOUNT_MAX; i++) expect((await deleteAccount(a.accessToken, { password: 'wrong' })).status).toBe(403);
     expect((await deleteAccount(a.accessToken, { password: a.password })).status).toBe(429);
     expect(await prisma.user.findUnique({ where: { id: a.userId } })).not.toBeNull();
   });

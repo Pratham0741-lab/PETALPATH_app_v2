@@ -46,7 +46,7 @@ export class AccountDeletionController {
       return res.status(200).json({ success: true, data: { deleted: true } });
     } catch (error) {
       const status = (error as { statusCode?: number }).statusCode;
-      logOutcome(req, 'account', status === 401 ? 'reauth_refused' : status === 400 ? 'invalid' : 'failed');
+      logOutcome(req, 'account', status === 403 ? 'reauth_refused' : status === 400 ? 'invalid' : 'failed');
       next(error);
     }
   }
