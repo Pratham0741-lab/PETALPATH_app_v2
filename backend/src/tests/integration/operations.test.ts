@@ -20,16 +20,12 @@ describe('Operations - Health Endpoints', () => {
     expect(res.body.database).toBe('connected');
   });
 
-  it('GET /health returns full health data', async () => {
+  it('GET /health returns status only, no server internals', async () => {
     const res = await request(app).get('/health');
     expect(res.status).toBe(200);
     expect(res.body.status).toBe('ok');
-    expect(res.body).toHaveProperty('version');
-    expect(res.body).toHaveProperty('environment');
-    expect(res.body).toHaveProperty('database');
-    expect(res.body).toHaveProperty('memory');
-    expect(res.body).toHaveProperty('process');
-    expect(res.body).toHaveProperty('metrics');
+    expect(res.body.database).toBe('connected');
+    expect(Object.keys(res.body).sort()).toEqual(['database', 'status', 'timestamp', 'uptime', 'version']);
   });
 });
 

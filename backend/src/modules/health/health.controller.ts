@@ -1,7 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
 import { prisma } from '../../config/database.js';
-import { env } from '../../config/env.js';
-import { metricsService } from '../metrics/metrics.service.js';
 
 const startTime = Date.now();
 
@@ -32,6 +30,12 @@ export class HealthController {
     }
   }
 
+  /**
+   * Public, unauthenticated: status only. It used to also return the
+   * environment, Node version, pid, platform, memory and request metrics, which
+   * tell an attacker about the server and help nobody using the app (the app
+   * reads `status` only). Those stay in logs and on the server itself.
+   */
   async full(req: Request, res: Response, next: NextFunction) {
     let dbConnected = false;
     try {
@@ -41,30 +45,13 @@ export class HealthController {
       dbConnected = false;
     }
 
-    const metrics = metricsService.getSnapshot();
-    const memory = process.memoryUsage();
-
-    const healthData = {
+    res.status(200).json({
       status: dbConnected ? 'ok' : 'degraded',
       version: '1.0.0',
-      environment: env.NODE_ENV,
       timestamp: new Date().toISOString(),
       uptime: Math.floor((Date.now() - startTime) / 1000),
       database: dbConnected ? 'connected' : 'disconnected',
-      memory: {
-        heapUsed: Math.round(memory.heapUsed / 1024 / 1024),
-        heapTotal: Math.round(memory.heapTotal / 1024 / 1024),
-        rss: Math.round(memory.rss / 1024 / 1024),
-      },
-      process: {
-        pid: process.pid,
-        nodeVersion: process.version,
-        platform: process.platform,
-      },
-      metrics,
-    };
-
-    res.status(200).json(healthData);
+    });
   }
 }
 
