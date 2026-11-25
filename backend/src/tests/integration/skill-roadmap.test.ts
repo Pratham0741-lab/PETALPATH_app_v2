@@ -252,6 +252,43 @@ describe('Skill Roadmap (Phase 5.5.3)', () => {
     });
   });
 
+  describe('review timing (fix: REVIEW only when due)', () => {
+    it('a mastered skill stays MASTERED until its review is due, then moves to REVIEW', async () => {
+      await placementService.restartPlacement(child.id);
+      const progress = await placementService.startPlacement(child.id, assessment.id);
+      await placementService.submitAnswer(child.id, progress.attemptId, assessment.questions[0].id, '2');
+      await placementService.submitAnswer(child.id, progress.attemptId, assessment.questions[1].id, '4');
+      await placementService.completePlacement(child.id, progress.attemptId);
+      await prisma.reinforcementQueue.deleteMany({ where: { childId: child.id, skillId: rootSkill.id } });
+
+      const sectionOf = async () => {
+        const roadmap = await skillRoadmapService.generateRoadmap(child.id);
+        return roadmap.sections.find((s) => s.skills.some((k) => k.skillId === rootSkill.id))?.type;
+      };
+      const day = 24 * 60 * 60 * 1000;
+
+      // Review coming up in 2 days (the mastered interval): not due yet.
+      await prisma.skillHealth.updateMany({
+        where: { childId: child.id, skillId: rootSkill.id },
+        data: { nextReviewDate: new Date(Date.now() + 2 * day) },
+      });
+      expect(await sectionOf()).toBe('MASTERED');
+
+      // Review date passed: due.
+      await prisma.skillHealth.updateMany({
+        where: { childId: child.id, skillId: rootSkill.id },
+        data: { nextReviewDate: new Date(Date.now() - 2 * day) },
+      });
+      expect(await sectionOf()).toBe('REVIEW');
+
+      // Tests in this file share the child: leave the review not yet due again.
+      await prisma.skillHealth.updateMany({
+        where: { childId: child.id, skillId: rootSkill.id },
+        data: { nextReviewDate: new Date(Date.now() + 2 * day) },
+      });
+    });
+  });
+
   describe('getRoadmap', () => {
     it('should return existing roadmap or generate new one', async () => {
       await skillRoadmapService.generateRoadmap(child.id);

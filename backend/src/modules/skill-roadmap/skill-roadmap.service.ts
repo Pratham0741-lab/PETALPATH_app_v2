@@ -1,6 +1,7 @@
 import { prisma } from '../../config/database.js';
 import { skillRoadmapRepository } from './skill-roadmap.repository.js';
 import { logger } from '../../utils/logger.js';
+import { isReviewDue } from '../mastery/review-cadence.js';
 import type {
   AdaptiveRoadmap,
   RoadmapSection,
@@ -100,7 +101,16 @@ export class SkillRoadmapService {
       };
 
       if (curriculumState === 'COMPLETED') {
-        if (reviewUrgency > 0 || reviewSkillIds.has(skillId)) {
+        /*
+         * REVIEW only when a review is actually due, or reinforcement queued it.
+         * `reviewUrgency` also rises for reviews coming up within 7 days, which
+         * is right for sorting but was used here as the section test too: with
+         * the 2-day review interval for mastered skills, every newly mastered
+         * skill landed in REVIEW as "Due for maintenance review" before it was
+         * due, and the MASTERED section stayed empty.
+         */
+        const reviewDue = health?.nextReviewDate != null && isReviewDue(health.nextReviewDate);
+        if (reviewDue || reviewSkillIds.has(skillId)) {
           roadmapSkill.reason = this.computeReviewReason(health, reviewSkillIds.has(skillId));
           reviewSection.push(roadmapSkill);
         } else {
@@ -366,6 +376,7 @@ export class SkillRoadmapService {
     return prereqIds.every((id) => masteredSet.has(id));
   }
 
+  /** Sort weight only (higher = sooner); which section a skill is in is decided separately. */
   private computeReviewUrgency(
     curriculumState: string,
     inReinforcementQueue: boolean,
