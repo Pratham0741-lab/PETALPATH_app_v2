@@ -7,7 +7,7 @@ import { SCREEN_BACKGROUNDS } from '../../assets/backgrounds';
 import { useChildStore } from '../../store/childStore';
 import { enhanceMentor, MENTORS } from '../../constants/mentors';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
-import { UniversalSpeechRecognizer } from '../../utils/speechRecognition';
+import { SPEECH_UNAVAILABLE, UniversalSpeechRecognizer, isSpeechAvailable } from '../../utils/speechRecognition';
 import {
   getActivityPosition,
   getNextActivity,
@@ -198,6 +198,8 @@ export const SpeakContent: React.FC<{ variant?: SpeakVariant }> = ({ variant = '
   const [recognizer, setRecognizer] = useState<UniversalSpeechRecognizer | null>(null);
   const [localRecording, setLocalRecording] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  /** This phone can't recognise speech (see config/speech.ts): offer a skip. */
+  const [speechUnavailable, setSpeechUnavailable] = useState(false);
 
   const reduceMotion = useReducedMotion();
   const activeChild = useChildStore((state) => state.activeChild);
@@ -241,8 +243,13 @@ export const SpeakContent: React.FC<{ variant?: SpeakVariant }> = ({ variant = '
   useEffect(() => {
     const rec = new UniversalSpeechRecognizer();
     setRecognizer(rec);
+    let alive = true;
+    void isSpeechAvailable().then((ok) => {
+      if (alive && !ok) setSpeechUnavailable(true);
+    });
 
     return () => {
+      alive = false;
       rec.stop();
     };
   }, []);
@@ -270,6 +277,13 @@ export const SpeakContent: React.FC<{ variant?: SpeakVariant }> = ({ variant = '
         (err) => {
           if (__DEV__) console.warn('Speech recognition error:', err);
           setLocalRecording(false);
+
+          // Not the child's fault and not worth retrying: offer the skip instead.
+          if (err?.message === SPEECH_UNAVAILABLE) {
+            setSpeechUnavailable(true);
+            setErrorMessage(null);
+            return;
+          }
 
           let friendlyMsg = 'Speech recognition failed.';
           if (err?.message) {
@@ -307,6 +321,15 @@ export const SpeakContent: React.FC<{ variant?: SpeakVariant }> = ({ variant = '
 
   const handleSkipOrForceComplete = async () => {
     await completeActivity(90);
+  };
+
+  /**
+   * Skip when this phone can't recognise speech. Completes the activity so the
+   * lesson can finish, with a score of 0: nothing was spoken, so no stars are
+   * claimed for it.
+   */
+  const handleUnavailableSkip = async () => {
+    await completeActivity(0);
   };
 
   /** Real position in the lesson, replacing the hard-coded four step dots. */
@@ -420,6 +443,11 @@ export const SpeakContent: React.FC<{ variant?: SpeakVariant }> = ({ variant = '
 
           {stars !== null ? <StarRating value={stars ?? 0} max={3} size="md" animate /> : null}
         </Card>
+      ) : speechUnavailable && !isCompleted ? (
+        <FeedbackBanner
+          tone="incorrect"
+          message="Speaking practice isn't available on this phone. You can skip this activity."
+        />
       ) : errorMessage ? (
         <FeedbackBanner tone="incorrect" message={errorMessage} />
       ) : (
@@ -460,6 +488,17 @@ export const SpeakContent: React.FC<{ variant?: SpeakVariant }> = ({ variant = '
         iconRight="forward"
         tone="green"
         onPress={handleNextActivity}
+      />
+    </View>
+  ) : speechUnavailable ? (
+    <View style={styles.skipRow}>
+      <SecondaryButton
+        label="Skip this activity"
+        iconRight="forward"
+        size="sm"
+        fullWidth={false}
+        onPress={handleUnavailableSkip}
+        accessibilityHint="Speaking practice isn't available on this phone. Skips it without stars."
       />
     </View>
   ) : process.env.EXPO_PUBLIC_ENABLE_DEV_TOOLS === 'true' ? (
