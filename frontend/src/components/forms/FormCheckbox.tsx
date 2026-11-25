@@ -7,11 +7,24 @@ import { spacing } from '../../theme/spacing';
 import { radius } from '../../theme/radius';
 import { typography } from '../../theme/typography';
 
+export interface CheckboxLink {
+  /** Visible link text, e.g. "Terms of Service". */
+  label: string;
+  onPress: () => void;
+}
+
 interface FormCheckboxProps {
   name: string;
   control: Control<any>;
   label: string;
   disabled?: boolean;
+  /**
+   * Links shown under the label (e.g. the documents being accepted). Each is
+   * its own focusable "link" element, outside the checkbox's touch area, so a
+   * screen reader announces and activates them separately and a tap on a link
+   * never toggles the box.
+   */
+  links?: readonly CheckboxLink[];
 }
 
 export const FormCheckbox: React.FC<FormCheckboxProps> = ({
@@ -19,6 +32,7 @@ export const FormCheckbox: React.FC<FormCheckboxProps> = ({
   control,
   label,
   disabled = false,
+  links,
 }) => {
   const {
     field: { onChange, value },
@@ -69,6 +83,23 @@ export const FormCheckbox: React.FC<FormCheckboxProps> = ({
           {label}
         </Text>
       </Pressable>
+      {links && links.length > 0 ? (
+        <View style={styles.links}>
+          {links.map((link) => (
+            <Pressable
+              key={link.label}
+              onPress={link.onPress}
+              accessibilityRole="link"
+              accessibilityLabel={link.label}
+              accessibilityHint="Opens in your browser"
+              hitSlop={8}
+              style={({ pressed }) => [styles.linkTarget, pressed ? styles.linkPressed : undefined]}
+            >
+              <Text style={styles.link}>{link.label}</Text>
+            </Pressable>
+          ))}
+        </View>
+      ) : null}
       {error ? (
         <Text
           style={styles.errorText}
@@ -119,6 +150,27 @@ const styles = StyleSheet.create({
   },
   labelDisabled: {
     opacity: 0.5,
+  },
+  links: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    columnGap: spacing.lg,
+    // Lined up under the label, past the 24px box and its margin.
+    marginLeft: 24 + spacing.sm,
+    marginTop: spacing.xs,
+  },
+  linkTarget: {
+    minHeight: 44,
+    justifyContent: 'center',
+  },
+  linkPressed: {
+    opacity: 0.6,
+  },
+  link: {
+    fontSize: typography.sizes.body,
+    color: colors.primary,
+    textDecorationLine: 'underline',
+    fontFamily: typography.families.rounded,
   },
   errorText: {
     fontSize: typography.sizes.caption,

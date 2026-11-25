@@ -23,7 +23,7 @@ export const registerSchema = z.object({
   password: passwordWithStrengthSchema,
   confirmPassword: z.string(),
   acceptTerms: z.literal(true, {
-    message: 'You must accept the terms and conditions',
+    message: 'Please accept the Terms of Service and Privacy Policy to continue',
   }),
 }).refine((data) => data.password === data.confirmPassword, {
   message: 'Passwords do not match',

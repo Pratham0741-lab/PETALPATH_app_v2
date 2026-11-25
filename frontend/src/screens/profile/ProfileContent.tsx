@@ -78,6 +78,8 @@ import type { Stat } from '../../components/design';
 import { useUsageStore } from '../../features/usageLimit/usageStore';
 import { UsageSettingsSheet } from '../../features/usageLimit/UsageSettingsSheet';
 import { gradeForAge, gradeLabel } from '../../config/grades';
+import { PRIVACY_URL, TERMS_URL, openExternalPage } from '../../config/legal';
+import { SUPPORT_EMAIL } from '../../config/support';
 import { childDeletionMessage, deleteChildProfile, outcomeMessage } from '../../features/deletion/deletionFlow';
 import { forgetChildLocally, refreshProfilesAfterDeletion } from '../../features/deletion/deviceData';
 
@@ -681,6 +683,21 @@ export const ProfileContent: React.FC<ProfileContentProps> = ({ variant }) => {
               Your child’s learning activity is stored securely and used only to personalize their
               experience. We never sell personal information.
             </Text>
+            <ParentRow
+              label="Privacy Policy"
+              description="Opens in your browser"
+              icon="info"
+              accessibilityRole="link"
+              onPress={() => void openExternalPage(PRIVACY_URL)}
+            />
+            <ParentRow
+              label="Terms of Service"
+              description="Opens in your browser"
+              icon="info"
+              accessibilityRole="link"
+              divided
+              onPress={() => void openExternalPage(TERMS_URL)}
+            />
 
             <View style={styles.divider} />
 
@@ -694,8 +711,7 @@ export const ProfileContent: React.FC<ProfileContentProps> = ({ variant }) => {
 
             <Text style={[typography.presets.eyebrow, styles.muted]}>Help &amp; Support</Text>
             <Text style={[typography.presets.caption, styles.prose]}>
-              For questions or assistance, contact your program administrator or visit the
-              PetalPath Help Center.
+              For questions or help, email us at {SUPPORT_EMAIL}.
             </Text>
           </ParentSection>
 

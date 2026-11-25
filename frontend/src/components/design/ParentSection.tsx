@@ -97,6 +97,8 @@ export interface ParentRowProps {
   onPress?: () => void;
   /** Hairline separator above the row — use on every row but the first. */
   divided?: boolean;
+  /** 'link' for rows that open a web page; default 'button'. */
+  accessibilityRole?: 'button' | 'link';
   style?: StyleProp<ViewStyle>;
 }
 
@@ -110,6 +112,7 @@ export const ParentRow: React.FC<ParentRowProps> = ({
   right,
   onPress,
   divided = false,
+  accessibilityRole = 'button',
   style,
 }) => {
   const body = (
@@ -152,7 +155,7 @@ export const ParentRow: React.FC<ParentRowProps> = ({
     <View style={[divided && styles.divided, style]}>
       <Pressable
         onPress={onPress}
-        accessibilityRole="button"
+        accessibilityRole={accessibilityRole}
         accessibilityLabel={label}
         accessibilityHint={description}
         style={({ pressed }) => (pressed ? styles.pressed : undefined)}

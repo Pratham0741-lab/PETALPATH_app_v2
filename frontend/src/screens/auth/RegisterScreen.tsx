@@ -32,6 +32,7 @@ import { toUserMessage } from '../../api/errors';
 import type { AuthStackParamList } from '../../types/navigation';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { z } from 'zod';
+import { PRIVACY_URL, TERMS_URL, openExternalPage } from '../../config/legal';
 
 type RegisterFormData = z.infer<typeof registerSchema>;
 type NavigationProp = NativeStackNavigationProp<AuthStackParamList, 'Register'>;
@@ -159,8 +160,12 @@ export const RegisterScreen: React.FC = () => {
                 <FormCheckbox
                   name="acceptTerms"
                   control={control as any}
-                  label="I accept the Terms and Conditions"
+                  label="I have read and accept the Terms of Service and Privacy Policy"
                   disabled={isLoading}
+                  links={[
+                    { label: 'Terms of Service', onPress: () => void openExternalPage(TERMS_URL) },
+                    { label: 'Privacy Policy', onPress: () => void openExternalPage(PRIVACY_URL) },
+                  ]}
                 />
 
                 <Button
