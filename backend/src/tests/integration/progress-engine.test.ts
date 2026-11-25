@@ -5,6 +5,7 @@ import { progressService } from '../../modules/progress/progress.service.js';
 import { rewardService } from '../../modules/rewards/rewards.service.js';
 import { cleanDatabase } from '../helpers/factories.js';
 import { jest } from '@jest/globals';
+import { engineConfig } from '../../shared/config/engine.config.js';
 
 async function seedCurriculumForTests() {
   const allCurricula = curriculumLoader.loadAllCurricula();
@@ -118,32 +119,36 @@ describe('Phase 3 — Student Progress & Learning Engine Tests', () => {
     });
 
     it('should evaluate lesson unlock correctly based on prerequisite mastery thresholds', () => {
+      /*
+       * Rule changed in 85806ba (2026-08-27), unlock-policy.ts: one policy for
+       * every gate. A finished prerequisite unlocks the lesson once the weighted
+       * prerequisite mastery reaches min(node required_score,
+       * unified.unlock.weightedThreshold) and no prerequisite is below
+       * perPrerequisiteFloor. It used to require every prerequisite to reach the
+       * node's required_score (80); the threshold is now 70.
+       */
       const gradeLessons = curriculumService.getLessonsInCurriculumOrder('prenursery');
       const lessonWithMasteryPrereq = gradeLessons.find(
-        (n) => n.prerequisites && n.prerequisites.length > 0 && n.mastery
+        (n) => n.prerequisites && n.prerequisites.length === 1 && n.mastery
       );
       if (!lessonWithMasteryPrereq) return;
 
       const prereqId = lessonWithMasteryPrereq.prerequisites[0];
-      const requiredScore = lessonWithMasteryPrereq.mastery.required_score;
-
-      // Completed but mastery score not met -> remains locked
-      let isUnlocked = curriculumEngineService.isLessonUnlocked(
-        lessonWithMasteryPrereq.id,
-        gradeLessons,
-        [{ lessonId: prereqId, status: 'COMPLETED' }],
-        [{ topicId: prereqId, mastery: requiredScore - 1 }]
+      const threshold = Math.min(
+        lessonWithMasteryPrereq.mastery.required_score,
+        engineConfig.unified.unlock.weightedThreshold,
       );
-      expect(isUnlocked).toBe(false);
+      const check = (mastery: number, status = 'COMPLETED') =>
+        curriculumEngineService.isLessonUnlocked(
+          lessonWithMasteryPrereq.id,
+          gradeLessons,
+          [{ lessonId: prereqId, status }],
+          [{ topicId: prereqId, mastery }]
+        );
 
-      // Completed and mastery score met -> unlocked
-      isUnlocked = curriculumEngineService.isLessonUnlocked(
-        lessonWithMasteryPrereq.id,
-        gradeLessons,
-        [{ lessonId: prereqId, status: 'COMPLETED' }],
-        [{ topicId: prereqId, mastery: requiredScore }]
-      );
-      expect(isUnlocked).toBe(true);
+      expect(check(threshold - 1)).toBe(false); // completed, below the threshold
+      expect(check(threshold)).toBe(true); // completed, at the threshold
+      expect(check(100, 'IN_PROGRESS')).toBe(false); // not finished: locked whatever the score
     });
 
     it('should determine the next available lesson correctly', () => {
@@ -209,39 +214,33 @@ describe('Phase 3 — Student Progress & Learning Engine Tests', () => {
       expect(newRewardsCount).toBe(initialRewardsCount);
     });
 
-    it('should require mastery satisfaction to complete lessons with defined mastery requirements', async () => {
-      const lessonId = 'pn_fingertap_practice'; // has required_score = 80 in curriculum metadata
+    it('completes a lesson on coverage alone, whatever its mastery score', async () => {
+      /*
+       * Rule changed in 85806ba (2026-08-27), progress.service.ts: completion is
+       * coverage only. It used to also require KnowledgeState.mastery >= the
+       * node's required_score, but that mastery is scored *from* the
+       * completion, so such a lesson could never finish. A thin pass now
+       * completes and scores low, which puts it in the review queue.
+       */
+      const lessonId = 'pn_fingertap_practice'; // declares required_score = 80
       const node = curriculumService.getLessonById(lessonId)!;
       const requiredTypes = node.activities.map((a) => a.type);
 
-      // Complete all activities, but do not set a KnowledgeState with sufficient mastery
-      for (const type of requiredTypes) {
-        await progressService.updateActivityCompletion(child.id, lessonId, type, 3);
-      }
-
-      let progress = await progressService.getByChildAndLesson(child.id, lessonId);
-      // Status remains IN_PROGRESS because mastery requirements are not satisfied
-      expect(progress?.status).toBe('IN_PROGRESS');
-
-      // Create a KnowledgeState with insufficient mastery
+      // A low existing mastery does not hold completion back.
       await prisma.knowledgeState.create({
         data: { childId: child.id, topicId: lessonId, mastery: 50.0, confidence: 1.0, lastTransitionAt: new Date() },
       });
 
-      // Complete an activity again to trigger evaluation
+      // Only the first activity done: not covered yet.
       await progressService.updateActivityCompletion(child.id, lessonId, requiredTypes[0], 3);
-      progress = await progressService.getByChildAndLesson(child.id, lessonId);
-      expect(progress?.status).toBe('IN_PROGRESS');
+      const partial = await progressService.getByChildAndLesson(child.id, lessonId);
+      expect(partial?.status).toBe('IN_PROGRESS');
 
-      // Update KnowledgeState to satisfy mastery
-      await prisma.knowledgeState.updateMany({
-        where: { childId: child.id, topicId: lessonId },
-        data: { mastery: 85.0 },
-      });
-
-      // Complete an activity again to trigger evaluation -> should complete now
-      await progressService.updateActivityCompletion(child.id, lessonId, requiredTypes[0], 3);
-      progress = await progressService.getByChildAndLesson(child.id, lessonId);
+      // Every activity done: complete, although mastery is still 50.
+      for (const type of requiredTypes) {
+        await progressService.updateActivityCompletion(child.id, lessonId, type, 3);
+      }
+      const progress = await progressService.getByChildAndLesson(child.id, lessonId);
       expect(progress?.status).toBe('COMPLETED');
     });
 

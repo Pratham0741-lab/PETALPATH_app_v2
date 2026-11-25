@@ -7,6 +7,7 @@ import {
   createTestChild,
   createTestSubject,
 } from '../helpers/factories.js';
+import { engineConfig } from '../../shared/config/engine.config.js';
 
 async function createPlacementAssessment(ageGroup: string, subjectId: string, skillId: string) {
   const assessment = await prisma.assessment.create({
@@ -175,7 +176,11 @@ describe('Mastery Engine (Phase 5.5.4)', () => {
       expect(result.skillId).toBe(rootSkill.id);
       expect(result.masteryScore).toBeGreaterThan(0);
       expect(result.knowledgeScore).toBe(90);
-      expect(result.confidenceScore).toBe(100);
+      // Rule changed in 85806ba (2026-08-27), mastery-scoring.ts confidenceScore:
+      // confidence is accuracy scaled by independence and directness (credit
+      // for getting it right without help), so 90% accuracy with no retries or
+      // help is 90. It used to be 100 for "no struggle" regardless of accuracy.
+      expect(result.confidenceScore).toBe(90);
       expect(result.consistencyScore).toBeGreaterThan(0);
       expect(result.retentionScore).toBeGreaterThan(0);
       expect(result.currentState).toBeDefined();
@@ -441,7 +446,13 @@ describe('Mastery Engine (Phase 5.5.4)', () => {
         makeEvaluateInput(rootSkill.id, { accuracy: 100 }),
       );
 
-      const expected = (80 + 100) / 2;
+      // Rule changed in 85806ba (2026-08-27), mastery-scoring.ts
+      // consistencyScore: the mean less volatilityWeight x its standard
+      // deviation, so 80 then 100 (mean 90, deviation 10) scores 80, below a
+      // steady 90 then 90. It used to be the plain moving average (90).
+      const mean = (80 + 100) / 2;
+      const deviation = Math.sqrt(((80 - mean) ** 2 + (100 - mean) ** 2) / 2);
+      const expected = mean - engineConfig.unified.evidence.consistency.volatilityWeight * deviation;
       expect(second.consistencyScore).toBeCloseTo(expected, 0);
       expect(first.consistencyScore).toBeCloseTo(80, 0);
     });

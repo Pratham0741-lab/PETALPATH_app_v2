@@ -230,7 +230,10 @@ describe('Phase 4 — Student Learning API & Lesson Delivery Integration Tests',
 
       expect(res.status).toBe(403);
       expect(res.body.success).toBe(false);
-      expect(res.body.message).toContain('locked');
+      // Rule changed in 85806ba (2026-08-27): a locked lesson is still refused
+      // with 403, but the message now says what to do ("Finish <lesson> first",
+      // unlock-policy.ts) instead of "...currently locked".
+      expect(res.body.message).toMatch(/^Finish .+ first$/);
     });
 
     it('should reject retrieve details if the lesson is outside child grade', async () => {

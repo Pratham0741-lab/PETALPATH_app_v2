@@ -78,7 +78,10 @@ describe('Phase 5 — Assessments & Mastery Evaluation Integration Tests', () =>
 
       expect(res.status).toBe(403);
       expect(res.body.success).toBe(false);
-      expect(res.body.message).toContain('locked');
+      // Rule changed in 85806ba (2026-08-27): a locked lesson is still refused
+      // with 403, but the message now says what to do ("Finish <lesson> first",
+      // unlock-policy.ts) instead of "...currently locked".
+      expect(res.body.message).toMatch(/^Finish .+ first$/);
     });
   });
 
@@ -103,7 +106,10 @@ describe('Phase 5 — Assessments & Mastery Evaluation Integration Tests', () =>
 
       expect(res.status).toBe(403);
       expect(res.body.success).toBe(false);
-      expect(res.body.message).toContain('locked');
+      // Rule changed in 85806ba (2026-08-27): a locked lesson is still refused
+      // with 403, but the message now says what to do ("Finish <lesson> first",
+      // unlock-policy.ts) instead of "...currently locked".
+      expect(res.body.message).toMatch(/^Finish .+ first$/);
     });
   });
 
@@ -148,13 +154,16 @@ describe('Phase 5 — Assessments & Mastery Evaluation Integration Tests', () =>
       expect(submitRes.body.data.status).toBe('COMPLETED');
       expect(submitRes.body.data.percentage).toBe(100);
 
-      // 3. Verify KnowledgeState mastery updated to 100 and status state to MASTERED
+      // 3. Verify KnowledgeState mastery updated to 100, state STABLE.
+      // Rule changed in 85806ba (2026-08-27), assessments.service.ts: one passed
+      // assessment is a single session of evidence, so it sets STABLE; MASTERED
+      // needs unified.evidence.minSessionsForMastered (2) sessions.
       const ks = await prisma.knowledgeState.findFirst({
         where: { childId: context.child.id, topicId: 'pn_free_play_and_settlingin' },
       });
       expect(ks).not.toBeNull();
       expect(ks?.mastery).toBe(100);
-      expect(ks?.state).toBe('MASTERED');
+      expect(ks?.state).toBe('STABLE');
 
       // 4. Verify LessonProgress is now COMPLETED
       const progress = await prisma.lessonProgress.findFirst({
