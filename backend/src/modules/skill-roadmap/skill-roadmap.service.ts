@@ -105,7 +105,7 @@ export class SkillRoadmapService {
          * REVIEW only when a review is actually due, or reinforcement queued it.
          * `reviewUrgency` also rises for reviews coming up within 7 days, which
          * is right for sorting but was used here as the section test too: with
-         * the 2-day review interval for mastered skills, every newly mastered
+         * the 3-day review interval for mastered skills (2 for STRONG), every newly mastered
          * skill landed in REVIEW as "Due for maintenance review" before it was
          * due, and the MASTERED section stayed empty.
          */

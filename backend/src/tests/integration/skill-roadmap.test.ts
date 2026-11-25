@@ -267,7 +267,7 @@ describe('Skill Roadmap (Phase 5.5.3)', () => {
       };
       const day = 24 * 60 * 60 * 1000;
 
-      // Review coming up in 2 days (the mastered interval): not due yet.
+      // Review coming up in 2 days (inside the 3-day mastered interval): not due yet.
       await prisma.skillHealth.updateMany({
         where: { childId: child.id, skillId: rootSkill.id },
         data: { nextReviewDate: new Date(Date.now() + 2 * day) },
