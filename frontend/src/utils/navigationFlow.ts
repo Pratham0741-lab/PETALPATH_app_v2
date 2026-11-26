@@ -172,3 +172,20 @@ export const navigateToActivity = async (
   }
 };
 
+
+/**
+ * After the lesson's last activity: finish the lesson and show LessonComplete
+ * (the server decides completion from coverage, so skipped coming-soon media
+ * doesn't block it). Without a selected lesson, go Home. Same path as the
+ * video screen, so a coming-soon activity at the end of a lesson is never a
+ * loop back to the overview.
+ */
+export const finishLesson = async (navigation: { navigate: (...args: any[]) => void }) => {
+  const { selectedLesson } = useRoadmapStore.getState();
+  if (selectedLesson) {
+    await useRoadmapStore.getState().completeLesson(selectedLesson.id);
+    navigation.navigate('LessonComplete');
+  } else {
+    navigation.navigate('MainTabs', { screen: 'Home' });
+  }
+};

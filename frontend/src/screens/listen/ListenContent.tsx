@@ -12,6 +12,7 @@ import { UniversalAudioPlayer } from '../../utils/audioPlayer';
 import {
   getActivityPosition,
   getNextActivity,
+  finishLesson,
   navigateToActivity,
 } from '../../utils/navigationFlow';
 import { NavigationGuide } from '../../components/tutorial/NavigationGuide';
@@ -147,7 +148,7 @@ const ListenComingSoon: React.FC<{
         await navigateToActivity(navigation, next);
         return;
       }
-      navigation.navigate('LessonOverview');
+      await finishLesson(navigation);
     } catch (err) {
       if (__DEV__) console.warn('Failed to complete and proceed:', err);
       navigation.navigate('LessonOverview');
