@@ -25,6 +25,7 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
+      "allowBackup": false,
       "package": "in.co.petalpath.app",
       "permissions": [
         "android.permission.CAMERA",
@@ -80,7 +81,12 @@
           }
         }
       ],
-      "expo-secure-store",
+      [
+        "expo-secure-store",
+        {
+          "configureAndroidBackup": false
+        }
+      ],
       [
         "react-native-vision-camera",
         {
@@ -89,7 +95,8 @@
           "enableCodeScanner": false
         }
       ],
-      "./plugins/withCameraEngine"
+      "./plugins/withCameraEngine",
+      "./plugins/withNoBackup"
     ],
     "web": {
       "favicon": "./assets/favicon.png"
