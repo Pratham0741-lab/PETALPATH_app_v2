@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   StyleSheet,
   View,
@@ -30,6 +30,10 @@ import type { AuthStackParamList } from '../../types/navigation';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { z } from 'zod';
 import type { ApiResponse } from '../../types/api';
+import { getPublicConfig } from '../../api/publicConfig';
+import { forgotPasswordOutcome, type ForgotPasswordOutcome } from '../../features/publicConfig/publicConfig';
+import { SUPPORT_EMAIL } from '../../config/support';
+import { openExternalPage } from '../../config/legal';
 
 const forgotPasswordFormSchema = z.object({ email: emailSchema });
 type ForgotPasswordFormData = z.infer<typeof forgotPasswordFormSchema>;
@@ -41,8 +45,20 @@ export const ForgotPasswordScreen: React.FC = () => {
   const { colors } = theme;
 
   const [formError, setFormError] = useState('');
-  const [isSuccess, setIsSuccess] = useState(false);
+  // Set after a submit, or straight away when the server can't send email.
+  const [outcome, setOutcome] = useState<ForgotPasswordOutcome | null>(null);
   const [isRateLimited, setIsRateLimited] = useState(false);
+
+  // Ask once whether reset emails are really sent; if not, skip the form.
+  useEffect(() => {
+    let active = true;
+    getPublicConfig().then((config) => {
+      if (active && !config.passwordResetEmail) setOutcome(forgotPasswordOutcome(config, SUPPORT_EMAIL));
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const {
     control,
@@ -61,7 +77,9 @@ export const ForgotPasswordScreen: React.FC = () => {
       await apiClient.post<ApiResponse<null>>('/auth/forgot-password', {
         email: data.email.trim(),
       });
-      setIsSuccess(true);
+      // Same generic reply for every email; the wording depends only on
+      // whether the server can send mail (fail-safe: it can't).
+      setOutcome(forgotPasswordOutcome(await getPublicConfig(), SUPPORT_EMAIL));
     } catch (error: unknown) {
       if (error instanceof ApiError && error.statusCode === 429) {
         setIsRateLimited(true);
@@ -122,33 +140,44 @@ export const ForgotPasswordScreen: React.FC = () => {
                   </View>
                 ) : null}
 
-                {isSuccess ? (
+                {outcome ? (
                   <View style={styles.successContainer}>
                     <Ionicons
-                      name="checkmark-circle"
+                      name={outcome.kind === 'email-sent' ? 'checkmark-circle' : 'mail-outline'}
                       size={48}
-                      color={colors.success}
+                      color={outcome.kind === 'email-sent' ? colors.success : colors.primary}
                       style={styles.successIcon}
                     />
                     <Text
                       style={[styles.successTitle, { color: colors.text }]}
                       accessibilityRole="alert"
                     >
-                      Check Your Email
+                      {outcome.title}
                     </Text>
                     <Text style={[styles.successMessage, { color: colors.textSecondary }]}>
-                      If an account exists for that email, we&apos;ve sent instructions. The code
-                      in the email works once and expires in 30 minutes.
+                      {outcome.message}
                     </Text>
-                    <Button
-                      title="I have a reset code"
-                      onPress={() => navigation.navigate('ResetPassword', {})}
-                      variant="secondary"
-                      size="lg"
-                      fullWidth
-                      accessibilityLabel="Enter the reset code from the email"
-                      style={styles.requestBtn}
-                    />
+                    {outcome.showResetCodeButton ? (
+                      <Button
+                        title="I have a reset code"
+                        onPress={() => navigation.navigate('ResetPassword', {})}
+                        variant="secondary"
+                        size="lg"
+                        fullWidth
+                        accessibilityLabel="Enter the reset code from the email"
+                        style={styles.requestBtn}
+                      />
+                    ) : (
+                      <Button
+                        title="Email support"
+                        onPress={() => openExternalPage(`mailto:${SUPPORT_EMAIL}`)}
+                        variant="secondary"
+                        size="lg"
+                        fullWidth
+                        accessibilityLabel={`Email ${SUPPORT_EMAIL}`}
+                        style={styles.requestBtn}
+                      />
+                    )}
                   </View>
                 ) : (
                   <>

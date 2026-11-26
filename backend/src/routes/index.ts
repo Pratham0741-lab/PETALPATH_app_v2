@@ -44,6 +44,7 @@ import { dashboardRoutes } from '../modules/dashboard/dashboard.routes.js';
 import { teacherDashboardRoutes } from '../modules/teacher-dashboard/teacher-dashboard.routes.js';
 import { waitlistRoutes } from '../modules/waitlist/waitlist.routes.js';
 import { feedbackRoutes } from '../modules/feedback/feedback.routes.js';
+import { configRoutes } from '../modules/config/public-config.routes.js';
 
 const router = Router();
 
@@ -122,6 +123,9 @@ router.use('/waitlist', waitlistRoutes);
 router.use('/v1/waitlist', waitlistRoutes);
 
 router.use('/feedback', feedbackRoutes);
+
+// Public, unauthenticated: what the server can do (booleans only).
+router.use('/config', configRoutes);
 
 export { router as rootRouter };
 
