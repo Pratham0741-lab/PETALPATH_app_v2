@@ -46,7 +46,8 @@ import {
  * constructed once and `stop()`ed on unmount, `handleMicPress` still starts and
  * stops it the same way, `stopRecording(transcript, confidence)` still decides
  * success, and every one of the five friendly error messages is preserved
- * verbatim including the offline hint that names "Skip / Demo Mode".
+ * verbatim. The dev-only pass button and the unavailable-speech skip are both
+ * labelled "Skip".
  *
  * What changed: the mic becomes the shared `MediaOrb` (purple, because §15
  * gives SPEAK purple), the never-animating seven-bar waveform becomes the real
@@ -200,6 +201,11 @@ export const SpeakContent: React.FC<{ variant?: SpeakVariant }> = ({ variant = '
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   /** This phone can't recognise speech (see config/speech.ts): offer a skip. */
   const [speechUnavailable, setSpeechUnavailable] = useState(false);
+  // A network failure (offline, network recognizer) also offers the skip, so a
+  // child without internet is never stuck; the mic stays to try again.
+  const [networkFailed, setNetworkFailed] = useState(false);
+  // Speak -> Speak keeps this screen mounted; start each activity fresh.
+  useEffect(() => setNetworkFailed(false), [activityId]);
 
   const reduceMotion = useReducedMotion();
   const activeChild = useChildStore((state) => state.activeChild);
@@ -294,6 +300,7 @@ export const SpeakContent: React.FC<{ variant?: SpeakVariant }> = ({ variant = '
             } else if (err.message.includes('busy')) {
               friendlyMsg = 'Speech recognizer is busy. Please try again in a moment.';
             } else if (err.message.includes('network')) {
+              setNetworkFailed(true);
               friendlyMsg =
                 'Network connection issue. Please check your internet connection and try again.';
             } else {
@@ -490,15 +497,19 @@ export const SpeakContent: React.FC<{ variant?: SpeakVariant }> = ({ variant = '
         onPress={handleNextActivity}
       />
     </View>
-  ) : speechUnavailable ? (
+  ) : speechUnavailable || networkFailed ? (
     <View style={styles.skipRow}>
       <SecondaryButton
-        label="Skip this activity"
+        label="Skip"
         iconRight="forward"
         size="sm"
         fullWidth={false}
         onPress={handleUnavailableSkip}
-        accessibilityHint="Speaking practice isn't available on this phone. Skips it without stars."
+        accessibilityHint={
+          speechUnavailable
+            ? "Speaking practice isn't available on this phone. Skips it without stars."
+            : "Skips this speaking activity without stars."
+        }
       />
     </View>
   ) : process.env.EXPO_PUBLIC_ENABLE_DEV_TOOLS === 'true' ? (
@@ -506,7 +517,7 @@ export const SpeakContent: React.FC<{ variant?: SpeakVariant }> = ({ variant = '
     // recording, for offline testing. Not in production builds.
     <View style={styles.skipRow}>
       <SecondaryButton
-        label="Skip / Demo Mode"
+        label="Skip"
         iconRight="forward"
         size="sm"
         fullWidth={false}
