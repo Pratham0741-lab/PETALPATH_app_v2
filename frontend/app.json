@@ -61,7 +61,15 @@
       ],
       "expo-font",
       "expo-asset",
-      "expo-splash-screen",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/android-icon-foreground.png",
+          "imageWidth": 288,
+          "resizeMode": "contain",
+          "backgroundColor": "#FFF8FA"
+        }
+      ],
       [
         "expo-build-properties",
         {
