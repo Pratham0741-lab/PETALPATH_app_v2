@@ -2,7 +2,9 @@ import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { colors, radius, spacing, typography } from '../../theme';
-import { IconWell, PrimaryButton } from '../design';
+import * as Updates from 'expo-updates';
+
+import { IconWell, PrimaryButton, SecondaryButton } from '../design';
 import { PetalIcon } from '../icons';
 
 /**
@@ -48,6 +50,20 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
 
   private handleReset = (): void => {
     this.setState({ hasError: false, error: null, showDetails: false });
+  };
+
+  /**
+   * Restart: reloads the JavaScript bundle (expo-updates, already in every
+   * build), so a crash that repeats on every render can't trap the child on
+   * this screen. Where reload isn't possible (web, some dev setups), falls
+   * back to Try Again.
+   */
+  private handleRestart = async (): Promise<void> => {
+    try {
+      await Updates.reloadAsync();
+    } catch {
+      this.handleReset();
+    }
   };
 
   private toggleDetails = (): void => {
@@ -127,6 +143,14 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
           style={styles.resetButton}
           accessibilityHint="Resets the application state and retries"
         />
+        <SecondaryButton
+          label="Restart app"
+          icon="home"
+          onPress={this.handleRestart}
+          fullWidth={false}
+          style={styles.restartButton}
+          accessibilityHint="Closes and reopens PetalPath"
+        />
       </View>
     );
   }
@@ -202,6 +226,10 @@ const styles = StyleSheet.create({
   },
   resetButton: {
     minWidth: 200,
+  },
+  restartButton: {
+    minWidth: 200,
+    marginTop: spacing.sm,
   },
 });
 

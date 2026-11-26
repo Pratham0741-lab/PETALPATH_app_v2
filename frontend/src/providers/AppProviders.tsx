@@ -16,9 +16,11 @@ export const AppProviders: React.FC<{ children: React.ReactNode }> = ({ children
         <QueryProvider>
           <AuthProvider>
             <View style={styles.root}>
-              <OfflineBanner />
-              <PendingSyncIndicator />
+              {/* The banners sit inside the boundary too, so an error in them
+                  shows the fallback instead of a blank screen. */}
               <ErrorBoundary>
+                <OfflineBanner />
+                <PendingSyncIndicator />
                 {children}
                 {/* Inside the boundary, not beside it. Sitting outside meant any
                     error here white-screened the whole app with nothing to catch
