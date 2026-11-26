@@ -7,6 +7,7 @@ import { SCREEN_BACKGROUNDS } from '../../assets/backgrounds';
 import { useChildStore } from '../../store/childStore';
 import { enhanceMentor, MENTORS } from '../../constants/mentors';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
+import { scoreOnProceed } from '../../features/speak/speakRecording';
 import { SPEECH_UNAVAILABLE, UniversalSpeechRecognizer, isSpeechAvailable } from '../../utils/speechRecognition';
 import {
   getActivityPosition,
@@ -125,7 +126,10 @@ const SpeakComingSoon: React.FC<{
   const handleProceed = async () => {
     setIsCompleting(true);
     try {
-      await completeActivity(100);
+      // Nothing was said, so nothing is recorded (same as Listen and Video
+      // coming-soon). Was completeActivity(100).
+      const score = scoreOnProceed('coming-soon', 'next');
+      if (score !== null) await completeActivity(score);
       const next = getNextActivity(activityId);
       if (next) {
         await navigateToActivity(navigation, next);
@@ -337,7 +341,8 @@ export const SpeakContent: React.FC<{ variant?: SpeakVariant }> = ({ variant = '
    * claimed for it.
    */
   const handleUnavailableSkip = async () => {
-    await completeActivity(0);
+    const score = scoreOnProceed('scored', 'skip');
+    if (score !== null) await completeActivity(score);
   };
 
   /** Real position in the lesson, replacing the hard-coded four step dots. */
