@@ -82,6 +82,14 @@ export interface Activity {
   createdAt: string;
   updatedAt: string;
   dragDropSpec?: any | null;
+  /** 'hi' for Hindi lessons; from the curriculum's subject field (server). */
+  language?: 'hi' | 'en';
+  /**
+   * false: unscored practice (a Hindi speaking activity while the server's
+   * SPEAK_HINDI_SCORING_ENABLED is off). Missing means scored (older servers).
+   * See utils/practiceActivity.ts.
+   */
+  scored?: boolean;
   video?: {
     id: string;
     activityId: string;
@@ -94,6 +102,7 @@ export interface Activity {
     activityId: string;
     filename: string;
     duration: number;
+    audioUrl?: string | null;
   } | null;
 }
 

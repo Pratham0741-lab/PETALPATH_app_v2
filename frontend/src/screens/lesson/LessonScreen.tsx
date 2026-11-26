@@ -35,6 +35,7 @@
  */
 
 import React, { useCallback, useMemo } from 'react';
+import { scoredActivities } from '../../utils/practiceActivity';
 import { RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 
@@ -165,12 +166,16 @@ export const LessonScreen: React.FC = () => {
     }
   }, [lessonId, completeLessonMutation]);
 
-  const completedActivityCount = activities.filter((a) => isActivityDone(a, lesson?.progress))
+  // Unscored practice records nothing, so it is left out of the count.
+  const countedActivities = scoredActivities(activities);
+  const completedActivityCount = countedActivities.filter((a) => isActivityDone(a, lesson?.progress))
     .length;
   const allActivitiesCompleted =
-    activities.length > 0 && completedActivityCount === activities.length;
+    countedActivities.length > 0 && completedActivityCount === countedActivities.length;
   const percent =
-    activities.length > 0 ? Math.round((completedActivityCount / activities.length) * 100) : 0;
+    countedActivities.length > 0
+      ? Math.round((completedActivityCount / countedActivities.length) * 100)
+      : 0;
 
   const durationLabel = lesson?.activities?.[0]?.video?.duration
     ? `${Math.ceil(lesson.activities[0].video.duration / 60)}m`

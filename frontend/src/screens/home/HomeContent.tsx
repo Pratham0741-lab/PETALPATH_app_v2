@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { isUnscoredPractice, scoredActivities } from '../../utils/practiceActivity';
 import {
   Pressable,
   RefreshControl,
@@ -255,6 +256,8 @@ export const HomeContent: React.FC<HomeContentProps> = ({ variant = 'mobile' }) 
     const acts = oneActivityPerScreen(lesson.activities);
     if (!progress) return acts[0] || null;
     for (const act of acts) {
+      // Unscored practice records nothing; resume at real work instead.
+      if (isUnscoredPractice(act)) continue;
       if (act.activityType === 'video' && !progress.videoCompleted) return act;
       if (act.activityType === 'listen' && !progress.listenCompleted) return act;
       if (act.activityType === 'speak' && !progress.speakCompleted) return act;
@@ -265,7 +268,8 @@ export const HomeContent: React.FC<HomeContentProps> = ({ variant = 'mobile' }) 
 
   const getRemainingActivitiesCount = useCallback((lesson: Lesson) => {
     const progress = lesson.progress;
-    const total = oneActivityPerScreen(lesson.activities).length;
+    // Unscored practice is never "left to do" (it records nothing).
+    const total = scoredActivities(oneActivityPerScreen(lesson.activities)).length;
     if (!progress) return total;
     let completed = 0;
     if (progress.videoCompleted) completed++;

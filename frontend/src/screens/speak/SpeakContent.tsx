@@ -8,6 +8,7 @@ import { useChildStore } from '../../store/childStore';
 import { enhanceMentor, MENTORS } from '../../constants/mentors';
 import { useReducedMotion } from '../../hooks/useReducedMotion';
 import { scoreOnProceed } from '../../features/speak/speakRecording';
+import { UniversalAudioPlayer } from '../../utils/audioPlayer';
 import { SPEECH_UNAVAILABLE, UniversalSpeechRecognizer, isSpeechAvailable } from '../../utils/speechRecognition';
 import {
   getActivityPosition,
@@ -178,6 +179,100 @@ const SpeakComingSoon: React.FC<{
 };
 
 // ---------------------------------------------------------------------------
+// Unscored practice (Hindi speaking while scoring is off)
+// ---------------------------------------------------------------------------
+
+/**
+ * The word, its audio when the lesson has playable audio for it, a "Say it out
+ * loud" prompt and Next. No microphone and no speech recognition; nothing is
+ * recorded (scoreOnProceed('practice') is null), and the server neither
+ * requires nor counts this activity (utils/practiceActivity.ts).
+ */
+const SpeakPractice: React.FC<{
+  activityId: string;
+  word: string;
+  audioUrl: string | null;
+  navigation: any;
+}> = ({ activityId, word, audioUrl, navigation }) => {
+  const { completeActivity } = useSpeakStore();
+  const [isProceeding, setIsProceeding] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const playerRef = useRef<UniversalAudioPlayer | null>(null);
+
+  useEffect(() => {
+    if (!audioUrl) return undefined;
+    playerRef.current = new UniversalAudioPlayer(audioUrl, () => setIsPlaying(false));
+    return () => {
+      playerRef.current?.unload();
+      playerRef.current = null;
+    };
+  }, [audioUrl]);
+
+  const handlePlay = () => {
+    if (!playerRef.current) return;
+    playerRef.current.replay();
+    setIsPlaying(true);
+  };
+
+  const handleProceed = async () => {
+    setIsProceeding(true);
+    try {
+      const score = scoreOnProceed('practice', 'next');
+      if (score !== null) await completeActivity(score);
+      playerRef.current?.stop();
+      const next = getNextActivity(activityId);
+      if (next) {
+        await navigateToActivity(navigation, next);
+        return;
+      }
+      await finishLesson(navigation);
+    } catch (err) {
+      if (__DEV__) console.warn('Failed to proceed from practice:', err);
+      navigation.navigate('LessonOverview');
+    } finally {
+      setIsProceeding(false);
+    }
+  };
+
+  return (
+    <AppShell petals="none" backgroundImage={SCREEN_BACKGROUNDS.speak}
+      scroll={false}
+      header={<PageHeader title="Speak & Learn" />}
+      footer={
+        <PrimaryButton label="Next" iconRight="forward" onPress={handleProceed} loading={isProceeding} />
+      }
+    >
+      <View style={styles.center}>
+        <Card variant="raised" padding="roomy" accent={colors.purple} style={styles.comingSoonCard}>
+          <Text
+            style={[typography.presets.hero, styles.practiceWord]}
+            accessibilityRole="header"
+            adjustsFontSizeToFit
+            numberOfLines={2}
+          >
+            {word}
+          </Text>
+          {audioUrl ? (
+            <SecondaryButton
+              label={isPlaying ? 'Playing…' : 'Hear it'}
+              icon="listen"
+              size="sm"
+              fullWidth={false}
+              onPress={handlePlay}
+              accessibilityHint="Plays the word"
+            />
+          ) : null}
+          <Text style={[typography.presets.section, styles.comingSoonTitle]}>Say it out loud</Text>
+          <Text style={[typography.presets.body, styles.comingSoonBody]}>
+            Practise the word, then tap Next.
+          </Text>
+        </Card>
+      </View>
+    </AppShell>
+  );
+};
+
+// ---------------------------------------------------------------------------
 // Speak & Learn
 // ---------------------------------------------------------------------------
 
@@ -199,6 +294,8 @@ export const SpeakContent: React.FC<{ variant?: SpeakVariant }> = ({ variant = '
     completeActivity,
     lives,
     isComingSoon,
+    isPractice,
+    practiceAudioUrl,
   } = useSpeakStore();
 
   const [recognizer, setRecognizer] = useState<UniversalSpeechRecognizer | null>(null);
@@ -361,6 +458,17 @@ export const SpeakContent: React.FC<{ variant?: SpeakVariant }> = ({ variant = '
           </Text>
         </View>
       </AppShell>
+    );
+  }
+
+  if (isPractice && activityId) {
+    return (
+      <SpeakPractice
+        activityId={activityId}
+        word={targetPhrase}
+        audioUrl={practiceAudioUrl}
+        navigation={navigation}
+      />
     );
   }
 
@@ -704,6 +812,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     width: '100%',
     maxWidth: layoutSizes.reading,
+  },
+  practiceWord: {
+    color: colors.text,
+    textAlign: 'center',
+    marginBottom: spacing.md,
   },
   comingSoonTitle: {
     color: colors.text,

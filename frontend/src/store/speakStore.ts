@@ -19,8 +19,19 @@ interface SpeakState {
   lives: number;
   error: string | null;
   isComingSoon: boolean;
+  /**
+   * Unscored practice (utils/practiceActivity.ts): show the word and "Say it
+   * out loud", no speech recognition, nothing recorded.
+   */
+  isPractice: boolean;
+  /** Audio of the practice word, when the lesson has playable audio for it. */
+  practiceAudioUrl: string | null;
 
-  loadSpeak: (activityId: string, activityTitle: string) => Promise<void>;
+  loadSpeak: (
+    activityId: string,
+    activityTitle: string,
+    opts?: { practice?: boolean; audioUrl?: string | null },
+  ) => Promise<void>;
   startRecording: () => void;
   stopRecording: (finalTranscript: string, confidenceScore: number) => Promise<boolean>;
   retry: () => void;
@@ -41,9 +52,35 @@ export const useSpeakStore = create<SpeakState>((set, get) => {
     error: null,
     lives: 3,
     isComingSoon: false,
+    isPractice: false,
+    practiceAudioUrl: null,
 
-    loadSpeak: async (activityId, activityTitle) => {
-      set({ loading: true, error: null, transcript: '', confidence: 0, stars: null, isRecording: false, isComingSoon: false });
+    loadSpeak: async (activityId, activityTitle, opts) => {
+      set({
+        loading: true,
+        error: null,
+        transcript: '',
+        confidence: 0,
+        stars: null,
+        isRecording: false,
+        isComingSoon: false,
+        isPractice: false,
+        practiceAudioUrl: null,
+      });
+      if (opts?.practice) {
+        // Unscored practice: the lesson's word, no progress lookup, nothing saved.
+        set({
+          activityId,
+          targetPhrase: useRoadmapStore.getState().selectedLesson?.title || activityTitle,
+          isCompleted: false,
+          confidence: 0,
+          stars: null,
+          isPractice: true,
+          practiceAudioUrl: opts.audioUrl ?? null,
+          loading: false,
+        });
+        return;
+      }
       try {
         const isComingSoon = !activityId || !activityTitle || activityTitle.toLowerCase().includes('coming_soon') || activityTitle.toLowerCase().includes('placeholder');
         
@@ -198,6 +235,8 @@ export const useSpeakStore = create<SpeakState>((set, get) => {
         error: null,
         lives: 3,
         isComingSoon: false,
+        isPractice: false,
+        practiceAudioUrl: null,
       });
     },
   };

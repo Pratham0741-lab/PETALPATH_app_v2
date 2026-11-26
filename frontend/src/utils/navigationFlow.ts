@@ -8,6 +8,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../types/navigation';
 import { oneActivityPerScreen } from './activityNormalization';
 import { normalizeActivityType } from './activityNormalization';
+import { isUnscoredPractice, practiceAudioUrl } from './practiceActivity';
 
 /**
  * The activity list a lesson's flow walks through.
@@ -147,7 +148,11 @@ export const navigateToActivity = async (
     }
   } else if (normalizedType === 'speak') {
     try {
-      await useSpeakStore.getState().loadSpeak(activity.id, activity.title);
+      const lessonActivities = useRoadmapStore.getState().selectedLesson?.activities ?? [];
+      await useSpeakStore.getState().loadSpeak(activity.id, activity.title, {
+        practice: isUnscoredPractice(activity),
+        audioUrl: practiceAudioUrl(activity, lessonActivities),
+      });
       navigation.navigate('Speak');
     } catch (err: unknown) {
       customAlert('Error', err instanceof Error ? err.message : 'Failed to load speak activity');

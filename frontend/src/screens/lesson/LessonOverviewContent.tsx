@@ -1,4 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
+import { isUnscoredPractice } from '../../utils/practiceActivity';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { customAlert } from '../../utils/alert';
 import { useAppNavigation } from '../../hooks/useAppNavigation';
@@ -93,6 +94,8 @@ export const LessonOverviewContent: React.FC<{ variant?: LessonOverviewVariant }
   const isActivityUnlocked = (act: any, index: number) => {
     if (index === 0) return true;
     const prevAct = activities[index - 1];
+    // Unscored practice records nothing, so it never locks the next activity.
+    if (isUnscoredPractice(prevAct)) return true;
     const progress = selectedLesson?.progress;
     if (!progress) return false;
 

@@ -15,6 +15,13 @@ describe('coming-soon speaking', () => {
   });
 });
 
+describe('Hindi practice (unscored)', () => {
+  it('records nothing, whichever way the child moves on', () => {
+    assert.equal(scoreOnProceed('practice', 'next'), null);
+    assert.equal(scoreOnProceed('practice', 'skip'), null);
+  });
+});
+
 describe('scored speaking', () => {
   it('Skip still records 0', () => {
     assert.equal(scoreOnProceed('scored', 'skip'), 0);
