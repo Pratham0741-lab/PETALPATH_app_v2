@@ -24,6 +24,7 @@ import { normalizeActivityType } from '../../shared/utils/activity-type-normaliz
 import { COMING_SOON, servedMediaKey } from '../../shared/utils/media-paths.js';
 import { isPerformableActivity } from '../../shared/utils/lesson-activity-plan.js';
 import { curriculumLoader } from '../curriculum/curriculum-loader.js';
+import { isSpeakScored, type LanguageNode } from '../../shared/utils/lesson-language.js';
 // Type-only, so it is erased at compile time and the pure half of this module
 // still runs under the DB-free harness.
 import type { Prisma } from '@prisma/client';
@@ -386,6 +387,22 @@ export function expectedModalitiesOf(
     }
   }
   return MODALITY_KEYS.filter((k) => found.has(k));
+}
+
+/**
+ * The modalities a lesson's completion and mastery evidence count: those the
+ * node asks for, minus an unscored speaking activity (a Hindi lesson while
+ * SPEAK_HINDI_SCORING_ENABLED is off, see shared/utils/lesson-language.ts).
+ * Unscored practice records nothing, so counting it would block completion
+ * and read as missing coverage.
+ */
+export function expectedModalitiesForLesson(
+  node: LanguageNode & { readonly activities: readonly { readonly type: string }[] },
+  hindiScoringEnabled?: boolean
+): ModalityKey[] {
+  return expectedModalitiesOf(node.activities).filter(
+    (m) => m !== 'speak' || isSpeakScored(node, hindiScoringEnabled)
+  );
 }
 
 /**

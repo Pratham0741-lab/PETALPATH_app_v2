@@ -12,6 +12,7 @@ import { baselineService } from '../baseline/baseline.service.js';
 import { curriculumLoader } from '../curriculum/curriculum-loader.js';
 import { lessonAccessService } from '../lessons/lesson-access.service.js';
 import { normalizeActivityType } from '../../shared/utils/activity-type-normalizer.js';
+import { isSpeakScored } from '../../shared/utils/lesson-language.js';
 import { hasMeaningfulDragDrop } from '../../shared/utils/lesson-activity-plan.js';
 
 const lessonIdParamSchema = z.object({ lessonId: z.string().min(1, 'lessonId is required') });
@@ -290,7 +291,10 @@ export class ProgressController {
             if (!hasActivity) {
               throw new ValidationError(`Activity type "${activityType}" is not defined for lesson "${lessonId}"`);
             }
-            await progressService.updateActivityCompletion(childId, lessonId, activityType, stars);
+            // Unscored practice (a Hindi speaking activity) records nothing.
+            if (normalizedIncoming !== 'speak' || isSpeakScored(lessonNode)) {
+              await progressService.updateActivityCompletion(childId, lessonId, activityType, stars);
+            }
             const progress = await progressService.getByChildAndLesson(childId, lessonId);
             return res.status(200).json({
               success: true,

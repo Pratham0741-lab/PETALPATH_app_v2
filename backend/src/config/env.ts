@@ -111,6 +111,15 @@ const envSchema = z.object({
     .default('false')
     .transform((v) => v === 'true'),
 
+  // Speaking activities in Hindi lessons are unscored practice (no speech
+  // recognition, nothing recorded, not required to finish the lesson) until
+  // Hindi recognition has been tested on real phones. "true" scores them like
+  // every other speaking activity. See shared/utils/lesson-language.ts.
+  SPEAK_HINDI_SCORING_ENABLED: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((v) => v === 'true'),
+
   // Jobs
   JOBS_CLEANUP_INTERVAL_MINUTES: z.coerce.number().default(60),
   NOTIFICATION_RETENTION_DAYS: z.coerce.number().default(30),

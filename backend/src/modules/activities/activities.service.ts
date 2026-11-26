@@ -10,6 +10,7 @@ import { generateDynamicDragDropSpec } from '../../shared/utils/spec-generator.j
 import { hasMeaningfulDragDrop, isPerformableActivity } from '../../shared/utils/lesson-activity-plan.js';
 import { revisionTraceItems } from '../../shared/utils/revision-trace-sets.js';
 import { normalizeActivityType } from '../../shared/utils/activity-type-normalizer.js';
+import { isActivityScored, lessonLanguage, type LessonLanguage } from '../../shared/utils/lesson-language.js';
 
 function getActivityTitle(lessonTitle: string, type: string): string {
   const typeMap: Record<string, string> = {
@@ -152,13 +153,24 @@ function addMissingDragDropActivity(lessonId: string, activities: any[], withSpe
  * screen and the roadmap both use this, so their counts always agree.
  * `withSpec: false` skips the board data (the roadmap only needs the list).
  */
+/**
+ * Every planned activity also carries the lesson's `language` and whether it
+ * is `scored`: a Hindi speaking activity is unscored practice while
+ * SPEAK_HINDI_SCORING_ENABLED is off (shared/utils/lesson-language.ts). The app
+ * reads `scored` to show practice instead of recognition; stars read it too.
+ */
+export type PlannedActivity<T> = T & { language: LessonLanguage; scored: boolean };
+
 export function planLessonActivities<T extends { activityType: string; displayOrder: number }>(
   lessonId: string,
   activities: T[],
   opts: { withSpec?: boolean } = {},
-): T[] {
+): PlannedActivity<T>[] {
   const node = curriculumService.getLessonById(lessonId);
-  if (!node) return activities;
+  const language = lessonLanguage(node);
+  const tag = (list: T[]): PlannedActivity<T>[] =>
+    list.map((a) => ({ ...a, language, scored: isActivityScored(a.activityType, node) }));
+  if (!node) return tag(activities);
   const performable = activities.filter((a) => isPerformableActivity(a.activityType, node));
   const withDragDrop = addMissingDragDropActivity(lessonId, performable, opts.withSpec !== false) as T[];
   // A revision lesson's tracing steps through every item of its topic.
@@ -166,7 +178,7 @@ export function planLessonActivities<T extends { activityType: string; displayOr
   const withTrace = traceItems
     ? withDragDrop.map((a) => (normalizeActivityType(a.activityType) === 'write' ? { ...a, traceItems } : a))
     : withDragDrop;
-  return positionDragDropAfterSpeaking(withTrace);
+  return tag(positionDragDropAfterSpeaking(withTrace));
 }
 
 export class ActivitiesService {

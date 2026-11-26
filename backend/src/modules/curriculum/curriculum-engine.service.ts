@@ -16,6 +16,7 @@ import {
 } from './unlock-policy.js';
 import { ACTIVITY_STARS_CONFIG, GRADE_AGE_GROUP_MAP } from './curriculum.config.js';
 import { normalizeActivityType } from '../../shared/utils/activity-type-normalizer.js';
+import { isSpeakScored } from '../../shared/utils/lesson-language.js';
 
 export interface CurriculumRecommendationDto {
   subjectId: string;
@@ -686,7 +687,8 @@ export class CurriculumEngineService {
     const normalizedTypes = node.activities.map((a) => normalizeActivityType(a.type));
     const hasVideo = normalizedTypes.includes('video');
     const hasListen = normalizedTypes.includes('listen');
-    const hasSpeak = normalizedTypes.includes('speak');
+    // Unscored practice (a Hindi speaking activity, see lesson-language.ts) records nothing.
+    const hasSpeak = normalizedTypes.includes('speak') && isSpeakScored(node);
     const hasWrite = normalizedTypes.includes('write');
 
     if (hasVideo && !progress.videoCompleted) return false;

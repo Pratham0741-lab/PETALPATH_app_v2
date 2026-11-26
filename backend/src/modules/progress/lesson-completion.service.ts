@@ -57,7 +57,7 @@ import { planLessonActivities } from '../activities/activities.service.js';
 import {
   ACTIVITY_TYPE_OF,
   computeLessonEvidence,
-  expectedModalitiesOf,
+  expectedModalitiesForLesson,
   gatherModalitySignals,
   requiredModalitiesOf,
   perModalitySamples,
@@ -143,7 +143,7 @@ export class LessonCompletionService {
       throw new NotFoundError('Lesson not found in curriculum');
     }
 
-    const expectedModalities = expectedModalitiesOf(lessonNode.activities);
+    const expectedModalities = expectedModalitiesForLesson(lessonNode);
     const now = new Date();
 
     const outcome = await prisma.$transaction(async (tx) => {

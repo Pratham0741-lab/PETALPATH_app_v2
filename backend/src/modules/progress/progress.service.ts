@@ -12,7 +12,7 @@ import { logger } from '../../utils/logger.js';
 import { normalizeActivityType } from '../../shared/utils/activity-type-normalizer.js';
 import {
   computeLessonEvidence,
-  expectedModalitiesOf,
+  expectedModalitiesForLesson,
   gatherModalitySignals,
 } from './lesson-evidence.js';
 import { projectMasteryToKnowledgeState } from './knowledge-state.writer.js';
@@ -174,7 +174,7 @@ export class ProgressService {
       if (isEligibleForCompletion) {
         try {
           const refreshedProgress = await client.lessonProgress.findUnique({ where: { id: progress.id } });
-          const expectedModalities = expectedModalitiesOf(lessonNode.activities);
+          const expectedModalities = expectedModalitiesForLesson(lessonNode);
           const signals = await gatherModalitySignals(
             childId,
             lessonId,

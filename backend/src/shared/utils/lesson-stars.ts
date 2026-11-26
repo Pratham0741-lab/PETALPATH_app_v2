@@ -21,6 +21,8 @@ export type StarScreen = 'video' | 'listen' | 'speak' | 'write' | 'drag_drop';
 
 export interface StarCountableActivity {
   activityType: string;
+  /** false for unscored practice (a Hindi speaking activity, see lesson-language.ts): awards nothing. */
+  scored?: boolean;
   video?: { videoKey?: string | null } | null;
   audio?: { audioKey?: string | null } | null;
 }
@@ -35,6 +37,7 @@ export function starScreensOf(activities: readonly StarCountableActivity[]): Set
   const screens = new Set<StarScreen>();
   for (const a of activities) {
     const screen = normalizeActivityType(a.activityType);
+    if (a.scored === false) continue;
     if (screen === 'video' && !playable(a.video?.videoKey)) continue;
     if (screen === 'listen' && !playable(a.audio?.audioKey)) continue;
     screens.add(screen);
